@@ -7,133 +7,269 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100%;overflow:hidden;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:13px;color:#2C1B0E}
-#app{display:flex;flex-direction:column;height:100vh}
-#hdr{background:#3E2A0E;color:#F5EDD8;height:46px;display:flex;align-items:center;padding:0 12px;gap:10px;flex-shrink:0}
-#hdr h1{font-size:14px;white-space:nowrap}
-#cnDisp{font-size:11px;opacity:.65;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-#tbar{background:#F5EDD8;border-bottom:1px solid #D4C4A8;padding:5px 10px;display:flex;align-items:center;gap:6px;flex-shrink:0;flex-wrap:wrap}
-#status{font-size:11px;color:#777;margin-left:4px;flex:1}
-#body{display:flex;flex:1;overflow:hidden}
-#sidebar{width:250px;flex-shrink:0;background:#FAF6EE;border-right:1px solid #D4C4A8;display:flex;flex-direction:column;overflow:hidden}
-.sec{border-bottom:1px solid #D4C4A8}
-.sec-hdr{padding:8px 12px;font-size:11px;font-weight:bold;color:#4A2E0E;background:#F0E8D8;cursor:pointer;display:flex;justify-content:space-between;user-select:none}
-.sec-body{padding:10px 12px}
+html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:13px;color:#2C1B0E;overflow:hidden}
+
+/* ===== SCREEN 1 ===== */
+#s1{
+  height:100vh;display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(135deg,#F5EDD8 0%,#E8D8B8 100%);
+}
+.s1-card{
+  background:rgba(255,255,255,.92);border-radius:16px;padding:40px 48px;
+  width:min(480px,92vw);box-shadow:0 8px 40px rgba(74,46,14,.15);
+  border:1px solid #D4C4A8;
+}
+.s1-logo{font-size:40px;text-align:center;margin-bottom:12px}
+.s1-title{font-size:22px;font-weight:bold;color:#3E2A0E;text-align:center;margin-bottom:6px}
+.s1-sub{font-size:12px;color:#8A6A4A;text-align:center;margin-bottom:28px}
+.s1-label{display:block;font-size:11px;font-weight:bold;color:#5A3A1A;margin-bottom:4px;margin-top:14px}
+.s1-input{
+  width:100%;padding:9px 12px;border:1px solid #D4C4A8;border-radius:6px;
+  font-size:14px;font-family:inherit;background:#FFFDF8;outline:none;color:#2C1B0E;
+  transition:border-color .2s;
+}
+.s1-input:focus{border-color:#C4703A}
+.s1-hint{font-size:10px;color:#9A7A5A;margin-top:3px}
+.s1-btn{
+  width:100%;margin-top:24px;padding:13px;background:#3E2A0E;color:#F5EDD8;
+  border:none;border-radius:8px;font-size:15px;font-family:inherit;font-weight:bold;
+  cursor:pointer;letter-spacing:.04em;transition:background .2s;
+}
+.s1-btn:hover{background:#5A3E1A}
+.s1-btn:disabled{opacity:.5;cursor:not-allowed}
+
+/* ===== SCREEN 2 ===== */
+#s2{height:100vh;display:none;flex-direction:column}
+#hdr{
+  background:#3E2A0E;color:#F5EDD8;height:44px;display:flex;
+  align-items:center;padding:0 12px;gap:10px;flex-shrink:0;
+}
+#hdr h1{font-size:13px;white-space:nowrap}
+#cnDisp{font-size:11px;opacity:.7;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#main{display:flex;flex:1;overflow:hidden}
+
+/* ===== SIDEBAR ===== */
+#sidebar{
+  width:256px;flex-shrink:0;background:#FAF6EE;
+  border-right:1px solid #D4C4A8;display:flex;flex-direction:column;overflow:hidden;
+}
+.sec{border-bottom:1px solid #D4C4A8;flex-shrink:0}
+.sec-hdr{
+  padding:7px 12px;font-size:11px;font-weight:bold;color:#4A2E0E;background:#F0E8D8;
+  cursor:pointer;display:flex;justify-content:space-between;user-select:none;
+}
+.sec-body{padding:8px 12px}
 .sec-body label{display:block;font-size:10px;color:#666;font-weight:bold;margin-bottom:2px}
-.sec-body input,.sec-body select,.sec-body textarea{width:100%;padding:4px 7px;border:1px solid #D4C4A8;border-radius:3px;font-size:11px;font-family:inherit;background:#fff;outline:none;margin-bottom:6px}
-.sec-body textarea{resize:vertical;min-height:52px}
+.sec-body input,.sec-body textarea,.sec-body select{
+  width:100%;padding:4px 7px;border:1px solid #D4C4A8;border-radius:3px;
+  font-size:11px;font-family:inherit;background:#fff;outline:none;margin-bottom:6px;
+}
+.sec-body textarea{resize:vertical;min-height:60px}
+
+/* Waypoint list (draggable) */
 #wpSec{flex:1;overflow:hidden;display:flex;flex-direction:column;min-height:0}
-#wpList{flex:1;overflow-y:auto;padding:0 12px;min-height:0}
-.wp-row{display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid #EEE8DE;cursor:pointer}
-.wp-row:hover{background:#F0E8D8;margin:0 -12px;padding:4px 12px}
-.wp-dot{width:20px;height:20px;border-radius:50%;color:#fff;font-size:9px;font-weight:bold;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.wp-label{font-size:11px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.wp-edit-btn{font-size:11px;color:#C4703A;flex-shrink:0;padding:2px 4px}
+#wpList{flex:1;overflow-y:auto;padding:2px 0}
+.wp-row{
+  display:flex;align-items:center;gap:5px;padding:4px 10px;
+  border-bottom:1px solid #EEE8DE;cursor:grab;user-select:none;
+  transition:background .1s;
+}
+.wp-row:hover{background:#F0E8D8}
+.wp-row.dragging{opacity:.4;background:#E8D8C8}
+.wp-row.drag-over{border-top:2px solid #C4703A}
+.wp-dot{
+  width:22px;height:22px;border-radius:50%;color:#fff;
+  font-size:10px;font-weight:bold;display:flex;align-items:center;
+  justify-content:center;flex-shrink:0;
+}
+.wp-name{font-size:11px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wp-edit-btn{font-size:11px;color:#C4703A;flex-shrink:0;padding:1px 4px;cursor:pointer}
+.wp-empty{font-size:10px;color:#aaa;text-align:center;padding:14px}
+
+/* Distance and description */
+#distSec{padding:8px 12px;background:#F0EAE0;border-top:1px solid #D4C4A8;border-bottom:1px solid #D4C4A8;flex-shrink:0}
+#distDisp{font-size:12px;font-weight:bold;color:#4A2E0E}
+#descSec{padding:8px 12px;flex-shrink:0}
+#descSec label{display:block;font-size:10px;font-weight:bold;color:#666;margin-bottom:3px}
+#iDesc{width:100%;padding:5px 7px;border:1px solid #D4C4A8;border-radius:3px;font-size:11px;font-family:inherit;background:#fff;outline:none;resize:vertical;min-height:60px}
+
+/* API key section */
+#apiSec{border-top:1px solid #D4C4A8}
+
+/* ===== MAP AREA ===== */
+#mapArea{flex:1;display:flex;flex-direction:column;overflow:hidden}
+#tbar{
+  background:#F5EDD8;border-bottom:1px solid #D4C4A8;padding:4px 10px;
+  display:flex;align-items:center;gap:5px;flex-shrink:0;flex-wrap:wrap;
+}
+#tbar-status{font-size:10px;color:#888;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #mapWrap{flex:1;position:relative}
 #map{width:100%;height:100%}
-#mapMsg{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(255,255,255,.9);border:1px solid #D4C4A8;border-radius:6px;padding:10px 18px;font-size:11px;text-align:center;z-index:500;pointer-events:none;line-height:1.7}
-#routingMsg{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);background:rgba(62,42,14,.88);color:#F5EDD8;border-radius:4px;padding:6px 14px;font-size:11px;z-index:600;display:none;white-space:nowrap}
-.btn{padding:5px 10px;border:1px solid #C4B89A;border-radius:4px;background:#fff;cursor:pointer;font-size:11px;font-family:inherit;white-space:nowrap;line-height:1.4}
+#mapMsg{
+  position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  background:rgba(255,255,255,.88);border:1px solid #D4C4A8;border-radius:6px;
+  padding:10px 16px;font-size:11px;text-align:center;z-index:500;pointer-events:none;line-height:1.7;
+}
+
+/* ===== AI SELECTOR BAR ===== */
+#aiBar{
+  background:#3E2A0E;padding:6px 12px;display:flex;align-items:center;gap:8px;
+  flex-shrink:0;border-top:1px solid rgba(255,255,255,.1);
+}
+#aiBar label{color:#F5EDD8;font-size:11px;white-space:nowrap}
+#aiSel{
+  padding:4px 8px;border:1px solid rgba(255,255,255,.2);border-radius:4px;
+  background:rgba(255,255,255,.12);color:#F5EDD8;font-size:11px;font-family:inherit;outline:none;flex:1;
+}
+#aiSel option{background:#3E2A0E;color:#F5EDD8}
+
+/* ===== BUTTONS ===== */
+.btn{padding:4px 9px;border:1px solid #C4B89A;border-radius:4px;background:#fff;cursor:pointer;font-size:11px;font-family:inherit;white-space:nowrap;line-height:1.4}
 .btn:hover{background:#F5EDD8}
 .btn.on{background:#C4703A;color:#fff;border-color:#C4703A}
-.btn-dk{background:#3E2A0E;color:#F5EDD8;border-color:#3E2A0E}
-.btn-dk:hover{background:#5C3E1A}
+.btn-lt{background:rgba(255,255,255,.15);color:#F5EDD8;border-color:rgba(255,255,255,.25);padding:5px 14px;font-size:12px;font-weight:bold;font-family:inherit;cursor:pointer;border-radius:5px;white-space:nowrap}
+.btn-lt:hover{background:rgba(255,255,255,.25)}
 .btn-rd{background:#B71C1C;color:#fff;border-color:#B71C1C}
+
+/* ===== MODAL ===== */
 #mOver{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:3000;align-items:center;justify-content:center}
 #mOver.show{display:flex}
-#mBox{background:#fff;border-radius:8px;width:min(380px,95vw);max-height:85vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.35)}
-#mHdr{background:#3E2A0E;color:#F5EDD8;padding:11px 14px;border-radius:8px 8px 0 0;display:flex;justify-content:space-between;align-items:center;font-size:13px;font-weight:bold}
+#mBox{background:#fff;border-radius:8px;width:min(360px,94vw);max-height:85vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.35)}
+#mHdr{background:#3E2A0E;color:#F5EDD8;padding:10px 14px;border-radius:8px 8px 0 0;display:flex;justify-content:space-between;align-items:center;font-size:13px;font-weight:bold}
 #mBody{padding:14px}
 #mBody label{display:block;font-size:10px;font-weight:bold;color:#555;margin-bottom:2px}
 #mBody input,#mBody select,#mBody textarea{width:100%;padding:5px 8px;border:1px solid #D4C4A8;border-radius:4px;font-size:12px;font-family:inherit;background:#fff;outline:none;margin-bottom:10px}
-#mBody textarea{resize:vertical;min-height:56px}
+#mBody textarea{resize:vertical;min-height:52px}
 #mFtr{padding:10px 14px;border-top:1px solid #EEE;display:flex;justify-content:space-between;align-items:center}
-#resPanel{display:none;position:fixed;top:46px;right:0;bottom:0;width:380px;background:#fff;border-left:1px solid #D4C4A8;z-index:2000;overflow-y:auto;padding:14px;box-shadow:-4px 0 16px rgba(0,0,0,.1)}
+
+/* ===== RESULT PANEL ===== */
+#resPanel{display:none;position:fixed;top:44px;right:0;bottom:0;width:min(400px,90vw);background:#fff;border-left:1px solid #D4C4A8;z-index:2000;overflow-y:auto;padding:14px;box-shadow:-4px 0 16px rgba(0,0,0,.12)}
 #resPanel.show{display:block}
 .res-blk{background:#F8F4EC;border:1px solid #D4C4A8;border-radius:5px;padding:10px;margin-bottom:10px}
 .res-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
-.res-lbl{font-size:10px;font-weight:bold;color:#555;text-transform:uppercase;letter-spacing:.06em}
-.res-hint{font-size:9px;color:#999;margin-bottom:6px}
+.res-lbl{font-size:10px;font-weight:bold;color:#555;text-transform:uppercase;letter-spacing:.05em}
+.res-hint{font-size:9px;color:#999;margin-bottom:5px}
 .res-txt{font-size:10px;line-height:1.7;font-family:monospace;white-space:pre-wrap;word-break:break-all}
 .cp-btn{padding:2px 8px;background:#4A7A5C;color:#fff;border:none;border-radius:3px;font-size:9px;cursor:pointer;font-family:inherit}
-.hint-box{background:#EEF4FF;border:1px solid #B8D0F0;border-radius:4px;padding:8px 10px;font-size:10px;color:#2A4A7A;line-height:1.7;margin-top:6px}
+
+/* ===== TOOLTIP ===== */
+.wp-tt{
+  background:rgba(62,42,14,.85)!important;color:#F5EDD8!important;
+  border:none!important;border-radius:4px!important;font-size:11px!important;
+  padding:2px 7px!important;white-space:nowrap!important;box-shadow:0 2px 6px rgba(0,0,0,.3)!important;
+}
+.wp-tt::before{display:none!important}
 </style>
 </head>
 <body>
-<div id="app">
-  <div id="hdr">
-    <span style="font-size:18px">🗾</span>
-    <h1>フットパスマップメーカー</h1>
-    <div id="cnDisp"></div>
-    <button class="btn btn-dk" onclick="openGen()" style="flex-shrink:0">✨ プロンプト生成</button>
-  </div>
-  <div id="tbar">
-    <span style="font-size:10px;color:#666">モード:</span>
-    <button class="btn on" id="btnWp"  onclick="setMode('wp')">📍 ウェイポイント追加</button>
-    <button class="btn"    id="btnVia" onclick="setMode('via')">↔ 経路調整点追加</button>
-    <span style="color:#D4C4A8">|</span>
-    <button class="btn" onclick="undoLast()">↩ 取り消し</button>
-    <button class="btn" onclick="clearAll()">🗑 全消去</button>
-    <span id="status">地図をクリックしてウェイポイントを追加 ／ ルート線を直接ドラッグして経路を調整</span>
-  </div>
-  <div id="body">
-    <div id="sidebar">
-      <div class="sec">
-        <div class="sec-hdr" onclick="toggleSec('cBody','cArr')">📋 コース情報 <span id="cArr">▼</span></div>
-        <div class="sec-body" id="cBody">
-          <label>コース名</label>
-          <input id="iName" placeholder="例：飯見の棚田おにぎりウォーク" oninput="syncCourse()">
-          <label>エリア・地域</label>
-          <input id="iArea" placeholder="例：宍粟市波賀町飯見地区" oninput="syncCourse()">
-          <label>見どころ・説明</label>
-          <textarea id="iDesc" placeholder="コースの特徴・見どころ..." oninput="syncCourse()"></textarea>
-          <label>総距離（km）</label>
-          <input id="iDist" placeholder="例：6.5" oninput="syncCourse()">
-        </div>
-      </div>
-      <div class="sec" id="wpSec">
-        <div class="sec-hdr" onclick="toggleSec('wpList','wArr')">📍 ウェイポイント一覧 <span id="wArr">▼</span></div>
-        <div id="wpList" style="padding:4px 12px">
-          <div id="wpEmpty" style="font-size:10px;color:#aaa;text-align:center;padding:16px">まだ追加されていません</div>
-        </div>
-      </div>
-      <div class="sec">
-        <div class="sec-hdr" onclick="toggleSec('helpBody','helpArr')">💡 操作ガイド <span id="helpArr">▶</span></div>
-        <div class="sec-body" id="helpBody" style="display:none">
-          <div class="hint-box">
-            <b>ウェイポイント追加モード</b><br>
-            地図をクリック → ポイント追加<br>
-            マーカーをクリック → 情報編集<br>
-            マーカーをドラッグ → 位置変更<br><br>
-            <b>ルート線の直接編集</b><br>
-            赤い破線をドラッグ → その場に経路調整点を作成してルートを変更<br>
-            調整点をドラッグ → 位置を微調整<br>
-            調整点を右クリック → 削除<br><br>
-            <b>経路調整点追加モード</b><br>
-            地図をクリック → ルート線に近い場所に調整点を追加（農道・山道など）
-          </div>
-        </div>
-      </div>
-      <div class="sec">
-        <div class="sec-hdr" onclick="toggleSec('aBody','aArr')">🔑 API設定 <span id="aArr">▶</span></div>
-        <div class="sec-body" id="aBody" style="display:none">
-          <label>Claude API Key（GitHub Pages版のみ必要）</label>
-          <input id="iKey" type="password" placeholder="sk-ant-..." oninput="saveKey()">
-          <div style="font-size:9px;color:#aaa;margin-top:-4px">Claudeアーティファクト内では不要</div>
-        </div>
-      </div>
-    </div>
-    <div id="mapWrap">
-      <div id="map"></div>
-      <div id="mapMsg">
-        ⚠️ プレビュー環境では地図タイルは表示されません<br>
-        <span style="font-size:10px">GitHub Pagesに公開すると地図・道路沿いルートが正常に表示されます</span>
-      </div>
-      <div id="routingMsg">🔄 道路に沿ったルートを計算中...</div>
-    </div>
+
+<!-- ===== SCREEN 1 ===== -->
+<div id="s1">
+  <div class="s1-card">
+    <div class="s1-logo">🗾</div>
+    <div class="s1-title">フットパスマップメーカー</div>
+    <div class="s1-sub">コース情報を入力してマップ作成を開始します</div>
+
+    <label class="s1-label">コース名 *</label>
+    <input class="s1-input" id="s1Name" placeholder="例：飯見の棚田おにぎりウォーク">
+
+    <label class="s1-label">コースのエリア（住所・地名）*</label>
+    <input class="s1-input" id="s1Area" placeholder="例：兵庫県宍粟市波賀町飯見">
+    <div class="s1-hint">この住所を中心にマップが表示されます</div>
+
+    <label class="s1-label">スタート地点</label>
+    <input class="s1-input" id="s1Start" placeholder="例：波賀B&G海洋センター（省略可）">
+
+    <label class="s1-label">ゴール地点</label>
+    <input class="s1-input" id="s1Goal" placeholder="例：同（周回コース）（省略可）">
+
+    <button class="s1-btn" id="s1Btn" onclick="goToMap()">コース設定画面へ →</button>
   </div>
 </div>
 
+<!-- ===== SCREEN 2 ===== -->
+<div id="s2">
+  <div id="hdr">
+    <span style="font-size:16px">🗾</span>
+    <h1>フットパスマップメーカー</h1>
+    <div id="cnDisp"></div>
+    <button class="btn" style="background:rgba(255,255,255,.15);color:#F5EDD8;border-color:rgba(255,255,255,.25);margin-left:auto;flex-shrink:0" onclick="backToSetup()">← 設定に戻る</button>
+  </div>
+
+  <div id="main">
+    <!-- Sidebar -->
+    <div id="sidebar">
+
+      <!-- Waypoint list -->
+      <div id="wpSec">
+        <div class="sec-hdr" style="cursor:default">
+          📍 ウェイポイント
+          <span style="font-size:10px;color:#8A6A4A;font-weight:normal">ドラッグで順番変更</span>
+        </div>
+        <div id="wpList">
+          <div class="wp-empty" id="wpEmpty">地図をクリックしてウェイポイントを追加</div>
+        </div>
+      </div>
+
+      <!-- Total distance (auto) -->
+      <div id="distSec">
+        <div id="distDisp">総距離: — km</div>
+      </div>
+
+      <!-- Description -->
+      <div id="descSec">
+        <label>コース見どころ・説明</label>
+        <textarea id="iDesc" placeholder="コースの特徴・見どころ・歴史など..."></textarea>
+      </div>
+
+      <!-- API key -->
+      <div class="sec" id="apiSec">
+        <div class="sec-hdr" onclick="toggleSec('apiBody','apiArr')">🔑 API設定 <span id="apiArr">▶</span></div>
+        <div class="sec-body" id="apiBody" style="display:none">
+          <label>Claude API Key</label>
+          <input id="iKey" type="password" placeholder="sk-ant-..." oninput="saveKey()">
+          <div style="font-size:9px;color:#aaa;margin-top:-4px">GitHub Pages版で必要。Claudeアーティファクト内では不要。</div>
+        </div>
+      </div>
+
+    </div><!-- /sidebar -->
+
+    <!-- Map area -->
+    <div id="mapArea">
+      <div id="tbar">
+        <span style="font-size:10px;color:#666;white-space:nowrap">モード:</span>
+        <button class="btn on" id="btnWp"  onclick="setMode('wp')">📍 ウェイポイント</button>
+        <button class="btn"    id="btnVia" onclick="setMode('via')">↔ 経路調整点</button>
+        <span style="color:#D4C4A8">|</span>
+        <button class="btn" onclick="undoLast()">↩</button>
+        <button class="btn" onclick="clearAll()">🗑</button>
+        <span id="tbar-status">地図クリックでウェイポイント追加 / ルート線ドラッグで経路調整</span>
+      </div>
+      <div id="mapWrap">
+        <div id="map"></div>
+        <div id="mapMsg">
+          ⚠️ プレビュー環境では地図タイルは表示されません<br>
+          <span style="font-size:10px">GitHub Pagesに公開すると地図が正常に表示されます</span>
+        </div>
+      </div>
+      <!-- AI selector + generate -->
+      <div id="aiBar">
+        <label>画像生成AI:</label>
+        <select id="aiSel">
+          <option value="midjourney">Midjourney v6</option>
+          <option value="dalle">DALL-E 3</option>
+          <option value="sd">Stable Diffusion (ComfyUI/A1111)</option>
+          <option value="firefly">Adobe Firefly</option>
+          <option value="ideogram">Ideogram</option>
+          <option value="other">その他（汎用）</option>
+        </select>
+        <button class="btn-lt" onclick="openGen()">✨ プロンプト生成</button>
+      </div>
+    </div><!-- /mapArea -->
+  </div><!-- /main -->
+</div><!-- /s2 -->
+
+<!-- ===== MODAL ===== -->
 <div id="mOver" onclick="if(event.target===this)closeModal()">
   <div id="mBox">
     <div id="mHdr">
@@ -143,15 +279,15 @@ html,body{height:100%;overflow:hidden;font-family:'Hiragino Sans','Meiryo',sans-
     <div id="mBody">
       <label>種別</label>
       <select id="mType"></select>
-      <label>名称</label>
+      <label>名称（地図上にポップアップ表示）</label>
       <input id="mName" placeholder="スポット名">
-      <label>説明・補足（地図に掲載する情報）</label>
-      <textarea id="mDesc" placeholder="例：農水省認定・171枚の棚田が広がる"></textarea>
-      <label>電話番号・URL（飲食店等）</label>
+      <label>説明・補足</label>
+      <textarea id="mDesc2" placeholder="例：農水省認定・171枚の棚田が広がる"></textarea>
+      <label>電話番号・URL</label>
       <input id="mTel" placeholder="例：090-1234-5678">
     </div>
     <div id="mFtr">
-      <button class="btn btn-rd" onclick="deleteEditing()">🗑 このポイントを削除</button>
+      <button class="btn btn-rd" onclick="deleteEditing()">🗑 削除</button>
       <div style="display:flex;gap:6px">
         <button class="btn" onclick="closeModal()">キャンセル</button>
         <button class="btn on" onclick="saveModal()">💾 保存</button>
@@ -160,6 +296,7 @@ html,body{height:100%;overflow:hidden;font-family:'Hiragino Sans','Meiryo',sans-
   </div>
 </div>
 
+<!-- ===== RESULT PANEL ===== -->
 <div id="resPanel">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
     <strong style="font-size:13px;color:#3E2A0E">✨ 生成されたプロンプト</strong>
@@ -188,42 +325,90 @@ const WT = [
 const SYM = {start:'S',view:'◎',shop:'★',shrine:'⛩',history:'碑',park:'🌿',toilet:'WC',parking:'P',other:'●'};
 const LINE_STYLE = {color:'#E84040', weight:4, dashArray:'8,5', opacity:.9};
 
+const AI_INFO = {
+  midjourney: {name:'Midjourney v6',   hint:'/imagineコマンドに貼り付け'},
+  dalle:      {name:'DALL-E 3',         hint:'ChatGPT Plus または OpenAI API'},
+  sd:         {name:'Stable Diffusion', hint:'ComfyUI / A1111 のPromptに貼り付け'},
+  firefly:    {name:'Adobe Firefly',    hint:'Fireflyのテキストから画像で使用'},
+  ideogram:   {name:'Ideogram',         hint:'ideogram.aiのテキストボックスに貼り付け'},
+  other:      {name:'汎用プロンプト',   hint:'各種画像生成AIで使用可能'},
+};
+
 /* ============================================================
    STATE
    ============================================================ */
-let leafMap     = null;
-let wps         = [];       // waypoints: {id, type, name, desc, tel, lat, lng, marker}
-let vps         = [];       // via points: {id, segAfter, lat, lng, marker}
-let routeLine   = null;     // visible red polyline
-let hitOverlay  = null;     // invisible wide polyline for mouse hit detection
-let mode        = 'wp';
-let editId      = null;
-let idW         = 0;
-let idV         = 0;
-let lastOp      = null;     // for single-step undo
-let course      = {name:'', area:'', desc:'', dist:''};
-let segCache    = {};       // OSRM route cache: key -> [[lat,lng],...]
-let _result     = null;
-let routingTimer= null;
-let lineDragging= false;    // true while user drags a route line
+let leafMap   = null;
+let wps       = [];     // {id, type, name, desc, tel, lat, lng, marker}
+let vps       = [];     // {id, segAfter, lat, lng, marker}
+let routeLine = null;
+let hitOverlay= null;
+let mode      = 'wp';
+let editId    = null;
+let idW = 0, idV = 0;
+let lastOp    = null;
+let lineDragging = false;
+let dragSrcId    = null;
+let courseInfo   = {name:'', area:'', start:'', goal:'', desc:''};
+let _result      = null;
 
 /* ============================================================
-   INIT
+   SCREEN MANAGEMENT
    ============================================================ */
-window.addEventListener('DOMContentLoaded', () => {
-  // Build modal <select>
-  const sel = document.getElementById('mType');
-  WT.forEach(t => {
-    const o = document.createElement('option');
-    o.value = t.v; o.textContent = t.l;
-    sel.appendChild(o);
-  });
+async function goToMap() {
+  const name  = document.getElementById('s1Name').value.trim();
+  const area  = document.getElementById('s1Area').value.trim();
+  if (!name || !area) { alert('コース名とエリアを入力してください。'); return; }
 
-  // Restore saved API key
-  const k = localStorage.getItem('fp_key');
-  if (k) document.getElementById('iKey').value = k;
+  courseInfo.name  = name;
+  courseInfo.area  = area;
+  courseInfo.start = document.getElementById('s1Start').value.trim();
+  courseInfo.goal  = document.getElementById('s1Goal').value.trim();
 
-  // Leaflet map
+  const btn = document.getElementById('s1Btn');
+  btn.disabled = true;
+  btn.textContent = '⏳ マップを読み込み中...';
+
+  document.getElementById('s1').style.display = 'none';
+  document.getElementById('s2').style.display = 'flex';
+  document.getElementById('cnDisp').textContent = name;
+
+  // Init map AFTER screen 2 is visible
+  setTimeout(async () => {
+    if (!leafMap) initMap();
+    else leafMap.invalidateSize();
+
+    const coords = await geocode(area);
+    if (coords) {
+      leafMap.setView([coords.lat, coords.lng], 15);
+    }
+
+    btn.disabled = false;
+    btn.textContent = 'コース設定画面へ →';
+  }, 60);
+}
+
+function backToSetup() {
+  if (!confirm('設定画面に戻りますか？（コース設定は保持されます）')) return;
+  document.getElementById('s2').style.display = 'none';
+  document.getElementById('s1').style.display = 'flex';
+}
+
+async function geocode(address) {
+  try {
+    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1&accept-language=ja`;
+    const res  = await fetch(url);
+    const data = await res.json();
+    if (data && data.length > 0) {
+      return {lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon)};
+    }
+  } catch (_) {}
+  return null; // caller keeps default center
+}
+
+/* ============================================================
+   MAP INIT
+   ============================================================ */
+function initMap() {
   leafMap = L.map('map', {center:[35.165, 134.542], zoom:14});
 
   const tiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -236,10 +421,24 @@ window.addEventListener('DOMContentLoaded', () => {
   });
 
   leafMap.on('click', onMapClick);
-});
+
+  // Build modal <select> on first init
+  const sel = document.getElementById('mType');
+  if (sel.options.length === 0) {
+    WT.forEach(t => {
+      const o = document.createElement('option');
+      o.value = t.v; o.textContent = t.l;
+      sel.appendChild(o);
+    });
+  }
+
+  // Restore API key
+  const k = localStorage.getItem('fp_key');
+  if (k) document.getElementById('iKey').value = k;
+}
 
 /* ============================================================
-   MAP CLICK  (only fires when NOT dragging the line)
+   MAP CLICK
    ============================================================ */
 function onMapClick(e) {
   if (lineDragging) return;
@@ -257,7 +456,6 @@ function addWp(lat, lng) {
   wp.marker = buildWpMarker(wp);
   lastOp = {kind:'wp', id:idW};
   redrawStraight();
-  scheduleRouting();
   redrawList();
   refreshIcons();
 }
@@ -266,7 +464,7 @@ function buildWpMarker(wp) {
   const m = L.marker([wp.lat, wp.lng], {
     draggable: true,
     icon: wpIcon(wp),
-    zIndexOffset: 1000   // keep above route lines
+    zIndexOffset: 1000
   }).addTo(leafMap);
 
   m.on('drag', () => {
@@ -274,41 +472,41 @@ function buildWpMarker(wp) {
     wp.lng = m.getLatLng().lng;
     redrawStraight();
   });
-
   m.on('dragend', () => {
     wp.lat = m.getLatLng().lat;
     wp.lng = m.getLatLng().lng;
-    clearCache();
-    scheduleRouting();
+    redrawStraight();
   });
-
   m.on('click', e => {
     L.DomEvent.stopPropagation(e);
     openModal(wp.id);
   });
 
+  // Tooltip (name popup) - only if has name
+  if (wp.name && wp.name.trim()) {
+    m.bindTooltip(wp.name, {permanent:true, direction:'top', offset:[0,-18], className:'wp-tt'});
+  }
+
   return m;
 }
 
+function updateWpTooltip(wp) {
+  if (!wp.marker) return;
+  wp.marker.unbindTooltip();
+  if (wp.name && wp.name.trim()) {
+    wp.marker.bindTooltip(wp.name, {permanent:true, direction:'top', offset:[0,-18], className:'wp-tt'});
+  }
+}
+
 function wpIcon(wp) {
-  const t = WT.find(x => x.v === wp.type) || WT[0];
+  const t   = WT.find(x => x.v === wp.type) || WT[0];
   const sym = wp.type === 'course' ? (courseNum(wp) || '?') : (SYM[wp.type] || '●');
   return L.divIcon({
     className: '',
     html: `<div style="width:30px;height:30px;border-radius:50%;background:${t.c};color:#fff;
       display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:bold;
       border:2px solid rgba(255,255,255,.85);box-shadow:0 2px 6px rgba(0,0,0,.45);cursor:pointer">${sym}</div>`,
-    iconSize: [30,30], iconAnchor: [15,15]
-  });
-}
-
-function viaIcon() {
-  return L.divIcon({
-    className: '',
-    html: `<div title="ドラッグで移動 / 右クリックで削除"
-      style="width:14px;height:14px;border-radius:50%;background:#444;
-      border:2px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.55);cursor:grab"></div>`,
-    iconSize: [14,14], iconAnchor: [7,7]
+    iconSize:[30,30], iconAnchor:[15,15]
   });
 }
 
@@ -319,11 +517,12 @@ function courseNum(wp) {
 }
 
 function refreshIcons() {
-  wps.forEach(wp => { if (wp.marker) wp.marker.setIcon(wpIcon(wp)); });
+  wps.forEach(wp => {
+    if (wp.marker) wp.marker.setIcon(wpIcon(wp));
+  });
 }
 
 function deleteWp(id) {
-  // Remove associated via points
   vps.filter(v => v.segAfter === id).forEach(v => {
     if (v.marker) leafMap.removeLayer(v.marker);
   });
@@ -333,19 +532,17 @@ function deleteWp(id) {
   if (wp && wp.marker) leafMap.removeLayer(wp.marker);
   wps = wps.filter(w => w.id !== id);
 
-  clearCache();
   redrawStraight();
-  scheduleRouting();
   refreshIcons();
   redrawList();
 }
 
 /* ============================================================
-   VIA POINTS  (from mode button click)
+   VIA POINTS  (route shaping — traces any path)
    ============================================================ */
 function addVp(lat, lng) {
   if (wps.length < 2) {
-    alert('ウェイポイントを2点以上追加してから経路調整点を追加してください。');
+    alert('ウェイポイントを2点以上追加してから経路調整点を追加してください。\n\n【農道・細道のトレース方法】\n経路調整点追加モードで地図上の道に沿ってクリックすることで、どんな細い道もトレースできます。');
     return;
   }
   idV++;
@@ -353,9 +550,7 @@ function addVp(lat, lng) {
   vps.push(vp);
   vp.marker = buildVpMarker(vp);
   lastOp = {kind:'vp', id:vp.id};
-  clearCache();
   redrawStraight();
-  scheduleRouting();
 }
 
 function buildVpMarker(vp) {
@@ -370,90 +565,79 @@ function buildVpMarker(vp) {
     vp.lng = m.getLatLng().lng;
     redrawStraight();
   });
-
   m.on('dragend', () => {
     vp.lat = m.getLatLng().lat;
     vp.lng = m.getLatLng().lng;
-    clearCache();
-    scheduleRouting();
+    redrawStraight();
   });
-
-  // Right-click to delete
   m.on('contextmenu', () => {
     leafMap.removeLayer(m);
     vps = vps.filter(v => v.id !== vp.id);
-    clearCache();
     redrawStraight();
-    scheduleRouting();
   });
 
   return m;
 }
 
+function viaIcon() {
+  return L.divIcon({
+    className: '',
+    html: `<div title="ドラッグで移動 / 右クリックで削除"
+      style="width:13px;height:13px;border-radius:50%;background:#444;
+      border:2px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.55);cursor:grab"></div>`,
+    iconSize:[13,13], iconAnchor:[6.5,6.5]
+  });
+}
+
 /* ============================================================
-   LINE DRAG  — drag the route line itself to reshape it
-   (creates a via point at the drag location, Google Maps style)
+   LINE DRAG  — drag the route line to add via points
    ============================================================ */
-function onHitOverlayMouseDown(e) {
+function onHitDown(e) {
   L.DomEvent.stopPropagation(e);
   L.DomEvent.preventDefault(e);
-
   if (wps.length < 2) return;
 
   lineDragging = true;
   leafMap.dragging.disable();
 
-  // 1. Create via point data (added to vps array immediately)
   idV++;
-  const vp = {
-    id: 'v' + idV,
-    segAfter: nearestSegWpId(e.latlng.lat, e.latlng.lng),
-    lat: e.latlng.lat,
-    lng: e.latlng.lng,
-    marker: null
-  };
+  const vp = {id:'v'+idV, segAfter: nearestSegWpId(e.latlng.lat, e.latlng.lng), lat:e.latlng.lat, lng:e.latlng.lng, marker:null};
   vps.push(vp);
   lastOp = {kind:'vp', id:vp.id};
 
-  // 2. Temporary non-interactive marker (visual feedback during drag)
-  const tmpM = L.marker([vp.lat, vp.lng], {
-    icon: viaIcon(),
-    zIndexOffset: 2000,
-    interactive: false   // won't capture mouse events
-  }).addTo(leafMap);
-  vp.marker = tmpM;
-
+  // Temporary non-interactive marker
+  const tmp = L.marker([vp.lat, vp.lng], {icon:viaIcon(), zIndexOffset:2000, interactive:false}).addTo(leafMap);
+  vp.marker = tmp;
   redrawStraight();
 
-  // 3. Track mouse movement on the MAP (not on the marker)
   function onMove(ev) {
     vp.lat = ev.latlng.lat;
     vp.lng = ev.latlng.lng;
-    tmpM.setLatLng([vp.lat, vp.lng]);
-    redrawStraight();        // fast straight-line update
+    tmp.setLatLng([vp.lat, vp.lng]);
+    redrawStraight();
   }
 
-  // 4. On mouse release: replace temp marker with proper draggable one
   function onUp() {
     leafMap.off('mousemove', onMove);
     leafMap.off('mouseup',   onUp);
-
-    // Remove temp marker
-    leafMap.removeLayer(tmpM);
-
-    // Create a proper draggable via marker at final position
-    vp.marker = buildVpMarker(vp);
-
+    leafMap.removeLayer(tmp);
+    vp.marker = buildVpMarker(vp);  // replace with proper draggable marker
     lineDragging = false;
     leafMap.dragging.enable();
-
-    clearCache();
-    scheduleRouting();
+    redrawStraight();
   }
 
   leafMap.on('mousemove', onMove);
   leafMap.on('mouseup',   onUp);
 }
+
+// Safety: reset lineDragging if mouse released outside the map
+window.addEventListener('mouseup', () => {
+  if (lineDragging && leafMap) {
+    lineDragging = false;
+    leafMap.dragging.enable();
+  }
+});
 
 /* ============================================================
    GEOMETRY HELPERS
@@ -462,162 +646,87 @@ function nearestSegWpId(lat, lng) {
   if (wps.length < 2) return wps.length > 0 ? wps[0].id : null;
   let bestId = wps[0].id, minD = Infinity;
   for (let i = 0; i < wps.length - 1; i++) {
-    const d = ptSegDist([lat,lng], [wps[i].lat,wps[i].lng], [wps[i+1].lat,wps[i+1].lng]);
+    const d = ptSegDist([lat,lng],[wps[i].lat,wps[i].lng],[wps[i+1].lat,wps[i+1].lng]);
     if (d < minD) { minD = d; bestId = wps[i].id; }
   }
   return bestId;
 }
 
 function ptSegDist(p, a, b) {
-  const dx = b[0]-a[0], dy = b[1]-a[1];
-  if (Math.abs(dx)<1e-12 && Math.abs(dy)<1e-12) return Math.hypot(p[0]-a[0], p[1]-a[1]);
-  const t = Math.max(0, Math.min(1, ((p[0]-a[0])*dx + (p[1]-a[1])*dy) / (dx*dx+dy*dy)));
-  return Math.hypot(p[0]-(a[0]+t*dx), p[1]-(a[1]+t*dy));
+  const dx=b[0]-a[0], dy=b[1]-a[1];
+  if (Math.abs(dx)<1e-12 && Math.abs(dy)<1e-12) return Math.hypot(p[0]-a[0],p[1]-a[1]);
+  const t = Math.max(0,Math.min(1,((p[0]-a[0])*dx+(p[1]-a[1])*dy)/(dx*dx+dy*dy)));
+  return Math.hypot(p[0]-(a[0]+t*dx),p[1]-(a[1]+t*dy));
 }
 
-// Get via points for segment [wpA → wpB], sorted along the segment direction
-function segVps(wpId, wpA, wpB) {
-  const dx = wpB.lat-wpA.lat, dy = wpB.lng-wpA.lng;
-  const len2 = dx*dx+dy*dy;
+function segVpsOf(wpId, wpA, wpB) {
+  const dx=wpB.lat-wpA.lat, dy=wpB.lng-wpA.lng, len2=dx*dx+dy*dy;
   return vps
     .filter(v => v.segAfter === wpId)
     .map(v => {
-      const t = len2 > 0 ? ((v.lat-wpA.lat)*dx + (v.lng-wpA.lng)*dy) / len2 : 0;
-      return {vp:v, t};
+      const t = len2>0 ? ((v.lat-wpA.lat)*dx+(v.lng-wpA.lng)*dy)/len2 : 0;
+      return {vp:v,t};
     })
     .sort((a,b) => a.t-b.t)
     .map(x => x.vp);
 }
 
-/* ============================================================
-   POLYLINE RENDERING
-   ============================================================ */
-function removeLines() {
-  if (routeLine)   { leafMap.removeLayer(routeLine);   routeLine  = null; }
-  if (hitOverlay)  { leafMap.removeLayer(hitOverlay);  hitOverlay = null; }
+function haversine(lat1,lng1,lat2,lng2) {
+  const R=6371000, toR=x=>x*Math.PI/180;
+  const dLat=toR(lat2-lat1), dLng=toR(lng2-lng1);
+  const a=Math.sin(dLat/2)**2+Math.cos(toR(lat1))*Math.cos(toR(lat2))*Math.sin(dLng/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
 }
 
-// Draw lines with coords and attach hit overlay for line-drag
-function drawLines(coords) {
-  if (!coords || coords.length < 2) return;
-
-  // Visible route line
-  routeLine = L.polyline(coords, LINE_STYLE).addTo(leafMap);
-
-  // Invisible wide overlay (20px) for easy mouse grab
-  hitOverlay = L.polyline(coords, {
-    weight:  20,
-    opacity: 0,
-    color:   '#000',
-    interactive: true
-  }).addTo(leafMap);
-
-  hitOverlay.on('mousedown', onHitOverlayMouseDown);
-
-  // Set grab cursor on the SVG path element
-  const el = hitOverlay.getElement();
-  if (el) el.style.cursor = 'grab';
+/* ============================================================
+   POLYLINE
+   ============================================================ */
+function removeLines() {
+  if (routeLine)  { leafMap.removeLayer(routeLine);  routeLine  = null; }
+  if (hitOverlay) { leafMap.removeLayer(hitOverlay); hitOverlay = null; }
 }
 
 function buildStraightCoords() {
   const coords = [];
   for (let i = 0; i < wps.length; i++) {
     coords.push([wps[i].lat, wps[i].lng]);
-    if (i + 1 < wps.length) {
-      segVps(wps[i].id, wps[i], wps[i+1]).forEach(vp => coords.push([vp.lat, vp.lng]));
+    if (i+1 < wps.length) {
+      segVpsOf(wps[i].id, wps[i], wps[i+1]).forEach(vp => coords.push([vp.lat, vp.lng]));
     }
   }
   return coords;
 }
 
-// Draw straight lines immediately (no OSRM — used during drag and as first pass)
+function drawLines(coords) {
+  if (!coords || coords.length < 2) return;
+  routeLine  = L.polyline(coords, LINE_STYLE).addTo(leafMap);
+  hitOverlay = L.polyline(coords, {weight:22, opacity:0, color:'#000', interactive:true}).addTo(leafMap);
+  hitOverlay.on('mousedown', onHitDown);
+  const el = hitOverlay.getElement();
+  if (el) el.style.cursor = 'grab';
+}
+
 function redrawStraight() {
   removeLines();
-  if (wps.length < 2) return;
-  drawLines(buildStraightCoords());
+  if (wps.length >= 2) drawLines(buildStraightCoords());
+  updateDistance();
 }
 
 /* ============================================================
-   OSRM ROUTING  (road-following, GitHub Pages only)
+   DISTANCE (auto-calculate)
    ============================================================ */
-function scheduleRouting() {
-  if (routingTimer) clearTimeout(routingTimer);
-  routingTimer = setTimeout(doRouting, 700);
-}
-
-async function doRouting() {
-  if (wps.length < 2) return;
-  showRoutingMsg(true);
-  try {
-    const coords = await buildRoutedCoords();
-    if (coords && coords.length >= 2) {
-      removeLines();
-      drawLines(coords);
-    }
-  } catch (_) {
-    // On error (e.g. OSRM unavailable), keep current straight lines
-  } finally {
-    showRoutingMsg(false);
+function updateDistance() {
+  const coords = buildStraightCoords();
+  let total = 0;
+  for (let i = 0; i < coords.length-1; i++) {
+    total += haversine(coords[i][0],coords[i][1],coords[i+1][0],coords[i+1][1]);
   }
-}
-
-async function buildRoutedCoords() {
-  const all = [];
-  for (let i = 0; i < wps.length - 1; i++) {
-    const a  = wps[i], b = wps[i+1];
-    const sv = segVps(a.id, a, b);
-
-    // Build ordered list of points for this main segment
-    const pts = [
-      {lat:a.lat, lng:a.lng},
-      ...sv.map(v => ({lat:v.lat, lng:v.lng})),
-      {lat:b.lat, lng:b.lng}
-    ];
-
-    // Route each sub-segment through OSRM
-    for (let j = 0; j < pts.length - 1; j++) {
-      const seg = await getCachedRoute(pts[j].lat, pts[j].lng, pts[j+1].lat, pts[j+1].lng);
-      if (all.length === 0) {
-        seg.forEach(c => all.push(c));
-      } else {
-        seg.slice(1).forEach(c => all.push(c));  // skip first point (duplicate junction)
-      }
-    }
-  }
-  return all;
-}
-
-async function getCachedRoute(lat1, lng1, lat2, lng2) {
-  const key = `${lat1.toFixed(5)},${lng1.toFixed(5)}|${lat2.toFixed(5)},${lng2.toFixed(5)}`;
-  if (segCache[key]) return segCache[key];
-  const coords = await fetchOSRM(lat1, lng1, lat2, lng2);
-  segCache[key] = coords;
-  return coords;
-}
-
-async function fetchOSRM(lat1, lng1, lat2, lng2) {
-  const url = `https://router.project-osrm.org/route/v1/foot/${lng1},${lat1};${lng2},${lat2}?overview=full&geometries=geojson`;
-  try {
-    const res  = await fetch(url);
-    const data = await res.json();
-    if (data.code === 'Ok' && data.routes && data.routes[0]) {
-      return data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
-    }
-  } catch (_) {
-    // OSRM unavailable (artifact environment) → fall through to straight line
-  }
-  return [[lat1,lng1],[lat2,lng2]];
-}
-
-function clearCache() { segCache = {}; }
-
-function showRoutingMsg(show) {
-  const el = document.getElementById('routingMsg');
-  if (el) el.style.display = show ? 'block' : 'none';
+  const el = document.getElementById('distDisp');
+  if (el) el.textContent = coords.length >= 2 ? `総距離: ${(total/1000).toFixed(2)} km` : '総距離: — km';
 }
 
 /* ============================================================
-   WAYPOINT LIST (sidebar)
+   WAYPOINT LIST (draggable reorder)
    ============================================================ */
 function redrawList() {
   const container = document.getElementById('wpList');
@@ -633,20 +742,59 @@ function redrawList() {
   let cn = 1;
   wps.forEach(wp => {
     const t   = WT.find(x => x.v === wp.type) || WT[0];
-    const sym = wp.type === 'course' ? cn++ : (SYM[wp.type] || '●');
+    const sym = wp.type === 'course' ? cn++ : (SYM[wp.type]||'●');
     const lbl = wp.name || `（${t.l}）`;
 
     const row = document.createElement('div');
     row.className = 'wp-row';
+    row.draggable = true;
+    row.dataset.id = wp.id;
     row.innerHTML = `
       <div class="wp-dot" style="background:${t.c}">${sym}</div>
-      <div class="wp-label">${lbl}</div>
+      <div class="wp-name">${lbl}</div>
       <div class="wp-edit-btn">✏</div>`;
+
+    // Click to fly and edit
     row.addEventListener('click', () => flyEdit(wp.id));
     row.querySelector('.wp-edit-btn').addEventListener('click', e => {
-      e.stopPropagation();
-      openModal(wp.id);
+      e.stopPropagation(); openModal(wp.id);
     });
+
+    // HTML5 drag-and-drop reorder
+    row.addEventListener('dragstart', e => {
+      dragSrcId = wp.id;
+      e.dataTransfer.effectAllowed = 'move';
+      setTimeout(() => row.classList.add('dragging'), 0);
+    });
+    row.addEventListener('dragend', () => {
+      row.classList.remove('dragging');
+      container.querySelectorAll('.wp-row').forEach(r => r.classList.remove('drag-over'));
+      dragSrcId = null;
+    });
+    row.addEventListener('dragover', e => {
+      e.preventDefault();
+      container.querySelectorAll('.wp-row').forEach(r => r.classList.remove('drag-over'));
+      if (dragSrcId !== wp.id) row.classList.add('drag-over');
+    });
+    row.addEventListener('dragleave', () => row.classList.remove('drag-over'));
+    row.addEventListener('drop', e => {
+      e.preventDefault();
+      row.classList.remove('drag-over');
+      if (!dragSrcId || dragSrcId === wp.id) return;
+
+      const srcIdx = wps.findIndex(w => w.id === dragSrcId);
+      const tgtIdx = wps.findIndex(w => w.id === wp.id);
+      if (srcIdx < 0 || tgtIdx < 0) return;
+
+      const [moved] = wps.splice(srcIdx, 1);
+      const newTgt  = wps.findIndex(w => w.id === wp.id);
+      wps.splice(newTgt, 0, moved);
+
+      redrawStraight();
+      redrawList();
+      refreshIcons();
+    });
+
     container.appendChild(row);
   });
 }
@@ -665,10 +813,10 @@ function openModal(id) {
   editId = id;
   const wp = wps.find(w => w.id === id);
   if (!wp) return;
-  document.getElementById('mType').value = wp.type;
-  document.getElementById('mName').value = wp.name;
-  document.getElementById('mDesc').value = wp.desc;
-  document.getElementById('mTel').value  = wp.tel;
+  document.getElementById('mType').value  = wp.type;
+  document.getElementById('mName').value  = wp.name;
+  document.getElementById('mDesc2').value = wp.desc;
+  document.getElementById('mTel').value   = wp.tel;
   document.getElementById('mOver').classList.add('show');
   setTimeout(() => document.getElementById('mName').focus(), 50);
 }
@@ -684,9 +832,10 @@ function saveModal() {
   if (!wp) return;
   wp.type = document.getElementById('mType').value;
   wp.name = document.getElementById('mName').value;
-  wp.desc = document.getElementById('mDesc').value;
+  wp.desc = document.getElementById('mDesc2').value;
   wp.tel  = document.getElementById('mTel').value;
   if (wp.marker) wp.marker.setIcon(wpIcon(wp));
+  updateWpTooltip(wp);
   closeModal();
   refreshIcons();
   redrawList();
@@ -705,17 +854,16 @@ function deleteEditing() {
    ============================================================ */
 function setMode(m) {
   mode = m;
-  document.getElementById('btnWp').classList.toggle('on',  m === 'wp');
-  document.getElementById('btnVia').classList.toggle('on', m === 'via');
-  document.getElementById('status').textContent = m === 'wp'
-    ? '地図をクリックしてウェイポイントを追加 ／ ルート線を直接ドラッグして経路を調整'
-    : '地図をクリックして経路調整点を追加（右クリックで削除）／ ルート線ドラッグも使えます';
+  document.getElementById('btnWp').classList.toggle('on',  m==='wp');
+  document.getElementById('btnVia').classList.toggle('on', m==='via');
+  document.getElementById('tbar-status').textContent = m === 'wp'
+    ? '地図クリックでウェイポイント追加 / ルート線をドラッグして経路を変更'
+    : '地図クリックで経路調整点を追加（農道・細道に沿ってクリックで正確にトレース）/ 右クリックで削除';
 }
 
 function undoLast() {
   if (!lastOp) return;
-  const op = lastOp;
-  lastOp = null;                    // clear before side-effects
+  const op  = lastOp; lastOp = null;
   if (op.kind === 'wp') {
     deleteWp(op.id);
   } else {
@@ -723,9 +871,7 @@ function undoLast() {
     if (vp) {
       if (vp.marker) leafMap.removeLayer(vp.marker);
       vps = vps.filter(v => v.id !== op.id);
-      clearCache();
       redrawStraight();
-      scheduleRouting();
     }
   }
 }
@@ -735,22 +881,10 @@ function clearAll() {
   if (!confirm('すべてのウェイポイントと経路調整点を消去しますか？')) return;
   wps.forEach(wp => { if (wp.marker) leafMap.removeLayer(wp.marker); });
   vps.forEach(vp => { if (vp.marker) leafMap.removeLayer(vp.marker); });
-  wps = []; vps = []; lastOp = null; segCache = {};
+  wps = []; vps = []; lastOp = null;
   removeLines();
   redrawList();
-}
-
-/* ============================================================
-   COURSE INFO
-   ============================================================ */
-function syncCourse() {
-  course = {
-    name: document.getElementById('iName').value,
-    area: document.getElementById('iArea').value,
-    desc: document.getElementById('iDesc').value,
-    dist: document.getElementById('iDist').value,
-  };
-  document.getElementById('cnDisp').textContent = course.name ? '— '+course.name : '';
+  updateDistance();
 }
 
 /* ============================================================
@@ -759,10 +893,10 @@ function syncCourse() {
 function toggleSec(bodyId, arrId) {
   const body = document.getElementById(bodyId);
   const arr  = document.getElementById(arrId);
-  if (!body || !arr) return;
-  const hidden = body.style.display === 'none';
-  body.style.display = hidden ? '' : 'none';
-  arr.textContent    = hidden ? '▼' : '▶';
+  if (!body||!arr) return;
+  const h = body.style.display==='none';
+  body.style.display = h?'':'none';
+  arr.textContent    = h?'▼':'▶';
 }
 
 function saveKey() {
@@ -784,109 +918,172 @@ function closeRes() {
 }
 
 async function doGenerate() {
+  const aiKey = document.getElementById('aiSel').value;
   try {
-    const key     = document.getElementById('iKey').value.trim();
-    const headers = {'Content-Type':'application/json'};
-    if (key) headers['x-api-key'] = key;
+    const apiKey = document.getElementById('iKey').value.trim();
+    const headers = {
+      'Content-Type':     'application/json',
+      'anthropic-version':'2023-06-01',
+      'anthropic-dangerous-direct-browser-access':'true',
+    };
+    if (apiKey) headers['x-api-key'] = apiKey;
 
     const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST', headers,
-      body: JSON.stringify({
-        model:      'claude-sonnet-4-20250514',
-        max_tokens: 4096,
-        messages:   [{role:'user', content:buildApiPrompt()}]
+      method:'POST', headers,
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:4096,
+        messages:[{role:'user', content:buildApiPrompt(aiKey)}]
       })
     });
 
-    const data = await res.json();
-    if (data.error) throw new Error(data.error.message);
+    if (!res.ok) {
+      const errData = await res.json().catch(()=>({error:{message:`HTTP ${res.status}`}}));
+      throw new Error(errData.error?.message || `HTTP ${res.status}`);
+    }
 
-    const text    = data.content.filter(c => c.type==='text').map(c => c.text).join('');
+    const data    = await res.json();
+    const text    = data.content.filter(c=>c.type==='text').map(c=>c.text).join('');
     const cleaned = text.replace(/```json\s*/g,'').replace(/```\s*/g,'').trim();
     const match   = cleaned.match(/\{[\s\S]*\}/);
-    if (!match) throw new Error('JSONの抽出に失敗しました。もう一度お試しください。');
+    if (!match) throw new Error('JSONの抽出に失敗しました。再度お試しください。');
 
     _result = JSON.parse(match[0]);
-    renderResult(_result);
-  } catch (e) {
+    renderResult(_result, aiKey);
+
+  } catch(e) {
+    let msg = e.message;
+    if (msg.includes('Load failed') || msg.includes('Failed to fetch') || msg.includes('NetworkError')) {
+      msg = 'ネットワークエラー: APIへの接続に失敗しました。\n① APIキーが正しく入力されているか確認\n② インターネット接続を確認\n③ GitHub Pagesで開いていることを確認（ローカルファイルでは動作しません）';
+    }
     document.getElementById('resContent').innerHTML =
-      `<div style="color:#B71C1C;font-size:12px;padding:10px;background:#FFEBEE;border-radius:4px">❌ エラー: ${e.message}</div>`;
+      `<div style="color:#B71C1C;font-size:12px;padding:10px;background:#FFEBEE;border-radius:4px;white-space:pre-wrap">❌ ${msg}</div>`;
   }
 }
 
-function renderResult(r) {
-  const items = [
-    {k:'midjourney', l:'🎨 Midjourney v6',                h:'/imagineコマンドに貼り付け'},
-    {k:'dalle',      l:'🖼 DALL-E 3',                     h:'ChatGPT PlusまたはOpenAI API'},
-    {k:'sd_pos',     l:'⚙ Stable Diffusion（ポジティブ）',h:'Positive Promptに貼り付け'},
-    {k:'sd_neg',     l:'⚙ Stable Diffusion（ネガティブ）',h:'Negative Promptに貼り付け'},
-    {k:'map_text',   l:'📄 マップヘッダー文章（日本語）', h:'地図のヘッダーに掲載するテキスト'},
-  ];
+function renderResult(r, aiKey) {
+  const ai = AI_INFO[aiKey] || AI_INFO.other;
   let html = '';
-  items.forEach(({k,l,h}) => {
-    if (!r[k]) return;
-    const safe = r[k].replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+  // Main prompt for selected AI
+  if (r.prompt) {
+    const safe = r.prompt.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     html += `<div class="res-blk">
       <div class="res-top">
-        <div class="res-lbl">${l}</div>
-        <button class="cp-btn" onclick="cpText('${k}')">📋 コピー</button>
+        <div class="res-lbl">🎨 ${ai.name} プロンプト</div>
+        <button class="cp-btn" onclick="cpKey('prompt')">📋 コピー</button>
       </div>
-      <div class="res-hint">${h}</div>
+      <div class="res-hint">${ai.hint}</div>
       <div class="res-txt">${safe}</div>
     </div>`;
-  });
+  }
+
+  // Negative prompt (SD only)
+  if (r.negative && aiKey === 'sd') {
+    const safe = r.negative.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    html += `<div class="res-blk">
+      <div class="res-top">
+        <div class="res-lbl">⚙ ネガティブプロンプト</div>
+        <button class="cp-btn" onclick="cpKey('negative')">📋 コピー</button>
+      </div>
+      <div class="res-hint">Negative Promptに貼り付け</div>
+      <div class="res-txt">${safe}</div>
+    </div>`;
+  }
+
+  // Map header text (Japanese)
+  if (r.map_text) {
+    const safe = r.map_text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    html += `<div class="res-blk">
+      <div class="res-top">
+        <div class="res-lbl">📄 マップヘッダー文章（日本語）</div>
+        <button class="cp-btn" onclick="cpKey('map_text')">📋 コピー</button>
+      </div>
+      <div class="res-hint">地図のヘッダーに掲載するテキスト</div>
+      <div class="res-txt" style="font-family:inherit;font-size:12px;line-height:1.8">${safe}</div>
+    </div>`;
+  }
+
+  // Tips
   if (Array.isArray(r.tips) && r.tips.length) {
     html += `<div class="res-blk">
-      <div class="res-lbl">💡 制作アドバイス</div>
-      <ul style="font-size:10px;line-height:1.9;padding-left:14px;margin-top:6px">
+      <div class="res-lbl" style="margin-bottom:6px">💡 制作アドバイス</div>
+      <ul style="font-size:10px;line-height:1.9;padding-left:14px">
         ${r.tips.map(t=>`<li>${t}</li>`).join('')}
       </ul>
     </div>`;
   }
-  document.getElementById('resContent').innerHTML = html;
+
+  document.getElementById('resContent').innerHTML = html || '<div style="color:#999;font-size:12px">結果が空でした。再度お試しください。</div>';
 }
 
-function cpText(k) {
+function cpKey(k) {
   if (!_result || !_result[k]) return;
-  navigator.clipboard.writeText(_result[k]).catch(() => {});
+  navigator.clipboard.writeText(_result[k]).catch(()=>{});
 }
 
-function buildApiPrompt() {
-  const courseWps = wps.filter(w => w.type === 'course');
-  const otherWps  = wps.filter(w => w.type !== 'course');
-  const ptLines   = courseWps.map((w,i) =>
-    `  ${i+1}. ${w.name||'（名称未設定）'}${w.desc?'：'+w.desc:''}`
-  ).join('\n');
-  const spotLines = otherWps.map(w => {
-    const t = WT.find(x => x.v === w.type);
+function buildApiPrompt(aiKey) {
+  const ai     = AI_INFO[aiKey] || AI_INFO.other;
+  const cWps   = wps.filter(w => w.type==='course');
+  const otherW = wps.filter(w => w.type!=='course');
+  const ptLines = cWps.map((w,i)=>`  ${i+1}. ${w.name||'（名称未設定）'}${w.desc?'：'+w.desc:''}`).join('\n');
+  const spLines = otherW.map(w=>{
+    const t=WT.find(x=>x.v===w.type);
     return `  [${t?t.l:w.type}] ${w.name}${w.desc?'：'+w.desc:''}${w.tel?'　TEL:'+w.tel:''}`;
   }).join('\n');
-  const bbox = wps.length > 0 ? {
-    n: Math.max(...wps.map(w=>w.lat)).toFixed(5),
-    s: Math.min(...wps.map(w=>w.lat)).toFixed(5),
-    e: Math.max(...wps.map(w=>w.lng)).toFixed(5),
-    w: Math.min(...wps.map(w=>w.lng)).toFixed(5),
-  } : null;
+  const desc  = document.getElementById('iDesc')?.value||'';
+  const dist  = document.getElementById('distDisp')?.textContent||'';
+  const bbox  = wps.length>0?{
+    n:Math.max(...wps.map(w=>w.lat)).toFixed(5),
+    s:Math.min(...wps.map(w=>w.lat)).toFixed(5),
+    e:Math.max(...wps.map(w=>w.lng)).toFixed(5),
+    w:Math.min(...wps.map(w=>w.lng)).toFixed(5),
+  }:null;
 
-  return `あなたはフットパス観光マップのAIイラスト生成プロンプト作成の専門家です。以下のコース情報をもとに、日本の観光パンフレットに使われる手描き水彩イラスト風の俯瞰地図を生成するための詳細なプロンプトを作成してください。
+  const aiGuide = {
+    midjourney: '末尾に「--ar 4:3 --style raw --q 2」を必ず付ける。細部の描写を英語で詳細に記述。',
+    dalle:      'DALL-E 3はプロンプトが長くても解釈できる。日本語の固有名詞も英語に翻訳して含める。',
+    sd:         '短いキーワード形式で記述。画質向上タグ（masterpiece, best quality等）を含める。ネガティブプロンプトも必須。',
+    firefly:    'Fireflyは著作権に配慮した安全なプロンプトが必要。スタイル説明を丁寧に。',
+    ideogram:   'テキスト合成が得意。地図内の日本語テキストも指示に含める。',
+    other:      '汎用的な英語プロンプト。スタイル・構図・色彩を詳しく記述。',
+  };
 
-【参考スタイル】手描き水彩の俯瞰地図、山・丘陵は緑の水彩で立体的に、住宅地はクリーム〜淡ピンク、川は青、コースは赤い破線、番号付き丸アイコン、飲食店は赤い★、鳥・植物の装飾、日本語ラベル、北矢印・スケールバー
+  return `あなたはフットパス観光マップのAIイラスト生成プロンプト作成の専門家です。
+以下のコース情報をもとに、【${ai.name}】に特化したプロンプトを作成してください。
+
+【${ai.name}向けのガイドライン】
+${aiGuide[aiKey]||aiGuide.other}
+
+【参考スタイル】
+日本の観光パンフレット・フットパスマップの手描き水彩イラスト風。
+空からの俯瞰図。山・丘陵は緑の水彩で立体的に表現。住宅地はクリーム〜淡いピンク。
+川・水路は青。コースは赤い破線。番号付き丸アイコンでコースポイントを示す。
+飲食店・ショップは赤い★マーク。鳥・植物など自然の装飾を四隅に。日本語のラベルと説明文。北矢印・スケールバーを含む。
 
 【コース情報】
-コース名: ${course.name||'（未設定）'}
-地域・エリア: ${course.area||'（未設定）'}
-説明・見どころ: ${course.desc||'（なし）'}
-総距離: ${course.dist||'不明'}km　ウェイポイント数: ${wps.length}点
+コース名: ${courseInfo.name}
+エリア: ${courseInfo.area}
+スタート: ${courseInfo.start||'（設定なし）'}
+ゴール: ${courseInfo.goal||'（設定なし）'}
+${dist}
+見どころ・説明: ${desc||'（なし）'}
 ${bbox?`地図範囲: 北${bbox.n}° 南${bbox.s}° 東${bbox.e}° 西${bbox.w}°`:''}
 
 【コースポイント（番号付き丸アイコン）】
 ${ptLines||'（なし）'}
 
 【立ち寄りスポット】
-${spotLines||'（なし）'}
+${spLines||'（なし）'}
 
-必ずJSON形式のみで出力（説明文・コードブロック記号不要）:
-{"midjourney":"（Midjourney v6用詳細英語プロンプト。末尾に --ar 4:3 --style raw --q 2）","dalle":"（DALL-E 3用詳細英語プロンプト）","sd_pos":"（SDポジティブプロンプト（英語））","sd_neg":"（SDネガティブプロンプト（英語））","map_text":"（マップヘッダー用日本語説明文2〜3文）","tips":["アドバイス1","アドバイス2","アドバイス3"]}`;
+【出力形式】
+必ずJSON形式のみで出力（説明文・コードブロック記号は不要）:
+{
+  "prompt": "（${ai.name}用の詳細なプロンプト）",
+  ${aiKey==='sd'?'"negative": "（Stable Diffusion用ネガティブプロンプト（英語））",' : ''}
+  "map_text": "（マップヘッダー用日本語説明文2〜3文。コースの魅力・歴史・自然を紹介）",
+  "tips": ["制作アドバイス1（日本語）", "制作アドバイス2（日本語）", "制作アドバイス3（日本語）"]
+}`;
 }
 </script>
 </body>
