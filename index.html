@@ -177,6 +177,13 @@ html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:
       <input class="s1-input" id="s1Goal" placeholder="例：同（周回コース）">
 
       <button class="s1-btn" id="s1Btn" onclick="newCourse()">コース設定画面へ →</button>
+
+      <div style="margin-top:14px;display:flex;gap:8px">
+        <label style="flex:1;padding:9px;border:1px dashed #C4B89A;border-radius:6px;text-align:center;cursor:pointer;font-size:12px;color:#6B4A2A;background:rgba(255,255,255,.5)">
+          📂 JSONから読み込む
+          <input type="file" accept=".json" style="display:none" onchange="importCourseFromFile(this)">
+        </label>
+      </div>
     </div>
   </div>
 </div>
@@ -188,6 +195,7 @@ html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:
     <h1 style="flex-shrink:0">フットパス</h1>
     <div id="cnDisp"></div>
     <button class="hbtn hbtn-save" onclick="saveCourse()">💾 保存</button>
+    <button class="hbtn" onclick="exportCourse()" title="JSONファイルでダウンロード">📥 JSON</button>
     <button class="hbtn" onclick="backToS1()">← 一覧へ</button>
   </div>
 
@@ -336,45 +344,44 @@ let courseInfo = {name:'', area:'', start:'', goal:''};
 /* ============================================================
    LOCAL STORAGE — COURSES
    ============================================================ */
-function lsGet(key, def) {
-  try { const v = localStorage.getItem(key); return v !== null ? JSON.parse(v) : def; }
-  catch(_) { return def; }
-}
-function lsSet(key, val) {
-  try { localStorage.setItem(key, JSON.stringify(val)); return true; }
-  catch(_) { return false; }
+// ---- STORAGE: memory + localStorage (fallback if localStorage unavailable) ----
+let _memCourses = [];  // in-memory store (works in Claude artifact)
+let _lsAvail = null;   // cached localStorage availability check
+
+function lsAvail() {
+  if (_lsAvail !== null) return _lsAvail;
+  try { localStorage.setItem('_fp_test','1'); localStorage.removeItem('_fp_test'); _lsAvail=true; }
+  catch(_) { _lsAvail=false; }
+  return _lsAvail;
 }
 
-function getCourses() { return lsGet('fp_courses', []); }
-function setCourses(list) { lsSet('fp_courses', list); }
+function getCourses() {
+  if (lsAvail()) {
+    try { return JSON.parse(localStorage.getItem('fp_courses')||'[]'); } catch(_) {}
+  }
+  return _memCourses;
+}
+
+function setCourses(list) {
+  _memCourses = list;  // always update memory
+  if (lsAvail()) {
+    try { localStorage.setItem('fp_courses', JSON.stringify(list)); return true; }
+    catch(_) {}
+  }
+  return true;  // memory save always succeeds
+}
 
 function saveCourse() {
   if (!courseInfo.name) { alert('コース名を設定してください（一覧画面から設定画面に戻れます）'); return; }
   const courses = getCourses();
-  const data = {
-    id:        currentCourseId || Date.now(),
-    name:      courseInfo.name,
-    area:      courseInfo.area,
-    start:     courseInfo.start,
-    goal:      courseInfo.goal,
-    desc:      document.getElementById('iDesc').value,
-    center:    leafMap ? {lat: leafMap.getCenter().lat, lng: leafMap.getCenter().lng} : null,
-    zoom:      leafMap ? leafMap.getZoom() : 14,
-    wps:       wps.map(w=>({id:w.id, type:w.type, name:w.name, desc:w.desc, tel:w.tel, lat:w.lat, lng:w.lng})),
-    vps:       vps.map(v=>({id:v.id, segAfter:v.segAfter, lat:v.lat, lng:v.lng})),
-    maxWpId:   idW,
-    maxVpNum:  idV,
-    savedAt:   new Date().toISOString(),
-  };
+  const data = buildCurrentSaveData();
   const idx = courses.findIndex(c => c.id === data.id);
   if (idx >= 0) courses[idx] = data;
   else courses.push(data);
-  if (setCourses(courses)) {
-    currentCourseId = data.id;
-    showToast('💾 保存しました');
-  } else {
-    alert('保存に失敗しました（ストレージ容量不足の可能性）');
-  }
+  setCourses(courses);
+  currentCourseId = data.id;
+  const notice = lsAvail() ? '（ブラウザに永続保存）' : '（メモリに保存。JSONエクスポートで永続化を）';
+  showToast('💾 保存しました ' + notice);
 }
 
 function deleteCourse(id) {
@@ -439,24 +446,116 @@ function loadCourseData(data) {
 function renderCourseList() {
   const container = document.getElementById('courseList');
   const courses = getCourses();
+
+  // Storage environment notice
+  const noticeId = 'storageNotice';
+  let notice = document.getElementById(noticeId);
+  if (!notice) {
+    notice = document.createElement('div');
+    notice.id = noticeId;
+    notice.style.cssText = 'font-size:10px;padding:6px 0 10px;line-height:1.6;';
+    container.parentNode.insertBefore(notice, container);
+  }
+  notice.innerHTML = lsAvail()
+    ? '<span style="color:#2E7D32">✅ ブラウザに保存されます（GitHub Pages）</span>'
+    : '<span style="color:#E65100">⚠️ プレビュー環境：ページを閉じるとコースが消えます。<br>JSONエクスポートで保存してください。</span>';
+
   if (courses.length === 0) {
     container.innerHTML = '<div class="no-courses">保存されたコースはありません</div>';
     return;
   }
-  container.innerHTML = courses.map(c => {
-    const d = new Date(c.savedAt);
+
+  container.innerHTML = '';
+  courses.forEach(c => {
+    const d  = new Date(c.savedAt);
     const ds = `${d.getMonth()+1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`;
-    return `<div class="course-item">
-      <div style="flex:1;min-width:0" onclick="loadCourseData(${JSON.stringify(c).replace(/"/g,'&quot;')})">
-        <div class="course-name">${c.name}</div>
-        <div class="course-date">${c.area} ／ ${ds}</div>
+    const row = document.createElement('div');
+    row.className = 'course-item';
+    row.innerHTML = `
+      <div style="flex:1;min-width:0;cursor:pointer">
+        <div class="course-name">${escHtml(c.name)}</div>
+        <div class="course-date">${escHtml(c.area)} ／ ${ds}</div>
       </div>
       <div class="course-btns">
-        <button class="c-btn" onclick="event.stopPropagation();loadCourseData(${JSON.stringify(c).replace(/"/g,'&quot;')})">編集</button>
-        <button class="c-btn c-btn-rd" onclick="event.stopPropagation();deleteCourse(${c.id})">削除</button>
-      </div>
-    </div>`;
-  }).join('');
+        <button class="c-btn">編集</button>
+        <button class="c-btn" style="font-size:10px" title="JSONでダウンロード">📥</button>
+        <button class="c-btn c-btn-rd">削除</button>
+      </div>`;
+    const [editBtn, exportBtn, delBtn] = row.querySelectorAll('.c-btn');
+    row.querySelector('div[style]').addEventListener('click', () => loadCourseData(c));
+    editBtn.addEventListener('click', e => { e.stopPropagation(); loadCourseData(c); });
+    exportBtn.addEventListener('click', e => { e.stopPropagation(); exportCourseData(c); });
+    delBtn.addEventListener('click', e => { e.stopPropagation(); deleteCourse(c.id); });
+    container.appendChild(row);
+  });
+}
+
+function escHtml(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ---- JSON EXPORT / IMPORT ----
+function exportCourse() {
+  // Export current in-progress course
+  const data = buildCurrentSaveData();
+  if (!data) { alert('エクスポートするコースがありません'); return; }
+  downloadJson(data, data.name);
+}
+
+function exportCourseData(data) {
+  downloadJson(data, data.name);
+}
+
+function downloadJson(data, name) {
+  const json = JSON.stringify(data, null, 2);
+  const blob = new Blob([json], {type:'application/json'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url;
+  a.download = 'footpath_' + (name||'course').replace(/[^a-zA-Z0-9぀-鿿]/g,'_') + '.json';
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a); URL.revokeObjectURL(url);
+  showToast('📥 JSONをダウンロードしました');
+}
+
+function importCourseFromFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!data.name || !Array.isArray(data.wps)) { alert('無効なコースファイルです'); return; }
+      data.id = Date.now();
+      data.savedAt = new Date().toISOString();
+      const courses = getCourses();
+      courses.push(data);
+      setCourses(courses);
+      renderCourseList();
+      showToast('📂 コースを読み込みました: ' + data.name);
+    } catch(err) { alert('ファイルの読み込みに失敗しました: ' + err.message); }
+  };
+  reader.readAsText(file);
+  input.value = '';
+}
+
+function buildCurrentSaveData() {
+  if (!courseInfo.name) return null;
+  return {
+    id:        currentCourseId || Date.now(),
+    name:      courseInfo.name,
+    area:      courseInfo.area,
+    start:     courseInfo.start,
+    goal:      courseInfo.goal,
+    desc:      document.getElementById('iDesc')?.value||'',
+    center:    leafMap ? {lat:leafMap.getCenter().lat, lng:leafMap.getCenter().lng} : null,
+    zoom:      leafMap ? leafMap.getZoom() : 14,
+    wps:       wps.map(w=>({id:w.id,type:w.type,name:w.name,desc:w.desc,tel:w.tel,lat:w.lat,lng:w.lng})),
+    vps:       vps.map(v=>({id:v.id,segAfter:v.segAfter,lat:v.lat,lng:v.lng})),
+    maxWpId:   idW,
+    maxVpNum:  idV,
+    savedAt:   new Date().toISOString(),
+  };
 }
 
 function showToast(msg) {
@@ -477,7 +576,7 @@ function showToast(msg) {
    ============================================================ */
 window.addEventListener('DOMContentLoaded', () => {
   renderCourseList();
-  const k = lsGet('fp_key', '');
+  const k = lsAvail() ? (localStorage.getItem('fp_key')||'') : '';
   if (k) document.getElementById('iKey').value = k;
 
   // Build modal select once
@@ -986,7 +1085,7 @@ function clearAll() {
    HELPERS
    ============================================================ */
 function isMobile() { return window.innerWidth <= 700; }
-function saveKey() { lsSet('fp_key', document.getElementById('iKey').value); }
+function saveKey() { if(lsAvail()) try { localStorage.setItem('fp_key', document.getElementById('iKey').value); } catch(_){} }
 
 /* ============================================================
    PROMPT GENERATION
