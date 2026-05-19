@@ -94,6 +94,13 @@ html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:
 /* Tooltip */
 .wp-tt{background:rgba(62,42,14,.85)!important;color:#F5EDD8!important;border:none!important;border-radius:4px!important;font-size:11px!important;padding:2px 7px!important;white-space:nowrap!important;box-shadow:0 2px 6px rgba(0,0,0,.3)!important;pointer-events:none!important}
 .wp-tt::before{display:none!important}
+/* Context menu */
+#ctxMenu{display:none;position:fixed;z-index:5000;background:#fff;border:1px solid #C4B89A;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,.25);min-width:215px;overflow:hidden;font-family:'Hiragino Sans','Meiryo',sans-serif}
+.ctx-hdr{padding:8px 14px 7px;font-size:11px;font-weight:bold;color:#4A2E0E;background:#F0E8D8;border-bottom:1px solid #D4C4A8}
+.ctx-it{padding:10px 14px;font-size:12px;color:#2C1B0E;cursor:pointer;display:flex;align-items:center;gap:8px;user-select:none;-webkit-user-select:none}
+.ctx-it:hover,.ctx-it:active{background:#F5EDD8}
+.ctx-it.ctx-del{color:#B71C1C}
+.ctx-sep{height:1px;background:#EEE8DE;margin:2px 0}
 /* Mobile */
 @media(max-width:700px){
   #main{flex-direction:column}
@@ -221,6 +228,9 @@ html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:
   </div>
 </div>
 
+<!-- Via point context menu (singleton) -->
+<div id="ctxMenu" onclick="event.stopPropagation()"></div>
+
 <!-- Help Modal -->
 <div id="helpModal" onclick="if(event.target===this)closeHelp()">
   <div class="help-box">
@@ -319,8 +329,9 @@ let lastOp      = null;
 let lineDragging= false;
 let dragSrcId   = null;
 let segCache    = {};
-let splineEnabled = false;
-let canvasRenderer = null;   // Canvas renderer for html2canvas compatibility
+let splineEnabled  = false;
+let canvasRenderer = null;
+let ctxVpId        = null;  // via point whose context menu is open   // Canvas renderer for html2canvas compatibility
 let routingTimer= null;
 let currentCourseId = null;
 let courseInfo  = {name:'', area:'', start:'', goal:''};
@@ -351,6 +362,9 @@ function setCourses(list) {
    ============================================================ */
 window.addEventListener('DOMContentLoaded', () => {
   renderCourseList();
+  // Close context menu on any click outside
+  document.addEventListener('click',       hideCtxMenu);
+  document.addEventListener('contextmenu', e => { if (e.target.closest('#ctxMenu')) return; hideCtxMenu(); });
   // Build modal type select
   const sel = document.getElementById('mType');
   WT.forEach(t => { const o=document.createElement('option'); o.value=t.v; o.textContent=t.l; sel.appendChild(o); });
@@ -420,6 +434,7 @@ function initMap() {
   }).addTo(leafMap);
   tiles.on('tileload', () => { const el=document.getElementById('mapMsg'); if(el)el.style.display='none'; });
   leafMap.on('click', onMapClick);
+  leafMap.on('movestart', hideCtxMenu);
   canvasRenderer = L.canvas({padding: 0.5}); // Canvas renderer for polylines
 }
 
@@ -434,7 +449,7 @@ function onMapClick(e) {
    ============================================================ */
 function addWp(lat, lng) {
   idW++;
-  const wp = {id:idW, type:'course', name:'', desc:'', tel:'', dwell:0, fitRoad:true, lat, lng, marker:null};
+  const wp = {id:idW, type:'course', name:'', desc:'', tel:'', dwell:0, fitBefore:true, fitAfter:true, lat, lng, marker:null};
   wps.push(wp);
   buildWpMarker(wp);          // sets wp.marker internally
   lastOp = {kind:'wp', id:idW};
@@ -504,7 +519,7 @@ function deleteWp(id) {
 function addVp(lat, lng) {
   if (wps.length < 2) { alert('ウェイポイントを2点以上追加してから経路調整点を追加してください。'); return; }
   idV++;
-  const vp = {id:'v'+idV, segAfter:nearestSegWpId(lat,lng), lat, lng, marker:null};
+  const vp = {id:'v'+idV, segAfter:nearestSegWpId(lat,lng), fitBefore:true, fitAfter:true, lat, lng, marker:null};
   vps.push(vp);
   buildVpMarker(vp);    // sets vp.marker internally
   lastOp = {kind:'vp', id:vp.id};
@@ -517,26 +532,147 @@ function buildVpMarker(vp) {
     draggable:true,
     icon:L.divIcon({
       className:'',
-      html:`<div style="width:${sz}px;height:${sz}px;border-radius:50%;background:#444;border:2px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.55);cursor:grab" title="PC:右クリックで削除 / スマホ:長押しで削除"></div>`,
+      html:`<div style="width:${sz}px;height:${sz}px;border-radius:50%;background:#444;border:2px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.55);cursor:grab"></div>`,
       iconSize:[sz,sz], iconAnchor:[sz/2,sz/2]
     }),
     zIndexOffset:500
   }).addTo(leafMap);
 
-  m.on('drag', () => { vp.lat=m.getLatLng().lat; vp.lng=m.getLatLng().lng; redrawStraight(); });
+  m.on('drag',    () => { vp.lat=m.getLatLng().lat; vp.lng=m.getLatLng().lng; redrawStraight(); });
   m.on('dragend', () => { vp.lat=m.getLatLng().lat; vp.lng=m.getLatLng().lng; clearCache(); scheduleRouting(); });
-  m.on('contextmenu', () => deleteVp(vp.id));
+
+  // PC: right-click → context menu (no immediate delete)
+  m.on('contextmenu', e => {
+    L.DomEvent.stopPropagation(e);
+    if (e.originalEvent) e.originalEvent.preventDefault();
+    const oe = e.originalEvent || {};
+    showViaCtxMenu(vp.id, oe.clientX||0, oe.clientY||0);
+  });
 
   // Apply current visibility state
   if (!viaVisible) {
     m.setOpacity(0);
-    const el = m.getElement();
-    if (el) el.style.pointerEvents = 'none';
+    const el2 = m.getElement();
+    if (el2) el2.style.pointerEvents = 'none';
   }
 
-  vp.marker = m;        // set BEFORE addViaLongPress
-  addViaLongPress(vp);
+  vp.marker = m;
+
+  // Mobile: long press (700ms) → context menu
+  // Mobile: single tap  → context menu (if not after long press or drag)
+  const el = m.getElement();
+  if (el) {
+    let pressTimer = null;
+    let lpX = 0, lpY = 0;
+    let longPressJustFired = false;
+
+    el.addEventListener('touchstart', e => {
+      const t = e.touches[0];
+      if (t) { lpX = t.clientX; lpY = t.clientY; }
+      pressTimer = setTimeout(() => {
+        pressTimer = null;
+        longPressJustFired = true;
+        showViaCtxMenu(vp.id, lpX, lpY);
+      }, 700);
+    }, {passive: true});
+
+    const cancelPress = () => { if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; } };
+    el.addEventListener('touchmove',   cancelPress, {passive: true});
+    el.addEventListener('touchend',    cancelPress, {passive: true});
+    el.addEventListener('touchcancel', cancelPress, {passive: true});
+
+    // Tap (click after touch): show menu — but skip if long press already fired
+    m.on('click', e => {
+      L.DomEvent.stopPropagation(e);
+      if (longPressJustFired) { longPressJustFired = false; return; }
+      const oe = e.originalEvent || {};
+      // Only show menu on touch events (not PC mouse click — PC uses right-click)
+      const touch = oe.changedTouches && oe.changedTouches[0];
+      if (!touch && !oe.touches) return; // PC left-click: ignore
+      showViaCtxMenu(vp.id, touch ? touch.clientX : 0, touch ? touch.clientY : 0);
+    });
+  }
+
   return m;
+}
+
+/* ============================================================
+   VIA POINT CONTEXT MENU
+   ============================================================ */
+function showViaCtxMenu(vpId, x, y) {
+  hideCtxMenu();
+  const vp = vps.find(v => v.id === vpId);
+  if (!vp) return;
+  ctxVpId = vpId;
+
+  const fb = vp.fitBefore !== false;
+  const fa = vp.fitAfter  !== false;
+  const sp = splineEnabled;
+
+  const menu = document.getElementById('ctxMenu');
+  menu.innerHTML = '';
+
+  const hdr = document.createElement('div');
+  hdr.className = 'ctx-hdr';
+  hdr.textContent = '📍 経路調整点の設定';
+  menu.appendChild(hdr);
+
+  const items = [
+    {label: (sp?'☑':'☐') + ' スプライン曲線（コース全体）', fn: ctxDoToggleSpline},
+    null, // separator
+    {label: (fb?'☑':'☐') + ' 前の区間を道路に沿う',         fn: () => ctxDoToggleFit('before')},
+    {label: (fa?'☑':'☐') + ' 後の区間を道路に沿う',         fn: () => ctxDoToggleFit('after')},
+    null, // separator
+    {label: '🗑 この調整点を削除', fn: ctxDoDeleteVp, cls: 'ctx-del'},
+  ];
+
+  items.forEach(item => {
+    if (item === null) {
+      const sep = document.createElement('div'); sep.className = 'ctx-sep'; menu.appendChild(sep);
+    } else {
+      const it = document.createElement('div');
+      it.className = 'ctx-it' + (item.cls ? ' ' + item.cls : '');
+      it.textContent = item.label;
+      it.addEventListener('click',       e => { e.stopPropagation(); item.fn(); });
+      it.addEventListener('touchend',    e => { e.stopPropagation(); e.preventDefault(); item.fn(); });
+      menu.appendChild(it);
+    }
+  });
+
+  // Position: keep within viewport
+  const mw = 220, mh = 200, mg = 10;
+  menu.style.left    = Math.max(mg, Math.min(x, window.innerWidth  - mw - mg)) + 'px';
+  menu.style.top     = Math.max(mg, Math.min(y, window.innerHeight - mh - mg)) + 'px';
+  menu.style.display = 'block';
+}
+
+function hideCtxMenu() {
+  const menu = document.getElementById('ctxMenu');
+  if (menu) menu.style.display = 'none';
+  ctxVpId = null;
+}
+
+function ctxDoToggleSpline() {
+  hideCtxMenu();
+  toggleSpline();
+}
+
+function ctxDoToggleFit(dir) {
+  if (!ctxVpId) return;
+  const vp = vps.find(v => v.id === ctxVpId);
+  hideCtxMenu();
+  if (!vp) return;
+  if (dir === 'before') vp.fitBefore = (vp.fitBefore !== false) ? false : true;
+  else                  vp.fitAfter  = (vp.fitAfter  !== false) ? false : true;
+  clearCache(); scheduleRouting();
+}
+
+function ctxDoDeleteVp() {
+  if (!ctxVpId) return;
+  const id = ctxVpId;
+  hideCtxMenu();
+  deleteVp(id);
+  showToast('経路調整点を削除しました');
 }
 
 function deleteVp(id) {
@@ -587,24 +723,7 @@ function addWpLongPress(wp) {
   el.addEventListener('touchcancel', cancel, {passive:true});
 }
 
-function addViaLongPress(vp) {
-  const el = vp.marker ? vp.marker.getElement() : null;
-  if (!el) return;
-  let timer = null;
-  const start = () => {
-    timer = setTimeout(() => {
-      timer = null;
-      // Visual feedback before delete
-      if (vp.marker) vp.marker.setOpacity(0.2);
-      setTimeout(() => { deleteVp(vp.id); showToast('経路調整点を削除しました'); }, 150);
-    }, 700);
-  };
-  const cancel = () => { if (timer) { clearTimeout(timer); timer=null; } };
-  el.addEventListener('touchstart',  start,  {passive:true});
-  el.addEventListener('touchmove',   cancel, {passive:true});
-  el.addEventListener('touchend',    cancel, {passive:true});
-  el.addEventListener('touchcancel', cancel, {passive:true});
-}
+// addViaLongPress removed — logic now inlined in buildVpMarker
 
 /* ============================================================
    LINE DRAG (drag route line to add via point)
@@ -618,7 +737,7 @@ function onHitDown(e) {
   leafMap.dragging.disable();
 
   idV++;
-  const vp = {id:'v'+idV, segAfter:nearestSegWpId(e.latlng.lat,e.latlng.lng), lat:e.latlng.lat, lng:e.latlng.lng, marker:null};
+  const vp = {id:'v'+idV, segAfter:nearestSegWpId(e.latlng.lat,e.latlng.lng), fitBefore:true, fitAfter:true, lat:e.latlng.lat, lng:e.latlng.lng, marker:null};
   vps.push(vp);
   lastOp = {kind:'vp', id:vp.id};
 
@@ -761,28 +880,29 @@ async function buildRoutedCoords() {
   for (let i=0; i<wps.length-1; i++) {
     const a   = wps[i], b = wps[i+1];
     const sv  = segVpsOf(a.id, a, b);
-    const fitA = (a.fitRoad !== false); // このWPからの接続をOSRM道路追従にするか
-    const fitB = (b.fitRoad !== false); // 次WPへの接続をOSRM道路追従にするか
+    const fitAout = (a.fitAfter  !== false); // AのWPから外向き道路フィット
+    const fitBin  = (b.fitBefore !== false); // BのWPへ内向き道路フィット
     let seg = [];
 
     if (sv.length === 0) {
       // ── 調整点なし ──
-      if (fitA && fitB) {
+      if (fitAout && fitBin) {
         // 両端とも道路フィット → OSRM
         const key=`${a.lng.toFixed(6)},${a.lat.toFixed(6)};${b.lng.toFixed(6)},${b.lat.toFixed(6)}`;
         seg = await getCachedRoute(key, [{lat:a.lat,lng:a.lng},{lat:b.lat,lng:b.lng}]);
       } else {
-        // いずれかが直線接続 → 直線
         seg = [[a.lat,a.lng],[b.lat,b.lng]];
       }
 
     } else {
       // ── 調整点あり ──
-      const first = sv[0];
-      const last  = sv[sv.length-1];
+      const first    = sv[0];
+      const last     = sv[sv.length-1];
+      const fitFirst = (first.fitBefore !== false); // 最初の調整点への入り方
+      const fitLast  = (last.fitAfter   !== false); // 最後の調整点からの出方
 
-      // A → 最初の調整点: fitAならOSRM、そうでなければ直線
-      if (fitA) {
+      // A → 最初の調整点: fitAout AND fitFirst ならOSRM
+      if (fitAout && fitFirst) {
         const k1=`${a.lng.toFixed(6)},${a.lat.toFixed(6)};${first.lng.toFixed(6)},${first.lat.toFixed(6)}`;
         const s1 = await getCachedRoute(k1, [{lat:a.lat,lng:a.lng},{lat:first.lat,lng:first.lng}]);
         seg = [...s1];
@@ -795,14 +915,14 @@ async function buildRoutedCoords() {
         const viaCoords = sv.map(v=>[v.lat,v.lng]);
         if (splineEnabled) {
           const smoothed = catmullRom(viaCoords, 20);
-          seg.push(...smoothed.slice(1)); // 最初の点は既にsegにある
+          seg.push(...smoothed.slice(1));
         } else {
           for (let j=1; j<sv.length; j++) seg.push([sv[j].lat, sv[j].lng]);
         }
       }
 
-      // 最後の調整点 → B: fitBならOSRM、そうでなければ直線
-      if (fitB) {
+      // 最後の調整点 → B: fitLast AND fitBin ならOSRM
+      if (fitLast && fitBin) {
         const k2=`${last.lng.toFixed(6)},${last.lat.toFixed(6)};${b.lng.toFixed(6)},${b.lat.toFixed(6)}`;
         const s2 = await getCachedRoute(k2, [{lat:last.lat,lng:last.lng},{lat:b.lat,lng:b.lng}]);
         seg.push(...s2.slice(1));
@@ -988,7 +1108,8 @@ function openModal(id) {
   document.getElementById('mDesc2').value  = wp.desc;
   document.getElementById('mTel').value    = wp.tel;
   document.getElementById('mDwell').value   = wp.dwell || 0;
-  document.getElementById('mFitRoad').checked  = (wp.fitRoad !== false);
+  document.getElementById('mFitBefore').checked = (wp.fitBefore !== false);
+  document.getElementById('mFitAfter').checked  = (wp.fitAfter  !== false);
   document.getElementById('mOver').classList.add('show');
   setTimeout(()=>document.getElementById('mName').focus(), 50);
 }
@@ -1007,7 +1128,8 @@ function saveModal() {
   wp.desc  = document.getElementById('mDesc2').value;
   wp.tel   = document.getElementById('mTel').value;
   wp.dwell   = parseInt(document.getElementById('mDwell').value)||0;
-  wp.fitRoad = document.getElementById('mFitRoad').checked;
+  wp.fitBefore = document.getElementById('mFitBefore').checked;
+  wp.fitAfter  = document.getElementById('mFitAfter').checked;
   if (wp.marker) wp.marker.setIcon(wpIcon(wp));
   updateTooltip(wp);
   closeModal();
@@ -1122,8 +1244,8 @@ function buildCurrentSaveData() {
     desc:    document.getElementById('iDesc')?.value||'',
     center:  leafMap ? {lat:leafMap.getCenter().lat, lng:leafMap.getCenter().lng} : null,
     zoom:    leafMap ? leafMap.getZoom() : 14,
-    wps:     wps.map(w=>({id:w.id,type:w.type,name:w.name,desc:w.desc,tel:w.tel,dwell:w.dwell||0,fitRoad:w.fitRoad!==false,lat:w.lat,lng:w.lng})),
-    vps:     vps.map(v=>({id:v.id,segAfter:v.segAfter,lat:v.lat,lng:v.lng})),
+    wps:     wps.map(w=>({id:w.id,type:w.type,name:w.name,desc:w.desc,tel:w.tel,dwell:w.dwell||0,fitBefore:w.fitBefore!==false,fitAfter:w.fitAfter!==false,lat:w.lat,lng:w.lng})),
+    vps:     vps.map(v=>({id:v.id,segAfter:v.segAfter,fitBefore:v.fitBefore!==false,fitAfter:v.fitAfter!==false,lat:v.lat,lng:v.lng})),
     maxWpId: idW,
     maxVpNum:idV,
     savedAt: new Date().toISOString(),
@@ -1166,14 +1288,25 @@ function loadCourseData(data) {
 
     // Restore waypoints
     wps = data.wps.map(w => {
-      const wp = {...w, dwell:w.dwell||0, fitRoad:w.fitRoad!==false, marker:null};
+      // Backward compat: old saves used fitRoad (single flag) → split into fitBefore/fitAfter
+      const _fitR = w.fitRoad !== undefined ? w.fitRoad !== false : true;
+      const wp = {...w,
+        dwell:     w.dwell||0,
+        fitBefore: w.fitBefore !== undefined ? w.fitBefore !== false : _fitR,
+        fitAfter:  w.fitAfter  !== undefined ? w.fitAfter  !== false : _fitR,
+        marker:    null
+      };
       buildWpMarker(wp);   // sets wp.marker
       return wp;
     });
 
     // Restore via points
     vps = data.vps.map(v => {
-      const vp = {...v, marker:null};
+      const vp = {...v,
+        fitBefore: v.fitBefore !== false,
+        fitAfter:  v.fitAfter  !== false,
+        marker:    null
+      };
       buildVpMarker(vp);   // sets vp.marker
       return vp;
     });
