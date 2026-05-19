@@ -213,9 +213,14 @@ html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:
       <label>電話・URL</label><input id="mTel" placeholder="例：090-1234-5678">
       <label>滞在時間（分）</label>
       <input type="number" id="mDwell" min="0" max="480" step="5" value="0" placeholder="0">
-      <label style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:normal;cursor:pointer;margin-bottom:6px">
-        <input type="checkbox" id="mFitRoad" checked style="width:auto;padding:0;margin:0">
-        前後の調整点との接続を道路に自動フィットする（OFFにすると直線）
+      <div style="font-size:10px;font-weight:bold;color:#555;margin-bottom:4px">前後の接続設定</div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:normal;cursor:pointer;margin-bottom:5px">
+        <input type="checkbox" id="mFitBefore" checked style="width:auto;padding:0;margin:0">
+        前のラインを道路に沿う
+      </label>
+      <label style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:normal;cursor:pointer;margin-bottom:10px">
+        <input type="checkbox" id="mFitAfter" checked style="width:auto;padding:0;margin:0">
+        後のラインを道路に沿う
       </label>
     </div>
     <div class="m-ftr">
@@ -363,8 +368,12 @@ function setCourses(list) {
 window.addEventListener('DOMContentLoaded', () => {
   renderCourseList();
   // Close context menu on any click outside
-  document.addEventListener('click',       hideCtxMenu);
-  document.addEventListener('contextmenu', e => { if (e.target.closest('#ctxMenu')) return; hideCtxMenu(); });
+  // Close menu when clicking anywhere outside it
+  document.addEventListener('click', e => {
+    if (!e.target.closest('#ctxMenu')) hideCtxMenu();
+  });
+  // Close menu on Escape key
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') hideCtxMenu(); });
   // Build modal type select
   const sel = document.getElementById('mType');
   WT.forEach(t => { const o=document.createElement('option'); o.value=t.v; o.textContent=t.l; sel.appendChild(o); });
@@ -543,8 +552,14 @@ function buildVpMarker(vp) {
 
   // PC: right-click → context menu (no immediate delete)
   m.on('contextmenu', e => {
+    // Stop BOTH Leaflet propagation AND DOM event propagation
+    // Without stopping DOM propagation, the event bubbles to document
+    // and the document-level listener closes the menu immediately
     L.DomEvent.stopPropagation(e);
-    if (e.originalEvent) e.originalEvent.preventDefault();
+    if (e.originalEvent) {
+      e.originalEvent.preventDefault();
+      e.originalEvent.stopPropagation();
+    }
     const oe = e.originalEvent || {};
     showViaCtxMenu(vp.id, oe.clientX||0, oe.clientY||0);
   });
