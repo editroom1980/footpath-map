@@ -320,6 +320,7 @@ let lineDragging= false;
 let dragSrcId   = null;
 let segCache    = {};
 let splineEnabled = false;
+let canvasRenderer = null;   // Canvas renderer for html2canvas compatibility
 let routingTimer= null;
 let currentCourseId = null;
 let courseInfo  = {name:'', area:'', start:'', goal:''};
@@ -419,6 +420,7 @@ function initMap() {
   }).addTo(leafMap);
   tiles.on('tileload', () => { const el=document.getElementById('mapMsg'); if(el)el.style.display='none'; });
   leafMap.on('click', onMapClick);
+  canvasRenderer = L.canvas({padding: 0.5}); // Canvas renderer for polylines
 }
 
 function onMapClick(e) {
@@ -709,7 +711,9 @@ function buildStraightCoords() {
 
 function drawLines(coords) {
   if (!coords || coords.length < 2 || !leafMap) return;
-  routeLine = L.polyline(coords, LINE_STYLE).addTo(leafMap);
+  // Canvas renderer: ensures the route line is captured correctly by html2canvas
+  // (SVG renderer causes the route line to be missing or mispositioned in screenshots)
+  routeLine = L.polyline(coords, {...LINE_STYLE, renderer: canvasRenderer}).addTo(leafMap);
 
   // Hit overlay only when via points are visible (disables line-drag when hidden)
   if (viaVisible) {
@@ -1037,13 +1041,31 @@ async function saveMapAsImage() {
   showToast('⏳ マップ画像を生成中...');
   const mapEl = document.getElementById('map');
   try {
+    // 地図タイルの描画が完了するまで少し待つ
+    await new Promise(r => setTimeout(r, 600));
+
+    const w = mapEl.offsetWidth;
+    const h = mapEl.offsetHeight;
+
     const canvas = await html2canvas(mapEl, {
-      useCORS:    true,
-      allowTaint: false,
-      scale:      Math.min(window.devicePixelRatio||1, 2),
-      logging:    false,
-      width:      mapEl.offsetWidth,
-      height:     mapEl.offsetHeight,
+      useCORS:      true,   // OSMタイルのCORS許可
+      allowTaint:   false,  // タイントされたキャンバスを避ける
+      scale:        1,      // 1固定（devicePixelRatioを使うと座標ズレが発生する）
+      logging:      false,
+      width:        w,
+      height:       h,
+      windowWidth:  w,
+      windowHeight: h,
+      imageTimeout: 15000,  // 15秒待ってもタイルが来なければタイムアウト
+      // クローンドキュメントでもマップの寸法を正確に維持する
+      onclone: (clonedDoc) => {
+        const clonedMap = clonedDoc.getElementById('map');
+        if (clonedMap) {
+          clonedMap.style.width  = w + 'px';
+          clonedMap.style.height = h + 'px';
+          clonedMap.style.overflow = 'hidden';
+        }
+      },
     });
     const url = canvas.toDataURL('image/png');
     const a   = document.createElement('a');
