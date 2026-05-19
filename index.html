@@ -24,11 +24,8 @@ html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:
 .s1-btn{width:100%;margin-top:16px;padding:13px;background:#3E2A0E;color:#F5EDD8;border:none;border-radius:8px;font-size:15px;font-family:inherit;font-weight:bold;cursor:pointer}
 .s1-btn:hover{background:#5A3E1A}
 .s1-btn:disabled{opacity:.5;cursor:not-allowed}
-
-/* Course list */
-.course-item{display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid #EEE8DE;cursor:pointer}
+.course-item{display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid #EEE8DE}
 .course-item:last-child{border-bottom:none}
-.course-item:hover{background:#F5EDD8;margin:0 -20px;padding:10px 20px;border-radius:4px}
 .course-name{flex:1;font-size:12px;font-weight:bold;color:#3E2A0E}
 .course-date{font-size:10px;color:#9A8470}
 .course-btns{display:flex;gap:5px;flex-shrink:0}
@@ -39,27 +36,16 @@ html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:
 
 /* ====== SCREEN 2 ====== */
 #s2{height:100vh;display:none;flex-direction:column}
-
-/* Header */
-#hdr{background:#3E2A0E;color:#F5EDD8;padding:0 10px;height:44px;display:flex;align-items:center;gap:8px;flex-shrink:0}
+#hdr{background:#3E2A0E;color:#F5EDD8;padding:0 10px;height:44px;display:flex;align-items:center;gap:7px;flex-shrink:0}
 #hdr h1{font-size:13px;white-space:nowrap}
 #cnDisp{font-size:11px;opacity:.7;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
-.hbtn{padding:5px 10px;border-radius:4px;font-size:11px;font-family:inherit;cursor:pointer;white-space:nowrap;background:rgba(255,255,255,.15);color:#F5EDD8;border:1px solid rgba(255,255,255,.25)}
+.hbtn{padding:5px 9px;border-radius:4px;font-size:11px;font-family:inherit;cursor:pointer;white-space:nowrap;background:rgba(255,255,255,.15);color:#F5EDD8;border:1px solid rgba(255,255,255,.25)}
 .hbtn:hover{background:rgba(255,255,255,.25)}
 .hbtn-save{background:#C4703A;border-color:#A85A2A}
-
-/* Main layout — desktop: sidebar+map | mobile: map+controls */
 #main{flex:1;display:flex;overflow:hidden;min-height:0}
-
-/* ====== SIDEBAR (desktop) ====== */
 #sidebar{width:240px;flex-shrink:0;background:#FAF6EE;border-right:1px solid #D4C4A8;display:flex;flex-direction:column;overflow:hidden}
-.sec{border-bottom:1px solid #D4C4A8;flex-shrink:0}
-.sec-hdr{padding:7px 10px;font-size:10px;font-weight:bold;color:#4A2E0E;background:#F0E8D8;cursor:pointer;display:flex;justify-content:space-between;user-select:none}
-.sec-body{padding:8px 10px}
-
-/* Waypoint list */
 #wpSec{flex:1;min-height:0;display:flex;flex-direction:column}
-#wpSec .sec-hdr{cursor:default;font-size:11px}
+.sec-hdr-wp{padding:7px 10px;font-size:11px;font-weight:bold;color:#4A2E0E;background:#F0E8D8;display:flex;justify-content:space-between;user-select:none;flex-shrink:0}
 #wpList{flex:1;overflow-y:auto;padding:2px 0;min-height:0}
 .wp-row{display:flex;align-items:center;gap:5px;padding:5px 10px;border-bottom:1px solid #EEE8DE;cursor:grab;user-select:none}
 .wp-row:hover{background:#F0E8D8}
@@ -68,212 +54,159 @@ html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:
 .wp-dot{width:22px;height:22px;border-radius:50%;color:#fff;font-size:10px;font-weight:bold;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .wp-nm{font-size:11px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .wp-ed{font-size:11px;color:#C4703A;flex-shrink:0;padding:1px 3px;cursor:pointer}
-
-/* Distance + description */
-#infoSec{padding:8px 10px;background:#F0EAE0;font-size:12px;font-weight:bold;color:#4A2E0E;flex-shrink:0}
-#descSec{padding:8px 10px;flex-shrink:0}
+#infoSec{padding:8px 10px;background:#F0EAE0;flex-shrink:0;border-top:1px solid #D4C4A8}
+#distDisp{font-size:12px;font-weight:bold;color:#4A2E0E}
+#timeDisp{font-size:11px;color:#5A3A1A;margin-top:2px}
+#descSec{padding:8px 10px;flex-shrink:0;border-top:1px solid #D4C4A8}
 #descSec label{display:block;font-size:10px;font-weight:bold;color:#666;margin-bottom:3px}
 #iDesc{width:100%;padding:5px 7px;border:1px solid #D4C4A8;border-radius:3px;font-size:11px;font-family:inherit;background:#fff;outline:none;resize:vertical;min-height:55px}
-
-/* API key — always visible in sidebar */
-#apiSec{padding:8px 10px;flex-shrink:0;border-top:1px solid #D4C4A8}
-#apiSec label{display:block;font-size:10px;font-weight:bold;color:#666;margin-bottom:3px}
-#iKey{width:100%;padding:4px 7px;border:1px solid #D4C4A8;border-radius:3px;font-size:11px;font-family:inherit;background:#fff;outline:none;margin-bottom:3px}
-.api-note{font-size:9px;color:#aaa;line-height:1.4}
-
-/* ====== MAP AREA ====== */
 #mapArea{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
-#tbar{background:#F5EDD8;border-bottom:1px solid #D4C4A8;padding:4px 8px;display:flex;align-items:center;gap:5px;flex-shrink:0;flex-wrap:wrap}
-#tbar-st{font-size:10px;color:#888;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#tbar{background:#F5EDD8;border-bottom:1px solid #D4C4A8;padding:4px 8px;display:flex;align-items:center;gap:4px;flex-shrink:0;flex-wrap:wrap}
+#tbar-st{font-size:10px;color:#888;flex:1;min-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #mapWrap{flex:1;position:relative}
 #map{width:100%;height:100%}
 #mapMsg{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(255,255,255,.9);border:1px solid #D4C4A8;border-radius:6px;padding:10px 16px;font-size:11px;text-align:center;z-index:500;pointer-events:none;line-height:1.7}
 #rtMsg{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);background:rgba(62,42,14,.88);color:#F5EDD8;border-radius:4px;padding:5px 12px;font-size:10px;z-index:600;display:none;white-space:nowrap}
-
-/* AI bar */
-#aiBar{background:#3E2A0E;padding:5px 10px;display:flex;align-items:center;gap:7px;flex-shrink:0;border-top:1px solid rgba(255,255,255,.08)}
-#aiBar label{color:#F5EDD8;font-size:11px;white-space:nowrap}
-#aiSel{padding:4px 7px;border:1px solid rgba(255,255,255,.2);border-radius:4px;background:rgba(255,255,255,.12);color:#F5EDD8;font-size:11px;font-family:inherit;outline:none;flex:1}
-#aiSel option{background:#3E2A0E;color:#F5EDD8}
-.gen-btn{padding:6px 14px;background:#C4703A;color:#fff;border:none;border-radius:5px;font-size:12px;font-family:inherit;font-weight:bold;cursor:pointer;white-space:nowrap}
-.gen-btn:hover{background:#A85A2A}
-
-/* ====== BUTTONS ====== */
 .btn{padding:5px 9px;border:1px solid #C4B89A;border-radius:4px;background:#fff;cursor:pointer;font-size:11px;font-family:inherit;white-space:nowrap;line-height:1.4;min-height:30px}
 .btn:hover{background:#F5EDD8}
 .btn.on{background:#C4703A;color:#fff;border-color:#C4703A}
 .btn-rd{background:#B71C1C;color:#fff;border-color:#B71C1C}
-
-/* ====== MODAL ====== */
-#mOver{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:3000;align-items:center;justify-content:center}
-#mOver.show{display:flex}
-#mBox{background:#fff;border-radius:10px;width:min(360px,95vw);max-height:88vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.35)}
-#mHdr{background:#3E2A0E;color:#F5EDD8;padding:11px 14px;border-radius:10px 10px 0 0;display:flex;justify-content:space-between;align-items:center;font-size:13px;font-weight:bold}
-#mBody{padding:14px}
-#mBody label{display:block;font-size:10px;font-weight:bold;color:#555;margin-bottom:2px}
-#mBody input,#mBody select,#mBody textarea{width:100%;padding:7px 9px;border:1px solid #D4C4A8;border-radius:5px;font-size:13px;font-family:inherit;background:#fff;outline:none;margin-bottom:10px}
-#mBody textarea{resize:vertical;min-height:60px}
-#mFtr{padding:10px 14px;border-top:1px solid #EEE;display:flex;justify-content:space-between;align-items:center;gap:8px}
-
-/* ====== RESULT PANEL ====== */
-#resPanel{display:none;position:fixed;top:44px;right:0;bottom:0;width:min(420px,100vw);background:#fff;border-left:1px solid #D4C4A8;z-index:2000;overflow-y:auto;padding:14px;box-shadow:-4px 0 20px rgba(0,0,0,.12)}
-#resPanel.show{display:block}
-.res-blk{background:#F8F4EC;border:1px solid #D4C4A8;border-radius:5px;padding:10px;margin-bottom:10px}
-.res-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
-.res-lbl{font-size:10px;font-weight:bold;color:#555;text-transform:uppercase;letter-spacing:.05em}
-.res-hint{font-size:9px;color:#999;margin-bottom:5px}
-.res-txt{font-size:10px;line-height:1.7;font-family:monospace;white-space:pre-wrap;word-break:break-all}
-.cp-btn{padding:3px 10px;background:#4A7A5C;color:#fff;border:none;border-radius:3px;font-size:10px;cursor:pointer;font-family:inherit}
-
-/* ====== TOOLTIP ====== */
+/* Modal */
+.m-over{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:3000;align-items:center;justify-content:center}
+.m-over.show{display:flex}
+.m-box{background:#fff;border-radius:10px;width:min(360px,95vw);max-height:88vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.35)}
+.m-hdr{background:#3E2A0E;color:#F5EDD8;padding:11px 14px;border-radius:10px 10px 0 0;display:flex;justify-content:space-between;align-items:center;font-size:13px;font-weight:bold}
+.m-body{padding:14px}
+.m-body label{display:block;font-size:10px;font-weight:bold;color:#555;margin-bottom:2px}
+.m-body input,.m-body select,.m-body textarea{width:100%;padding:7px 9px;border:1px solid #D4C4A8;border-radius:5px;font-size:13px;font-family:inherit;background:#fff;outline:none;margin-bottom:10px}
+.m-body input[type=number]{width:120px}
+.m-body textarea{resize:vertical;min-height:55px}
+.m-ftr{padding:10px 14px;border-top:1px solid #EEE;display:flex;justify-content:space-between;align-items:center;gap:8px}
+/* Help modal */
+#helpModal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:4000;overflow-y:auto;padding:20px 12px}
+#helpModal.show{display:block}
+.help-box{background:#fff;border-radius:10px;width:min(500px,100%);margin:0 auto;padding:20px;box-shadow:0 8px 32px rgba(0,0,0,.3)}
+.help-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;padding-bottom:10px;border-bottom:2px solid #C4703A}
+.help-section{margin-bottom:16px;padding:12px;background:#FAF6EE;border-radius:6px;border-left:3px solid #C4703A}
+.help-section h3{font-size:13px;color:#3E2A0E;margin-bottom:6px}
+.help-section p,.help-section li{font-size:12px;color:#5A3A1A;line-height:1.7}
+.help-section ul{padding-left:16px}
+/* Tooltip */
 .wp-tt{background:rgba(62,42,14,.85)!important;color:#F5EDD8!important;border:none!important;border-radius:4px!important;font-size:11px!important;padding:2px 7px!important;white-space:nowrap!important;box-shadow:0 2px 6px rgba(0,0,0,.3)!important;pointer-events:none!important}
 .wp-tt::before{display:none!important}
-
-/* ====== MOBILE ====== */
-@media (max-width:700px){
-  #s2{flex-direction:column}
+/* Mobile */
+@media(max-width:700px){
   #main{flex-direction:column}
-  #sidebar{
-    width:100%;border-right:none;border-top:2px solid #C4703A;
-    max-height:44vh;order:2;flex-shrink:0;
-  }
+  #sidebar{width:100%;border-right:none;border-top:2px solid #C4703A;max-height:44vh;order:2;flex-shrink:0}
   #mapArea{order:1;flex:1;min-height:0}
   .btn{min-height:36px;font-size:12px;padding:6px 10px}
-  #wpList .wp-row{padding:7px 10px}
   .wp-dot{width:26px;height:26px;font-size:11px}
-  #aiBar{padding:6px 10px}
-  .gen-btn{padding:8px 16px;font-size:13px}
+  .wp-row{padding:7px 10px}
 }
 </style>
 </head>
 <body>
 
-<!-- ====== SCREEN 1 ====== -->
+<!-- SCREEN 1 -->
 <div id="s1">
-  <div class="s1-inner">
-    <div class="s1-logo">🗾</div>
-    <div class="s1-title">フットパスマップメーカー</div>
-    <div class="s1-sub">コースを設定して水彩マップのプロンプトを生成</div>
-
-    <!-- Saved courses -->
-    <div class="s1-card">
-      <h2>📂 保存済みコース</h2>
-      <div id="courseList"><div class="no-courses">保存されたコースはありません</div></div>
-    </div>
-
-    <!-- New course form -->
-    <div class="s1-card">
-      <h2>＋ 新しいコースを作成</h2>
-      <label class="s1-label">コース名 *</label>
-      <input class="s1-input" id="s1Name" placeholder="例：飯見の棚田おにぎりウォーク">
-
-      <label class="s1-label">コースのエリア（住所・地名）*</label>
-      <input class="s1-input" id="s1Area" placeholder="例：兵庫県宍粟市波賀町飯見">
-      <div class="s1-hint">この住所を中心にマップが表示されます</div>
-
-      <label class="s1-label">スタート地点</label>
-      <input class="s1-input" id="s1Start" placeholder="例：波賀B&G海洋センター">
-      <label class="s1-label">ゴール地点</label>
-      <input class="s1-input" id="s1Goal" placeholder="例：同（周回コース）">
-
-      <button class="s1-btn" id="s1Btn" onclick="newCourse()">コース設定画面へ →</button>
-
-      <div style="margin-top:14px;display:flex;gap:8px">
-        <label style="flex:1;padding:9px;border:1px dashed #C4B89A;border-radius:6px;text-align:center;cursor:pointer;font-size:12px;color:#6B4A2A;background:rgba(255,255,255,.5)">
-          📂 JSONから読み込む
-          <input type="file" accept=".json" style="display:none" onchange="importCourseFromFile(this)">
-        </label>
-      </div>
+<div class="s1-inner">
+  <div class="s1-logo">🗾</div>
+  <div class="s1-title">フットパスマップメーカー</div>
+  <div class="s1-sub">コースを設定してマップを作成</div>
+  <div class="s1-card">
+    <h2>📂 保存済みコース</h2>
+    <div id="courseList"><div class="no-courses">保存されたコースはありません</div></div>
+    <div style="margin-top:10px;display:flex;gap:8px">
+      <label style="flex:1;padding:8px;border:1px dashed #C4B89A;border-radius:6px;text-align:center;cursor:pointer;font-size:12px;color:#6B4A2A;background:rgba(255,255,255,.5)">
+        📂 JSONから読み込む
+        <input type="file" accept=".json" style="display:none" onchange="importCourseFromFile(this)">
+      </label>
     </div>
   </div>
+  <div class="s1-card">
+    <h2>＋ 新しいコースを作成</h2>
+    <label class="s1-label">コース名 *</label>
+    <input class="s1-input" id="s1Name" placeholder="例：飯見の棚田おにぎりウォーク">
+    <label class="s1-label">コースのエリア（住所・地名）*</label>
+    <input class="s1-input" id="s1Area" placeholder="例：兵庫県宍粟市波賀町飯見">
+    <div class="s1-hint">この住所を中心にマップが表示されます</div>
+    <label class="s1-label">スタート地点</label>
+    <input class="s1-input" id="s1Start" placeholder="例：波賀B&G海洋センター">
+    <label class="s1-label">ゴール地点</label>
+    <input class="s1-input" id="s1Goal" placeholder="例：同（周回コース）">
+    <button class="s1-btn" id="s1Btn" onclick="newCourse()">コース設定画面へ →</button>
+  </div>
+</div>
 </div>
 
-<!-- ====== SCREEN 2 ====== -->
+<!-- SCREEN 2 -->
 <div id="s2">
   <div id="hdr">
     <span style="font-size:16px;flex-shrink:0">🗾</span>
     <h1 style="flex-shrink:0">フットパス</h1>
     <div id="cnDisp"></div>
-    <button class="hbtn hbtn-save" onclick="saveCourse()">💾 保存</button>
-    <button class="hbtn" onclick="exportCourse()" title="JSONファイルでダウンロード">📥 JSON</button>
-    <button class="hbtn" onclick="backToS1()">← 一覧へ</button>
+    <button class="hbtn hbtn-save" onclick="saveCourse()">💾</button>
+    <button class="hbtn" onclick="exportCourse()" title="JSONでダウンロード">📥</button>
+    <button class="hbtn" onclick="backToS1()">← 一覧</button>
   </div>
-
   <div id="main">
-    <!-- Sidebar -->
     <div id="sidebar">
       <div id="wpSec">
-        <div class="sec-hdr" style="cursor:default">
+        <div class="sec-hdr-wp">
           📍 ウェイポイント
-          <span style="font-size:10px;color:#8A6A4A;font-weight:normal">ドラッグで並び替え</span>
+          <span style="font-size:10px;color:#8A6A4A;font-weight:normal">ドラッグで並替</span>
         </div>
         <div id="wpList">
           <div id="wpEmpty" style="font-size:10px;color:#aaa;text-align:center;padding:14px">地図をクリックして追加</div>
         </div>
       </div>
-
       <div id="infoSec">
         <div id="distDisp">総距離: — km</div>
+        <div id="timeDisp">所要時間: —</div>
       </div>
-
       <div id="descSec">
-        <label>見どころ・コース説明</label>
+        <label>コース説明・見どころ</label>
         <textarea id="iDesc" placeholder="コースの特徴・見どころ・歴史など..."></textarea>
       </div>
-
-      <!-- API key: always visible -->
-      <div id="apiSec">
-        <label>Claude API Key <span style="color:#C4703A;font-size:9px">（GitHub Pages版で必要）</span></label>
-        <input id="iKey" type="password" placeholder="sk-ant-..." oninput="saveKey()">
-        <div class="api-note">Claudeのアーティファクト内では不要。GitHub Pagesで使う場合はご自身のAPIキーを入力してください。</div>
-      </div>
     </div>
-
-    <!-- Map area -->
     <div id="mapArea">
       <div id="tbar">
         <button class="btn on" id="btnWp"  onclick="setMode('wp')">📍 ウェイポイント</button>
-        <button class="btn"    id="btnVia" onclick="setMode('via')">↔ 経路調整点</button>
+        <button class="btn"    id="btnVia" onclick="setMode('via')">↔ 調整点</button>
+        <button class="btn"    id="btnToggleVia" onclick="toggleViaVisibility()" title="経路調整点の表示/非表示">● 調整点表示</button>
         <span style="color:#D4C4A8">|</span>
-        <button class="btn" onclick="undoLast()">↩</button>
-        <button class="btn" onclick="clearAll()">🗑</button>
-        <span id="tbar-st">クリックしてウェイポイントを追加 / ルート線ドラッグで経路調整</span>
+        <button class="btn" onclick="undoLast()" title="取り消し">↩</button>
+        <button class="btn" onclick="clearAll()" title="全消去">🗑</button>
+        <span style="color:#D4C4A8">|</span>
+        <button class="btn" onclick="saveMapAsImage()" title="マップを画像で保存">📷</button>
+        <button class="btn" onclick="openHelp()" title="操作ガイド">❓</button>
+        <span id="tbar-st">クリックでウェイポイント追加 / ルート線ドラッグで経路調整</span>
       </div>
       <div id="mapWrap">
         <div id="map"></div>
-        <div id="mapMsg">⚠️ プレビュー環境では地図タイルは表示されません<br><span style="font-size:10px">GitHub Pagesに公開すると正常に表示・ルーティングされます</span></div>
+        <div id="mapMsg">⚠️ プレビュー環境では地図タイルは表示されません<br><span style="font-size:10px">GitHub Pagesに公開すると正常に表示されます</span></div>
         <div id="rtMsg">🔄 ルートを計算中...</div>
-      </div>
-      <div id="aiBar">
-        <label>AI:</label>
-        <select id="aiSel">
-          <option value="midjourney">Midjourney v6</option>
-          <option value="dalle">DALL-E 3</option>
-          <option value="sd">Stable Diffusion</option>
-          <option value="firefly">Adobe Firefly</option>
-          <option value="ideogram">Ideogram</option>
-          <option value="other">汎用</option>
-        </select>
-        <button class="gen-btn" onclick="openGen()">✨ プロンプト生成</button>
       </div>
     </div>
   </div>
 </div>
 
-<!-- Modal -->
-<div id="mOver" onclick="if(event.target===this)closeModal()">
-  <div id="mBox">
-    <div id="mHdr">
+<!-- Waypoint Edit Modal -->
+<div id="mOver" class="m-over" onclick="if(event.target===this)closeModal()">
+  <div class="m-box">
+    <div class="m-hdr">
       <span>ウェイポイント編集</span>
-      <button onclick="closeModal()" style="background:none;border:none;color:inherit;font-size:18px;cursor:pointer;line-height:1;padding:0 4px">✕</button>
+      <button onclick="closeModal()" style="background:none;border:none;color:inherit;font-size:18px;cursor:pointer;padding:0 4px;line-height:1">✕</button>
     </div>
-    <div id="mBody">
+    <div class="m-body">
       <label>種別</label><select id="mType"></select>
       <label>名称（地図上に表示）</label><input id="mName" placeholder="スポット名">
       <label>説明・補足</label><textarea id="mDesc2" placeholder="例：農水省認定・171枚の棚田が広がる"></textarea>
       <label>電話・URL</label><input id="mTel" placeholder="例：090-1234-5678">
+      <label>滞在時間（分）</label>
+      <input type="number" id="mDwell" min="0" max="480" step="5" value="0" placeholder="0">
     </div>
-    <div id="mFtr">
+    <div class="m-ftr">
       <button class="btn btn-rd" onclick="deleteEditing()">🗑 削除</button>
       <div style="display:flex;gap:8px">
         <button class="btn" onclick="closeModal()">キャンセル</button>
@@ -283,16 +216,69 @@ html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:
   </div>
 </div>
 
-<!-- Result panel -->
-<div id="resPanel">
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-    <strong style="font-size:13px;color:#3E2A0E">✨ 生成されたプロンプト</strong>
-    <button class="btn" onclick="closeRes()">✕ 閉じる</button>
+<!-- Help Modal -->
+<div id="helpModal" onclick="if(event.target===this)closeHelp()">
+  <div class="help-box">
+    <div class="help-hdr">
+      <strong style="font-size:16px;color:#3E2A0E">💡 操作ガイド</strong>
+      <button onclick="closeHelp()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#666;padding:0 4px;line-height:1">✕</button>
+    </div>
+    <div class="help-section">
+      <h3>📍 ウェイポイントの追加・編集</h3>
+      <ul>
+        <li>地図をクリック/タップ → ウェイポイントを追加</li>
+        <li>マーカーをクリック → 名称・種別・滞在時間などを編集</li>
+        <li>スマホ：マーカーを長押し（約0.7秒）→ 編集画面を開く（削除ボタンあり）</li>
+        <li>サイドバーのリストをドラッグ → 順番を変更（コースラインも連動）</li>
+      </ul>
+    </div>
+    <div class="help-section">
+      <h3>↔ 経路調整点の使い方</h3>
+      <ul>
+        <li>「↔ 調整点」モードで地図をクリック → 経路調整点を追加</li>
+        <li>調整点がある区間は直線で引かれます（OSRM自動ルートより優先）</li>
+        <li>農道・山道など細い道の上に調整点を密に置いてください</li>
+        <li>PC：調整点を右クリック → 削除</li>
+        <li>スマホ：調整点を長押し（約0.7秒）→ 削除</li>
+        <li>「● 調整点表示」ボタンで表示/非表示を切替（ルートは保持）</li>
+      </ul>
+    </div>
+    <div class="help-section">
+      <h3>🔴 ルート線の編集</h3>
+      <ul>
+        <li>赤い破線をドラッグ → そこに調整点が追加されルートが変形</li>
+        <li>調整点がない区間 → OSRMが道路に沿って自動ルーティング</li>
+        <li>調整点がある区間 → 調整点を直線でつないだルート（手動優先）</li>
+        <li>調整点を非表示中はルート線のドラッグは無効になります</li>
+      </ul>
+    </div>
+    <div class="help-section">
+      <h3>💾 保存・読み込み</h3>
+      <ul>
+        <li>「💾」ボタン → ブラウザに保存（GitHub Pages）またはメモリ保存</li>
+        <li>「📥」ボタン → JSONファイルでダウンロード（どこでも復元可能）</li>
+        <li>一覧画面の「📂 JSONから読み込む」→ JSONファイルを読み込み</li>
+      </ul>
+    </div>
+    <div class="help-section">
+      <h3>📷 マップを画像で保存</h3>
+      <ul>
+        <li>「📷」ボタン → 現在の地図表示をPNG画像でダウンロード</li>
+        <li>GitHub Pages上で動作します（プレビュー環境では地図タイルが白になる場合があります）</li>
+      </ul>
+    </div>
+    <div class="help-section">
+      <h3>⏱ 所要時間の計算</h3>
+      <ul>
+        <li>歩行速度4km/h × 距離 + 各ウェイポイントの滞在時間の合計</li>
+        <li>滞在時間はウェイポイント編集画面で分単位で設定できます</li>
+      </ul>
+    </div>
   </div>
-  <div id="resContent"></div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script>
 /* ============================================================
    CONSTANTS
@@ -312,82 +298,745 @@ const WT = [
 const SYM = {start:'S',view:'◎',shop:'★',shrine:'⛩',history:'碑',park:'🌿',toilet:'WC',parking:'P',other:'●'};
 const LINE_STYLE = {color:'#E84040', weight:4, dashArray:'8,5', opacity:.9};
 
-const AI_INFO = {
-  midjourney:{n:'Midjourney v6',   h:'/imagineコマンドに貼り付け',           guide:'--ar 4:3 --style raw --q 2 を末尾に必ず付ける。キーワード重視で英語で書く。'},
-  dalle:     {n:'DALL-E 3',        h:'ChatGPT Plus / OpenAI API',            guide:'自然な英文で詳細に説明。文章形式が効果的。'},
-  sd:        {n:'Stable Diffusion',h:'ComfyUI / A1111 のPromptに貼り付け',  guide:'カンマ区切りのキーワード形式。ネガティブプロンプトも生成。品質タグ（masterpiece, best quality等）を含める。'},
-  firefly:   {n:'Adobe Firefly',   h:'Fireflyのテキストから画像で使用',     guide:'著作権に配慮した安全な表現。スタイルを丁寧に説明。'},
-  ideogram:  {n:'Ideogram',        h:'ideogram.aiのテキストボックスに貼付', guide:'テキスト合成が得意。地図内の日本語テキストも指示に含める。'},
-  other:     {n:'汎用プロンプト', h:'各種画像生成AIで使用可能',             guide:'汎用的な英語プロンプト。スタイル・構図・色彩を詳しく記述。'},
-};
-
 /* ============================================================
    STATE
    ============================================================ */
-let leafMap    = null;
-let wps        = [];
-let vps        = [];
-let routeLine  = null;
-let hitOverlay = null;
-let mode       = 'wp';
-let editId     = null;
+let leafMap     = null;
+let wps         = [];
+let vps         = [];
+let routeLine   = null;
+let hitOverlay  = null;
+let viaVisible  = true;
+let mode        = 'wp';
+let editId      = null;
 let idW = 0, idV = 0;
-let lastOp     = null;
-let lineDragging = false;
-let dragSrcId  = null;
-let segCache   = {};
-let routingTimer = null;
-let _result    = null;
+let lastOp      = null;
+let lineDragging= false;
+let dragSrcId   = null;
+let segCache    = {};
+let routingTimer= null;
 let currentCourseId = null;
-let courseInfo = {name:'', area:'', start:'', goal:''};
+let courseInfo  = {name:'', area:'', start:'', goal:''};
 
 /* ============================================================
-   LOCAL STORAGE — COURSES
+   STORAGE (memory + localStorage fallback)
    ============================================================ */
-// ---- STORAGE: memory + localStorage (fallback if localStorage unavailable) ----
-let _memCourses = [];  // in-memory store (works in Claude artifact)
-let _lsAvail = null;   // cached localStorage availability check
+let _memCourses = [];
+let _lsAvail    = null;
 
 function lsAvail() {
   if (_lsAvail !== null) return _lsAvail;
-  try { localStorage.setItem('_fp_test','1'); localStorage.removeItem('_fp_test'); _lsAvail=true; }
+  try { localStorage.setItem('_fp_t','1'); localStorage.removeItem('_fp_t'); _lsAvail=true; }
   catch(_) { _lsAvail=false; }
   return _lsAvail;
 }
-
 function getCourses() {
-  if (lsAvail()) {
-    try { return JSON.parse(localStorage.getItem('fp_courses')||'[]'); } catch(_) {}
-  }
+  if (lsAvail()) try { return JSON.parse(localStorage.getItem('fp_courses')||'[]'); } catch(_) {}
   return _memCourses;
 }
-
 function setCourses(list) {
-  _memCourses = list;  // always update memory
-  if (lsAvail()) {
-    try { localStorage.setItem('fp_courses', JSON.stringify(list)); return true; }
-    catch(_) {}
+  _memCourses = list;
+  if (lsAvail()) try { localStorage.setItem('fp_courses', JSON.stringify(list)); } catch(_) {}
+}
+
+/* ============================================================
+   SCREEN 1
+   ============================================================ */
+window.addEventListener('DOMContentLoaded', () => {
+  renderCourseList();
+  // Build modal type select
+  const sel = document.getElementById('mType');
+  WT.forEach(t => { const o=document.createElement('option'); o.value=t.v; o.textContent=t.l; sel.appendChild(o); });
+});
+
+async function newCourse() {
+  const name  = document.getElementById('s1Name').value.trim();
+  const area  = document.getElementById('s1Area').value.trim();
+  if (!name || !area) { alert('コース名とエリアを入力してください。'); return; }
+  courseInfo  = {name, area, start:document.getElementById('s1Start').value.trim(), goal:document.getElementById('s1Goal').value.trim()};
+  currentCourseId = null;
+
+  const btn = document.getElementById('s1Btn');
+  btn.disabled = true; btn.textContent = '⏳ マップを読み込み中...';
+
+  // Reset state
+  _clearAllMarkers();
+  wps=[]; vps=[]; idW=0; idV=0; lastOp=null; segCache={};
+  if (document.getElementById('iDesc')) document.getElementById('iDesc').value='';
+  redrawList();
+
+  document.getElementById('s1').style.display = 'none';
+  document.getElementById('s2').style.display = 'flex';
+  document.getElementById('cnDisp').textContent = name;
+
+  setTimeout(async () => {
+    if (!leafMap) initMap(); else leafMap.invalidateSize();
+    const c = await geocode(area);
+    if (c && leafMap) leafMap.setView([c.lat, c.lng], 15);
+    btn.disabled = false; btn.textContent = 'コース設定画面へ →';
+  }, 60);
+}
+
+function backToS1() {
+  if (!confirm('一覧画面に戻りますか？（未保存の変更は失われます）')) return;
+  document.getElementById('s2').style.display = 'none';
+  document.getElementById('s1').style.display = 'flex';
+  renderCourseList();
+}
+
+function _clearAllMarkers() {
+  if (!leafMap) return;
+  wps.forEach(w => { if(w.marker) leafMap.removeLayer(w.marker); });
+  vps.forEach(v => { if(v.marker) leafMap.removeLayer(v.marker); });
+  removeLines();
+}
+
+/* ============================================================
+   GEOCODING
+   ============================================================ */
+async function geocode(address) {
+  try {
+    const res  = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1&accept-language=ja`);
+    const data = await res.json();
+    if (data && data.length > 0) return {lat:parseFloat(data[0].lat), lng:parseFloat(data[0].lon)};
+  } catch(_) {}
+  return null;
+}
+
+/* ============================================================
+   MAP INIT
+   ============================================================ */
+function initMap() {
+  leafMap = L.map('map', {center:[35.165,134.542], zoom:14});
+  const tiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution:'© OpenStreetMap contributors', maxZoom:19
+  }).addTo(leafMap);
+  tiles.on('tileload', () => { const el=document.getElementById('mapMsg'); if(el)el.style.display='none'; });
+  leafMap.on('click', onMapClick);
+}
+
+function onMapClick(e) {
+  if (lineDragging) return;
+  if (mode==='wp')  addWp(e.latlng.lat, e.latlng.lng);
+  if (mode==='via') addVp(e.latlng.lat, e.latlng.lng);
+}
+
+/* ============================================================
+   WAYPOINTS
+   ============================================================ */
+function addWp(lat, lng) {
+  idW++;
+  const wp = {id:idW, type:'course', name:'', desc:'', tel:'', dwell:0, lat, lng, marker:null};
+  wps.push(wp);
+  buildWpMarker(wp);          // sets wp.marker internally
+  lastOp = {kind:'wp', id:idW};
+  redrawStraight(); scheduleRouting(); redrawList(); refreshIcons();
+}
+
+function buildWpMarker(wp) {
+  const sz  = isMobile() ? [36,36] : [30,30];
+  const anc = [sz[0]/2, sz[1]/2];
+  const m = L.marker([wp.lat, wp.lng], {draggable:true, icon:wpIcon(wp,sz,anc), zIndexOffset:1000}).addTo(leafMap);
+
+  m.on('drag', () => { wp.lat=m.getLatLng().lat; wp.lng=m.getLatLng().lng; redrawStraight(); });
+  m.on('dragend', () => { wp.lat=m.getLatLng().lat; wp.lng=m.getLatLng().lng; clearCache(); scheduleRouting(); });
+  m.on('click', e => { L.DomEvent.stopPropagation(e); openModal(wp.id); });
+
+  if (wp.name && wp.name.trim()) {
+    m.bindTooltip(wp.name, {permanent:true, direction:'top', offset:[0,isMobile()?-20:-18], className:'wp-tt'});
   }
-  return true;  // memory save always succeeds
+
+  wp.marker = m;       // set BEFORE addWpLongPress
+  addWpLongPress(wp);
+  return m;
+}
+
+function wpIcon(wp, sz, anc) {
+  if (!sz)  sz  = isMobile() ? [36,36] : [30,30];
+  if (!anc) anc = [sz[0]/2, sz[1]/2];
+  const t   = WT.find(x=>x.v===wp.type)||WT[0];
+  const sym = wp.type==='course' ? (courseNum(wp)||'?') : (SYM[wp.type]||'●');
+  return L.divIcon({
+    className:'',
+    html:`<div style="width:${sz[0]}px;height:${sz[1]}px;border-radius:50%;background:${t.c};color:#fff;display:flex;align-items:center;justify-content:center;font-size:${sz[0]===36?14:12}px;font-weight:bold;border:2px solid rgba(255,255,255,.85);box-shadow:0 2px 6px rgba(0,0,0,.45);cursor:pointer">${sym}</div>`,
+    iconSize:sz, iconAnchor:anc
+  });
+}
+
+function courseNum(wp) {
+  const list = wps.filter(w=>w.type==='course');
+  const i    = list.findIndex(w=>w.id===wp.id);
+  return i>=0 ? i+1 : null;
+}
+
+function refreshIcons() {
+  wps.forEach(wp => { if(wp.marker) wp.marker.setIcon(wpIcon(wp)); });
+}
+
+function updateTooltip(wp) {
+  if (!wp.marker) return;
+  wp.marker.unbindTooltip();
+  if (wp.name && wp.name.trim()) {
+    wp.marker.bindTooltip(wp.name, {permanent:true, direction:'top', offset:[0,isMobile()?-20:-18], className:'wp-tt'});
+  }
+}
+
+function deleteWp(id) {
+  vps.filter(v=>v.segAfter===id).forEach(v=>{ if(v.marker)leafMap.removeLayer(v.marker); });
+  vps = vps.filter(v=>v.segAfter!==id);
+  const wp = wps.find(w=>w.id===id);
+  if (wp && wp.marker) leafMap.removeLayer(wp.marker);
+  wps = wps.filter(w=>w.id!==id);
+  clearCache(); redrawStraight(); scheduleRouting(); refreshIcons(); redrawList();
+}
+
+/* ============================================================
+   VIA POINTS
+   ============================================================ */
+function addVp(lat, lng) {
+  if (wps.length < 2) { alert('ウェイポイントを2点以上追加してから経路調整点を追加してください。'); return; }
+  idV++;
+  const vp = {id:'v'+idV, segAfter:nearestSegWpId(lat,lng), lat, lng, marker:null};
+  vps.push(vp);
+  buildVpMarker(vp);    // sets vp.marker internally
+  lastOp = {kind:'vp', id:vp.id};
+  clearCache(); redrawStraight(); scheduleRouting();
+}
+
+function buildVpMarker(vp) {
+  const sz = isMobile() ? 18 : 13;
+  const m = L.marker([vp.lat, vp.lng], {
+    draggable:true,
+    icon:L.divIcon({
+      className:'',
+      html:`<div style="width:${sz}px;height:${sz}px;border-radius:50%;background:#444;border:2px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.55);cursor:grab" title="PC:右クリックで削除 / スマホ:長押しで削除"></div>`,
+      iconSize:[sz,sz], iconAnchor:[sz/2,sz/2]
+    }),
+    zIndexOffset:500
+  }).addTo(leafMap);
+
+  m.on('drag', () => { vp.lat=m.getLatLng().lat; vp.lng=m.getLatLng().lng; redrawStraight(); });
+  m.on('dragend', () => { vp.lat=m.getLatLng().lat; vp.lng=m.getLatLng().lng; clearCache(); scheduleRouting(); });
+  m.on('contextmenu', () => deleteVp(vp.id));
+
+  // Apply current visibility state
+  if (!viaVisible) {
+    m.setOpacity(0);
+    const el = m.getElement();
+    if (el) el.style.pointerEvents = 'none';
+  }
+
+  vp.marker = m;        // set BEFORE addViaLongPress
+  addViaLongPress(vp);
+  return m;
+}
+
+function deleteVp(id) {
+  const vp = vps.find(v=>v.id===id);
+  if (!vp) return;
+  if (vp.marker) leafMap.removeLayer(vp.marker);
+  vps = vps.filter(v=>v.id!==id);
+  clearCache(); redrawStraight(); scheduleRouting();
+}
+
+function toggleViaVisibility() {
+  viaVisible = !viaVisible;
+
+  vps.forEach(vp => {
+    if (!vp.marker) return;
+    vp.marker.setOpacity(viaVisible ? 1 : 0);
+    const el = vp.marker.getElement();
+    if (el) el.style.pointerEvents = viaVisible ? '' : 'none';
+  });
+
+  // If hiding while in via mode, switch to wp mode
+  if (!viaVisible && mode === 'via') setMode('wp');
+
+  // Redraw — drawLines checks viaVisible to decide whether to create hitOverlay
+  redrawStraight();
+  scheduleRouting();
+
+  const btn = document.getElementById('btnToggleVia');
+  if (btn) {
+    btn.classList.toggle('on', viaVisible);
+    btn.textContent = viaVisible ? '● 調整点表示' : '○ 調整点非表示';
+    btn.title = viaVisible ? '経路調整点を非表示にする' : '経路調整点を表示する';
+  }
+}
+
+/* ============================================================
+   LONG PRESS (mobile)
+   ============================================================ */
+function addWpLongPress(wp) {
+  const el = wp.marker ? wp.marker.getElement() : null;
+  if (!el) return;
+  let timer = null;
+  const start = () => { timer = setTimeout(() => { timer=null; openModal(wp.id); }, 700); };
+  const cancel = () => { if (timer) { clearTimeout(timer); timer=null; } };
+  el.addEventListener('touchstart',  start,  {passive:true});
+  el.addEventListener('touchmove',   cancel, {passive:true});
+  el.addEventListener('touchend',    cancel, {passive:true});
+  el.addEventListener('touchcancel', cancel, {passive:true});
+}
+
+function addViaLongPress(vp) {
+  const el = vp.marker ? vp.marker.getElement() : null;
+  if (!el) return;
+  let timer = null;
+  const start = () => {
+    timer = setTimeout(() => {
+      timer = null;
+      // Visual feedback before delete
+      if (vp.marker) vp.marker.setOpacity(0.2);
+      setTimeout(() => { deleteVp(vp.id); showToast('経路調整点を削除しました'); }, 150);
+    }, 700);
+  };
+  const cancel = () => { if (timer) { clearTimeout(timer); timer=null; } };
+  el.addEventListener('touchstart',  start,  {passive:true});
+  el.addEventListener('touchmove',   cancel, {passive:true});
+  el.addEventListener('touchend',    cancel, {passive:true});
+  el.addEventListener('touchcancel', cancel, {passive:true});
+}
+
+/* ============================================================
+   LINE DRAG (drag route line to add via point)
+   ============================================================ */
+function onHitDown(e) {
+  L.DomEvent.stopPropagation(e);
+  L.DomEvent.preventDefault(e);
+  if (wps.length < 2 || !viaVisible) return;
+
+  lineDragging = true;
+  leafMap.dragging.disable();
+
+  idV++;
+  const vp = {id:'v'+idV, segAfter:nearestSegWpId(e.latlng.lat,e.latlng.lng), lat:e.latlng.lat, lng:e.latlng.lng, marker:null};
+  vps.push(vp);
+  lastOp = {kind:'vp', id:vp.id};
+
+  const sz = isMobile() ? 18 : 13;
+  const tmp = L.marker([vp.lat, vp.lng], {
+    icon:L.divIcon({
+      className:'',
+      html:`<div style="width:${sz}px;height:${sz}px;border-radius:50%;background:#C4703A;border:2px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.55)"></div>`,
+      iconSize:[sz,sz], iconAnchor:[sz/2,sz/2]
+    }),
+    interactive:false, zIndexOffset:2000
+  }).addTo(leafMap);
+  vp.marker = tmp;
+  redrawStraight();
+
+  function onMove(ev) {
+    vp.lat=ev.latlng.lat; vp.lng=ev.latlng.lng;
+    tmp.setLatLng([vp.lat,vp.lng]);
+    redrawStraight();
+  }
+  function onUp() {
+    leafMap.off('mousemove', onMove);
+    leafMap.off('mouseup',   onUp);
+    leafMap.removeLayer(tmp);
+    buildVpMarker(vp);   // replace temp with proper draggable marker (sets vp.marker)
+    lineDragging = false;
+    leafMap.dragging.enable();
+    clearCache(); scheduleRouting();
+  }
+  leafMap.on('mousemove', onMove);
+  leafMap.on('mouseup',   onUp);
+}
+
+// Safety: reset lineDragging if mouse released outside map
+window.addEventListener('mouseup', () => {
+  if (lineDragging && leafMap) { lineDragging=false; leafMap.dragging.enable(); }
+});
+
+/* ============================================================
+   GEOMETRY
+   ============================================================ */
+function nearestSegWpId(lat, lng) {
+  if (wps.length < 2) return wps.length>0 ? wps[0].id : null;
+  let bestId=wps[0].id, minD=Infinity;
+  for (let i=0; i<wps.length-1; i++) {
+    const d = ptSegDist([lat,lng],[wps[i].lat,wps[i].lng],[wps[i+1].lat,wps[i+1].lng]);
+    if (d < minD) { minD=d; bestId=wps[i].id; }
+  }
+  return bestId;
+}
+
+function ptSegDist(p, a, b) {
+  const dx=b[0]-a[0], dy=b[1]-a[1];
+  if (Math.abs(dx)<1e-12 && Math.abs(dy)<1e-12) return Math.hypot(p[0]-a[0],p[1]-a[1]);
+  const t = Math.max(0,Math.min(1,((p[0]-a[0])*dx+(p[1]-a[1])*dy)/(dx*dx+dy*dy)));
+  return Math.hypot(p[0]-(a[0]+t*dx), p[1]-(a[1]+t*dy));
+}
+
+function segVpsOf(wpId, wpA, wpB) {
+  const dx=wpB.lat-wpA.lat, dy=wpB.lng-wpA.lng, len2=dx*dx+dy*dy;
+  return vps
+    .filter(v=>v.segAfter===wpId)
+    .map(v => { const t=len2>0?((v.lat-wpA.lat)*dx+(v.lng-wpA.lng)*dy)/len2:0; return{vp:v,t}; })
+    .sort((a,b)=>a.t-b.t)
+    .map(x=>x.vp);
+}
+
+function haversine(lat1,lng1,lat2,lng2) {
+  const R=6371000, r=x=>x*Math.PI/180;
+  const a=Math.sin(r(lat2-lat1)/2)**2+Math.cos(r(lat1))*Math.cos(r(lat2))*Math.sin(r(lng2-lng1)/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+
+/* ============================================================
+   POLYLINE
+   ============================================================ */
+function removeLines() {
+  if (routeLine)   { if(leafMap)leafMap.removeLayer(routeLine);   routeLine=null; }
+  if (hitOverlay)  { if(leafMap)leafMap.removeLayer(hitOverlay);  hitOverlay=null; }
+}
+
+function buildStraightCoords() {
+  const c=[];
+  for (let i=0; i<wps.length; i++) {
+    c.push([wps[i].lat, wps[i].lng]);
+    if (i+1 < wps.length) segVpsOf(wps[i].id,wps[i],wps[i+1]).forEach(v=>c.push([v.lat,v.lng]));
+  }
+  return c;
+}
+
+function drawLines(coords) {
+  if (!coords || coords.length < 2 || !leafMap) return;
+  routeLine = L.polyline(coords, LINE_STYLE).addTo(leafMap);
+
+  // Hit overlay only when via points are visible (disables line-drag when hidden)
+  if (viaVisible) {
+    hitOverlay = L.polyline(coords, {weight:22, opacity:0, color:'#000', interactive:true}).addTo(leafMap);
+    hitOverlay.on('mousedown', onHitDown);
+    const el = hitOverlay.getElement();
+    if (el) el.style.cursor = 'grab';
+  }
+}
+
+function redrawStraight() {
+  removeLines();
+  if (wps.length >= 2) drawLines(buildStraightCoords());
+  updateDistanceAndTime();
+}
+
+/* ============================================================
+   OSRM ROUTING
+   Via-point segments → straight line (manual priority)
+   No-via-point segments → OSRM auto-routing
+   ============================================================ */
+function clearCache() { segCache={}; }
+
+function scheduleRouting() {
+  if (routingTimer) clearTimeout(routingTimer);
+  routingTimer = setTimeout(doRouting, 700);
+}
+
+async function doRouting() {
+  if (wps.length < 2) return;
+  showRtMsg(true);
+  try {
+    const coords = await buildRoutedCoords();
+    if (coords && coords.length >= 2) {
+      removeLines();
+      drawLines(coords);
+      updateDistanceAndTime(coords);
+    }
+  } catch(_) { /* keep straight lines on error */ }
+  finally { showRtMsg(false); }
+}
+
+async function buildRoutedCoords() {
+  const all = [];
+  for (let i=0; i<wps.length-1; i++) {
+    const a=wps[i], b=wps[i+1];
+    const sv=segVpsOf(a.id, a, b);
+    let seg;
+
+    if (sv.length > 0) {
+      // ── Via points exist → straight lines (user's manual routing takes priority) ──
+      seg = [{lat:a.lat,lng:a.lng}, ...sv.map(v=>({lat:v.lat,lng:v.lng})), {lat:b.lat,lng:b.lng}]
+              .map(p=>[p.lat,p.lng]);
+    } else {
+      // ── No via points → OSRM auto-routing ──
+      const key = `${a.lng.toFixed(6)},${a.lat.toFixed(6)};${b.lng.toFixed(6)},${b.lat.toFixed(6)}`;
+      seg = await getCachedRoute(key, [{lat:a.lat,lng:a.lng},{lat:b.lat,lng:b.lng}]);
+    }
+
+    if (all.length===0) seg.forEach(c=>all.push(c));
+    else seg.slice(1).forEach(c=>all.push(c));
+  }
+  return all;
+}
+
+async function getCachedRoute(key, pts) {
+  if (segCache[key]) return segCache[key];
+  const coords = await fetchOSRM(key, pts);
+  segCache[key] = coords;
+  return coords;
+}
+
+async function fetchOSRM(coordStr, pts) {
+  const url = `https://router.project-osrm.org/route/v1/foot/${coordStr}?overview=full&geometries=geojson`;
+  const ctrl = new AbortController();
+  const tid  = setTimeout(()=>ctrl.abort(), 8000);
+  try {
+    const res  = await fetch(url, {signal:ctrl.signal});
+    clearTimeout(tid);
+    if (!res.ok) throw new Error('OSRM '+res.status);
+    const data = await res.json();
+    if (data.code==='Ok' && data.routes?.[0]) {
+      return data.routes[0].geometry.coordinates.map(c=>[c[1],c[0]]);
+    }
+  } catch(_) { clearTimeout(tid); }
+  return pts.map(p=>[p.lat,p.lng]);  // fallback: straight line
+}
+
+function showRtMsg(show) {
+  const el = document.getElementById('rtMsg');
+  if (el) el.style.display = show ? 'block' : 'none';
+}
+
+/* ============================================================
+   DISTANCE + TIME
+   ============================================================ */
+function calcTotalTime(distM) {
+  const walkMin  = Math.round((distM/1000) / 4 * 60);  // 4 km/h
+  const dwellMin = wps.reduce((s,wp)=>s+(parseInt(wp.dwell)||0), 0);
+  const total    = walkMin + dwellMin;
+  const h = Math.floor(total/60), m = total%60;
+  if (h===0) return `${m}分`;
+  if (m===0) return `${h}時間`;
+  return `${h}時間${m}分`;
+}
+
+function updateDistanceAndTime(coords) {
+  const c = coords || buildStraightCoords();
+  let dist = 0;
+  for (let i=0; i<c.length-1; i++) dist += haversine(c[i][0],c[i][1],c[i+1][0],c[i+1][1]);
+
+  const distEl = document.getElementById('distDisp');
+  const timeEl = document.getElementById('timeDisp');
+  if (c.length >= 2) {
+    if (distEl) distEl.textContent = `総距離: ${(dist/1000).toFixed(2)} km`;
+    if (timeEl) timeEl.textContent = `所要時間: 約${calcTotalTime(dist)}（歩行4km/h）`;
+  } else {
+    if (distEl) distEl.textContent = '総距離: — km';
+    if (timeEl) timeEl.textContent = '所要時間: —';
+  }
+}
+
+/* ============================================================
+   WAYPOINT LIST (draggable reorder)
+   ============================================================ */
+function redrawList() {
+  const cont  = document.getElementById('wpList');
+  const empty = document.getElementById('wpEmpty');
+  cont.querySelectorAll('.wp-row').forEach(r=>r.remove());
+
+  if (wps.length===0) { if(empty)empty.style.display=''; return; }
+  if (empty) empty.style.display = 'none';
+
+  let cn = 1;
+  wps.forEach(wp => {
+    const t   = WT.find(x=>x.v===wp.type)||WT[0];
+    const sym = wp.type==='course' ? cn++ : (SYM[wp.type]||'●');
+    const lbl = wp.name || `（${t.l}）`;
+
+    const row = document.createElement('div');
+    row.className = 'wp-row';
+    row.draggable  = true;
+    row.innerHTML  = `<div class="wp-dot" style="background:${t.c}">${sym}</div><div class="wp-nm">${escHtml(lbl)}</div><div class="wp-ed">✏</div>`;
+
+    row.addEventListener('click', ()=>flyEdit(wp.id));
+    row.querySelector('.wp-ed').addEventListener('click', e=>{e.stopPropagation();openModal(wp.id);});
+
+    // HTML5 DnD reorder
+    row.addEventListener('dragstart', e=>{
+      dragSrcId=wp.id; e.dataTransfer.effectAllowed='move';
+      setTimeout(()=>row.classList.add('dragging'),0);
+    });
+    row.addEventListener('dragend', ()=>{
+      row.classList.remove('dragging');
+      cont.querySelectorAll('.wp-row').forEach(r=>r.classList.remove('drag-over'));
+      dragSrcId=null;
+    });
+    row.addEventListener('dragover', e=>{
+      e.preventDefault();
+      cont.querySelectorAll('.wp-row').forEach(r=>r.classList.remove('drag-over'));
+      if (dragSrcId!==wp.id) row.classList.add('drag-over');
+    });
+    row.addEventListener('dragleave', ()=>row.classList.remove('drag-over'));
+    row.addEventListener('drop', e=>{
+      e.preventDefault(); row.classList.remove('drag-over');
+      if (!dragSrcId || dragSrcId===wp.id) return;
+      const si=wps.findIndex(w=>w.id===dragSrcId), ti=wps.findIndex(w=>w.id===wp.id);
+      if (si<0||ti<0) return;
+      const [moved]=wps.splice(si,1);
+      const ni=wps.findIndex(w=>w.id===wp.id);
+      wps.splice(ni,0,moved);
+      clearCache(); redrawStraight(); scheduleRouting(); redrawList(); refreshIcons();
+    });
+
+    cont.appendChild(row);
+  });
+}
+
+function flyEdit(id) {
+  const wp = wps.find(w=>w.id===id);
+  if (!wp) return;
+  leafMap.flyTo([wp.lat,wp.lng], Math.max(leafMap.getZoom(),15), {duration:.5});
+  setTimeout(()=>openModal(id), 350);
+}
+
+/* ============================================================
+   MODAL
+   ============================================================ */
+function openModal(id) {
+  editId = id;
+  const wp = wps.find(w=>w.id===id);
+  if (!wp) return;
+  document.getElementById('mType').value   = wp.type;
+  document.getElementById('mName').value   = wp.name;
+  document.getElementById('mDesc2').value  = wp.desc;
+  document.getElementById('mTel').value    = wp.tel;
+  document.getElementById('mDwell').value  = wp.dwell || 0;
+  document.getElementById('mOver').classList.add('show');
+  setTimeout(()=>document.getElementById('mName').focus(), 50);
+}
+
+function closeModal() {
+  document.getElementById('mOver').classList.remove('show');
+  editId = null;
+}
+
+function saveModal() {
+  if (editId===null) return;
+  const wp = wps.find(w=>w.id===editId);
+  if (!wp) return;
+  wp.type  = document.getElementById('mType').value;
+  wp.name  = document.getElementById('mName').value;
+  wp.desc  = document.getElementById('mDesc2').value;
+  wp.tel   = document.getElementById('mTel').value;
+  wp.dwell = parseInt(document.getElementById('mDwell').value)||0;
+  if (wp.marker) wp.marker.setIcon(wpIcon(wp));
+  updateTooltip(wp);
+  closeModal();
+  refreshIcons();
+  redrawList();
+  updateDistanceAndTime();
+}
+
+function deleteEditing() {
+  if (editId===null) return;
+  if (!confirm('このウェイポイントを削除しますか？')) return;
+  const id = editId;
+  closeModal();
+  deleteWp(id);
+}
+
+/* ============================================================
+   HELP MODAL
+   ============================================================ */
+function openHelp()  { document.getElementById('helpModal').classList.add('show'); }
+function closeHelp() { document.getElementById('helpModal').classList.remove('show'); }
+
+/* ============================================================
+   IMAGE SAVE (html2canvas)
+   ============================================================ */
+async function saveMapAsImage() {
+  if (typeof html2canvas === 'undefined') {
+    showToast('⚠️ 画像保存ライブラリが未読み込みです');
+    return;
+  }
+  showToast('⏳ マップ画像を生成中...');
+  const mapEl = document.getElementById('map');
+  try {
+    const canvas = await html2canvas(mapEl, {
+      useCORS:    true,
+      allowTaint: false,
+      scale:      Math.min(window.devicePixelRatio||1, 2),
+      logging:    false,
+      width:      mapEl.offsetWidth,
+      height:     mapEl.offsetHeight,
+    });
+    const url = canvas.toDataURL('image/png');
+    const a   = document.createElement('a');
+    a.href     = url;
+    a.download = `${(courseInfo.name||'footpath').replace(/[^\w\u3040-\u9FFF]/g,'_')}_map.png`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    showToast('📷 マップを画像で保存しました');
+  } catch(e) {
+    showToast('❌ 画像保存に失敗: ' + e.message);
+  }
+}
+
+/* ============================================================
+   MODE / UNDO / CLEAR
+   ============================================================ */
+function setMode(m) {
+  mode = m;
+  document.getElementById('btnWp').classList.toggle('on',  m==='wp');
+  document.getElementById('btnVia').classList.toggle('on', m==='via');
+  document.getElementById('tbar-st').textContent = m==='wp'
+    ? 'クリックでウェイポイント追加 / ルート線ドラッグで経路調整'
+    : '調整点モード：細い道に沿ってクリック。右クリック/長押しで削除';
+}
+
+function undoLast() {
+  if (!lastOp) return;
+  const op=lastOp; lastOp=null;
+  if (op.kind==='wp') deleteWp(op.id);
+  else {
+    const vp=vps.find(v=>v.id===op.id);
+    if (vp) { if(vp.marker)leafMap.removeLayer(vp.marker); vps=vps.filter(v=>v.id!==op.id); clearCache(); redrawStraight(); scheduleRouting(); }
+  }
+}
+
+function clearAll() {
+  if (wps.length===0 && vps.length===0) return;
+  if (!confirm('すべてのウェイポイントと経路調整点を消去しますか？')) return;
+  _clearAllMarkers();
+  wps=[]; vps=[]; lastOp=null; segCache={};
+  redrawList(); updateDistanceAndTime();
+}
+
+/* ============================================================
+   COURSE SAVE / LOAD
+   ============================================================ */
+function buildCurrentSaveData() {
+  if (!courseInfo.name) return null;
+  return {
+    id:      currentCourseId || Date.now(),
+    name:    courseInfo.name,
+    area:    courseInfo.area,
+    start:   courseInfo.start,
+    goal:    courseInfo.goal,
+    desc:    document.getElementById('iDesc')?.value||'',
+    center:  leafMap ? {lat:leafMap.getCenter().lat, lng:leafMap.getCenter().lng} : null,
+    zoom:    leafMap ? leafMap.getZoom() : 14,
+    wps:     wps.map(w=>({id:w.id,type:w.type,name:w.name,desc:w.desc,tel:w.tel,dwell:w.dwell||0,lat:w.lat,lng:w.lng})),
+    vps:     vps.map(v=>({id:v.id,segAfter:v.segAfter,lat:v.lat,lng:v.lng})),
+    maxWpId: idW,
+    maxVpNum:idV,
+    savedAt: new Date().toISOString(),
+  };
 }
 
 function saveCourse() {
-  if (!courseInfo.name) { alert('コース名を設定してください（一覧画面から設定画面に戻れます）'); return; }
+  if (!courseInfo.name) { alert('コース名が設定されていません。一覧に戻って設定してください。'); return; }
+  const data    = buildCurrentSaveData();
   const courses = getCourses();
-  const data = buildCurrentSaveData();
-  const idx = courses.findIndex(c => c.id === data.id);
-  if (idx >= 0) courses[idx] = data;
-  else courses.push(data);
+  const idx     = courses.findIndex(c=>c.id===data.id);
+  if (idx>=0) courses[idx]=data; else courses.push(data);
   setCourses(courses);
   currentCourseId = data.id;
-  const notice = lsAvail() ? '（ブラウザに永続保存）' : '（メモリに保存。JSONエクスポートで永続化を）';
-  showToast('💾 保存しました ' + notice);
+  showToast(lsAvail() ? '💾 保存しました（ブラウザ）' : '💾 保存しました（メモリ/JSONエクスポート推奨）');
 }
 
 function deleteCourse(id) {
   if (!confirm('このコースを削除しますか？')) return;
-  const courses = getCourses().filter(c => c.id !== id);
-  setCourses(courses);
+  setCourses(getCourses().filter(c=>c.id!==id));
   renderCourseList();
 }
 
@@ -399,42 +1048,37 @@ function loadCourseData(data) {
   document.getElementById('s2').style.display = 'flex';
   document.getElementById('cnDisp').textContent = data.name;
 
-  // Clear existing markers
-  wps.forEach(w => { if(w.marker) leafMap?.removeLayer(w.marker); });
-  vps.forEach(v => { if(v.marker) leafMap?.removeLayer(v.marker); });
-  removeLines();
-  wps = []; vps = [];
+  _clearAllMarkers();
+  wps=[]; vps=[];
 
   setTimeout(() => {
-    if (!leafMap) initMap();
-    else leafMap.invalidateSize();
+    if (!leafMap) initMap(); else leafMap.invalidateSize();
 
     idW = data.maxWpId || 0;
     idV = data.maxVpNum || 0;
 
     // Restore waypoints
     wps = data.wps.map(w => {
-      const wp = {...w, marker:null};
-      wp.marker = buildWpMarker(wp);
+      const wp = {...w, dwell:w.dwell||0, marker:null};
+      buildWpMarker(wp);   // sets wp.marker
       return wp;
     });
 
     // Restore via points
     vps = data.vps.map(v => {
       const vp = {...v, marker:null};
-      vp.marker = buildVpMarker(vp);
+      buildVpMarker(vp);   // sets vp.marker
       return vp;
     });
 
-    // Set map view
     if (data.center && leafMap) {
-      leafMap.setView([data.center.lat, data.center.lng], data.zoom || 14);
+      leafMap.setView([data.center.lat, data.center.lng], data.zoom||14);
     } else if (data.area) {
-      geocode(data.area).then(c => { if(c && leafMap) leafMap.setView([c.lat, c.lng], 15); });
+      geocode(data.area).then(c => { if(c&&leafMap)leafMap.setView([c.lat,c.lng],15); });
     }
 
-    // Restore description
-    if (document.getElementById('iDesc')) document.getElementById('iDesc').value = data.desc || '';
+    const descEl = document.getElementById('iDesc');
+    if (descEl) descEl.value = data.desc||'';
 
     refreshIcons();
     redrawStraight();
@@ -444,28 +1088,26 @@ function loadCourseData(data) {
 }
 
 function renderCourseList() {
-  const container = document.getElementById('courseList');
+  const cont    = document.getElementById('courseList');
   const courses = getCourses();
 
-  // Storage environment notice
-  const noticeId = 'storageNotice';
-  let notice = document.getElementById(noticeId);
+  // Storage notice
+  let notice = document.getElementById('storageNotice');
   if (!notice) {
     notice = document.createElement('div');
-    notice.id = noticeId;
-    notice.style.cssText = 'font-size:10px;padding:6px 0 10px;line-height:1.6;';
-    container.parentNode.insertBefore(notice, container);
+    notice.id = 'storageNotice';
+    notice.style.cssText = 'font-size:10px;padding:4px 0 10px;line-height:1.6';
+    cont.parentNode.insertBefore(notice, cont);
   }
   notice.innerHTML = lsAvail()
-    ? '<span style="color:#2E7D32">✅ ブラウザに保存されます（GitHub Pages）</span>'
-    : '<span style="color:#E65100">⚠️ プレビュー環境：ページを閉じるとコースが消えます。<br>JSONエクスポートで保存してください。</span>';
+    ? '<span style="color:#2E7D32">✅ ブラウザに保存されます</span>'
+    : '<span style="color:#E65100">⚠️ プレビュー環境：ページを閉じると消えます。JSONエクスポートで保存してください。</span>';
 
-  if (courses.length === 0) {
-    container.innerHTML = '<div class="no-courses">保存されたコースはありません</div>';
+  if (courses.length===0) {
+    cont.innerHTML = '<div class="no-courses">保存されたコースはありません</div>';
     return;
   }
-
-  container.innerHTML = '';
+  cont.innerHTML = '';
   courses.forEach(c => {
     const d  = new Date(c.savedAt);
     const ds = `${d.getMonth()+1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`;
@@ -474,47 +1116,38 @@ function renderCourseList() {
     row.innerHTML = `
       <div style="flex:1;min-width:0;cursor:pointer">
         <div class="course-name">${escHtml(c.name)}</div>
-        <div class="course-date">${escHtml(c.area)} ／ ${ds}</div>
+        <div class="course-date">${escHtml(c.area)} / ${ds}</div>
       </div>
       <div class="course-btns">
         <button class="c-btn">編集</button>
-        <button class="c-btn" style="font-size:10px" title="JSONでダウンロード">📥</button>
+        <button class="c-btn" title="JSONでダウンロード">📥</button>
         <button class="c-btn c-btn-rd">削除</button>
       </div>`;
-    const [editBtn, exportBtn, delBtn] = row.querySelectorAll('.c-btn');
-    row.querySelector('div[style]').addEventListener('click', () => loadCourseData(c));
-    editBtn.addEventListener('click', e => { e.stopPropagation(); loadCourseData(c); });
-    exportBtn.addEventListener('click', e => { e.stopPropagation(); exportCourseData(c); });
-    delBtn.addEventListener('click', e => { e.stopPropagation(); deleteCourse(c.id); });
-    container.appendChild(row);
+    const [editBtn,expBtn,delBtn] = row.querySelectorAll('.c-btn');
+    row.querySelector('div[style]').addEventListener('click', ()=>loadCourseData(c));
+    editBtn.addEventListener('click', e=>{e.stopPropagation();loadCourseData(c);});
+    expBtn.addEventListener('click',  e=>{e.stopPropagation();exportCourseData(c);});
+    delBtn.addEventListener('click',  e=>{e.stopPropagation();deleteCourse(c.id);});
+    cont.appendChild(row);
   });
 }
 
-function escHtml(s) {
-  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-
-// ---- JSON EXPORT / IMPORT ----
 function exportCourse() {
-  // Export current in-progress course
   const data = buildCurrentSaveData();
   if (!data) { alert('エクスポートするコースがありません'); return; }
   downloadJson(data, data.name);
 }
 
-function exportCourseData(data) {
-  downloadJson(data, data.name);
-}
+function exportCourseData(data) { downloadJson(data, data.name); }
 
 function downloadJson(data, name) {
-  const json = JSON.stringify(data, null, 2);
-  const blob = new Blob([json], {type:'application/json'});
+  const blob = new Blob([JSON.stringify(data,null,2)], {type:'application/json'});
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement('a');
   a.href = url;
-  a.download = 'footpath_' + (name||'course').replace(/[^a-zA-Z0-9぀-鿿]/g,'_') + '.json';
-  document.body.appendChild(a); a.click();
-  document.body.removeChild(a); URL.revokeObjectURL(url);
+  a.download = 'footpath_'+(name||'course').replace(/[^\w\u3040-\u9FFF]/g,'_')+'.json';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
   showToast('📥 JSONをダウンロードしました');
 }
 
@@ -533,29 +1166,19 @@ function importCourseFromFile(input) {
       setCourses(courses);
       renderCourseList();
       showToast('📂 コースを読み込みました: ' + data.name);
-    } catch(err) { alert('ファイルの読み込みに失敗しました: ' + err.message); }
+    } catch(err) { alert('ファイルの読み込みに失敗しました: '+err.message); }
   };
   reader.readAsText(file);
   input.value = '';
 }
 
-function buildCurrentSaveData() {
-  if (!courseInfo.name) return null;
-  return {
-    id:        currentCourseId || Date.now(),
-    name:      courseInfo.name,
-    area:      courseInfo.area,
-    start:     courseInfo.start,
-    goal:      courseInfo.goal,
-    desc:      document.getElementById('iDesc')?.value||'',
-    center:    leafMap ? {lat:leafMap.getCenter().lat, lng:leafMap.getCenter().lng} : null,
-    zoom:      leafMap ? leafMap.getZoom() : 14,
-    wps:       wps.map(w=>({id:w.id,type:w.type,name:w.name,desc:w.desc,tel:w.tel,lat:w.lat,lng:w.lng})),
-    vps:       vps.map(v=>({id:v.id,segAfter:v.segAfter,lat:v.lat,lng:v.lng})),
-    maxWpId:   idW,
-    maxVpNum:  idV,
-    savedAt:   new Date().toISOString(),
-  };
+/* ============================================================
+   HELPERS
+   ============================================================ */
+function isMobile() { return window.innerWidth <= 700; }
+
+function escHtml(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 function showToast(msg) {
@@ -568,670 +1191,7 @@ function showToast(msg) {
     boxShadow:'0 2px 12px rgba(0,0,0,.3)', transition:'opacity .5s'
   });
   document.body.appendChild(t);
-  setTimeout(() => { t.style.opacity='0'; setTimeout(()=>t.remove(), 500); }, 1800);
-}
-
-/* ============================================================
-   SCREEN 1
-   ============================================================ */
-window.addEventListener('DOMContentLoaded', () => {
-  renderCourseList();
-  const k = lsAvail() ? (localStorage.getItem('fp_key')||'') : '';
-  if (k) document.getElementById('iKey').value = k;
-
-  // Build modal select once
-  const sel = document.getElementById('mType');
-  WT.forEach(t => {
-    const o = document.createElement('option');
-    o.value = t.v; o.textContent = t.l;
-    sel.appendChild(o);
-  });
-});
-
-async function newCourse() {
-  const name = document.getElementById('s1Name').value.trim();
-  const area = document.getElementById('s1Area').value.trim();
-  if (!name || !area) { alert('コース名とエリアを入力してください。'); return; }
-
-  courseInfo = {
-    name, area,
-    start: document.getElementById('s1Start').value.trim(),
-    goal:  document.getElementById('s1Goal').value.trim(),
-  };
-  currentCourseId = null;
-
-  const btn = document.getElementById('s1Btn');
-  btn.disabled = true; btn.textContent = '⏳ マップを読み込み中...';
-
-  document.getElementById('s1').style.display = 'none';
-  document.getElementById('s2').style.display = 'flex';
-  document.getElementById('cnDisp').textContent = name;
-
-  // Clear state from any previous session
-  wps.forEach(w => { if(w.marker) leafMap?.removeLayer(w.marker); });
-  vps.forEach(v => { if(v.marker) leafMap?.removeLayer(v.marker); });
-  removeLines();
-  wps = []; vps = []; idW = 0; idV = 0; lastOp = null; segCache = {};
-  if (document.getElementById('iDesc')) document.getElementById('iDesc').value = '';
-  redrawList();
-
-  setTimeout(async () => {
-    if (!leafMap) initMap(); else leafMap.invalidateSize();
-    const c = await geocode(area);
-    if (c && leafMap) leafMap.setView([c.lat, c.lng], 15);
-    btn.disabled = false; btn.textContent = 'コース設定画面へ →';
-  }, 60);
-}
-
-function backToS1() {
-  if (!confirm('一覧画面に戻りますか？（未保存の変更は失われます）')) return;
-  document.getElementById('s2').style.display = 'none';
-  document.getElementById('s1').style.display = 'flex';
-  renderCourseList();
-  // Clear input fields
-  ['s1Name','s1Start','s1Goal'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
-}
-
-/* ============================================================
-   GEOCODING
-   ============================================================ */
-async function geocode(address) {
-  try {
-    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1&accept-language=ja`;
-    const res  = await fetch(url);
-    const data = await res.json();
-    if (data && data.length > 0) return {lat:parseFloat(data[0].lat), lng:parseFloat(data[0].lon)};
-  } catch(_) {}
-  return null;
-}
-
-/* ============================================================
-   MAP INIT
-   ============================================================ */
-function initMap() {
-  leafMap = L.map('map', {center:[35.165,134.542], zoom:14});
-
-  const tiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution:'© OpenStreetMap contributors', maxZoom:19
-  }).addTo(leafMap);
-
-  tiles.on('tileload', () => {
-    const el = document.getElementById('mapMsg');
-    if (el) el.style.display = 'none';
-  });
-
-  leafMap.on('click', onMapClick);
-}
-
-function onMapClick(e) {
-  if (lineDragging) return;
-  if (mode === 'wp')  addWp(e.latlng.lat, e.latlng.lng);
-  if (mode === 'via') addVp(e.latlng.lat, e.latlng.lng);
-}
-
-/* ============================================================
-   WAYPOINTS
-   ============================================================ */
-function addWp(lat, lng) {
-  idW++;
-  const wp = {id:idW, type:'course', name:'', desc:'', tel:'', lat, lng, marker:null};
-  wps.push(wp);
-  wp.marker = buildWpMarker(wp);
-  lastOp = {kind:'wp', id:idW};
-  redrawStraight();
-  scheduleRouting();
-  redrawList();
-  refreshIcons();
-}
-
-function buildWpMarker(wp) {
-  const sz  = isMobile() ? [36,36] : [30,30];
-  const anc = isMobile() ? [18,18] : [15,15];
-
-  const m = L.marker([wp.lat, wp.lng], {
-    draggable:true, icon:wpIcon(wp, sz, anc), zIndexOffset:1000
-  }).addTo(leafMap);
-
-  m.on('drag', () => { wp.lat=m.getLatLng().lat; wp.lng=m.getLatLng().lng; redrawStraight(); });
-  m.on('dragend', () => { wp.lat=m.getLatLng().lat; wp.lng=m.getLatLng().lng; clearCache(); scheduleRouting(); });
-  m.on('click', e => { L.DomEvent.stopPropagation(e); openModal(wp.id); });
-
-  if (wp.name && wp.name.trim()) {
-    m.bindTooltip(wp.name, {permanent:true, direction:'top', offset:[0, isMobile()?-20:-18], className:'wp-tt'});
-  }
-  return m;
-}
-
-function wpIcon(wp, sz, anc) {
-  if (!sz)  sz  = isMobile() ? [36,36] : [30,30];
-  if (!anc) anc = [sz[0]/2, sz[1]/2];
-  const t   = WT.find(x=>x.v===wp.type)||WT[0];
-  const sym = wp.type==='course' ? (courseNum(wp)||'?') : (SYM[wp.type]||'●');
-  return L.divIcon({
-    className:'',
-    html:`<div style="width:${sz[0]}px;height:${sz[1]}px;border-radius:50%;background:${t.c};color:#fff;display:flex;align-items:center;justify-content:center;font-size:${sz[0]===36?14:12}px;font-weight:bold;border:2px solid rgba(255,255,255,.85);box-shadow:0 2px 6px rgba(0,0,0,.45);cursor:pointer">${sym}</div>`,
-    iconSize:sz, iconAnchor:anc
-  });
-}
-
-function courseNum(wp) {
-  const list=wps.filter(w=>w.type==='course');
-  const i=list.findIndex(w=>w.id===wp.id);
-  return i>=0?i+1:null;
-}
-
-function refreshIcons() {
-  wps.forEach(wp => { if(wp.marker) wp.marker.setIcon(wpIcon(wp)); });
-}
-
-function updateTooltip(wp) {
-  if (!wp.marker) return;
-  wp.marker.unbindTooltip();
-  if (wp.name && wp.name.trim()) {
-    wp.marker.bindTooltip(wp.name, {permanent:true, direction:'top', offset:[0, isMobile()?-20:-18], className:'wp-tt'});
-  }
-}
-
-function deleteWp(id) {
-  vps.filter(v=>v.segAfter===id).forEach(v=>{ if(v.marker) leafMap.removeLayer(v.marker); });
-  vps = vps.filter(v=>v.segAfter!==id);
-  const wp = wps.find(w=>w.id===id);
-  if (wp && wp.marker) leafMap.removeLayer(wp.marker);
-  wps = wps.filter(w=>w.id!==id);
-  clearCache(); redrawStraight(); scheduleRouting(); refreshIcons(); redrawList();
-}
-
-/* ============================================================
-   VIA POINTS
-   ============================================================ */
-function addVp(lat, lng) {
-  if (wps.length < 2) { alert('ウェイポイントを2点以上追加してから経路調整点を追加してください。'); return; }
-  idV++;
-  const vp = {id:'v'+idV, segAfter:nearestSegWpId(lat,lng), lat, lng, marker:null};
-  vps.push(vp);
-  vp.marker = buildVpMarker(vp);
-  lastOp = {kind:'vp', id:vp.id};
-  clearCache(); redrawStraight(); scheduleRouting();
-}
-
-function buildVpMarker(vp) {
-  const sz = isMobile() ? 18 : 13;
-  const m = L.marker([vp.lat, vp.lng], {
-    draggable:true,
-    icon:L.divIcon({
-      className:'',
-      html:`<div title="ドラッグで移動 / 右クリックで削除" style="width:${sz}px;height:${sz}px;border-radius:50%;background:#444;border:2px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.55);cursor:grab"></div>`,
-      iconSize:[sz,sz], iconAnchor:[sz/2,sz/2]
-    }),
-    zIndexOffset:500
-  }).addTo(leafMap);
-
-  m.on('drag', ()=>{ vp.lat=m.getLatLng().lat; vp.lng=m.getLatLng().lng; redrawStraight(); });
-  m.on('dragend', ()=>{ vp.lat=m.getLatLng().lat; vp.lng=m.getLatLng().lng; clearCache(); scheduleRouting(); });
-  m.on('contextmenu', ()=>{ leafMap.removeLayer(m); vps=vps.filter(v=>v.id!==vp.id); clearCache(); redrawStraight(); scheduleRouting(); });
-  return m;
-}
-
-/* ============================================================
-   LINE DRAG
-   ============================================================ */
-function onHitDown(e) {
-  L.DomEvent.stopPropagation(e);
-  L.DomEvent.preventDefault(e);
-  if (wps.length < 2) return;
-
-  lineDragging = true;
-  leafMap.dragging.disable();
-
-  idV++;
-  const vp = {id:'v'+idV, segAfter:nearestSegWpId(e.latlng.lat,e.latlng.lng), lat:e.latlng.lat, lng:e.latlng.lng, marker:null};
-  vps.push(vp);
-  lastOp = {kind:'vp', id:vp.id};
-
-  const sz = isMobile() ? 18 : 13;
-  const tmp = L.marker([vp.lat,vp.lng],{
-    icon:L.divIcon({className:'',html:`<div style="width:${sz}px;height:${sz}px;border-radius:50%;background:#C4703A;border:2px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.55)"></div>`,iconSize:[sz,sz],iconAnchor:[sz/2,sz/2]}),
-    interactive:false, zIndexOffset:2000
-  }).addTo(leafMap);
-  vp.marker = tmp;
-  redrawStraight();
-
-  function onMove(ev) { vp.lat=ev.latlng.lat; vp.lng=ev.latlng.lng; tmp.setLatLng([vp.lat,vp.lng]); redrawStraight(); }
-  function onUp() {
-    leafMap.off('mousemove',onMove); leafMap.off('mouseup',onUp);
-    leafMap.removeLayer(tmp);
-    vp.marker = buildVpMarker(vp);
-    lineDragging = false;
-    leafMap.dragging.enable();
-    clearCache(); scheduleRouting();
-  }
-  leafMap.on('mousemove',onMove);
-  leafMap.on('mouseup',onUp);
-}
-
-window.addEventListener('mouseup', () => {
-  if (lineDragging && leafMap) { lineDragging=false; leafMap.dragging.enable(); }
-});
-
-/* ============================================================
-   GEOMETRY
-   ============================================================ */
-function nearestSegWpId(lat, lng) {
-  if (wps.length < 2) return wps.length>0?wps[0].id:null;
-  let bestId=wps[0].id, minD=Infinity;
-  for (let i=0; i<wps.length-1; i++) {
-    const d=ptSegDist([lat,lng],[wps[i].lat,wps[i].lng],[wps[i+1].lat,wps[i+1].lng]);
-    if (d<minD) { minD=d; bestId=wps[i].id; }
-  }
-  return bestId;
-}
-
-function ptSegDist(p,a,b) {
-  const dx=b[0]-a[0],dy=b[1]-a[1];
-  if(Math.abs(dx)<1e-12&&Math.abs(dy)<1e-12) return Math.hypot(p[0]-a[0],p[1]-a[1]);
-  const t=Math.max(0,Math.min(1,((p[0]-a[0])*dx+(p[1]-a[1])*dy)/(dx*dx+dy*dy)));
-  return Math.hypot(p[0]-(a[0]+t*dx),p[1]-(a[1]+t*dy));
-}
-
-function segVpsOf(wpId, wpA, wpB) {
-  const dx=wpB.lat-wpA.lat, dy=wpB.lng-wpA.lng, len2=dx*dx+dy*dy;
-  return vps.filter(v=>v.segAfter===wpId)
-    .map(v=>{ const t=len2>0?((v.lat-wpA.lat)*dx+(v.lng-wpA.lng)*dy)/len2:0; return{vp:v,t}; })
-    .sort((a,b)=>a.t-b.t).map(x=>x.vp);
-}
-
-function haversine(lat1,lng1,lat2,lng2) {
-  const R=6371000, r=x=>x*Math.PI/180;
-  const a=Math.sin(r(lat2-lat1)/2)**2+Math.cos(r(lat1))*Math.cos(r(lat2))*Math.sin(r(lng2-lng1)/2)**2;
-  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
-}
-
-/* ============================================================
-   POLYLINE
-   ============================================================ */
-function removeLines() {
-  if (routeLine)  { leafMap?.removeLayer(routeLine);  routeLine=null; }
-  if (hitOverlay) { leafMap?.removeLayer(hitOverlay); hitOverlay=null; }
-}
-
-function buildStraightCoords() {
-  const c=[];
-  for(let i=0;i<wps.length;i++){
-    c.push([wps[i].lat,wps[i].lng]);
-    if(i+1<wps.length) segVpsOf(wps[i].id,wps[i],wps[i+1]).forEach(v=>c.push([v.lat,v.lng]));
-  }
-  return c;
-}
-
-function drawLines(coords) {
-  if(!coords||coords.length<2) return;
-  routeLine  = L.polyline(coords, LINE_STYLE).addTo(leafMap);
-  hitOverlay = L.polyline(coords, {weight:22, opacity:0, color:'#000', interactive:true}).addTo(leafMap);
-  hitOverlay.on('mousedown', onHitDown);
-  const el=hitOverlay.getElement();
-  if(el) el.style.cursor='grab';
-}
-
-function redrawStraight() {
-  removeLines();
-  if(wps.length>=2) drawLines(buildStraightCoords());
-  updateDistance();
-}
-
-/* ============================================================
-   OSRM ROUTING  (brings back road-following, includes footpaths)
-   ============================================================ */
-function clearCache() { segCache={}; }
-
-function scheduleRouting() {
-  if(routingTimer) clearTimeout(routingTimer);
-  routingTimer = setTimeout(doRouting, 700);
-}
-
-async function doRouting() {
-  if(wps.length<2) return;
-  showRtMsg(true);
-  try {
-    const coords = await buildRoutedCoords();
-    if(coords && coords.length>=2) {
-      removeLines();
-      drawLines(coords);
-      updateDistance(coords);
-    }
-  } catch(_) { /* keep straight lines */ }
-  finally { showRtMsg(false); }
-}
-
-async function buildRoutedCoords() {
-  const all=[];
-  for(let i=0;i<wps.length-1;i++){
-    const a=wps[i], b=wps[i+1];
-    const sv=segVpsOf(a.id,a,b);
-    // Pass all intermediate via points to OSRM — forces routing through them
-    const pts=[{lat:a.lat,lng:a.lng}, ...sv.map(v=>({lat:v.lat,lng:v.lng})), {lat:b.lat,lng:b.lng}];
-    const coordStr=pts.map(p=>`${p.lng.toFixed(6)},${p.lat.toFixed(6)}`).join(';');
-    const seg=await getCachedRoute(coordStr, pts);
-    if(all.length===0) seg.forEach(c=>all.push(c));
-    else seg.slice(1).forEach(c=>all.push(c));
-  }
-  return all;
-}
-
-async function getCachedRoute(key, pts) {
-  if(segCache[key]) return segCache[key];
-  const coords=await fetchOSRM(key, pts);
-  segCache[key]=coords;
-  return coords;
-}
-
-async function fetchOSRM(coordStr, pts) {
-  // OSRM foot profile — includes footways, paths, tracks, residential roads
-  const url=`https://router.project-osrm.org/route/v1/foot/${coordStr}?overview=full&geometries=geojson`;
-  const controller=new AbortController();
-  const tid=setTimeout(()=>controller.abort(), 8000);
-  try {
-    const res=await fetch(url, {signal:controller.signal});
-    clearTimeout(tid);
-    if(!res.ok) throw new Error('OSRM '+res.status);
-    const data=await res.json();
-    if(data.code==='Ok' && data.routes?.[0]) {
-      return data.routes[0].geometry.coordinates.map(c=>[c[1],c[0]]);
-    }
-  } catch(_) { clearTimeout(tid); }
-  // Fallback: straight lines through all points
-  return pts.map(p=>[p.lat,p.lng]);
-}
-
-function showRtMsg(show) {
-  const el=document.getElementById('rtMsg');
-  if(el) el.style.display=show?'block':'none';
-}
-
-/* ============================================================
-   DISTANCE
-   ============================================================ */
-function updateDistance(coords) {
-  const c = coords || buildStraightCoords();
-  let total=0;
-  for(let i=0;i<c.length-1;i++) total+=haversine(c[i][0],c[i][1],c[i+1][0],c[i+1][1]);
-  const el=document.getElementById('distDisp');
-  if(el) el.textContent = c.length>=2 ? `総距離: ${(total/1000).toFixed(2)} km` : '総距離: — km';
-}
-
-/* ============================================================
-   WAYPOINT LIST  (drag-to-reorder)
-   ============================================================ */
-function redrawList() {
-  const cont=document.getElementById('wpList');
-  const empty=document.getElementById('wpEmpty');
-  cont.querySelectorAll('.wp-row').forEach(r=>r.remove());
-
-  if(wps.length===0){ if(empty)empty.style.display=''; return; }
-  if(empty)empty.style.display='none';
-
-  let cn=1;
-  wps.forEach(wp=>{
-    const t=WT.find(x=>x.v===wp.type)||WT[0];
-    const sym=wp.type==='course'?cn++:(SYM[wp.type]||'●');
-    const lbl=wp.name||`（${t.l}）`;
-
-    const row=document.createElement('div');
-    row.className='wp-row'; row.draggable=true; row.dataset.id=wp.id;
-    row.innerHTML=`<div class="wp-dot" style="background:${t.c}">${sym}</div><div class="wp-nm">${lbl}</div><div class="wp-ed">✏</div>`;
-
-    row.addEventListener('click',()=>flyEdit(wp.id));
-    row.querySelector('.wp-ed').addEventListener('click',e=>{e.stopPropagation();openModal(wp.id);});
-
-    // HTML5 DnD reorder
-    row.addEventListener('dragstart',e=>{
-      dragSrcId=wp.id; e.dataTransfer.effectAllowed='move';
-      setTimeout(()=>row.classList.add('dragging'),0);
-    });
-    row.addEventListener('dragend',()=>{
-      row.classList.remove('dragging');
-      cont.querySelectorAll('.wp-row').forEach(r=>r.classList.remove('drag-over'));
-      dragSrcId=null;
-    });
-    row.addEventListener('dragover',e=>{
-      e.preventDefault();
-      cont.querySelectorAll('.wp-row').forEach(r=>r.classList.remove('drag-over'));
-      if(dragSrcId!==wp.id) row.classList.add('drag-over');
-    });
-    row.addEventListener('dragleave',()=>row.classList.remove('drag-over'));
-    row.addEventListener('drop',e=>{
-      e.preventDefault(); row.classList.remove('drag-over');
-      if(!dragSrcId||dragSrcId===wp.id) return;
-      const si=wps.findIndex(w=>w.id===dragSrcId), ti=wps.findIndex(w=>w.id===wp.id);
-      if(si<0||ti<0) return;
-      const [moved]=wps.splice(si,1);
-      const ni=wps.findIndex(w=>w.id===wp.id);
-      wps.splice(ni,0,moved);
-      clearCache(); redrawStraight(); scheduleRouting(); redrawList(); refreshIcons();
-    });
-
-    cont.appendChild(row);
-  });
-}
-
-function flyEdit(id) {
-  const wp=wps.find(w=>w.id===id);
-  if(!wp) return;
-  leafMap.flyTo([wp.lat,wp.lng],Math.max(leafMap.getZoom(),15),{duration:.5});
-  setTimeout(()=>openModal(id),350);
-}
-
-/* ============================================================
-   MODAL
-   ============================================================ */
-function openModal(id) {
-  editId=id;
-  const wp=wps.find(w=>w.id===id);
-  if(!wp) return;
-  document.getElementById('mType').value  = wp.type;
-  document.getElementById('mName').value  = wp.name;
-  document.getElementById('mDesc2').value = wp.desc;
-  document.getElementById('mTel').value   = wp.tel;
-  document.getElementById('mOver').classList.add('show');
-  setTimeout(()=>document.getElementById('mName').focus(),50);
-}
-function closeModal() { document.getElementById('mOver').classList.remove('show'); editId=null; }
-function saveModal() {
-  if(editId===null) return;
-  const wp=wps.find(w=>w.id===editId);
-  if(!wp) return;
-  wp.type=document.getElementById('mType').value;
-  wp.name=document.getElementById('mName').value;
-  wp.desc=document.getElementById('mDesc2').value;
-  wp.tel =document.getElementById('mTel').value;
-  if(wp.marker) wp.marker.setIcon(wpIcon(wp));
-  updateTooltip(wp);
-  closeModal(); refreshIcons(); redrawList();
-}
-function deleteEditing() {
-  if(editId===null) return;
-  if(!confirm('このウェイポイントを削除しますか？')) return;
-  const id=editId; closeModal(); deleteWp(id);
-}
-
-/* ============================================================
-   MODE / UNDO / CLEAR
-   ============================================================ */
-function setMode(m) {
-  mode=m;
-  document.getElementById('btnWp').classList.toggle('on',m==='wp');
-  document.getElementById('btnVia').classList.toggle('on',m==='via');
-  document.getElementById('tbar-st').textContent = m==='wp'
-    ? 'クリックしてウェイポイントを追加 / ルート線をドラッグして経路を変更'
-    : 'クリックして経路調整点を追加（農道・細道に沿ってクリックでトレース）/ 右クリックで削除';
-}
-function undoLast() {
-  if(!lastOp) return;
-  const op=lastOp; lastOp=null;
-  if(op.kind==='wp') deleteWp(op.id);
-  else {
-    const vp=vps.find(v=>v.id===op.id);
-    if(vp){ if(vp.marker) leafMap.removeLayer(vp.marker); vps=vps.filter(v=>v.id!==op.id); clearCache(); redrawStraight(); scheduleRouting(); }
-  }
-}
-function clearAll() {
-  if(wps.length===0&&vps.length===0) return;
-  if(!confirm('すべてのウェイポイントと経路調整点を消去しますか？')) return;
-  wps.forEach(w=>{ if(w.marker) leafMap.removeLayer(w.marker); });
-  vps.forEach(v=>{ if(v.marker) leafMap.removeLayer(v.marker); });
-  wps=[]; vps=[]; lastOp=null; clearCache(); removeLines(); redrawList(); updateDistance();
-}
-
-/* ============================================================
-   HELPERS
-   ============================================================ */
-function isMobile() { return window.innerWidth <= 700; }
-function saveKey() { if(lsAvail()) try { localStorage.setItem('fp_key', document.getElementById('iKey').value); } catch(_){} }
-
-/* ============================================================
-   PROMPT GENERATION
-   ============================================================ */
-function openGen() {
-  document.getElementById('resPanel').classList.add('show');
-  document.getElementById('resContent').innerHTML='<div style="text-align:center;padding:30px;color:#888;font-size:12px">⏳ 生成中...</div>';
-  doGenerate();
-}
-function closeRes() { document.getElementById('resPanel').classList.remove('show'); }
-
-async function doGenerate() {
-  const apiKey = (document.getElementById('iKey')?.value||'').trim();
-  const aiKey  = document.getElementById('aiSel').value;
-  const ai     = AI_INFO[aiKey]||AI_INFO.other;
-
-  // Warn if no API key (required on GitHub Pages)
-  if (!apiKey) {
-    document.getElementById('resContent').innerHTML=`
-      <div style="background:#FFF3E0;border:1px solid #FF8F00;border-radius:8px;padding:14px;font-size:12px;line-height:1.7">
-        <strong>⚠️ API Keyが必要です</strong><br><br>
-        サイドバーの「Claude API Key」欄に、ご自身のAPIキーを入力してください。<br><br>
-        APIキーはAnthropic（<a href="https://console.anthropic.com" target="_blank" style="color:#1565C0">console.anthropic.com</a>）で取得できます（無料クレジットあり）。<br><br>
-        <small style="color:#666">Claudeのアーティファクト（claude.ai）内で使う場合はAPIキーは不要です。</small>
-      </div>`;
-    return;
-  }
-
-  try {
-    const headers = {
-      'Content-Type':     'application/json',
-      'anthropic-version':'2023-06-01',
-      'anthropic-dangerous-direct-browser-access':'true',
-      'x-api-key':        apiKey,
-    };
-
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method:'POST', headers,
-      body:JSON.stringify({
-        model:'claude-sonnet-4-20250514',
-        max_tokens:4096,
-        messages:[{role:'user', content:buildApiPrompt(aiKey, ai)}]
-      })
-    });
-
-    if (!res.ok) {
-      const err=await res.json().catch(()=>({error:{message:`HTTP ${res.status}`}}));
-      throw new Error(err.error?.message||`HTTP ${res.status}`);
-    }
-
-    const data    = await res.json();
-    const text    = data.content.filter(c=>c.type==='text').map(c=>c.text).join('');
-    const cleaned = text.replace(/```json\s*/g,'').replace(/```\s*/g,'').trim();
-    const match   = cleaned.match(/\{[\s\S]*\}/);
-    if(!match) throw new Error('JSONの抽出に失敗しました。再度お試しください。');
-    _result = JSON.parse(match[0]);
-    renderResult(_result, aiKey, ai);
-
-  } catch(e) {
-    let msg = e.message || '不明なエラー';
-    if (msg.includes('Load failed')||msg.includes('Failed to fetch')||msg.includes('NetworkError')||msg.includes('CORS')) {
-      msg='ネットワークエラー: APIへの接続に失敗しました。インターネット接続とAPIキーを確認してください。';
-    }
-    document.getElementById('resContent').innerHTML=
-      `<div style="color:#B71C1C;font-size:12px;padding:12px;background:#FFEBEE;border-radius:6px;white-space:pre-wrap">❌ ${msg}</div>`;
-  }
-}
-
-function renderResult(r, aiKey, ai) {
-  let html='';
-
-  if(r.prompt){
-    const safe=r.prompt.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-    html+=`<div class="res-blk">
-      <div class="res-top"><div class="res-lbl">🎨 ${ai.n} プロンプト</div><button class="cp-btn" onclick="cpKey('prompt')">📋 コピー</button></div>
-      <div class="res-hint">${ai.h}</div>
-      <div class="res-txt">${safe}</div>
-    </div>`;
-  }
-  if(r.negative&&aiKey==='sd'){
-    const safe=r.negative.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-    html+=`<div class="res-blk">
-      <div class="res-top"><div class="res-lbl">⚙ ネガティブプロンプト</div><button class="cp-btn" onclick="cpKey('negative')">📋 コピー</button></div>
-      <div class="res-hint">Negative Promptに貼り付け</div>
-      <div class="res-txt">${safe}</div>
-    </div>`;
-  }
-  if(r.map_text){
-    const safe=r.map_text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-    html+=`<div class="res-blk">
-      <div class="res-top"><div class="res-lbl">📄 マップヘッダー文章（日本語）</div><button class="cp-btn" onclick="cpKey('map_text')">📋 コピー</button></div>
-      <div class="res-hint">地図のヘッダーに掲載するテキスト</div>
-      <div class="res-txt" style="font-family:inherit;font-size:12px;line-height:1.8">${safe}</div>
-    </div>`;
-  }
-  if(Array.isArray(r.tips)&&r.tips.length){
-    html+=`<div class="res-blk">
-      <div class="res-lbl" style="margin-bottom:6px">💡 制作アドバイス</div>
-      <ul style="font-size:10px;line-height:1.9;padding-left:14px">${r.tips.map(t=>`<li>${t}</li>`).join('')}</ul>
-    </div>`;
-  }
-  document.getElementById('resContent').innerHTML=html||'<div style="color:#999;font-size:12px">結果が空でした。再度お試しください。</div>';
-}
-
-function cpKey(k) {
-  if(!_result||!_result[k]) return;
-  navigator.clipboard.writeText(_result[k]).catch(()=>{});
-  showToast('📋 コピーしました');
-}
-
-function buildApiPrompt(aiKey, ai) {
-  const cWps=wps.filter(w=>w.type==='course');
-  const oWps=wps.filter(w=>w.type!=='course');
-  const ptLines=cWps.map((w,i)=>`  ${i+1}. ${w.name||'（名称未設定）'}${w.desc?'：'+w.desc:''}`).join('\n');
-  const spLines=oWps.map(w=>{ const t=WT.find(x=>x.v===w.type); return `  [${t?t.l:w.type}] ${w.name}${w.desc?'：'+w.desc:''}${w.tel?'　TEL:'+w.tel:''}`; }).join('\n');
-  const dist=document.getElementById('distDisp')?.textContent||'';
-  const desc=document.getElementById('iDesc')?.value||'';
-  const bbox=wps.length>0?{n:Math.max(...wps.map(w=>w.lat)).toFixed(5),s:Math.min(...wps.map(w=>w.lat)).toFixed(5),e:Math.max(...wps.map(w=>w.lng)).toFixed(5),w:Math.min(...wps.map(w=>w.lng)).toFixed(5)}:null;
-
-  return `あなたはフットパス観光マップのAIイラスト生成プロンプト作成の専門家です。
-以下のコース情報をもとに、【${ai.n}】に特化したプロンプトを作成してください。
-
-【${ai.n}向けのガイドライン】
-${ai.guide}
-
-【参考スタイル】
-日本の観光パンフレット・フットパスマップの手描き水彩イラスト風。空からの俯瞰図。
-山・丘陵は緑の水彩で立体的に表現。住宅地はクリーム〜淡いピンク。川・水路は青。
-コースは赤い破線。番号付き丸アイコンでコースポイントを示す。飲食店・ショップは赤い★マーク。
-鳥・植物など自然の装飾を四隅に。日本語のラベルと説明文。北矢印・スケールバーを含む。
-
-【コース情報】
-コース名: ${courseInfo.name}　エリア: ${courseInfo.area}
-スタート: ${courseInfo.start||'（設定なし）'}　ゴール: ${courseInfo.goal||'（設定なし）'}
-${dist}　見どころ: ${desc||'（なし）'}
-${bbox?`地図範囲: 北${bbox.n}° 南${bbox.s}° 東${bbox.e}° 西${bbox.w}°`:''}
-
-【コースポイント（番号付き丸アイコン）】
-${ptLines||'（なし）'}
-
-【立ち寄りスポット】
-${spLines||'（なし）'}
-
-必ずJSON形式のみで出力（前後に説明文・コードブロック記号不要）:
-{"prompt":"（${ai.n}用の詳細なプロンプト）",${aiKey==='sd'?'"negative":"（SDネガティブプロンプト（英語））",':""}
-"map_text":"（マップヘッダー用日本語説明文2〜3文）","tips":["アドバイス1","アドバイス2","アドバイス3"]}`;
+  setTimeout(()=>{ t.style.opacity='0'; setTimeout(()=>t.remove(),500); }, 1800);
 }
 </script>
 </body>
