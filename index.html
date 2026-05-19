@@ -751,16 +751,31 @@ async function buildRoutedCoords() {
   for (let i=0; i<wps.length-1; i++) {
     const a=wps[i], b=wps[i+1];
     const sv=segVpsOf(a.id, a, b);
-    let seg;
+    let seg = [];
 
-    if (sv.length > 0) {
-      // ── Via points exist → straight lines (user's manual routing takes priority) ──
-      seg = [{lat:a.lat,lng:a.lng}, ...sv.map(v=>({lat:v.lat,lng:v.lng})), {lat:b.lat,lng:b.lng}]
-              .map(p=>[p.lat,p.lng]);
-    } else {
-      // ── No via points → OSRM auto-routing ──
-      const key = `${a.lng.toFixed(6)},${a.lat.toFixed(6)};${b.lng.toFixed(6)},${b.lat.toFixed(6)}`;
+    if (sv.length === 0) {
+      // ── 調整点なし → OSRM自動ルーティング ──
+      const key=`${a.lng.toFixed(6)},${a.lat.toFixed(6)};${b.lng.toFixed(6)},${b.lat.toFixed(6)}`;
       seg = await getCachedRoute(key, [{lat:a.lat,lng:a.lng},{lat:b.lat,lng:b.lng}]);
+
+    } else {
+      // ── 調整点あり ──
+      // WP → 最初の調整点: OSRM（道路追従）
+      const first=sv[0];
+      const k1=`${a.lng.toFixed(6)},${a.lat.toFixed(6)};${first.lng.toFixed(6)},${first.lat.toFixed(6)}`;
+      const s1 = await getCachedRoute(k1, [{lat:a.lat,lng:a.lng},{lat:first.lat,lng:first.lng}]);
+      seg = [...s1];
+
+      // 調整点 → 調整点: 直線（ユーザーが意図した細道を直線でトレース）
+      for (let j=1; j<sv.length; j++) {
+        seg.push([sv[j].lat, sv[j].lng]);
+      }
+
+      // 最後の調整点 → WP: OSRM（道路追従）
+      const last=sv[sv.length-1];
+      const k2=`${last.lng.toFixed(6)},${last.lat.toFixed(6)};${b.lng.toFixed(6)},${b.lat.toFixed(6)}`;
+      const s2 = await getCachedRoute(k2, [{lat:last.lat,lng:last.lng},{lat:b.lat,lng:b.lng}]);
+      seg.push(...s2.slice(1)); // 最後の調整点は既に追加済みなのでスキップ
     }
 
     if (all.length===0) seg.forEach(c=>all.push(c));
