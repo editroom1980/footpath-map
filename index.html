@@ -180,6 +180,7 @@ html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:
         <span style="color:#D4C4A8">|</span>
         <button class="btn" onclick="saveMapAsImage()" title="マップを画像で保存">📷</button>
         <button class="btn" onclick="openHelp()" title="操作ガイド">❓</button>
+        <button class="btn" id="btnSpline" onclick="toggleSpline()" title="スプライン曲線：調整点間をなめらかな曲線にする">〜 スプライン</button>
         <span id="tbar-st">クリックでウェイポイント追加 / ルート線ドラッグで経路調整</span>
       </div>
       <div id="mapWrap">
@@ -205,6 +206,10 @@ html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:
       <label>電話・URL</label><input id="mTel" placeholder="例：090-1234-5678">
       <label>滞在時間（分）</label>
       <input type="number" id="mDwell" min="0" max="480" step="5" value="0" placeholder="0">
+      <label style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:normal;cursor:pointer;margin-bottom:6px">
+        <input type="checkbox" id="mFitRoad" checked style="width:auto;padding:0;margin:0">
+        前後の調整点との接続を道路に自動フィットする（OFFにすると直線）
+      </label>
     </div>
     <div class="m-ftr">
       <button class="btn btn-rd" onclick="deleteEditing()">🗑 削除</button>
@@ -314,6 +319,7 @@ let lastOp      = null;
 let lineDragging= false;
 let dragSrcId   = null;
 let segCache    = {};
+let splineEnabled = false;
 let routingTimer= null;
 let currentCourseId = null;
 let courseInfo  = {name:'', area:'', start:'', goal:''};
@@ -407,7 +413,7 @@ async function geocode(address) {
    MAP INIT
    ============================================================ */
 function initMap() {
-  leafMap = L.map('map', {center:[35.165,134.542], zoom:14});
+  leafMap = L.map('map', {center:[35.165,134.542], zoom:14, scrollWheelZoom:false, touchZoom:false, doubleClickZoom:false});
   const tiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution:'© OpenStreetMap contributors', maxZoom:19
   }).addTo(leafMap);
@@ -426,7 +432,7 @@ function onMapClick(e) {
    ============================================================ */
 function addWp(lat, lng) {
   idW++;
-  const wp = {id:idW, type:'course', name:'', desc:'', tel:'', dwell:0, lat, lng, marker:null};
+  const wp = {id:idW, type:'course', name:'', desc:'', tel:'', dwell:0, fitRoad:true, lat, lng, marker:null};
   wps.push(wp);
   buildWpMarker(wp);          // sets wp.marker internally
   lastOp = {kind:'wp', id:idW};
@@ -749,39 +755,101 @@ async function doRouting() {
 async function buildRoutedCoords() {
   const all = [];
   for (let i=0; i<wps.length-1; i++) {
-    const a=wps[i], b=wps[i+1];
-    const sv=segVpsOf(a.id, a, b);
+    const a   = wps[i], b = wps[i+1];
+    const sv  = segVpsOf(a.id, a, b);
+    const fitA = (a.fitRoad !== false); // このWPからの接続をOSRM道路追従にするか
+    const fitB = (b.fitRoad !== false); // 次WPへの接続をOSRM道路追従にするか
     let seg = [];
 
     if (sv.length === 0) {
-      // ── 調整点なし → OSRM自動ルーティング ──
-      const key=`${a.lng.toFixed(6)},${a.lat.toFixed(6)};${b.lng.toFixed(6)},${b.lat.toFixed(6)}`;
-      seg = await getCachedRoute(key, [{lat:a.lat,lng:a.lng},{lat:b.lat,lng:b.lng}]);
+      // ── 調整点なし ──
+      if (fitA && fitB) {
+        // 両端とも道路フィット → OSRM
+        const key=`${a.lng.toFixed(6)},${a.lat.toFixed(6)};${b.lng.toFixed(6)},${b.lat.toFixed(6)}`;
+        seg = await getCachedRoute(key, [{lat:a.lat,lng:a.lng},{lat:b.lat,lng:b.lng}]);
+      } else {
+        // いずれかが直線接続 → 直線
+        seg = [[a.lat,a.lng],[b.lat,b.lng]];
+      }
 
     } else {
       // ── 調整点あり ──
-      // WP → 最初の調整点: OSRM（道路追従）
-      const first=sv[0];
-      const k1=`${a.lng.toFixed(6)},${a.lat.toFixed(6)};${first.lng.toFixed(6)},${first.lat.toFixed(6)}`;
-      const s1 = await getCachedRoute(k1, [{lat:a.lat,lng:a.lng},{lat:first.lat,lng:first.lng}]);
-      seg = [...s1];
+      const first = sv[0];
+      const last  = sv[sv.length-1];
 
-      // 調整点 → 調整点: 直線（ユーザーが意図した細道を直線でトレース）
-      for (let j=1; j<sv.length; j++) {
-        seg.push([sv[j].lat, sv[j].lng]);
+      // A → 最初の調整点: fitAならOSRM、そうでなければ直線
+      if (fitA) {
+        const k1=`${a.lng.toFixed(6)},${a.lat.toFixed(6)};${first.lng.toFixed(6)},${first.lat.toFixed(6)}`;
+        const s1 = await getCachedRoute(k1, [{lat:a.lat,lng:a.lng},{lat:first.lat,lng:first.lng}]);
+        seg = [...s1];
+      } else {
+        seg = [[a.lat,a.lng],[first.lat,first.lng]];
       }
 
-      // 最後の調整点 → WP: OSRM（道路追従）
-      const last=sv[sv.length-1];
-      const k2=`${last.lng.toFixed(6)},${last.lat.toFixed(6)};${b.lng.toFixed(6)},${b.lat.toFixed(6)}`;
-      const s2 = await getCachedRoute(k2, [{lat:last.lat,lng:last.lng},{lat:b.lat,lng:b.lng}]);
-      seg.push(...s2.slice(1)); // 最後の調整点は既に追加済みなのでスキップ
+      // 調整点 → 調整点: スプラインONなら曲線、OFFなら直線
+      if (sv.length > 1) {
+        const viaCoords = sv.map(v=>[v.lat,v.lng]);
+        if (splineEnabled) {
+          const smoothed = catmullRom(viaCoords, 20);
+          seg.push(...smoothed.slice(1)); // 最初の点は既にsegにある
+        } else {
+          for (let j=1; j<sv.length; j++) seg.push([sv[j].lat, sv[j].lng]);
+        }
+      }
+
+      // 最後の調整点 → B: fitBならOSRM、そうでなければ直線
+      if (fitB) {
+        const k2=`${last.lng.toFixed(6)},${last.lat.toFixed(6)};${b.lng.toFixed(6)},${b.lat.toFixed(6)}`;
+        const s2 = await getCachedRoute(k2, [{lat:last.lat,lng:last.lng},{lat:b.lat,lng:b.lng}]);
+        seg.push(...s2.slice(1));
+      } else {
+        seg.push([b.lat,b.lng]);
+      }
     }
 
     if (all.length===0) seg.forEach(c=>all.push(c));
     else seg.slice(1).forEach(c=>all.push(c));
   }
   return all;
+}
+
+/* ============================================================
+   CATMULL-ROM SPLINE
+   調整点間をなめらかな補間曲線で結ぶ
+   pts: [[lat,lng], ...]  segs: 2点間の補間点数
+   ============================================================ */
+function catmullRom(pts, segs) {
+  if (pts.length < 2) return pts;
+  const out = [];
+  const n = pts.length;
+  for (let i=0; i<n-1; i++) {
+    const p0 = pts[Math.max(0, i-1)];
+    const p1 = pts[i];
+    const p2 = pts[i+1];
+    const p3 = pts[Math.min(n-1, i+2)];
+    out.push(p1);
+    for (let k=1; k<segs; k++) {
+      const t=k/segs, t2=t*t, t3=t2*t;
+      out.push([
+        0.5*((2*p1[0])+(-p0[0]+p2[0])*t+(2*p0[0]-5*p1[0]+4*p2[0]-p3[0])*t2+(-p0[0]+3*p1[0]-3*p2[0]+p3[0])*t3),
+        0.5*((2*p1[1])+(-p0[1]+p2[1])*t+(2*p0[1]-5*p1[1]+4*p2[1]-p3[1])*t2+(-p0[1]+3*p1[1]-3*p2[1]+p3[1])*t3)
+      ]);
+    }
+  }
+  out.push(pts[n-1]);
+  return out;
+}
+
+/* toggleSpline: コース全体のスプライン曲線ON/OFF */
+function toggleSpline() {
+  splineEnabled = !splineEnabled;
+  const btn = document.getElementById('btnSpline');
+  if (btn) {
+    btn.classList.toggle('on', splineEnabled);
+    btn.textContent = splineEnabled ? '〜 スプライン ON' : '〜 スプライン';
+    btn.title = splineEnabled ? 'スプライン曲線をオフにする（調整点間が直線に戻る）' : 'スプライン曲線をオンにする（調整点間がなめらかな曲線になる）';
+  }
+  clearCache(); redrawStraight(); scheduleRouting();
 }
 
 async function getCachedRoute(key, pts) {
@@ -915,7 +983,8 @@ function openModal(id) {
   document.getElementById('mName').value   = wp.name;
   document.getElementById('mDesc2').value  = wp.desc;
   document.getElementById('mTel').value    = wp.tel;
-  document.getElementById('mDwell').value  = wp.dwell || 0;
+  document.getElementById('mDwell').value   = wp.dwell || 0;
+  document.getElementById('mFitRoad').checked  = (wp.fitRoad !== false);
   document.getElementById('mOver').classList.add('show');
   setTimeout(()=>document.getElementById('mName').focus(), 50);
 }
@@ -933,7 +1002,8 @@ function saveModal() {
   wp.name  = document.getElementById('mName').value;
   wp.desc  = document.getElementById('mDesc2').value;
   wp.tel   = document.getElementById('mTel').value;
-  wp.dwell = parseInt(document.getElementById('mDwell').value)||0;
+  wp.dwell   = parseInt(document.getElementById('mDwell').value)||0;
+  wp.fitRoad = document.getElementById('mFitRoad').checked;
   if (wp.marker) wp.marker.setIcon(wpIcon(wp));
   updateTooltip(wp);
   closeModal();
@@ -1030,7 +1100,7 @@ function buildCurrentSaveData() {
     desc:    document.getElementById('iDesc')?.value||'',
     center:  leafMap ? {lat:leafMap.getCenter().lat, lng:leafMap.getCenter().lng} : null,
     zoom:    leafMap ? leafMap.getZoom() : 14,
-    wps:     wps.map(w=>({id:w.id,type:w.type,name:w.name,desc:w.desc,tel:w.tel,dwell:w.dwell||0,lat:w.lat,lng:w.lng})),
+    wps:     wps.map(w=>({id:w.id,type:w.type,name:w.name,desc:w.desc,tel:w.tel,dwell:w.dwell||0,fitRoad:w.fitRoad!==false,lat:w.lat,lng:w.lng})),
     vps:     vps.map(v=>({id:v.id,segAfter:v.segAfter,lat:v.lat,lng:v.lng})),
     maxWpId: idW,
     maxVpNum:idV,
@@ -1074,7 +1144,7 @@ function loadCourseData(data) {
 
     // Restore waypoints
     wps = data.wps.map(w => {
-      const wp = {...w, dwell:w.dwell||0, marker:null};
+      const wp = {...w, dwell:w.dwell||0, fitRoad:w.fitRoad!==false, marker:null};
       buildWpMarker(wp);   // sets wp.marker
       return wp;
     });
