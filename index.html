@@ -70,6 +70,7 @@ html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:
 .btn{padding:5px 9px;border:1px solid #C4B89A;border-radius:4px;background:#fff;cursor:pointer;font-size:11px;font-family:inherit;white-space:nowrap;line-height:1.4;min-height:30px}
 .btn:hover{background:#F5EDD8}
 .btn.on{background:#C4703A;color:#fff;border-color:#C4703A}
+.btn:disabled{opacity:.4;cursor:default;pointer-events:none}
 .btn-rd{background:#B71C1C;color:#fff;border-color:#B71C1C}
 /* Modal */
 .m-over{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:3000;align-items:center;justify-content:center}
@@ -100,6 +101,7 @@ html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:
 .ctx-it{padding:10px 14px;font-size:12px;color:#2C1B0E;cursor:pointer;display:flex;align-items:center;gap:8px;user-select:none;-webkit-user-select:none}
 .ctx-it:hover,.ctx-it:active{background:#F5EDD8}
 .ctx-it.ctx-del{color:#B71C1C}
+.ctx-it.ctx-cancel{color:#888;font-size:11px;justify-content:center}
 .ctx-sep{height:1px;background:#EEE8DE;margin:2px 0}
 /* Mobile */
 @media(max-width:700px){
@@ -182,7 +184,8 @@ html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:
         <button class="btn"    id="btnVia" onclick="setMode('via')">↔ 調整点</button>
         <button class="btn"    id="btnToggleVia" onclick="toggleViaVisibility()" title="経路調整点の表示/非表示">● 調整点表示</button>
         <span style="color:#D4C4A8">|</span>
-        <button class="btn" onclick="undoLast()" title="取り消し">↩</button>
+        <button class="btn" id="btnUndo" onclick="undoLast()" title="取り消し (⌘Z)" disabled>↩</button>
+        <button class="btn" id="btnRedo" onclick="redoAction()" title="やり直し (⌘⇧Z)" disabled>↪</button>
         <button class="btn" onclick="clearAll()" title="全消去">🗑</button>
         <span style="color:#D4C4A8">|</span>
         <button class="btn" onclick="saveMapAsImage()" title="マップを画像で保存">📷</button>
@@ -325,12 +328,13 @@ let leafMap     = null;
 let wps         = [];
 let vps         = [];
 let routeLine   = null;
-let hitOverlay  = null;
+let hitOverlays = [];      // per-segment hit overlays — prevents segment misattribution
 let viaVisible  = true;
 let mode        = 'wp';
 let editId      = null;
 let idW = 0, idV = 0;
-let lastOp      = null;
+let undoStack   = [];      // 取り消し履歴 (最大30ステップ)
+let redoStack   = [];      // やり直し履歴
 let lineDragging= false;
 let dragSrcId   = null;
 let segCache    = {};
@@ -372,8 +376,14 @@ window.addEventListener('DOMContentLoaded', () => {
   document.addEventListener('click', e => {
     if (!e.target.closest('#ctxMenu')) hideCtxMenu();
   });
-  // Close menu on Escape key
-  document.addEventListener('keydown', e => { if (e.key === 'Escape') hideCtxMenu(); });
+  // Close menu on Escape key; ⌘Z = undo; ⌘⇧Z = redo
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { hideCtxMenu(); return; }
+    if ((e.metaKey || e.ctrlKey) && e.key === 'z') {
+      e.preventDefault();
+      if (e.shiftKey) redoAction(); else undoLast();
+    }
+  });
   // Build modal type select
   const sel = document.getElementById('mType');
   WT.forEach(t => { const o=document.createElement('option'); o.value=t.v; o.textContent=t.l; sel.appendChild(o); });
@@ -391,7 +401,7 @@ async function newCourse() {
 
   // Reset state
   _clearAllMarkers();
-  wps=[]; vps=[]; idW=0; idV=0; lastOp=null; segCache={};
+  wps=[]; vps=[]; idW=0; idV=0; segCache={};
   if (document.getElementById('iDesc')) document.getElementById('iDesc').value='';
   redrawList();
 
@@ -437,7 +447,7 @@ async function geocode(address) {
    MAP INIT
    ============================================================ */
 function initMap() {
-  leafMap = L.map('map', {center:[35.165,134.542], zoom:14, scrollWheelZoom:false, touchZoom:false, doubleClickZoom:false});
+  leafMap = L.map('map', {center:[35.165,134.542], zoom:14, scrollWheelZoom:true, wheelPxPerZoomLevel:120, touchZoom:true, doubleClickZoom:false});
   const tiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution:'© OpenStreetMap contributors', maxZoom:19
   }).addTo(leafMap);
@@ -457,11 +467,11 @@ function onMapClick(e) {
    WAYPOINTS
    ============================================================ */
 function addWp(lat, lng) {
+  saveSnapshot();
   idW++;
   const wp = {id:idW, type:'course', name:'', desc:'', tel:'', dwell:0, fitBefore:true, fitAfter:true, lat, lng, marker:null};
   wps.push(wp);
-  buildWpMarker(wp);          // sets wp.marker internally
-  lastOp = {kind:'wp', id:idW};
+  buildWpMarker(wp);
   redrawStraight(); scheduleRouting(); redrawList(); refreshIcons();
 }
 
@@ -470,6 +480,7 @@ function buildWpMarker(wp) {
   const anc = [sz[0]/2, sz[1]/2];
   const m = L.marker([wp.lat, wp.lng], {draggable:true, icon:wpIcon(wp,sz,anc), zIndexOffset:1000}).addTo(leafMap);
 
+  m.on('dragstart', () => saveSnapshot());
   m.on('drag', () => { wp.lat=m.getLatLng().lat; wp.lng=m.getLatLng().lng; redrawStraight(); });
   m.on('dragend', () => { wp.lat=m.getLatLng().lat; wp.lng=m.getLatLng().lng; clearCache(); scheduleRouting(); });
   m.on('click', e => { L.DomEvent.stopPropagation(e); openModal(wp.id); });
@@ -514,6 +525,7 @@ function updateTooltip(wp) {
 }
 
 function deleteWp(id) {
+  saveSnapshot();
   vps.filter(v=>v.segAfter===id).forEach(v=>{ if(v.marker)leafMap.removeLayer(v.marker); });
   vps = vps.filter(v=>v.segAfter!==id);
   const wp = wps.find(w=>w.id===id);
@@ -527,11 +539,11 @@ function deleteWp(id) {
    ============================================================ */
 function addVp(lat, lng) {
   if (wps.length < 2) { alert('ウェイポイントを2点以上追加してから経路調整点を追加してください。'); return; }
+  saveSnapshot();
   idV++;
   const vp = {id:'v'+idV, segAfter:nearestSegWpId(lat,lng), fitBefore:true, fitAfter:true, lat, lng, marker:null};
   vps.push(vp);
-  buildVpMarker(vp);    // sets vp.marker internally
-  lastOp = {kind:'vp', id:vp.id};
+  buildVpMarker(vp);
   clearCache(); redrawStraight(); scheduleRouting();
 }
 
@@ -547,6 +559,7 @@ function buildVpMarker(vp) {
     zIndexOffset:500
   }).addTo(leafMap);
 
+  m.on('dragstart', () => saveSnapshot());
   m.on('drag',    () => { vp.lat=m.getLatLng().lat; vp.lng=m.getLatLng().lng; redrawStraight(); });
   m.on('dragend', () => { vp.lat=m.getLatLng().lat; vp.lng=m.getLatLng().lng; clearCache(); scheduleRouting(); });
 
@@ -601,10 +614,10 @@ function buildVpMarker(vp) {
       L.DomEvent.stopPropagation(e);
       if (longPressJustFired) { longPressJustFired = false; return; }
       const oe = e.originalEvent || {};
-      // Only show menu on touch events (not PC mouse click — PC uses right-click)
       const touch = oe.changedTouches && oe.changedTouches[0];
-      if (!touch && !oe.touches) return; // PC left-click: ignore
-      showViaCtxMenu(vp.id, touch ? touch.clientX : 0, touch ? touch.clientY : 0);
+      const x = touch ? touch.clientX : (oe.clientX || 0);
+      const y = touch ? touch.clientY : (oe.clientY || 0);
+      showViaCtxMenu(vp.id, x, y);
     });
   }
 
@@ -639,6 +652,8 @@ function showViaCtxMenu(vpId, x, y) {
     {label: (fa?'☑':'☐') + ' 後の区間を道路に沿う',         fn: () => ctxDoToggleFit('after')},
     null, // separator
     {label: '🗑 この調整点を削除', fn: ctxDoDeleteVp, cls: 'ctx-del'},
+    null,
+    {label: '✕ キャンセル', fn: hideCtxMenu, cls: 'ctx-cancel'},
   ];
 
   items.forEach(item => {
@@ -691,6 +706,7 @@ function ctxDoDeleteVp() {
 }
 
 function deleteVp(id) {
+  saveSnapshot();
   const vp = vps.find(v=>v.id===id);
   if (!vp) return;
   if (vp.marker) leafMap.removeLayer(vp.marker);
@@ -711,7 +727,7 @@ function toggleViaVisibility() {
   // If hiding while in via mode, switch to wp mode
   if (!viaVisible && mode === 'via') setMode('wp');
 
-  // Redraw — drawLines checks viaVisible to decide whether to create hitOverlay
+  // Redraw — drawLines checks viaVisible to decide whether to create hit overlays
   redrawStraight();
   scheduleRouting();
 
@@ -743,18 +759,34 @@ function addWpLongPress(wp) {
 /* ============================================================
    LINE DRAG (drag route line to add via point)
    ============================================================ */
-function onHitDown(e) {
+// onSegmentHitDown: called when a specific segment's hit overlay is dragged
+// segAfterWpId comes directly from the overlay closure — never from nearestSegWpId
+// This eliminates the "route attraction" bug where the wrong segment was modified
+function onSegmentHitDown(e, segAfterWpId) {
   L.DomEvent.stopPropagation(e);
   L.DomEvent.preventDefault(e);
   if (wps.length < 2 || !viaVisible) return;
 
+  // PROXIMITY GUARD: skip if click is within 22px of an existing via point marker.
+  // Prevents accidentally creating a new via point when trying to drag an existing one
+  // (the 22px gap between the 13px marker and 22px hit overlay caused this bug)
+  const clickPt = leafMap.latLngToContainerPoint(e.latlng);
+  const tooClose = vps.some(vp => {
+    if (!vp.marker) return false;
+    const vpPt = leafMap.latLngToContainerPoint(vp.marker.getLatLng());
+    const dx = clickPt.x - vpPt.x, dy = clickPt.y - vpPt.y;
+    return Math.sqrt(dx*dx + dy*dy) < 22;
+  });
+  if (tooClose) return;
+
   lineDragging = true;
   leafMap.dragging.disable();
+  saveSnapshot(); // 調整点追加前のスナップショット
 
   idV++;
-  const vp = {id:'v'+idV, segAfter:nearestSegWpId(e.latlng.lat,e.latlng.lng), fitBefore:true, fitAfter:true, lat:e.latlng.lat, lng:e.latlng.lng, marker:null};
+  // segAfterWpId is explicit from the overlay — this via point belongs to this exact segment
+  const vp = {id:'v'+idV, segAfter:segAfterWpId, fitBefore:true, fitAfter:true, lat:e.latlng.lat, lng:e.latlng.lng, marker:null};
   vps.push(vp);
-  lastOp = {kind:'vp', id:vp.id};
 
   const sz = isMobile() ? 18 : 13;
   const tmp = L.marker([vp.lat, vp.lng], {
@@ -777,7 +809,7 @@ function onHitDown(e) {
     leafMap.off('mousemove', onMove);
     leafMap.off('mouseup',   onUp);
     leafMap.removeLayer(tmp);
-    buildVpMarker(vp);   // replace temp with proper draggable marker (sets vp.marker)
+    buildVpMarker(vp);
     lineDragging = false;
     leafMap.dragging.enable();
     clearCache(); scheduleRouting();
@@ -830,8 +862,9 @@ function haversine(lat1,lng1,lat2,lng2) {
    POLYLINE
    ============================================================ */
 function removeLines() {
-  if (routeLine)   { if(leafMap)leafMap.removeLayer(routeLine);   routeLine=null; }
-  if (hitOverlay)  { if(leafMap)leafMap.removeLayer(hitOverlay);  hitOverlay=null; }
+  if (routeLine) { if(leafMap) leafMap.removeLayer(routeLine); routeLine=null; }
+  hitOverlays.forEach(o => { if(leafMap) leafMap.removeLayer(o); });
+  hitOverlays = [];
 }
 
 function buildStraightCoords() {
@@ -843,24 +876,43 @@ function buildStraightCoords() {
   return c;
 }
 
-function drawLines(coords) {
-  if (!coords || coords.length < 2 || !leafMap) return;
-  // Canvas renderer: ensures the route line is captured correctly by html2canvas
-  // (SVG renderer causes the route line to be missing or mispositioned in screenshots)
-  routeLine = L.polyline(coords, {...LINE_STYLE, renderer: canvasRenderer}).addTo(leafMap);
+// Per-segment straight-line coords for hit overlays
+// Each overlay is associated with exactly one segment (wpId = wps[i].id = segAfter value)
+function buildSegCoordsList() {
+  const list = [];
+  for (let i=0; i<wps.length-1; i++) {
+    const a=wps[i], b=wps[i+1];
+    const coords=[[a.lat,a.lng]];
+    segVpsOf(a.id, a, b).forEach(v=>coords.push([v.lat,v.lng]));
+    coords.push([b.lat,b.lng]);
+    list.push({wpId:a.id, coords});
+  }
+  return list;
+}
 
-  // Hit overlay only when via points are visible (disables line-drag when hidden)
-  if (viaVisible) {
-    hitOverlay = L.polyline(coords, {weight:22, opacity:0, color:'#000', interactive:true}).addTo(leafMap);
-    hitOverlay.on('mousedown', onHitDown);
-    const el = hitOverlay.getElement();
-    if (el) el.style.cursor = 'grab';
+// drawLines(allCoords, segList)
+// allCoords: full visible route; segList: [{wpId, coords}] for per-segment hit overlays
+function drawLines(allCoords, segList) {
+  if (!allCoords || allCoords.length < 2 || !leafMap) return;
+  routeLine = L.polyline(allCoords, {...LINE_STYLE, renderer: canvasRenderer}).addTo(leafMap);
+
+  // Per-segment hit overlays: each knows exactly which segment it belongs to
+  // This is the key fix — wpId is captured in closure, never inferred from geometry
+  if (viaVisible && segList) {
+    segList.forEach(({wpId, coords}) => {
+      if (coords.length < 2) return;
+      const ov = L.polyline(coords, {weight:22, opacity:0, color:'#000', interactive:true}).addTo(leafMap);
+      ov.on('mousedown', e => onSegmentHitDown(e, wpId)); // wpId explicit, no ambiguity
+      const el = ov.getElement();
+      if (el) el.style.cursor = 'grab';
+      hitOverlays.push(ov);
+    });
   }
 }
 
 function redrawStraight() {
   removeLines();
-  if (wps.length >= 2) drawLines(buildStraightCoords());
+  if (wps.length >= 2) drawLines(buildStraightCoords(), buildSegCoordsList());
   updateDistanceAndTime();
 }
 
@@ -880,11 +932,11 @@ async function doRouting() {
   if (wps.length < 2) return;
   showRtMsg(true);
   try {
-    const coords = await buildRoutedCoords();
-    if (coords && coords.length >= 2) {
+    const allCoords = await buildRoutedCoords();
+    if (allCoords && allCoords.length >= 2) {
       removeLines();
-      drawLines(coords);
-      updateDistanceAndTime(coords);
+      drawLines(allCoords, buildSegCoordsList());
+      updateDistanceAndTime(allCoords);
     }
   } catch(_) { /* keep straight lines on error */ }
   finally { showRtMsg(false); }
@@ -925,14 +977,30 @@ async function buildRoutedCoords() {
         seg = [[a.lat,a.lng],[first.lat,first.lng]];
       }
 
-      // 調整点 → 調整点: スプラインONなら曲線、OFFなら直線
+      // 調整点 → 調整点: fitAfter AND fitBefore が両方ONならOSRM、それ以外は直線/スプライン
       if (sv.length > 1) {
-        const viaCoords = sv.map(v=>[v.lat,v.lng]);
-        if (splineEnabled) {
-          const smoothed = catmullRom(viaCoords, 20);
-          seg.push(...smoothed.slice(1));
+        // いずれかのペアでOSRMを使うか確認
+        const hasOsrmPair = sv.some((v,j) =>
+          j < sv.length-1 && (v.fitAfter !== false) && (sv[j+1].fitBefore !== false)
+        );
+
+        if (!hasOsrmPair && splineEnabled) {
+          // 全セクションが直線かつスプラインON → カットマル・ロム曲線
+          seg.push(...catmullRom(sv.map(v=>[v.lat,v.lng]), 20).slice(1));
         } else {
-          for (let j=1; j<sv.length; j++) seg.push([sv[j].lat, sv[j].lng]);
+          // セクションごとに判定
+          for (let j=0; j<sv.length-1; j++) {
+            const vpA=sv[j], vpB=sv[j+1];
+            if ((vpA.fitAfter !== false) && (vpB.fitBefore !== false)) {
+              // 両側がOSRM設定 → 道路追従
+              const kv=`${vpA.lng.toFixed(6)},${vpA.lat.toFixed(6)};${vpB.lng.toFixed(6)},${vpB.lat.toFixed(6)}`;
+              const sv2 = await getCachedRoute(kv, [{lat:vpA.lat,lng:vpA.lng},{lat:vpB.lat,lng:vpB.lng}]);
+              seg.push(...sv2.slice(1));
+            } else {
+              // 直線
+              seg.push([vpB.lat, vpB.lng]);
+            }
+          }
         }
       }
 
@@ -1092,6 +1160,7 @@ function redrawList() {
     row.addEventListener('drop', e=>{
       e.preventDefault(); row.classList.remove('drag-over');
       if (!dragSrcId || dragSrcId===wp.id) return;
+      saveSnapshot();
       const si=wps.findIndex(w=>w.id===dragSrcId), ti=wps.findIndex(w=>w.id===wp.id);
       if (si<0||ti<0) return;
       const [moved]=wps.splice(si,1);
@@ -1227,21 +1296,62 @@ function setMode(m) {
     : '調整点モード：細い道に沿ってクリック。右クリック/長押しで削除';
 }
 
+/* ============================================================
+   UNDO / REDO (スナップショット方式、最大30ステップ)
+   ============================================================ */
+function _makeSnapshot() {
+  return {
+    wps: wps.map(w=>({id:w.id,type:w.type,name:w.name,desc:w.desc,tel:w.tel,dwell:w.dwell||0,fitBefore:w.fitBefore!==false,fitAfter:w.fitAfter!==false,lat:w.lat,lng:w.lng})),
+    vps: vps.map(v=>({id:v.id,segAfter:v.segAfter,fitBefore:v.fitBefore!==false,fitAfter:v.fitAfter!==false,lat:v.lat,lng:v.lng})),
+    idW, idV,
+  };
+}
+
+function saveSnapshot() {
+  undoStack.push(_makeSnapshot());
+  if (undoStack.length > 30) undoStack.shift();
+  redoStack = [];          // 新操作でやり直し履歴をクリア
+  updateUndoRedoBtns();
+}
+
+function restoreSnapshot(snapshot) {
+  wps.forEach(w=>{ if(w.marker)leafMap.removeLayer(w.marker); });
+  vps.forEach(v=>{ if(v.marker)leafMap.removeLayer(v.marker); });
+  removeLines();
+  idW = snapshot.idW;
+  idV = snapshot.idV;
+  wps = snapshot.wps.map(w=>{ const wp={...w,marker:null}; buildWpMarker(wp); return wp; });
+  vps = snapshot.vps.map(v=>{ const vp={...v,marker:null}; buildVpMarker(vp); return vp; });
+  clearCache(); redrawStraight(); scheduleRouting(); redrawList(); refreshIcons();
+}
+
 function undoLast() {
-  if (!lastOp) return;
-  const op=lastOp; lastOp=null;
-  if (op.kind==='wp') deleteWp(op.id);
-  else {
-    const vp=vps.find(v=>v.id===op.id);
-    if (vp) { if(vp.marker)leafMap.removeLayer(vp.marker); vps=vps.filter(v=>v.id!==op.id); clearCache(); redrawStraight(); scheduleRouting(); }
-  }
+  if (undoStack.length === 0) return;
+  redoStack.push(_makeSnapshot());
+  restoreSnapshot(undoStack.pop());
+  updateUndoRedoBtns();
+}
+
+function redoAction() {
+  if (redoStack.length === 0) return;
+  undoStack.push(_makeSnapshot());
+  restoreSnapshot(redoStack.pop());
+  updateUndoRedoBtns();
+}
+
+function updateUndoRedoBtns() {
+  const u = document.getElementById('btnUndo');
+  const r = document.getElementById('btnRedo');
+  if (u) u.disabled = (undoStack.length === 0);
+  if (r) r.disabled = (redoStack.length === 0);
 }
 
 function clearAll() {
   if (wps.length===0 && vps.length===0) return;
   if (!confirm('すべてのウェイポイントと経路調整点を消去しますか？')) return;
+  saveSnapshot();
   _clearAllMarkers();
-  wps=[]; vps=[]; lastOp=null; segCache={};
+  wps=[]; vps=[]; segCache={};
   redrawList(); updateDistanceAndTime();
 }
 
