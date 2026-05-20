@@ -997,10 +997,10 @@ async function doRouting() {
   if (wps.length < 2) return;
   showRtMsg(true);
   try {
-    const allCoords = await buildRoutedCoords();
+    const {allCoords, segCoordsList} = await buildRoutedCoords();
     if (allCoords && allCoords.length >= 2) {
       removeLines();
-      drawLines(allCoords, buildSegCoordsList());
+      drawLines(allCoords, segCoordsList); // ヒットオーバーレイにOSRM座標を使用
       updateDistanceAndTime(allCoords);
     }
   } catch(_) { /* keep straight lines on error */ }
@@ -1009,6 +1009,7 @@ async function doRouting() {
 
 async function buildRoutedCoords() {
   const all = [];
+  const segCoordsList = []; // ヒットオーバーレイ用・OSRMベース座標
   for (let i=0; i<wps.length-1; i++) {
     const a   = wps[i], b = wps[i+1];
     const sv  = segVpsOf(a.id, a, b);
@@ -1079,10 +1080,11 @@ async function buildRoutedCoords() {
       }
     }
 
+    segCoordsList.push({wpId: a.id, coords: seg.slice()});
     if (all.length===0) seg.forEach(c=>all.push(c));
     else seg.slice(1).forEach(c=>all.push(c));
   }
-  return all;
+  return {allCoords: all, segCoordsList};
 }
 
 /* ============================================================
