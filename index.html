@@ -95,6 +95,37 @@ html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:
 /* Tooltip */
 .wp-tt{background:rgba(62,42,14,.85)!important;color:#F5EDD8!important;border:none!important;border-radius:4px!important;font-size:11px!important;padding:2px 7px!important;white-space:nowrap!important;box-shadow:0 2px 6px rgba(0,0,0,.3)!important;pointer-events:none!important}
 .wp-tt::before{display:none!important}
+/* WP種別ツールチップカラー */
+.wp-tt-course{background:#C4703A!important;border-color:#C4703A!important;color:#fff!important}
+.wp-tt-start{background:#2E7D32!important;border-color:#2E7D32!important;color:#fff!important}
+.wp-tt-view{background:#1565C0!important;border-color:#1565C0!important;color:#fff!important}
+.wp-tt-shop{background:#C62828!important;border-color:#C62828!important;color:#fff!important}
+.wp-tt-shrine{background:#6D4C41!important;border-color:#6D4C41!important;color:#fff!important}
+.wp-tt-history{background:#E65100!important;border-color:#E65100!important;color:#fff!important}
+.wp-tt-park{background:#388E3C!important;border-color:#388E3C!important;color:#fff!important}
+.wp-tt-toilet{background:#455A64!important;border-color:#455A64!important;color:#fff!important}
+.wp-tt-parking{background:#1565C0!important;border-color:#1565C0!important;color:#fff!important}
+.wp-tt-other{background:#757575!important;border-color:#757575!important;color:#fff!important}
+.wp-tt-wrap{white-space:normal!important;max-width:110px!important;text-align:center!important;line-height:1.4!important}
+/* 写真プレビュー */
+.photo-strip{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.photo-thumb{position:relative;width:72px;height:72px;border-radius:6px;overflow:hidden;border:1px solid #D4C4A8;flex-shrink:0}
+.photo-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.photo-del{position:absolute;top:2px;right:2px;width:18px;height:18px;background:rgba(0,0,0,.55);color:#fff;border:none;border-radius:50%;font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;line-height:1}
+.photo-add-btn{width:72px;height:72px;border-radius:6px;border:1.5px dashed #C4B89A;background:#FAF6EE;color:#8B6C42;font-size:24px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+/* 閲覧モード */
+#viewInfoPanel{display:none;position:fixed;bottom:0;left:0;right:0;max-height:55vh;background:#fff;border-radius:14px 14px 0 0;box-shadow:0 -4px 20px rgba(0,0,0,.2);z-index:3000;overflow-y:auto;padding:16px 18px 28px}
+#viewInfoPanel.show{display:block}
+.vip-hdr{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.vip-dot{width:34px;height:34px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:bold;font-size:14px}
+.vip-name{font-size:16px;font-weight:bold;color:#2C1B0E;flex:1;line-height:1.3}
+.vip-close{width:28px;height:28px;background:#EEE8DE;border:none;border-radius:50%;font-size:14px;cursor:pointer;flex-shrink:0}
+.vip-desc{font-size:13px;color:#444;line-height:1.7;margin-bottom:8px;white-space:pre-wrap}
+.vip-tel a{font-size:13px;color:#1a6fc4;display:block;margin-bottom:10px}
+.vip-photos{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.vip-photos img{width:calc(50% - 4px);max-width:200px;height:140px;object-fit:cover;border-radius:8px;cursor:pointer}
+#viewBadge{position:fixed;top:8px;left:50%;transform:translateX(-50%);background:rgba(196,112,58,.9);color:#fff;font-size:11px;padding:4px 14px;border-radius:14px;z-index:2500;pointer-events:none;display:none}
+.ctx-it.ctx-convert{color:#2E7D32}
 /* Context menu */
 #ctxMenu{display:none;position:fixed;z-index:5000;background:#fff;border:1px solid #C4B89A;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,.25);min-width:215px;overflow:hidden;font-family:'Hiragino Sans','Meiryo',sans-serif}
 .ctx-hdr{padding:8px 14px 7px;font-size:11px;font-weight:bold;color:#4A2E0E;background:#F0E8D8;border-bottom:1px solid #D4C4A8}
@@ -189,6 +220,7 @@ html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:
         <button class="btn" onclick="clearAll()" title="全消去">🗑</button>
         <span style="color:#D4C4A8">|</span>
         <button class="btn" onclick="saveMapAsImage()" title="マップを画像で保存">📷</button>
+        <button class="btn" onclick="openViewMode()" title="閲覧モードで開く（新しいタブ）">👁 閲覧</button>
         <button class="btn" onclick="openHelp()" title="操作ガイド">❓</button>
         <button class="btn" id="btnSpline" onclick="toggleSpline()" title="スプライン曲線：調整点間をなめらかな曲線にする">〜 スプライン</button>
         <span id="tbar-st">クリックでウェイポイント追加 / ルート線ドラッグで経路調整</span>
@@ -225,6 +257,19 @@ html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:
         <input type="checkbox" id="mFitAfter" checked style="width:auto;padding:0;margin:0">
         後のラインを道路に沿う
       </label>
+      <div style="font-size:10px;font-weight:bold;color:#555;margin-bottom:5px">名称ラベル設定</div>
+      <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
+        <label style="font-size:12px;font-weight:normal">表示位置&nbsp;<select id="mLabelDir" style="font-size:11px;padding:2px 4px;border:1px solid #C4B89A;border-radius:4px;background:#FAF6EE"><option value="top">上</option><option value="bottom">下</option><option value="left">左</option><option value="right">右</option></select></label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:normal;cursor:pointer"><input type="checkbox" id="mLabelWrap" style="width:auto;padding:0;margin:0"> 2行折り返し</label>
+      </div>
+      <div style="font-size:10px;font-weight:bold;color:#555;margin-bottom:5px">写真（最大5枚）</div>
+      <div id="mPhotoStrip" class="photo-strip"></div>
+      <div style="display:flex;gap:8px;margin-bottom:10px">
+        <input type="file" accept="image/*" id="mPhotoFile" style="display:none" multiple>
+        <input type="file" accept="image/*" capture="environment" id="mPhotoCamera" style="display:none">
+        <button class="photo-add-btn" onclick="document.getElementById('mPhotoFile').click()" title="ファイルから選択">📁</button>
+        <button class="photo-add-btn" onclick="document.getElementById('mPhotoCamera').click()" title="カメラで撮影">📷</button>
+      </div>
     </div>
     <div class="m-ftr">
       <button class="btn btn-rd" onclick="deleteEditing()">🗑 削除</button>
@@ -238,6 +283,10 @@ html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:
 
 <!-- Via point context menu (singleton) -->
 <div id="ctxMenu" onclick="event.stopPropagation()"></div>
+
+<!-- View Mode Info Panel -->
+<div id="viewInfoPanel"></div>
+<div id="viewBadge">👁 閲覧モード</div>
 
 <!-- Help Modal -->
 <div id="helpModal" onclick="if(event.target===this)closeHelp()">
@@ -335,6 +384,8 @@ let editId      = null;
 let idW = 0, idV = 0;
 let undoStack   = [];      // 取り消し履歴 (最大30ステップ)
 let redoStack   = [];      // やり直し履歴
+let viewMode    = false;   // 閲覧専用モード
+let _modalPhotos= [];      // モーダル編集中の写真
 let lineDragging= false;
 let dragSrcId   = null;
 let segCache    = {};
@@ -371,6 +422,11 @@ function setCourses(list) {
    ============================================================ */
 window.addEventListener('DOMContentLoaded', () => {
   renderCourseList();
+  // 写真ファイル入力リスナー
+  document.getElementById('mPhotoFile')?.addEventListener('change', function(){ handlePhotoFile(this); });
+  document.getElementById('mPhotoCamera')?.addEventListener('change', function(){ handlePhotoFile(this); });
+  // 閲覧モード初期化
+  initViewMode();
   // Context menu closes ONLY via Cancel button, Escape key, or map pan.
   // Close menu on Escape key; ⌘Z = undo; ⌘⇧Z = redo
   document.addEventListener('keydown', e => {
@@ -468,7 +524,7 @@ function onMapClick(e) {
 function addWp(lat, lng) {
   saveSnapshot();
   idW++;
-  const wp = {id:idW, type:'course', name:'', desc:'', tel:'', dwell:0, fitBefore:true, fitAfter:true, lat, lng, marker:null};
+  const wp = {id:idW, type:'course', name:'', desc:'', tel:'', dwell:0, fitBefore:true, fitAfter:true, lat, lng, photos:[], labelDir:'top', labelWrap:false, marker:null};
   wps.push(wp);
   buildWpMarker(wp);
   redrawStraight(); scheduleRouting(); redrawList(); refreshIcons();
@@ -482,7 +538,7 @@ function buildWpMarker(wp) {
   m.on('dragstart', () => saveSnapshot());
   m.on('drag', () => { wp.lat=m.getLatLng().lat; wp.lng=m.getLatLng().lng; redrawStraight(); });
   m.on('dragend', () => { wp.lat=m.getLatLng().lat; wp.lng=m.getLatLng().lng; clearCache(); scheduleRouting(); });
-  m.on('click', e => { L.DomEvent.stopPropagation(e); openModal(wp.id); });
+  m.on('click', e => { L.DomEvent.stopPropagation(e); viewMode ? showViewInfo(wp.id) : openModal(wp.id); });
 
   if (wp.name && wp.name.trim()) {
     m.bindTooltip(wp.name, {permanent:true, direction:'top', offset:[0,isMobile()?-20:-18], className:'wp-tt'});
@@ -519,7 +575,15 @@ function updateTooltip(wp) {
   if (!wp.marker) return;
   wp.marker.unbindTooltip();
   if (wp.name && wp.name.trim()) {
-    wp.marker.bindTooltip(wp.name, {permanent:true, direction:'top', offset:[0,isMobile()?-20:-18], className:'wp-tt'});
+    const dir  = wp.labelDir  || 'top';
+    const wrap = !!wp.labelWrap;
+    const mob  = isMobile();
+    const offV = mob ? 22 : 19;
+    const off  = dir==='top'    ? [0,-offV] :
+                 dir==='bottom' ? [0, offV] :
+                 dir==='left'   ? [-offV, 0] : [offV, 0];
+    const cls  = `wp-tt wp-tt-${wp.type||'course'}${wrap?' wp-tt-wrap':''}`;
+    wp.marker.bindTooltip(wp.name, {permanent:true, direction:dir, offset:off, className:cls});
   }
 }
 
@@ -649,6 +713,8 @@ function showViaCtxMenu(vpId, x, y) {
     null, // separator
     {label: (fb?'☑':'☐') + ' 前の区間を道路に沿う',         fn: () => ctxDoToggleFit('before')},
     {label: (fa?'☑':'☐') + ' 後の区間を道路に沿う',         fn: () => ctxDoToggleFit('after')},
+    null, // separator
+    {label: '🔄 ウェイポイントに変換', fn: ctxConvertToWp, cls: 'ctx-convert'},
     null, // separator
     {label: '🗑 この調整点を削除', fn: ctxDoDeleteVp, cls: 'ctx-del'},
     null,
@@ -1193,6 +1259,10 @@ function openModal(id) {
   document.getElementById('mDwell').value   = wp.dwell || 0;
   document.getElementById('mFitBefore').checked = (wp.fitBefore !== false);
   document.getElementById('mFitAfter').checked  = (wp.fitAfter  !== false);
+  document.getElementById('mLabelDir').value    = wp.labelDir  || 'top';
+  document.getElementById('mLabelWrap').checked = !!wp.labelWrap;
+  _modalPhotos = [...(wp.photos || [])];
+  renderModalPhotos();
   document.getElementById('mOver').classList.add('show');
   setTimeout(()=>document.getElementById('mName').focus(), 50);
 }
@@ -1213,6 +1283,9 @@ function saveModal() {
   wp.dwell   = parseInt(document.getElementById('mDwell').value)||0;
   wp.fitBefore = document.getElementById('mFitBefore').checked;
   wp.fitAfter  = document.getElementById('mFitAfter').checked;
+  wp.labelDir  = document.getElementById('mLabelDir').value;
+  wp.labelWrap = document.getElementById('mLabelWrap').checked;
+  wp.photos    = [..._modalPhotos];
   if (wp.marker) wp.marker.setIcon(wpIcon(wp));
   updateTooltip(wp);
   closeModal();
@@ -1300,7 +1373,7 @@ function setMode(m) {
    ============================================================ */
 function _makeSnapshot() {
   return {
-    wps: wps.map(w=>({id:w.id,type:w.type,name:w.name,desc:w.desc,tel:w.tel,dwell:w.dwell||0,fitBefore:w.fitBefore!==false,fitAfter:w.fitAfter!==false,lat:w.lat,lng:w.lng})),
+    wps: wps.map(w=>({id:w.id,type:w.type,name:w.name,desc:w.desc,tel:w.tel,dwell:w.dwell||0,fitBefore:w.fitBefore!==false,fitAfter:w.fitAfter!==false,lat:w.lat,lng:w.lng,labelDir:w.labelDir||'top',labelWrap:!!w.labelWrap})),
     vps: vps.map(v=>({id:v.id,segAfter:v.segAfter,fitBefore:v.fitBefore!==false,fitAfter:v.fitAfter!==false,lat:v.lat,lng:v.lng})),
     idW, idV,
   };
@@ -1314,12 +1387,16 @@ function saveSnapshot() {
 }
 
 function restoreSnapshot(snapshot) {
+  // 写真はスナップショット非対象（容量節約）→ 復元時に現在の写真を引き継ぐ
+  const savedPhotos = {};
+  wps.forEach(w=>{ if(w.photos && w.photos.length) savedPhotos[w.id]=w.photos; });
+
   wps.forEach(w=>{ if(w.marker)leafMap.removeLayer(w.marker); });
   vps.forEach(v=>{ if(v.marker)leafMap.removeLayer(v.marker); });
   removeLines();
   idW = snapshot.idW;
   idV = snapshot.idV;
-  wps = snapshot.wps.map(w=>{ const wp={...w,marker:null}; buildWpMarker(wp); return wp; });
+  wps = snapshot.wps.map(w=>{ const wp={...w, photos:savedPhotos[w.id]||[], marker:null}; buildWpMarker(wp); return wp; });
   vps = snapshot.vps.map(v=>{ const vp={...v,marker:null}; buildVpMarker(vp); return vp; });
   clearCache(); redrawStraight(); scheduleRouting(); redrawList(); refreshIcons();
 }
@@ -1355,6 +1432,191 @@ function clearAll() {
 }
 
 /* ============================================================
+   VP → WP 変換
+   ============================================================ */
+function ctxConvertToWp() {
+  if (!ctxVpId) return;
+  const vp = vps.find(v => v.id === ctxVpId);
+  hideCtxMenu();
+  if (!vp) return;
+
+  const wpAIdx = wps.findIndex(w => w.id === vp.segAfter);
+  if (wpAIdx < 0) return;
+  const wpA = wps[wpAIdx];
+  const wpB = wps[wpAIdx + 1] || null;
+
+  saveSnapshot();
+
+  // tConvert: 0〜1でvpがwpA→wpB区間のどこにいるか
+  let tConvert = 0;
+  if (wpB) {
+    const dx=wpB.lat-wpA.lat, dy=wpB.lng-wpA.lng, len2=dx*dx+dy*dy;
+    tConvert = len2>0 ? ((vp.lat-wpA.lat)*dx+(vp.lng-wpA.lng)*dy)/len2 : 0;
+  }
+
+  // 新しいWPを作成してwpAの直後に挿入
+  idW++;
+  const newWp = {id:idW, type:'course', name:'', desc:'', tel:'', dwell:0,
+                 fitBefore:true, fitAfter:true,
+                 lat:vp.lat, lng:vp.lng,
+                 photos:[], labelDir:'top', labelWrap:false, marker:null};
+  wps.splice(wpAIdx+1, 0, newWp);
+  buildWpMarker(newWp);
+
+  // wpA→wpB区間の他の調整点を振り分け（tConvert以降はnewWpセグメントへ）
+  if (wpB) {
+    const dx=wpB.lat-wpA.lat, dy=wpB.lng-wpA.lng, len2=dx*dx+dy*dy;
+    vps.filter(v=>v.segAfter===wpA.id && v.id!==vp.id).forEach(v => {
+      const t=len2>0?((v.lat-wpA.lat)*dx+(v.lng-wpA.lng)*dy)/len2:0;
+      if (t > tConvert) v.segAfter = newWp.id;
+    });
+  }
+
+  // 変換した調整点を削除
+  if (vp.marker) leafMap.removeLayer(vp.marker);
+  vps = vps.filter(v=>v.id!==vp.id);
+
+  clearCache(); redrawStraight(); scheduleRouting(); redrawList(); refreshIcons();
+  showToast('調整点をウェイポイントに変換しました');
+}
+
+/* ============================================================
+   写真 圧縮・管理
+   ============================================================ */
+function compressImage(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        const MAX = 800;
+        let w=img.width, h=img.height;
+        if (w>MAX || h>MAX) {
+          if (w>=h) { h=Math.round(h*MAX/w); w=MAX; }
+          else       { w=Math.round(w*MAX/h); h=MAX; }
+        }
+        const cv = document.createElement('canvas');
+        cv.width=w; cv.height=h;
+        cv.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(cv.toDataURL('image/jpeg', 0.65));
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function handlePhotoFile(input) {
+  const files = Array.from(input.files || []);
+  input.value = '';  // reset for repeated selection
+  const remaining = 5 - _modalPhotos.length;
+  if (remaining <= 0) { showToast('写真は最大5枚です'); return; }
+  const toAdd = files.slice(0, remaining);
+  Promise.all(toAdd.map(compressImage))
+    .then(dataUrls => {
+      dataUrls.forEach(d => _modalPhotos.push(d));
+      renderModalPhotos();
+    })
+    .catch(() => showToast('⚠️ 写真の読み込みに失敗しました'));
+}
+
+function renderModalPhotos() {
+  const strip = document.getElementById('mPhotoStrip');
+  if (!strip) return;
+  strip.innerHTML = '';
+  _modalPhotos.forEach((src, i) => {
+    const thumb = document.createElement('div');
+    thumb.className = 'photo-thumb';
+    thumb.innerHTML = `<img src="${src}" alt="写真${i+1}">
+      <button class="photo-del" onclick="removeModalPhoto(${i})" title="削除">✕</button>`;
+    strip.appendChild(thumb);
+  });
+}
+
+function removeModalPhoto(idx) {
+  _modalPhotos.splice(idx, 1);
+  renderModalPhotos();
+}
+
+/* ============================================================
+   閲覧モード
+   ============================================================ */
+function openViewMode() {
+  if (!courseInfo.name) { showToast('コースを選択・保存してから開いてください'); return; }
+  saveCourse();
+  const data = buildCurrentSaveData();
+  if (!data) return;
+  const url = location.origin + location.pathname + '?view=' + encodeURIComponent(data.id);
+  window.open(url, '_blank');
+}
+
+function initViewMode() {
+  const params = new URLSearchParams(location.search);
+  const viewId = params.get('view');
+  if (!viewId) return;
+  viewMode = true;
+
+  // Hide editing UI
+  document.getElementById('s1').style.display = 'none';
+  document.getElementById('s2').style.display = 'flex';
+  const vb = document.getElementById('viewBadge');
+  if (vb) vb.style.display = 'block';
+
+  // Hide editing controls after s2 becomes visible
+  setTimeout(() => {
+    ['tbar','wpPane','descSec'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = 'none';
+    });
+    if (!leafMap) initMap(); else leafMap.invalidateSize();
+    const courses = getCourses();
+    const course = courses.find(c => String(c.id) === String(viewId));
+    if (course) {
+      loadCourseData(course);
+    } else {
+      const mapArea = document.getElementById('mapArea');
+      if (mapArea) mapArea.innerHTML = '<div style="padding:40px;text-align:center;color:#888">コースが見つかりません。<br>編集デバイスからエクスポートしてインポートしてください。</div>';
+    }
+  }, 60);
+}
+
+function showViewInfo(wpId) {
+  const wp = wps.find(w => w.id === wpId);
+  if (!wp) return;
+  const t   = WT.find(x => x.v === wp.type) || WT[0];
+  const sym = wp.type==='course' ? (courseNum(wp)||'?') : (SYM[wp.type]||'●');
+
+  let html2 = `<div class="vip-hdr">
+    <div class="vip-dot" style="background:${t.c}">${escHtml(String(sym))}</div>
+    <div class="vip-name">${escHtml(wp.name || t.l)}</div>
+    <button class="vip-close" onclick="closeViewInfo()">✕</button>
+  </div>`;
+  if (wp.desc) html2 += `<div class="vip-desc">${escHtml(wp.desc)}</div>`;
+  if (wp.tel)  html2 += `<div class="vip-tel"><a href="tel:${escHtml(wp.tel)}">${escHtml(wp.tel)}</a></div>`;
+  if (wp.photos && wp.photos.length) {
+    html2 += '<div class="vip-photos">';
+    wp.photos.forEach(p => { html2 += `<img src="${p}" onclick="openFullPhoto(this.src)" loading="lazy">`; });
+    html2 += '</div>';
+  }
+
+  const panel = document.getElementById('viewInfoPanel');
+  panel.innerHTML = html2;
+  panel.classList.add('show');
+}
+
+function closeViewInfo() {
+  document.getElementById('viewInfoPanel').classList.remove('show');
+}
+
+function openFullPhoto(src) {
+  const w2 = window.open('', '_blank');
+  w2.document.write(`<!doctype html><html><body style="margin:0;background:#000;display:flex;align-items:center;justify-content:center;min-height:100vh"><img src="${src}" style="max-width:100%;max-height:100vh;object-fit:contain"></body></html>`);
+  w2.document.close();
+}
+
+/* ============================================================
    COURSE SAVE / LOAD
    ============================================================ */
 function buildCurrentSaveData() {
@@ -1368,7 +1630,7 @@ function buildCurrentSaveData() {
     desc:    document.getElementById('iDesc')?.value||'',
     center:  leafMap ? {lat:leafMap.getCenter().lat, lng:leafMap.getCenter().lng} : null,
     zoom:    leafMap ? leafMap.getZoom() : 14,
-    wps:     wps.map(w=>({id:w.id,type:w.type,name:w.name,desc:w.desc,tel:w.tel,dwell:w.dwell||0,fitBefore:w.fitBefore!==false,fitAfter:w.fitAfter!==false,lat:w.lat,lng:w.lng})),
+    wps:     wps.map(w=>({id:w.id,type:w.type,name:w.name,desc:w.desc,tel:w.tel,dwell:w.dwell||0,fitBefore:w.fitBefore!==false,fitAfter:w.fitAfter!==false,lat:w.lat,lng:w.lng,labelDir:w.labelDir||'top',labelWrap:!!w.labelWrap,photos:w.photos||[]})),
     vps:     vps.map(v=>({id:v.id,segAfter:v.segAfter,fitBefore:v.fitBefore!==false,fitAfter:v.fitAfter!==false,lat:v.lat,lng:v.lng})),
     maxWpId: idW,
     maxVpNum:idV,
@@ -1418,6 +1680,9 @@ function loadCourseData(data) {
         dwell:     w.dwell||0,
         fitBefore: w.fitBefore !== undefined ? w.fitBefore !== false : _fitR,
         fitAfter:  w.fitAfter  !== undefined ? w.fitAfter  !== false : _fitR,
+        labelDir:  w.labelDir  || 'top',
+        labelWrap: !!w.labelWrap,
+        photos:    w.photos    || [],
         marker:    null
       };
       buildWpMarker(wp);   // sets wp.marker
