@@ -203,7 +203,7 @@ html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:
 </div>
 
 <!-- Waypoint Edit Modal -->
-<div id="mOver" class="m-over" onclick="if(event.target===this)closeModal()">
+<div id="mOver" class="m-over">
   <div class="m-box">
     <div class="m-hdr">
       <span>ウェイポイント編集</span>
@@ -371,11 +371,7 @@ function setCourses(list) {
    ============================================================ */
 window.addEventListener('DOMContentLoaded', () => {
   renderCourseList();
-  // Close context menu on any click outside
-  // Close menu when clicking anywhere outside it
-  document.addEventListener('click', e => {
-    if (!e.target.closest('#ctxMenu')) hideCtxMenu();
-  });
+  // Context menu closes ONLY via Cancel button, Escape key, or map pan.
   // Close menu on Escape key; ⌘Z = undo; ⌘⇧Z = redo
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') { hideCtxMenu(); return; }
@@ -459,6 +455,9 @@ function initMap() {
 
 function onMapClick(e) {
   if (lineDragging) return;
+  // コンテキストメニューまたはWPモーダルが開いている場合は何もしない
+  if (ctxVpId !== null) return;
+  if (document.getElementById('mOver')?.classList.contains('show')) return;
   if (mode==='wp')  addWp(e.latlng.lat, e.latlng.lng);
   if (mode==='via') addVp(e.latlng.lat, e.latlng.lng);
 }
