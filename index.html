@@ -1103,7 +1103,7 @@ async function buildRoutedCoords() {
     let seg = [];
 
     if (sv.length === 0) {
-      // ── 調整点なし: カスタム道路→OSRM→直線 の順で判定 ──
+      // ── 調整点なし: カスタム道路→OSRM→直線 ──
       const _crNoVia = routeAlongCustomRoad(a.lat, a.lng, b.lat, b.lng);
       if (_crNoVia) {
         seg = _crNoVia;
@@ -1147,7 +1147,6 @@ async function buildRoutedCoords() {
           // セクションごとに判定
           for (let j=0; j<sv.length-1; j++) {
             const vpA=sv[j], vpB=sv[j+1];
-            // カスタム道路→OSRM→直線 の順で判定
             const _crVV = routeAlongCustomRoad(vpA.lat, vpA.lng, vpB.lat, vpB.lng);
             if (_crVV) {
               seg.push(..._crVV.slice(1));
@@ -1807,34 +1806,18 @@ function nearestRoadIdx(road, lat, lng) {
 }
 
 function routeAlongCustomRoad(fromLat, fromLng, toLat, toLng) {
-  // 正しいアプローチ: 道路の「始点」と「終点」のみを参照する
-  // → 道路の途中の点が近くにあっても誤反応しない
-  // → ユーザーが引いた始点がfromに近く、終点がtoに近い場合のみ使用
-  const THR = 0.005; // 約500m（始点・終点のみ参照するので大きくても安全）
-  const directDist = Math.hypot(toLat-fromLat, toLng-fromLng);
-
+  const THR = 0.0003; // 約30m
   for (const road of customRoads) {
     if (!road.visible || !_crVisible || !road.coords || road.coords.length < 2) continue;
-
-    const rs = road.coords[0];                        // 道路の始点
-    const re = road.coords[road.coords.length - 1];   // 道路の終点
-
-    // 順方向: from≈始点 かつ to≈終点
-    const dfF = Math.hypot(fromLat-rs[0], fromLng-rs[1]);
-    const dfT = Math.hypot(toLat  -re[0], toLng  -re[1]);
-    if (dfF < THR && dfT < THR) {
-      const seg = road.coords.slice();
-      let len=0; for(let k=1;k<seg.length;k++) len+=Math.hypot(seg[k][0]-seg[k-1][0],seg[k][1]-seg[k-1][1]);
-      if (len < directDist * 5) return seg; // 直線距離の5倍以内なら採用
-    }
-
-    // 逆方向: from≈終点 かつ to≈始点
-    const drF = Math.hypot(fromLat-re[0], fromLng-re[1]);
-    const drT = Math.hypot(toLat  -rs[0], toLng  -rs[1]);
-    if (drF < THR && drT < THR) {
-      const seg = road.coords.slice().reverse();
-      let len=0; for(let k=1;k<seg.length;k++) len+=Math.hypot(seg[k][0]-seg[k-1][0],seg[k][1]-seg[k-1][1]);
-      if (len < directDist * 5) return seg;
+    const i1=nearestRoadIdx(road, fromLat, fromLng);
+    const i2=nearestRoadIdx(road, toLat,   toLng);
+    const d1=Math.hypot(fromLat-road.coords[i1][0], fromLng-road.coords[i1][1]);
+    const d2=Math.hypot(toLat  -road.coords[i2][0], toLng  -road.coords[i2][1]);
+    if (d1<THR && d2<THR && Math.abs(i1-i2)>=1) {
+      const s=Math.min(i1,i2), e=Math.max(i1,i2)+1;
+      const seg=road.coords.slice(s,e);
+      if(i1>i2) seg.reverse();
+      return seg;
     }
   }
   return null;
