@@ -912,6 +912,20 @@ function nearestSegWpId(lat, lng) {
   return bestId;
 }
 
+function findNearestSegment(latlng, segList) {
+  if (!segList || !segList.length) return null;
+  const pt = [latlng.lat, latlng.lng];
+  let bestId = null, bestD = Infinity;
+  for (const {wpId, coords} of segList) {
+    if (!coords || coords.length < 2) continue;
+    for (let i = 0; i < coords.length - 1; i++) {
+      const d = ptSegDist(pt, coords[i], coords[i+1]);
+      if (d < bestD) { bestD = d; bestId = wpId; }
+    }
+  }
+  return bestId;
+}
+
 function ptSegDist(p, a, b) {
   const dx=b[0]-a[0], dy=b[1]-a[1];
   if (Math.abs(dx)<1e-12 && Math.abs(dy)<1e-12) return Math.hypot(p[0]-a[0],p[1]-a[1]);
@@ -990,22 +1004,23 @@ function buildSegCoordsList() {
 }
 
 // drawLines(allCoords, segList)
-// allCoords: full visible route; segList: [{wpId, coords}] for per-segment hit overlays
+// allCoords: 表示ルート座標; segList: [{wpId, coords}] 直線WP→WP（セグメント判定用）
 function drawLines(allCoords, segList) {
   if (!allCoords || allCoords.length < 2 || !leafMap) return;
   routeLine = L.polyline(allCoords, {...LINE_STYLE, renderer: canvasRenderer}).addTo(leafMap);
 
-  // Per-segment hit overlays: each knows exactly which segment it belongs to
-  // This is the key fix — wpId is captured in closure, never inferred from geometry
-  if (viaVisible && segList) {
-    segList.forEach(({wpId, coords}) => {
-      if (coords.length < 2) return;
-      const ov = L.polyline(coords, {weight:22, opacity:0, color:'#000', interactive:true}).addTo(leafMap);
-      ov.on('mousedown', e => onSegmentHitDown(e, wpId)); // wpId explicit, no ambiguity
-      const el = ov.getElement();
-      if (el) el.style.cursor = 'grab';
-      hitOverlays.push(ov);
+  // 単一オーバーレイ + findNearestSegment方式:
+  // per-segmentオーバーレイはWP境界付近でZ-order上位のものが優先され誤反応する
+  // → ルート全体に1本のオーバーレイを置き、クリック座標から最近傍セグメントを計算
+  if (viaVisible && segList && segList.length > 0) {
+    const ov = L.polyline(allCoords, {weight:22, opacity:0, color:'#000', interactive:true}).addTo(leafMap);
+    ov.on('mousedown', e => {
+      const wpId = findNearestSegment(e.latlng, segList);
+      if (wpId !== null) onSegmentHitDown(e, wpId);
     });
+    const el = ov.getElement();
+    if (el) el.style.cursor = 'grab';
+    hitOverlays.push(ov);
   }
 }
 
