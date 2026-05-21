@@ -1807,7 +1807,7 @@ function nearestRoadIdx(road, lat, lng) {
 }
 
 function routeAlongCustomRoad(fromLat, fromLng, toLat, toLng) {
-  const THR = 0.0003; // 約30m
+  const THR = 0.003; // 約300m（WP・調整点がカスタム道路端点から離れていても適用）
   for (const road of customRoads) {
     if (!road.visible || !_crVisible || !road.coords || road.coords.length < 2) continue;
     const i1=nearestRoadIdx(road, fromLat, fromLng);
