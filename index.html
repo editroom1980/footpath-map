@@ -604,7 +604,13 @@ function addVp(lat, lng) {
   if (wps.length < 2) { alert('ウェイポイントを2点以上追加してから経路調整点を追加してください。'); return; }
   saveSnapshot();
   idV++;
-  const vp = {id:'v'+idV, segAfter:nearestSegWpId(lat,lng), fitBefore:true, fitAfter:true, lat, lng, marker:null};
+  const _saId   = nearestSegWpId(lat, lng);
+  const _aiIdx  = wps.findIndex(w=>w.id===_saId);
+  const _wpA    = wps[_aiIdx];
+  const _wpB    = wps[_aiIdx+1] || _wpA;
+  const _svs    = vps.filter(v=>v.segAfter===_saId);
+  const _ord    = calcVpOrder(lat, lng, _svs, _wpA, _wpB);
+  const vp = {id:'v'+idV, segAfter:_saId, order:_ord, fitBefore:true, fitAfter:true, lat, lng, marker:null};
   vps.push(vp);
   buildVpMarker(vp);
   clearCache(); redrawStraight(); scheduleRouting();
@@ -850,7 +856,12 @@ function onSegmentHitDown(e, segAfterWpId) {
 
   idV++;
   // segAfterWpId is explicit from the overlay — this via point belongs to this exact segment
-  const vp = {id:'v'+idV, segAfter:segAfterWpId, fitBefore:true, fitAfter:true, lat:e.latlng.lat, lng:e.latlng.lng, marker:null};
+  const _hiIdx  = wps.findIndex(w=>w.id===segAfterWpId);
+  const _hiWpA  = wps[_hiIdx];
+  const _hiWpB  = wps[_hiIdx+1] || _hiWpA;
+  const _hiSvs  = vps.filter(v=>v.segAfter===segAfterWpId);
+  const _hiOrd  = calcVpOrder(e.latlng.lat, e.latlng.lng, _hiSvs, _hiWpA, _hiWpB);
+  const vp = {id:'v'+idV, segAfter:segAfterWpId, order:_hiOrd, fitBefore:true, fitAfter:true, lat:e.latlng.lat, lng:e.latlng.lng, marker:null};
   vps.push(vp);
 
   const sz = isMobile() ? 18 : 13;
@@ -909,12 +920,35 @@ function ptSegDist(p, a, b) {
 }
 
 function segVpsOf(wpId, wpA, wpB) {
-  const dx=wpB.lat-wpA.lat, dy=wpB.lng-wpA.lng, len2=dx*dx+dy*dy;
+  // orderはVP生成時に一度だけ確定 → ドラッグ中に位置が変わっても順番は変わらない
   return vps
     .filter(v=>v.segAfter===wpId)
-    .map(v => { const t=len2>0?((v.lat-wpA.lat)*dx+(v.lng-wpA.lng)*dy)/len2:0; return{vp:v,t}; })
-    .sort((a,b)=>a.t-b.t)
-    .map(x=>x.vp);
+    .sort((a,b)=>(a.order||0)-(b.order||0));
+}
+
+// VP挿入時の安定order値を計算（既存VP間の位置に浮動小数点で挿入）
+function calcVpOrder(lat, lng, segVps, wpA, wpB) {
+  if (!segVps || segVps.length === 0) return 0;
+  const dx=wpB.lat-wpA.lat, dy=wpB.lng-wpA.lng, len2=dx*dx+dy*dy;
+  const tNew = len2>0 ? ((lat-wpA.lat)*dx+(lng-wpA.lng)*dy)/len2 : 0;
+
+  // 既存VPを現在位置のtでソートして前後の隣人を探す
+  const sorted = segVps.slice().sort((a,b) => {
+    const ta=len2>0?((a.lat-wpA.lat)*dx+(a.lng-wpA.lng)*dy)/len2:0;
+    const tb=len2>0?((b.lat-wpA.lat)*dx+(b.lng-wpA.lng)*dy)/len2:0;
+    return ta-tb;
+  });
+  let before=null, after=null;
+  for (const sv of sorted) {
+    const t=len2>0?((sv.lat-wpA.lat)*dx+(sv.lng-wpA.lng)*dy)/len2:0;
+    if (t <= tNew) before=sv; else if (after===null) after=sv;
+  }
+  const bOrd = before ? (before.order||0) : null;
+  const aOrd = after  ? (after.order ||0) : null;
+  if (bOrd===null && aOrd===null) return 0;
+  if (bOrd===null) return aOrd - 1;
+  if (aOrd===null) return bOrd + 1;
+  return (bOrd + aOrd) / 2;
 }
 
 function haversine(lat1,lng1,lat2,lng2) {
@@ -1376,7 +1410,7 @@ function setMode(m) {
 function _makeSnapshot() {
   return {
     wps: wps.map(w=>({id:w.id,type:w.type,name:w.name,desc:w.desc,tel:w.tel,dwell:w.dwell||0,fitBefore:w.fitBefore!==false,fitAfter:w.fitAfter!==false,lat:w.lat,lng:w.lng,labelDir:w.labelDir||'top',labelWrap:!!w.labelWrap})),
-    vps: vps.map(v=>({id:v.id,segAfter:v.segAfter,fitBefore:v.fitBefore!==false,fitAfter:v.fitAfter!==false,lat:v.lat,lng:v.lng})),
+    vps: vps.map(v=>({id:v.id,segAfter:v.segAfter,fitBefore:v.fitBefore!==false,fitAfter:v.fitAfter!==false,lat:v.lat,lng:v.lng,order:v.order||0})),
     idW, idV,
   };
 }
@@ -1633,7 +1667,7 @@ function buildCurrentSaveData() {
     center:  leafMap ? {lat:leafMap.getCenter().lat, lng:leafMap.getCenter().lng} : null,
     zoom:    leafMap ? leafMap.getZoom() : 14,
     wps:     wps.map(w=>({id:w.id,type:w.type,name:w.name,desc:w.desc,tel:w.tel,dwell:w.dwell||0,fitBefore:w.fitBefore!==false,fitAfter:w.fitAfter!==false,lat:w.lat,lng:w.lng,labelDir:w.labelDir||'top',labelWrap:!!w.labelWrap,photos:w.photos||[]})),
-    vps:     vps.map(v=>({id:v.id,segAfter:v.segAfter,fitBefore:v.fitBefore!==false,fitAfter:v.fitAfter!==false,lat:v.lat,lng:v.lng})),
+    vps:     vps.map(v=>({id:v.id,segAfter:v.segAfter,fitBefore:v.fitBefore!==false,fitAfter:v.fitAfter!==false,lat:v.lat,lng:v.lng,order:v.order||0})),
     maxWpId: idW,
     maxVpNum:idV,
     savedAt: new Date().toISOString(),
@@ -1696,11 +1730,27 @@ function loadCourseData(data) {
       const vp = {...v,
         fitBefore: v.fitBefore !== false,
         fitAfter:  v.fitAfter  !== false,
+        order:     v.order,   // undefined の場合は後で再計算
         marker:    null
       };
-      buildVpMarker(vp);   // sets vp.marker
+      buildVpMarker(vp);
       return vp;
     });
+
+    // 後方互換: orderがないVPはt値（位置）から初期orderを割り当てる
+    if (data.vps.some(v => v.order === undefined)) {
+      for (let _i=0; _i<wps.length-1; _i++) {
+        const _a=wps[_i], _b=wps[_i+1];
+        const _dx=_b.lat-_a.lat, _dy=_b.lng-_a.lng, _l2=_dx*_dx+_dy*_dy;
+        vps.filter(v=>v.segAfter===_a.id)
+          .sort((va,vb)=>{
+            const ta=_l2>0?((va.lat-_a.lat)*_dx+(va.lng-_a.lng)*_dy)/_l2:0;
+            const tb=_l2>0?((vb.lat-_a.lat)*_dx+(vb.lng-_a.lng)*_dy)/_l2:0;
+            return ta-tb;
+          })
+          .forEach((v,idx)=>{ if(v.order===undefined) v.order=idx; });
+      }
+    }
 
     if (data.center && leafMap) {
       leafMap.setView([data.center.lat, data.center.lng], data.zoom||14);
