@@ -261,6 +261,11 @@ html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:
       <input type="number" id="mDwell" min="0" max="480" step="5" value="0" placeholder="0">
       <div style="font-size:10px;font-weight:bold;color:#555;margin-bottom:4px">前後の接続設定</div>
       <label style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:normal;cursor:pointer;margin-bottom:5px">
+        <input type="checkbox" id="mOnRoute" style="width:auto;padding:0;margin:0">
+        このウェイポイントをルートに含める（番号付き接続ポイントにする）
+      </label>
+      <div style="height:6px"></div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:normal;cursor:pointer;margin-bottom:5px">
         <input type="checkbox" id="mFitBefore" checked style="width:auto;padding:0;margin:0">
         前のラインを道路に沿う
       </label>
@@ -598,7 +603,8 @@ function addWp(lat, lng, type) {
   type = type || 'course';
   saveSnapshot();
   idW++;
-  const wp = {id:idW, type, name:'', desc:'', tel:'', dwell:0, fitBefore:true, fitAfter:true, lat, lng, photos:[], labelDir:'top', marker:null};
+  const onRoute = (type === 'course'); // course=ルート接続, その他=独立ポイント（後からモーダルで変更可）
+  const wp = {id:idW, type, name:'', desc:'', tel:'', dwell:0, fitBefore:true, fitAfter:true, onRoute, lat, lng, photos:[], labelDir:'top', marker:null};
   wps.push(wp);
   buildWpMarker(wp);
   if (type === 'course') { redrawStraight(); scheduleRouting(); }
@@ -634,14 +640,15 @@ function wpIcon(wp, sz, anc) {
   });
 }
 
-// ルート接続WP（type==='course'のみ）を元の配列順で返す
-// standalone WP（神社・トイレ等）はルートに含まれない
+// ルート接続WP（onRoute !== false）を元の配列順で返す
+// onRouteはWPごとに個別設定可能。未設定の場合はtype==='course'をデフォルトとする
 function routeWps() {
-  return wps.filter(w => w.type === 'course');
+  return wps.filter(w => w.onRoute !== false && (w.onRoute === true || w.type === 'course'));
 }
 
 function courseNum(wp) {
-  const list = wps.filter(w=>w.type==='course');
+  // ルート接続中のcourseタイプのみ番号付け対象
+  const list = wps.filter(w=>w.type==='course' && w.onRoute !== false);
   const i    = list.findIndex(w=>w.id===wp.id);
   return i>=0 ? i+1 : null;
 }
@@ -880,9 +887,16 @@ function toggleViaVisibility() {
   // If hiding while in via mode, switch to wp mode
   if (!viaVisible && mode === 'via') setMode('wp');
 
-  // Redraw — drawLines checks viaVisible to decide whether to create hit overlays
-  redrawStraight();
-  scheduleRouting();
+  // ルートラインは変更しない。ヒットオーバーレイのpointer-eventsだけ切り替える
+  // redrawStraight()/scheduleRouting()を呼ぶとOSRM再ルーティングが走り
+  // カスタム道路ルートが失われるため呼ばない
+  hitOverlays.forEach(ov => {
+    const el = ov.getElement ? ov.getElement() : null;
+    if (el) {
+      el.style.pointerEvents = viaVisible ? '' : 'none';
+      el.style.cursor = viaVisible ? 'grab' : '';
+    }
+  });
 
   const btn = document.getElementById('btnToggleVia');
   if (btn) btn.classList.toggle('btn-off', !viaVisible);
@@ -1424,6 +1438,9 @@ function openModal(id) {
   document.getElementById('mDesc2').value  = wp.desc;
   document.getElementById('mTel').value    = wp.tel;
   document.getElementById('mDwell').value   = wp.dwell || 0;
+  // onRoute: 未設定の場合はtype==='course'をデフォルトとして表示
+  const _onRouteDefault = (wp.onRoute !== undefined) ? (wp.onRoute !== false) : (wp.type === 'course');
+  document.getElementById('mOnRoute').checked = _onRouteDefault;
   document.getElementById('mFitBefore').checked = (wp.fitBefore !== false);
   document.getElementById('mFitAfter').checked  = (wp.fitAfter  !== false);
   document.getElementById('mLabelDir').value    = wp.labelDir  || 'top';
@@ -1442,7 +1459,8 @@ function saveModal() {
   if (editId===null) return;
   const wp = wps.find(w=>w.id===editId);
   if (!wp) return;
-  const _oldType = wp.type;
+  const _oldType   = wp.type;
+  const _oldOnRoute = wp.onRoute !== false && (wp.onRoute === true || wp.type === 'course');
   wp.type  = document.getElementById('mType').value;
   const _n1 = document.getElementById('mName').value.trim();
   const _n2 = (document.getElementById('mName2')?.value||'').trim();
@@ -1453,14 +1471,16 @@ function saveModal() {
   wp.fitBefore = document.getElementById('mFitBefore').checked;
   wp.fitAfter  = document.getElementById('mFitAfter').checked;
   wp.labelDir  = document.getElementById('mLabelDir').value;
+  wp.onRoute   = document.getElementById('mOnRoute').checked;
   wp.photos    = [..._modalPhotos];
   if (wp.marker) wp.marker.setIcon(wpIcon(wp));
   updateTooltip(wp);
   closeModal();
   refreshIcons();
   redrawList();
-  // type変更時（course↔standalone切替）はルートを再計算
-  if ((_oldType==='course') !== (wp.type==='course')) { clearCache(); redrawStraight(); scheduleRouting(); }
+  // type変更またはonRoute変更時はルートを再計算
+  const _newOnRoute = wp.onRoute !== false;
+  if ((_oldType==='course') !== (wp.type==='course') || _oldOnRoute !== _newOnRoute) { clearCache(); redrawStraight(); scheduleRouting(); }
   updateDistanceAndTime();
 }
 
@@ -1489,6 +1509,24 @@ async function saveMapAsImage() {
   showToast('⏳ マップ画像を生成中...');
   const mapEl = document.getElementById('map');
   try {
+    // ── 編集要素を一時非表示（調整点・カスタム道路はマップ画像に映さない）──
+    const _savedVpOpacity = vps.map(vp => {
+      const el = vp.marker?.getElement();
+      const op = el?.style.opacity || '';
+      if (el) el.style.opacity = '0';
+      return op;
+    });
+    const _savedCrLines = customRoads.map(r => {
+      const el = r._line?.getElement ? r._line.getElement() : null;
+      const op = el?.style.opacity || '';
+      if (el) el.style.opacity = '0';
+      return op;
+    });
+    hitOverlays.forEach(ov => {
+      const el = ov.getElement ? ov.getElement() : null;
+      if (el) el.style.opacity = '0';
+    });
+
     // 地図タイルの描画が完了するまで少し待つ
     await new Promise(r => setTimeout(r, 600));
 
@@ -1523,6 +1561,20 @@ async function saveMapAsImage() {
     showToast('📷 マップを画像で保存しました');
   } catch(e) {
     showToast('❌ 画像保存に失敗: ' + e.message);
+  } finally {
+    // ── 編集要素を元の表示状態に復元 ──
+    vps.forEach((vp, i) => {
+      const el = vp.marker?.getElement();
+      if (el) el.style.opacity = _savedVpOpacity[i] ?? (viaVisible ? '1' : '0');
+    });
+    customRoads.forEach((r, i) => {
+      const el = r._line?.getElement ? r._line.getElement() : null;
+      if (el) el.style.opacity = _savedCrLines[i] || '';
+    });
+    hitOverlays.forEach(ov => {
+      const el = ov.getElement ? ov.getElement() : null;
+      if (el) el.style.opacity = '';
+    });
   }
 }
 
@@ -1550,7 +1602,7 @@ function setMode(m) {
    ============================================================ */
 function _makeSnapshot() {
   return {
-    wps: wps.map(w=>({id:w.id,type:w.type,name:w.name,desc:w.desc,tel:w.tel,dwell:w.dwell||0,fitBefore:w.fitBefore!==false,fitAfter:w.fitAfter!==false,lat:w.lat,lng:w.lng,labelDir:w.labelDir||'top'})),
+    wps: wps.map(w=>({id:w.id,type:w.type,name:w.name,desc:w.desc,tel:w.tel,dwell:w.dwell||0,fitBefore:w.fitBefore!==false,fitAfter:w.fitAfter!==false,onRoute:w.onRoute!==undefined?w.onRoute!==false:(w.type==='course'),lat:w.lat,lng:w.lng,labelDir:w.labelDir||'top'})),
     vps: vps.map(v=>({id:v.id,segAfter:v.segAfter,fitBefore:v.fitBefore!==false,fitAfter:v.fitAfter!==false,lat:v.lat,lng:v.lng,order:v.order||0})),
     idW, idV,
   };
@@ -1882,7 +1934,7 @@ function nearestRoadIdx(road, lat, lng) {
 function routeAlongCustomRoad(fromLat, fromLng, toLat, toLng) {
   const THR = 0.0003; // 約30m
   for (const road of customRoads) {
-    if (!road.visible || !_crVisible || !road.coords || road.coords.length < 2) continue;
+    if (!road.visible || !road.coords || road.coords.length < 2) continue; // _crVisibleは参照しない（表示状態はルーティングに影響しない）
     const i1=nearestRoadIdx(road, fromLat, fromLng);
     const i2=nearestRoadIdx(road, toLat,   toLng);
     const d1=Math.hypot(fromLat-road.coords[i1][0], fromLng-road.coords[i1][1]);
@@ -1911,7 +1963,7 @@ function buildCurrentSaveData() {
     desc:    document.getElementById('iDesc')?.value||'',
     center:  leafMap ? {lat:leafMap.getCenter().lat, lng:leafMap.getCenter().lng} : null,
     zoom:    leafMap ? leafMap.getZoom() : 14,
-    wps:     wps.map(w=>({id:w.id,type:w.type,name:w.name,desc:w.desc,tel:w.tel,dwell:w.dwell||0,fitBefore:w.fitBefore!==false,fitAfter:w.fitAfter!==false,lat:w.lat,lng:w.lng,labelDir:w.labelDir||'top',photos:w.photos||[]})),
+    wps:     wps.map(w=>({id:w.id,type:w.type,name:w.name,desc:w.desc,tel:w.tel,dwell:w.dwell||0,fitBefore:w.fitBefore!==false,fitAfter:w.fitAfter!==false,onRoute:w.onRoute!==undefined?w.onRoute!==false:(w.type==='course'),lat:w.lat,lng:w.lng,labelDir:w.labelDir||'top',photos:w.photos||[]})),
     vps:     vps.map(v=>({id:v.id,segAfter:v.segAfter,fitBefore:v.fitBefore!==false,fitAfter:v.fitAfter!==false,lat:v.lat,lng:v.lng,order:v.order||0})),
     customRoads: customRoads.map(r=>({id:r.id,name:r.name,coords:r.coords})),
     maxWpId: idW,
@@ -1964,6 +2016,8 @@ function loadCourseData(data) {
         fitAfter:  w.fitAfter  !== undefined ? w.fitAfter  !== false : _fitR,
         labelDir:  w.labelDir  || 'top',
         labelWrap: !!w.labelWrap,
+        // onRoute: 旧データはtypeで自動判定（backward compat）
+        onRoute:   w.onRoute !== undefined ? (w.onRoute !== false) : (w.type === 'course'),
         photos:    w.photos    || [],
         marker:    null
       };
