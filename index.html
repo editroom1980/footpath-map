@@ -385,6 +385,7 @@ let idW = 0, idV = 0;
 let undoStack   = [];      // 取り消し履歴 (最大30ステップ)
 let redoStack   = [];      // やり直し履歴
 let viewMode    = false;   // 閲覧専用モード
+let _routeCoordMap = [];   // OSRM座標→セグメントID対応表（クリック判定用）
 let _modalPhotos= [];      // モーダル編集中の写真
 let lineDragging= false;
 let dragSrcId   = null;
@@ -912,6 +913,20 @@ function nearestSegWpId(lat, lng) {
   return bestId;
 }
 
+// OSRM実座標から最近傍セグメントを特定（直線近似より正確）
+// 各OSRM座標点はbuildRoutedCoordsでwpIdタグ付け済み
+// → ルートが重なる区間でも、先に処理したセグメントが正しく選ばれる
+function findNearestSegByCoordMap(latlng) {
+  if (!_routeCoordMap.length) return null;
+  let bestId = null, bestD = Infinity;
+  const lat = latlng.lat, lng = latlng.lng;
+  for (const c of _routeCoordMap) {
+    const d = (lat-c.lat)*(lat-c.lat) + (lng-c.lng)*(lng-c.lng);
+    if (d < bestD) { bestD = d; bestId = c.wpId; }
+  }
+  return bestId;
+}
+
 function findNearestSegment(latlng, segList) {
   if (!segList || !segList.length) return null;
   const pt = [latlng.lat, latlng.lng];
@@ -1015,7 +1030,11 @@ function drawLines(allCoords, segList) {
   if (viaVisible && segList && segList.length > 0) {
     const ov = L.polyline(allCoords, {weight:22, opacity:0, color:'#000', interactive:true}).addTo(leafMap);
     ov.on('mousedown', e => {
-      const wpId = findNearestSegment(e.latlng, segList);
+      // OSRM実座標マップ優先（クリックした場所の実際のルート座標でセグメントを判定）
+      // なければ直線WP→WP座標でフォールバック（ドラッグ中の直線プレビュー時）
+      const wpId = _routeCoordMap.length > 0
+        ? findNearestSegByCoordMap(e.latlng)
+        : findNearestSegment(e.latlng, segList);
       if (wpId !== null) onSegmentHitDown(e, wpId);
     });
     const el = ov.getElement();
@@ -1058,7 +1077,8 @@ async function doRouting() {
 
 async function buildRoutedCoords() {
   const all = [];
-  const segCoordsList = []; // ヒットオーバーレイ用・OSRMベース座標
+  const segCoordsList = [];
+  const _newRouteMap  = []; // 座標→セグメントID対応表（成功時に_routeCoordMapへ）
   for (let i=0; i<wps.length-1; i++) {
     const a   = wps[i], b = wps[i+1];
     const sv  = segVpsOf(a.id, a, b);
@@ -1129,10 +1149,13 @@ async function buildRoutedCoords() {
       }
     }
 
+    // OSRM座標にセグメントIDをタグ付け（最近傍セグメント特定に使用）
+    seg.forEach(c => _newRouteMap.push({lat:c[0], lng:c[1], wpId:a.id}));
     segCoordsList.push({wpId: a.id, coords: seg.slice()});
     if (all.length===0) seg.forEach(c=>all.push(c));
     else seg.slice(1).forEach(c=>all.push(c));
   }
+  _routeCoordMap = _newRouteMap; // ルーティング成功時のみ更新
   return {allCoords: all, segCoordsList};
 }
 
