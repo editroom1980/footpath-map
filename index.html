@@ -673,6 +673,22 @@ function updateTooltip(wp) {
     // \nを<br>に変換してHTML表示（2行入力対応）
     const html_content = wp.name.split('\n').map(l=>escHtml(l)).join('<br>');
     wp.marker.bindTooltip(html_content, {permanent:true, direction:dir, offset:off, className:cls});
+    // ── インラインスタイルで背景色を強制設定 ──────────────────────────
+    // html2canvasはCSS !importantの競合を正しく解決できないため、
+    // CSSクラスではなくインラインスタイルで色を直接指定する
+    // （インラインスタイルはあらゆるCSSルールより優先される）
+    const _t   = WT.find(x=>x.v===(wp.type||'course')) || WT[0];
+    const _ttEl = wp.marker.getTooltip()?.getElement?.();
+    if (_ttEl) {
+      _ttEl.style.setProperty('background', _t.c, 'important');
+      _ttEl.style.setProperty('color',      '#fff','important');
+      _ttEl.style.setProperty('border',     'none','important');
+      _ttEl.style.setProperty('border-radius','4px','important');
+      _ttEl.style.setProperty('padding',    '2px 7px','important');
+      _ttEl.style.setProperty('font-size',  '11px','important');
+      _ttEl.style.setProperty('white-space','nowrap','important');
+      _ttEl.style.setProperty('box-shadow', '0 2px 6px rgba(0,0,0,.3)','important');
+    }
   }
 }
 
@@ -1527,6 +1543,18 @@ async function saveMapAsImage() {
     hitOverlays.forEach(ov => {
       const el = ov.getElement ? ov.getElement() : null;
       if (el) el.style.opacity = '0';
+    });
+
+    // ── WPツールチップの色をhtml2canvas前に再確認・再適用 ──────────
+    // Leafletの再描画でインラインスタイルが失われた場合に備えて再設定
+    wps.forEach(wp => {
+      const _ct = WT.find(x=>x.v===(wp.type||'course')) || WT[0];
+      const _el = wp.marker?.getTooltip?.()?.getElement?.();
+      if (_el) {
+        _el.style.setProperty('background', _ct.c, 'important');
+        _el.style.setProperty('color',      '#fff', 'important');
+        _el.style.setProperty('border',     'none', 'important');
+      }
     });
 
     // 地図タイルの描画が完了するまで少し待つ
