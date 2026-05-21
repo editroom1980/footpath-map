@@ -106,7 +106,11 @@ html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:
 .wp-tt-toilet{background:#455A64!important;border-color:#455A64!important;color:#fff!important}
 .wp-tt-parking{background:#1565C0!important;border-color:#1565C0!important;color:#fff!important}
 .wp-tt-other{background:#757575!important;border-color:#757575!important;color:#fff!important}
-.wp-tt-wrap{white-space:normal!important;max-width:110px!important;text-align:center!important;line-height:1.4!important}
+.wp-tt-wrap{white-space:normal!important;max-width:200px!important;text-align:center!important;line-height:1.5!important;word-break:normal!important}
+.tsep{color:#D4C4A8;padding:0 3px;align-self:center}
+/* カスタム道路描画UI */
+#crFinishBar{display:none;position:fixed;top:50px;left:50%;transform:translateX(-50%);background:#fff;border:1.5px solid #1565C0;border-radius:8px;padding:6px 14px;z-index:2000;gap:10px;align-items:center;box-shadow:0 2px 12px rgba(0,0,0,.2)}
+#crFinishBar.show{display:flex}
 /* 写真プレビュー */
 .photo-strip{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
 .photo-thumb{position:relative;width:72px;height:72px;border-radius:6px;overflow:hidden;border:1px solid #D4C4A8;flex-shrink:0}
@@ -211,18 +215,21 @@ html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:
     </div>
     <div id="mapArea">
       <div id="tbar">
-        <button class="btn on" id="btnWp"  onclick="setMode('wp')">📍 ウェイポイント</button>
-        <button class="btn"    id="btnVia" onclick="setMode('via')">↔ 調整点</button>
-        <button class="btn"    id="btnToggleVia" onclick="toggleViaVisibility()" title="経路調整点の表示/非表示">● 調整点表示</button>
-        <span style="color:#D4C4A8">|</span>
-        <button class="btn" id="btnUndo" onclick="undoLast()" title="取り消し (⌘Z)" disabled>↩</button>
-        <button class="btn" id="btnRedo" onclick="redoAction()" title="やり直し (⌘⇧Z)" disabled>↪</button>
-        <button class="btn" onclick="clearAll()" title="全消去">🗑</button>
-        <span style="color:#D4C4A8">|</span>
-        <button class="btn" onclick="saveMapAsImage()" title="マップを画像で保存">📷</button>
-        <button class="btn" onclick="openViewMode()" title="閲覧モードで開く（新しいタブ）">👁 閲覧</button>
-        <button class="btn" onclick="openHelp()" title="操作ガイド">❓</button>
-        <button class="btn" id="btnSpline" onclick="toggleSpline()" title="スプライン曲線：調整点間をなめらかな曲線にする">〜 スプライン</button>
+        <button class="btn on" id="btnWp" onclick="setMode('wp')" title="📍 WP追加&#10;クリックでスポットをコースに追加">📍 WP</button>
+        <button class="btn" id="btnVia" onclick="setMode('via')" title="↔ 調整点追加&#10;ルートラインをドラッグして経路を微調整">↔ 調整点</button>
+        <button class="btn" id="btnRoad" onclick="setMode('road')" title="🛤 カスタム道路描画&#10;OSRMが通れない細い道を手動で引く&#10;クリックで点を追加→完了で確定">🛤 道路</button>
+        <span class="tsep">|</span>
+        <button class="btn" id="btnToggleVia" onclick="toggleViaVisibility()" title="● 調整点 表示/非表示">● 調整点</button>
+        <button class="btn" id="btnSpline" onclick="toggleSpline()" title="〜 スプライン曲線&#10;調整点間をなめらかな曲線で描画">〜 曲線</button>
+        <button class="btn" id="btnCrVis" onclick="toggleCustomRoadsVisibility()" title="🗺 カスタム道路 表示/非表示">🗺 道路</button>
+        <span class="tsep">|</span>
+        <button class="btn" id="btnUndo" onclick="undoLast()" title="↩ 取り消し (⌘Z)" disabled>↩</button>
+        <button class="btn" id="btnRedo" onclick="redoAction()" title="↪ やり直し (⌘⇧Z)" disabled>↪</button>
+        <button class="btn" onclick="clearAll()" title="🗑 全消去&#10;すべてのWP・調整点を削除">🗑</button>
+        <span class="tsep">|</span>
+        <button class="btn" onclick="saveMapAsImage()" title="📷 マップを画像保存">📷</button>
+        <button class="btn" onclick="openViewMode()" title="👁 閲覧モード&#10;閲覧専用画面を新しいタブで開く">👁</button>
+        <button class="btn" onclick="openHelp()" title="❓ 操作ガイド">❓</button>
         <span id="tbar-st">クリックでウェイポイント追加 / ルート線ドラッグで経路調整</span>
       </div>
       <div id="mapWrap">
@@ -287,6 +294,13 @@ html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:
 <!-- View Mode Info Panel -->
 <div id="viewInfoPanel"></div>
 <div id="viewBadge">👁 閲覧モード</div>
+
+<!-- カスタム道路描画 完了バー -->
+<div id="crFinishBar">
+  <span style="font-size:11px;color:#1565C0;font-weight:bold">🛤 道路描画中 — クリックで点を追加</span>
+  <button class="btn" onclick="finishRoadDraw()" style="background:#1565C0;color:#fff;border-color:#1565C0;padding:4px 12px">✓ 完了</button>
+  <button class="btn" onclick="cancelRoadDraw()" style="padding:4px 10px">✕ キャンセル</button>
+</div>
 
 <!-- Help Modal -->
 <div id="helpModal" onclick="if(event.target===this)closeHelp()">
@@ -386,6 +400,10 @@ let undoStack   = [];      // 取り消し履歴 (最大30ステップ)
 let redoStack   = [];      // やり直し履歴
 let viewMode    = false;   // 閲覧専用モード
 let _routeCoordMap = [];   // OSRM座標→セグメントID対応表（クリック判定用）
+let customRoads = [];     // カスタム道路 [{id,name,coords,visible,_line}]
+let _drawRoad   = null;   // 描画中のカスタム道路
+let _crIdCtr    = 0;      // カスタム道路IDカウンター
+let _crVisible  = true;   // カスタム道路全体表示フラグ
 let _modalPhotos= [];      // モーダル編集中の写真
 let lineDragging= false;
 let dragSrcId   = null;
@@ -431,7 +449,7 @@ window.addEventListener('DOMContentLoaded', () => {
   // Context menu closes ONLY via Cancel button, Escape key, or map pan.
   // Close menu on Escape key; ⌘Z = undo; ⌘⇧Z = redo
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') { hideCtxMenu(); return; }
+    if (e.key === 'Escape') { hideCtxMenu(); if(mode==='road')cancelRoadDraw(); return; }
     if ((e.metaKey || e.ctrlKey) && e.key === 'z') {
       e.preventDefault();
       if (e.shiftKey) redoAction(); else undoLast();
@@ -515,8 +533,9 @@ function onMapClick(e) {
   // コンテキストメニューまたはWPモーダルが開いている場合は何もしない
   if (ctxVpId !== null) return;
   if (document.getElementById('mOver')?.classList.contains('show')) return;
-  if (mode==='wp')  addWp(e.latlng.lat, e.latlng.lng);
-  if (mode==='via') addVp(e.latlng.lat, e.latlng.lng);
+  if (mode==='wp')   addWp(e.latlng.lat, e.latlng.lng);
+  if (mode==='via')  addVp(e.latlng.lat, e.latlng.lng);
+  if (mode==='road') addRoadPoint(e.latlng.lat, e.latlng.lng);
 }
 
 /* ============================================================
@@ -541,11 +560,8 @@ function buildWpMarker(wp) {
   m.on('dragend', () => { wp.lat=m.getLatLng().lat; wp.lng=m.getLatLng().lng; clearCache(); scheduleRouting(); });
   m.on('click', e => { L.DomEvent.stopPropagation(e); viewMode ? showViewInfo(wp.id) : openModal(wp.id); });
 
-  if (wp.name && wp.name.trim()) {
-    m.bindTooltip(wp.name, {permanent:true, direction:'top', offset:[0,isMobile()?-20:-18], className:'wp-tt'});
-  }
-
   wp.marker = m;       // set BEFORE addWpLongPress
+  updateTooltip(wp);   // 色・方向・折り返しを正しく適用（設定画面を経由しなくても反映）
   addWpLongPress(wp);
   return m;
 }
@@ -1087,9 +1103,11 @@ async function buildRoutedCoords() {
     let seg = [];
 
     if (sv.length === 0) {
-      // ── 調整点なし ──
-      if (fitAout && fitBin) {
-        // 両端とも道路フィット → OSRM
+      // ── 調整点なし: カスタム道路→OSRM→直線 の順で判定 ──
+      const _crNoVia = routeAlongCustomRoad(a.lat, a.lng, b.lat, b.lng);
+      if (_crNoVia) {
+        seg = _crNoVia;
+      } else if (fitAout && fitBin) {
         const key=`${a.lng.toFixed(6)},${a.lat.toFixed(6)};${b.lng.toFixed(6)},${b.lat.toFixed(6)}`;
         seg = await getCachedRoute(key, [{lat:a.lat,lng:a.lng},{lat:b.lat,lng:b.lng}]);
       } else {
@@ -1103,8 +1121,11 @@ async function buildRoutedCoords() {
       const fitFirst = (first.fitBefore !== false); // 最初の調整点への入り方
       const fitLast  = (last.fitAfter   !== false); // 最後の調整点からの出方
 
-      // A → 最初の調整点: fitAout AND fitFirst ならOSRM
-      if (fitAout && fitFirst) {
+      // A → 最初の調整点: カスタム道路→OSRM→直線
+      const _crAF = routeAlongCustomRoad(a.lat, a.lng, first.lat, first.lng);
+      if (_crAF) {
+        seg = _crAF;
+      } else if (fitAout && fitFirst) {
         const k1=`${a.lng.toFixed(6)},${a.lat.toFixed(6)};${first.lng.toFixed(6)},${first.lat.toFixed(6)}`;
         const s1 = await getCachedRoute(k1, [{lat:a.lat,lng:a.lng},{lat:first.lat,lng:first.lng}]);
         seg = [...s1];
@@ -1126,21 +1147,26 @@ async function buildRoutedCoords() {
           // セクションごとに判定
           for (let j=0; j<sv.length-1; j++) {
             const vpA=sv[j], vpB=sv[j+1];
-            if ((vpA.fitAfter !== false) && (vpB.fitBefore !== false)) {
-              // 両側がOSRM設定 → 道路追従
+            // カスタム道路→OSRM→直線 の順で判定
+            const _crVV = routeAlongCustomRoad(vpA.lat, vpA.lng, vpB.lat, vpB.lng);
+            if (_crVV) {
+              seg.push(..._crVV.slice(1));
+            } else if ((vpA.fitAfter !== false) && (vpB.fitBefore !== false)) {
               const kv=`${vpA.lng.toFixed(6)},${vpA.lat.toFixed(6)};${vpB.lng.toFixed(6)},${vpB.lat.toFixed(6)}`;
               const sv2 = await getCachedRoute(kv, [{lat:vpA.lat,lng:vpA.lng},{lat:vpB.lat,lng:vpB.lng}]);
               seg.push(...sv2.slice(1));
             } else {
-              // 直線
               seg.push([vpB.lat, vpB.lng]);
             }
           }
         }
       }
 
-      // 最後の調整点 → B: fitLast AND fitBin ならOSRM
-      if (fitLast && fitBin) {
+      // 最後の調整点 → B: カスタム道路→OSRM→直線
+      const _crLB = routeAlongCustomRoad(last.lat, last.lng, b.lat, b.lng);
+      if (_crLB) {
+        seg.push(..._crLB.slice(1));
+      } else if (fitLast && fitBin) {
         const k2=`${last.lng.toFixed(6)},${last.lat.toFixed(6)};${b.lng.toFixed(6)},${b.lat.toFixed(6)}`;
         const s2 = await getCachedRoute(k2, [{lat:last.lat,lng:last.lng},{lat:b.lat,lng:b.lng}]);
         seg.push(...s2.slice(1));
@@ -1434,12 +1460,19 @@ async function saveMapAsImage() {
    MODE / UNDO / CLEAR
    ============================================================ */
 function setMode(m) {
+  if (mode === 'road' && m !== 'road') cancelRoadDraw(); // 道路描画中にモード変更→キャンセル
   mode = m;
-  document.getElementById('btnWp').classList.toggle('on',  m==='wp');
-  document.getElementById('btnVia').classList.toggle('on', m==='via');
-  document.getElementById('tbar-st').textContent = m==='wp'
-    ? 'クリックでウェイポイント追加 / ルート線ドラッグで経路調整'
-    : '調整点モード：細い道に沿ってクリック。右クリック/長押しで削除';
+  document.getElementById('btnWp')?.classList.toggle('on',   m==='wp');
+  document.getElementById('btnVia')?.classList.toggle('on',  m==='via');
+  document.getElementById('btnRoad')?.classList.toggle('on', m==='road');
+  const msgs = {
+    'wp':   'クリックでウェイポイント追加 / ルート線ドラッグで経路調整',
+    'via':  '調整点モード：ルートライン上をクリックまたはドラッグ',
+    'road': '🛤 道路描画モード：クリックで点を追加 → 完了ボタンで確定',
+  };
+  const el = document.getElementById('tbar-st');
+  if (el) el.textContent = msgs[m] || '';
+  if (m === 'road') startRoadDraw();
 }
 
 /* ============================================================
@@ -1691,6 +1724,107 @@ function openFullPhoto(src) {
 }
 
 /* ============================================================
+   カスタム道路描画・ルーティング
+   ============================================================ */
+function startRoadDraw() {
+  if (_drawRoad) cancelRoadDraw(); // 念のため既存をキャンセル
+  _drawRoad = {id:++_crIdCtr, name:'道路'+_crIdCtr, coords:[], markers:[], previewLine:null};
+  document.getElementById('crFinishBar')?.classList.add('show');
+}
+
+function addRoadPoint(lat, lng) {
+  if (!_drawRoad) return;
+  _drawRoad.coords.push([lat, lng]);
+  // 仮マーカー
+  const m = L.circleMarker([lat, lng], {
+    radius:5, color:'#1565C0', fillColor:'#1565C0', fillOpacity:1, weight:2, interactive:false
+  }).addTo(leafMap);
+  _drawRoad.markers.push(m);
+  // プレビューライン更新
+  if (_drawRoad.previewLine) { leafMap.removeLayer(_drawRoad.previewLine); _drawRoad.previewLine=null; }
+  if (_drawRoad.coords.length >= 2) {
+    _drawRoad.previewLine = L.polyline(_drawRoad.coords, {
+      color:'#1565C0', weight:3, dashArray:'8,4', opacity:0.8, interactive:false
+    }).addTo(leafMap);
+  }
+}
+
+function finishRoadDraw() {
+  if (!_drawRoad) return;
+  if (_drawRoad.coords.length < 2) { cancelRoadDraw(); return; }
+  // 仮マーカー・ラインを削除
+  _drawRoad.markers.forEach(m => leafMap.removeLayer(m));
+  if (_drawRoad.previewLine) leafMap.removeLayer(_drawRoad.previewLine);
+  // 確定道路を保存
+  const road = {id:_drawRoad.id, name:_drawRoad.name, coords:[..._drawRoad.coords], visible:true, _line:null};
+  customRoads.push(road);
+  _drawRoad = null;
+  document.getElementById('crFinishBar')?.classList.remove('show');
+  drawCustomRoadLine(road);
+  showToast('🛤 カスタム道路を保存しました（' + road.coords.length + '点）');
+  clearCache(); scheduleRouting(); // 新しい道路でルートを再計算
+  setMode('wp');
+}
+
+function cancelRoadDraw() {
+  if (!_drawRoad) return;
+  _drawRoad.markers.forEach(m => leafMap.removeLayer(m));
+  if (_drawRoad.previewLine) leafMap.removeLayer(_drawRoad.previewLine);
+  _drawRoad = null;
+  document.getElementById('crFinishBar')?.classList.remove('show');
+}
+
+function drawCustomRoadLine(road) {
+  if (!leafMap || !road.coords || road.coords.length < 2) return;
+  if (road._line) { leafMap.removeLayer(road._line); road._line=null; }
+  if (!road.visible || !_crVisible) return;
+  road._line = L.polyline(road.coords, {
+    color:'#1565C0', weight:3, dashArray:'10,5', opacity:0.55, interactive:false
+  }).addTo(leafMap);
+}
+
+function drawAllCustomRoads() {
+  customRoads.forEach(r => drawCustomRoadLine(r));
+}
+
+function clearAllCustomRoadLines() {
+  customRoads.forEach(r => { if(r._line&&leafMap){leafMap.removeLayer(r._line);r._line=null;} });
+}
+
+function toggleCustomRoadsVisibility() {
+  _crVisible = !_crVisible;
+  document.getElementById('btnCrVis')?.classList.toggle('on', !_crVisible);
+  if (_crVisible) drawAllCustomRoads(); else clearAllCustomRoadLines();
+}
+
+function nearestRoadIdx(road, lat, lng) {
+  let bestIdx=0, bestD=Infinity;
+  for (let i=0; i<road.coords.length; i++) {
+    const d=Math.hypot(lat-road.coords[i][0], lng-road.coords[i][1]);
+    if(d<bestD){bestD=d;bestIdx=i;}
+  }
+  return bestIdx;
+}
+
+function routeAlongCustomRoad(fromLat, fromLng, toLat, toLng) {
+  const THR = 0.0003; // 約30m
+  for (const road of customRoads) {
+    if (!road.visible || !_crVisible || !road.coords || road.coords.length < 2) continue;
+    const i1=nearestRoadIdx(road, fromLat, fromLng);
+    const i2=nearestRoadIdx(road, toLat,   toLng);
+    const d1=Math.hypot(fromLat-road.coords[i1][0], fromLng-road.coords[i1][1]);
+    const d2=Math.hypot(toLat  -road.coords[i2][0], toLng  -road.coords[i2][1]);
+    if (d1<THR && d2<THR && Math.abs(i1-i2)>=1) {
+      const s=Math.min(i1,i2), e=Math.max(i1,i2)+1;
+      const seg=road.coords.slice(s,e);
+      if(i1>i2) seg.reverse(); // 方向を合わせる
+      return seg;
+    }
+  }
+  return null;
+}
+
+/* ============================================================
    COURSE SAVE / LOAD
    ============================================================ */
 function buildCurrentSaveData() {
@@ -1706,6 +1840,7 @@ function buildCurrentSaveData() {
     zoom:    leafMap ? leafMap.getZoom() : 14,
     wps:     wps.map(w=>({id:w.id,type:w.type,name:w.name,desc:w.desc,tel:w.tel,dwell:w.dwell||0,fitBefore:w.fitBefore!==false,fitAfter:w.fitAfter!==false,lat:w.lat,lng:w.lng,labelDir:w.labelDir||'top',labelWrap:!!w.labelWrap,photos:w.photos||[]})),
     vps:     vps.map(v=>({id:v.id,segAfter:v.segAfter,fitBefore:v.fitBefore!==false,fitAfter:v.fitAfter!==false,lat:v.lat,lng:v.lng,order:v.order||0})),
+    customRoads: customRoads.map(r=>({id:r.id,name:r.name,coords:r.coords})),
     maxWpId: idW,
     maxVpNum:idV,
     savedAt: new Date().toISOString(),
@@ -1798,6 +1933,11 @@ function loadCourseData(data) {
 
     const descEl = document.getElementById('iDesc');
     if (descEl) descEl.value = data.desc||'';
+
+    // カスタム道路を復元
+    clearAllCustomRoadLines();
+    customRoads = (data.customRoads || []).map(r=>({...r, visible:true, _line:null}));
+    drawAllCustomRoads();
 
     refreshIcons();
     redrawStraight();
