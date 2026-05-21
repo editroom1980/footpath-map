@@ -99,6 +99,7 @@ html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:
 /* WP種別ツールチップカラー */
 .wp-tt-course{background:#C4703A!important;border-color:#C4703A!important;color:#fff!important}
 .wp-tt-start{background:#2E7D32!important;border-color:#2E7D32!important;color:#fff!important}
+.wp-tt-goal{background:#B71C1C!important;border-color:#B71C1C!important;color:#fff!important}
 .wp-tt-view{background:#1565C0!important;border-color:#1565C0!important;color:#fff!important}
 .wp-tt-shop{background:#C62828!important;border-color:#C62828!important;color:#fff!important}
 .wp-tt-shrine{background:#6D4C41!important;border-color:#6D4C41!important;color:#fff!important}
@@ -383,7 +384,8 @@ html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:
    ============================================================ */
 const WT = [
   {v:'course',  l:'コースポイント（番号付き）', c:'#C4703A'},
-  {v:'start',   l:'スタート / ゴール',          c:'#2E7D32'},
+  {v:'start',   l:'スタート',                    c:'#2E7D32'},
+  {v:'goal',    l:'ゴール',                      c:'#B71C1C'},
   {v:'view',    l:'ビュースポット',              c:'#1565C0'},
   {v:'shop',    l:'飲食店・ショップ ★',          c:'#C62828'},
   {v:'shrine',  l:'神社・寺院',                  c:'#6D4C41'},
@@ -393,7 +395,7 @@ const WT = [
   {v:'parking', l:'駐車場',                      c:'#1565C0'},
   {v:'other',   l:'その他',                      c:'#757575'},
 ];
-const SYM = {start:'S',view:'◎',shop:'★',shrine:'⛩',history:'碑',park:'🌿',toilet:'WC',parking:'P',other:'●'};
+const SYM = {start:'S',goal:'G',view:'◎',shop:'★',shrine:'⛩',history:'碑',park:'🌿',toilet:'WC',parking:'P',other:'●'};
 const LINE_STYLE = {color:'#E84040', weight:4, dashArray:'8,5', opacity:.9};
 
 /* ============================================================
@@ -635,7 +637,7 @@ function wpIcon(wp, sz, anc) {
   const sym = wp.type==='course' ? (courseNum(wp)||'?') : (SYM[wp.type]||'●');
   return L.divIcon({
     className:'',
-    html:`<div style="width:${sz[0]}px;height:${sz[1]}px;border-radius:50%;background:${t.c};color:#fff;display:flex;align-items:center;justify-content:center;font-size:${sz[0]===36?14:12}px;font-weight:bold;border:2px solid rgba(255,255,255,.85);box-shadow:0 2px 6px rgba(0,0,0,.45);cursor:pointer">${sym}</div>`,
+    html:`<div data-wtype="${wp.type||'course'}" style="width:${sz[0]}px;height:${sz[1]}px;border-radius:50%;background:${t.c};color:#fff;display:flex;align-items:center;justify-content:center;font-size:${sz[0]===36?14:12}px;font-weight:bold;border:2px solid rgba(255,255,255,.85);box-shadow:0 2px 6px rgba(0,0,0,.45);cursor:pointer">${sym}</div>`,
     iconSize:sz, iconAnchor:anc
   });
 }
@@ -1551,6 +1553,43 @@ async function saveMapAsImage() {
           clonedMap.style.height = h + 'px';
           clonedMap.style.overflow = 'hidden';
         }
+        // html2canvasはCDN CSSを含まないため、WP要素の色をインラインスタイルで強制適用
+        // ツールチップ背景色マップ
+        const _ttColors = {
+          'wp-tt-course':'#C4703A','wp-tt-start':'#2E7D32','wp-tt-goal':'#B71C1C',
+          'wp-tt-view':'#1565C0','wp-tt-shop':'#C62828','wp-tt-shrine':'#6D4C41',
+          'wp-tt-history':'#E65100','wp-tt-park':'#388E3C','wp-tt-toilet':'#455A64',
+          'wp-tt-parking':'#1565C0','wp-tt-other':'#757575',
+        };
+        // ツールチップ色を強制適用
+        clonedDoc.querySelectorAll('.wp-tt').forEach(el => {
+          el.style.setProperty('background','rgba(62,42,14,.85)','important');
+          el.style.setProperty('color','#F5EDD8','important');
+          el.style.setProperty('border','none','important');
+          el.style.setProperty('border-radius','4px','important');
+          el.style.setProperty('padding','2px 7px','important');
+          el.style.setProperty('font-size','11px','important');
+          el.style.setProperty('box-shadow','0 2px 6px rgba(0,0,0,.3)','important');
+          for (const [cls, bg] of Object.entries(_ttColors)) {
+            if (el.classList.contains(cls)) {
+              el.style.setProperty('background', bg, 'important');
+              el.style.setProperty('color','#fff','important');
+              break;
+            }
+          }
+        });
+        // WPアイコン（丸い数字マーカー）の色を強制適用
+        const _wpColors = {
+          'course':'#C4703A','start':'#2E7D32','goal':'#B71C1C',
+          'view':'#1565C0','shop':'#C62828','shrine':'#6D4C41',
+          'history':'#E65100','park':'#388E3C','toilet':'#455A64',
+          'parking':'#1565C0','other':'#757575',
+        };
+        // data-wp-type属性またはクラスからアイコン色を復元
+        clonedDoc.querySelectorAll('.leaflet-marker-icon div[data-wtype]').forEach(el => {
+          const t = el.getAttribute('data-wtype');
+          if (_wpColors[t]) el.style.setProperty('background', _wpColors[t], 'important');
+        });
       },
     });
     const url = canvas.toDataURL('image/png');
@@ -2017,6 +2056,7 @@ function loadCourseData(data) {
         labelDir:  w.labelDir  || 'top',
         labelWrap: !!w.labelWrap,
         // onRoute: 旧データはtypeで自動判定（backward compat）
+        // goal/startはroute非接続デフォルト（course以外はonRoute:false）
         onRoute:   w.onRoute !== undefined ? (w.onRoute !== false) : (w.type === 'course'),
         photos:    w.photos    || [],
         marker:    null
