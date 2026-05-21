@@ -61,6 +61,7 @@ html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:
 #descSec label{display:block;font-size:10px;font-weight:bold;color:#666;margin-bottom:3px}
 #iDesc{width:100%;padding:5px 7px;border:1px solid #D4C4A8;border-radius:3px;font-size:11px;font-family:inherit;background:#fff;outline:none;resize:vertical;min-height:55px}
 #mapArea{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+#map,#mapArea,.leaflet-container{user-select:none;-webkit-user-select:none}
 #tbar{background:#F5EDD8;border-bottom:1px solid #D4C4A8;padding:4px 8px;display:flex;align-items:center;gap:4px;flex-shrink:0;flex-wrap:wrap}
 #tbar-st{font-size:10px;color:#888;flex:1;min-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #mapWrap{flex:1;position:relative}
@@ -108,6 +109,8 @@ html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:
 .wp-tt-other{background:#757575!important;border-color:#757575!important;color:#fff!important}
 .wp-tt-wrap{white-space:normal!important;width:150px!important;max-width:200px!important;text-align:center!important;line-height:1.5!important;word-break:normal!important}
 .tsep{color:#D4C4A8;padding:0 3px;align-self:center}
+.btn.btn-off{opacity:0.55;background:#888!important;color:#fff!important;border-color:#888!important}
+#wpTypePicker{display:none;position:fixed;z-index:5000;background:#fff;border:1px solid #C4B89A;border-radius:8px;padding:4px 0;min-width:200px;box-shadow:0 3px 16px rgba(0,0,0,.22)}
 /* カスタム道路描画UI */
 #crFinishBar{display:none;position:fixed;top:50px;left:50%;transform:translateX(-50%);background:#fff;border:1.5px solid #1565C0;border-radius:8px;padding:6px 14px;z-index:2000;gap:10px;align-items:center;box-shadow:0 2px 12px rgba(0,0,0,.2)}
 #crFinishBar.show{display:flex}
@@ -220,8 +223,8 @@ html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:
         <button class="btn" id="btnRoad" onclick="setMode('road')" title="🛤 カスタム道路描画&#10;OSRMが通れない細い道を手動で引く&#10;クリックで点を追加→完了で確定">🛤 道路</button>
         <span class="tsep">|</span>
         <button class="btn" id="btnToggleVia" onclick="toggleViaVisibility()" title="● 調整点 表示/非表示">● 調整点</button>
-        <button class="btn" id="btnSpline" onclick="toggleSpline()" title="〜 スプライン曲線&#10;調整点間をなめらかな曲線で描画">〜 曲線</button>
         <button class="btn" id="btnCrVis" onclick="toggleCustomRoadsVisibility()" title="🗺 カスタム道路 表示/非表示">🗺 道路</button>
+        <button class="btn" id="btnSpline" onclick="toggleSpline()" title="〜 スプライン曲線&#10;調整点間をなめらかな曲線で描画">〜 曲線</button>
         <span class="tsep">|</span>
         <button class="btn" id="btnUndo" onclick="undoLast()" title="↩ 取り消し (⌘Z)" disabled>↩</button>
         <button class="btn" id="btnRedo" onclick="redoAction()" title="↪ やり直し (⌘⇧Z)" disabled>↪</button>
@@ -250,7 +253,8 @@ html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:
     </div>
     <div class="m-body">
       <label>種別</label><select id="mType"></select>
-      <label>名称（地図上に表示）</label><input id="mName" placeholder="スポット名">
+      <label>名称 1行目（地図上に表示）</label><input id="mName" placeholder="スポット名">
+      <label>名称 2行目（任意）</label><input id="mName2" placeholder="補足・カッコ書きなど">
       <label>説明・補足</label><textarea id="mDesc2" placeholder="例：農水省認定・171枚の棚田が広がる"></textarea>
       <label>電話・URL</label><input id="mTel" placeholder="例：090-1234-5678">
       <label>滞在時間（分）</label>
@@ -267,7 +271,7 @@ html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:
       <div style="font-size:10px;font-weight:bold;color:#555;margin-bottom:5px">名称ラベル設定</div>
       <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
         <label style="font-size:12px;font-weight:normal">表示位置&nbsp;<select id="mLabelDir" style="font-size:11px;padding:2px 4px;border:1px solid #C4B89A;border-radius:4px;background:#FAF6EE"><option value="top">上</option><option value="bottom">下</option><option value="left">左</option><option value="right">右</option></select></label>
-        <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:normal;cursor:pointer"><input type="checkbox" id="mLabelWrap" style="width:auto;padding:0;margin:0"> 2行折り返し</label>
+        
       </div>
       <div style="font-size:10px;font-weight:bold;color:#555;margin-bottom:5px">写真（最大5枚）</div>
       <div id="mPhotoStrip" class="photo-strip"></div>
@@ -294,6 +298,9 @@ html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:
 <!-- View Mode Info Panel -->
 <div id="viewInfoPanel"></div>
 <div id="viewBadge">👁 閲覧モード</div>
+
+<!-- WPタイプピッカー -->
+<div id="wpTypePicker"></div>
 
 <!-- カスタム道路描画 完了バー -->
 <div id="crFinishBar">
@@ -401,6 +408,7 @@ let redoStack   = [];      // やり直し履歴
 let viewMode    = false;   // 閲覧専用モード
 let _routeCoordMap = [];   // OSRM座標→セグメントID対応表（クリック判定用）
 let customRoads = [];     // カスタム道路 [{id,name,coords,visible,_line}]
+let _wpPickerLatlng = null; // WPタイプピッカー表示中の座標
 let _drawRoad   = null;   // 描画中のカスタム道路
 let _crIdCtr    = 0;      // カスタム道路IDカウンター
 let _crVisible  = true;   // カスタム道路全体表示フラグ
@@ -449,7 +457,7 @@ window.addEventListener('DOMContentLoaded', () => {
   // Context menu closes ONLY via Cancel button, Escape key, or map pan.
   // Close menu on Escape key; ⌘Z = undo; ⌘⇧Z = redo
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') { hideCtxMenu(); if(mode==='road')cancelRoadDraw(); return; }
+    if (e.key === 'Escape') { hideCtxMenu(); hideWpPicker(); if(mode==='road')cancelRoadDraw(); return; }
     if ((e.metaKey || e.ctrlKey) && e.key === 'z') {
       e.preventDefault();
       if (e.shiftKey) redoAction(); else undoLast();
@@ -518,7 +526,7 @@ async function geocode(address) {
    MAP INIT
    ============================================================ */
 function initMap() {
-  leafMap = L.map('map', {center:[35.165,134.542], zoom:14, scrollWheelZoom:true, wheelPxPerZoomLevel:120, touchZoom:true, doubleClickZoom:false});
+  leafMap = L.map('map', {center:[35.165,134.542], zoom:14, scrollWheelZoom:true, wheelPxPerZoomLevel:240, touchZoom:true, doubleClickZoom:false});
   const tiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution:'© OpenStreetMap contributors', maxZoom:19
   }).addTo(leafMap);
@@ -533,7 +541,11 @@ function onMapClick(e) {
   // コンテキストメニューまたはWPモーダルが開いている場合は何もしない
   if (ctxVpId !== null) return;
   if (document.getElementById('mOver')?.classList.contains('show')) return;
-  if (mode==='wp')   addWp(e.latlng.lat, e.latlng.lng);
+  if (mode==='wp') {
+    if (_wpPickerLatlng !== null) { hideWpPicker(); return; } // ピッカー表示中は閉じて終了
+    showWpTypePicker(e.latlng.lat, e.latlng.lng, e);
+    return;
+  }
   if (mode==='via')  addVp(e.latlng.lat, e.latlng.lng);
   if (mode==='road') addRoadPoint(e.latlng.lat, e.latlng.lng);
 }
@@ -541,13 +553,57 @@ function onMapClick(e) {
 /* ============================================================
    WAYPOINTS
    ============================================================ */
-function addWp(lat, lng) {
+/* ============================================================
+   WPタイプピッカー（マップクリック時に種別選択）
+   ============================================================ */
+function showWpTypePicker(lat, lng, e) {
+  _wpPickerLatlng = {lat, lng};
+  const picker = document.getElementById('wpTypePicker');
+  if (!picker) return;
+
+  // WT種別ごとのメニュー項目を生成
+  picker.innerHTML = WT.map(t => {
+    const isCourse = t.v === 'course';
+    const style = isCourse
+      ? 'font-weight:bold;color:#C4703A;border-bottom:1px solid #EEE8DE;margin-bottom:3px;padding-bottom:6px'
+      : '';
+    return `<div class="ctx-it" style="${style}" onclick="event.stopPropagation();addWpFromPicker('${t.v}')">${t.l}</div>`;
+  }).join('') +
+  `<div class="ctx-sep"></div>
+   <div class="ctx-it" style="color:#888" onclick="event.stopPropagation();hideWpPicker()">✕ キャンセル</div>`;
+
+  // 画面端を超えないよう位置調整
+  const cx = e.originalEvent ? e.originalEvent.clientX : 100;
+  const cy = e.originalEvent ? e.originalEvent.clientY : 100;
+  picker.style.left = Math.min(cx + 8, window.innerWidth  - 210) + 'px';
+  picker.style.top  = Math.min(cy + 8, window.innerHeight - 330) + 'px';
+  picker.style.display = 'block';
+}
+
+function hideWpPicker() {
+  _wpPickerLatlng = null;
+  const p = document.getElementById('wpTypePicker');
+  if (p) p.style.display = 'none';
+}
+
+function addWpFromPicker(type) {
+  const ll = _wpPickerLatlng;
+  hideWpPicker();
+  if (!ll) return;
+  const wp = addWp(ll.lat, ll.lng, type);
+  openModal(wp.id); // モーダルを自動で開いて詳細入力
+}
+
+function addWp(lat, lng, type) {
+  type = type || 'course';
   saveSnapshot();
   idW++;
-  const wp = {id:idW, type:'course', name:'', desc:'', tel:'', dwell:0, fitBefore:true, fitAfter:true, lat, lng, photos:[], labelDir:'top', labelWrap:false, marker:null};
+  const wp = {id:idW, type, name:'', desc:'', tel:'', dwell:0, fitBefore:true, fitAfter:true, lat, lng, photos:[], labelDir:'top', marker:null};
   wps.push(wp);
   buildWpMarker(wp);
-  redrawStraight(); scheduleRouting(); redrawList(); refreshIcons();
+  if (type === 'course') { redrawStraight(); scheduleRouting(); }
+  redrawList(); refreshIcons();
+  return wp; // openModalで使用
 }
 
 function buildWpMarker(wp) {
@@ -578,6 +634,12 @@ function wpIcon(wp, sz, anc) {
   });
 }
 
+// ルート接続WP（type==='course'のみ）を元の配列順で返す
+// standalone WP（神社・トイレ等）はルートに含まれない
+function routeWps() {
+  return wps.filter(w => w.type === 'course');
+}
+
 function courseNum(wp) {
   const list = wps.filter(w=>w.type==='course');
   const i    = list.findIndex(w=>w.id===wp.id);
@@ -592,15 +654,16 @@ function updateTooltip(wp) {
   if (!wp.marker) return;
   wp.marker.unbindTooltip();
   if (wp.name && wp.name.trim()) {
-    const dir  = wp.labelDir  || 'top';
-    const wrap = !!wp.labelWrap;
+    const dir  = wp.labelDir || 'top';
     const mob  = isMobile();
     const offV = mob ? 22 : 19;
     const off  = dir==='top'    ? [0,-offV] :
                  dir==='bottom' ? [0, offV] :
                  dir==='left'   ? [-offV, 0] : [offV, 0];
-    const cls  = `wp-tt wp-tt-${wp.type||'course'}${wrap?' wp-tt-wrap':''}`;
-    wp.marker.bindTooltip(wp.name, {permanent:true, direction:dir, offset:off, className:cls});
+    const cls  = `wp-tt wp-tt-${wp.type||'course'}`;
+    // \nを<br>に変換してHTML表示（2行入力対応）
+    const html_content = wp.name.split('\n').map(l=>escHtml(l)).join('<br>');
+    wp.marker.bindTooltip(html_content, {permanent:true, direction:dir, offset:off, className:cls});
   }
 }
 
@@ -618,13 +681,15 @@ function deleteWp(id) {
    VIA POINTS
    ============================================================ */
 function addVp(lat, lng) {
-  if (wps.length < 2) { alert('ウェイポイントを2点以上追加してから経路調整点を追加してください。'); return; }
+  if (routeWps().length < 2) { alert('コースポイントを2点以上追加してから経路調整点を追加してください。'); return; }
   saveSnapshot();
   idV++;
   const _saId   = nearestSegWpId(lat, lng);
   const _aiIdx  = wps.findIndex(w=>w.id===_saId);
   const _wpA    = wps[_aiIdx];
-  const _wpB    = wps[_aiIdx+1] || _wpA;
+  const _vrw    = routeWps();
+  const _vriIdx = _vrw.findIndex(w=>w.id===_saId);
+  const _wpB    = _vrw[_vriIdx+1] || _wpA; // 次のルートWP（standalone WPをスキップ）
   const _svs    = vps.filter(v=>v.segAfter===_saId);
   const _ord    = calcVpOrder(lat, lng, _svs, _wpA, _wpB);
   const vp = {id:'v'+idV, segAfter:_saId, order:_ord, fitBefore:true, fitAfter:true, lat, lng, marker:null};
@@ -820,11 +885,7 @@ function toggleViaVisibility() {
   scheduleRouting();
 
   const btn = document.getElementById('btnToggleVia');
-  if (btn) {
-    btn.classList.toggle('on', viaVisible);
-    btn.textContent = viaVisible ? '● 調整点表示' : '○ 調整点非表示';
-    btn.title = viaVisible ? '経路調整点を非表示にする' : '経路調整点を表示する';
-  }
+  if (btn) btn.classList.toggle('btn-off', !viaVisible);
 }
 
 /* ============================================================
@@ -853,7 +914,7 @@ function addWpLongPress(wp) {
 function onSegmentHitDown(e, segAfterWpId) {
   L.DomEvent.stopPropagation(e);
   L.DomEvent.preventDefault(e);
-  if (wps.length < 2 || !viaVisible) return;
+  if (routeWps().length < 2 || !viaVisible) return;
 
   // PROXIMITY GUARD: skip if click is within 22px of an existing via point marker.
   // Prevents accidentally creating a new via point when trying to drag an existing one
@@ -875,7 +936,9 @@ function onSegmentHitDown(e, segAfterWpId) {
   // segAfterWpId is explicit from the overlay — this via point belongs to this exact segment
   const _hiIdx  = wps.findIndex(w=>w.id===segAfterWpId);
   const _hiWpA  = wps[_hiIdx];
-  const _hiWpB  = wps[_hiIdx+1] || _hiWpA;
+  const _hiRw   = routeWps();
+  const _hiRiIdx= _hiRw.findIndex(w=>w.id===segAfterWpId);
+  const _hiWpB  = _hiRw[_hiRiIdx+1] || _hiWpA;
   const _hiSvs  = vps.filter(v=>v.segAfter===segAfterWpId);
   const _hiOrd  = calcVpOrder(e.latlng.lat, e.latlng.lng, _hiSvs, _hiWpA, _hiWpB);
   const vp = {id:'v'+idV, segAfter:segAfterWpId, order:_hiOrd, fitBefore:true, fitAfter:true, lat:e.latlng.lat, lng:e.latlng.lng, marker:null};
@@ -920,11 +983,12 @@ window.addEventListener('mouseup', () => {
    GEOMETRY
    ============================================================ */
 function nearestSegWpId(lat, lng) {
-  if (wps.length < 2) return wps.length>0 ? wps[0].id : null;
-  let bestId=wps[0].id, minD=Infinity;
-  for (let i=0; i<wps.length-1; i++) {
-    const d = ptSegDist([lat,lng],[wps[i].lat,wps[i].lng],[wps[i+1].lat,wps[i+1].lng]);
-    if (d < minD) { minD=d; bestId=wps[i].id; }
+  const rw=routeWps();
+  if (rw.length < 2) return rw.length>0 ? rw[0].id : null;
+  let bestId=rw[0].id, minD=Infinity;
+  for (let i=0; i<rw.length-1; i++) {
+    const d = ptSegDist([lat,lng],[rw[i].lat,rw[i].lng],[rw[i+1].lat,rw[i+1].lng]);
+    if (d < minD) { minD=d; bestId=rw[i].id; }
   }
   return bestId;
 }
@@ -1012,10 +1076,10 @@ function removeLines() {
 }
 
 function buildStraightCoords() {
-  const c=[];
-  for (let i=0; i<wps.length; i++) {
-    c.push([wps[i].lat, wps[i].lng]);
-    if (i+1 < wps.length) segVpsOf(wps[i].id,wps[i],wps[i+1]).forEach(v=>c.push([v.lat,v.lng]));
+  const c=[]; const rw=routeWps();
+  for (let i=0; i<rw.length; i++) {
+    c.push([rw[i].lat, rw[i].lng]);
+    if (i+1 < rw.length) segVpsOf(rw[i].id,rw[i],rw[i+1]).forEach(v=>c.push([v.lat,v.lng]));
   }
   return c;
 }
@@ -1023,9 +1087,9 @@ function buildStraightCoords() {
 // Per-segment straight-line coords for hit overlays
 // Each overlay is associated with exactly one segment (wpId = wps[i].id = segAfter value)
 function buildSegCoordsList() {
-  const list = [];
-  for (let i=0; i<wps.length-1; i++) {
-    const a=wps[i], b=wps[i+1];
+  const list = []; const rw=routeWps();
+  for (let i=0; i<rw.length-1; i++) {
+    const a=rw[i], b=rw[i+1];
     const coords=[[a.lat,a.lng]];
     segVpsOf(a.id, a, b).forEach(v=>coords.push([v.lat,v.lng]));
     coords.push([b.lat,b.lng]);
@@ -1061,7 +1125,7 @@ function drawLines(allCoords, segList) {
 
 function redrawStraight() {
   removeLines();
-  if (wps.length >= 2) drawLines(buildStraightCoords(), buildSegCoordsList());
+  if (routeWps().length >= 2) drawLines(buildStraightCoords(), buildSegCoordsList());
   updateDistanceAndTime();
 }
 
@@ -1078,7 +1142,7 @@ function scheduleRouting() {
 }
 
 async function doRouting() {
-  if (wps.length < 2) return;
+  if (routeWps().length < 2) return;
   showRtMsg(true);
   try {
     const {allCoords, segCoordsList} = await buildRoutedCoords();
@@ -1095,8 +1159,9 @@ async function buildRoutedCoords() {
   const all = [];
   const segCoordsList = [];
   const _newRouteMap  = []; // 座標→セグメントID対応表（成功時に_routeCoordMapへ）
-  for (let i=0; i<wps.length-1; i++) {
-    const a   = wps[i], b = wps[i+1];
+  const _rw = routeWps(); // コースWP（type==='course'）のみルート対象
+  for (let i=0; i<_rw.length-1; i++) {
+    const a   = _rw[i], b = _rw[i+1];
     const sv  = segVpsOf(a.id, a, b);
     const fitAout = (a.fitAfter  !== false); // AのWPから外向き道路フィット
     const fitBin  = (b.fitBefore !== false); // BのWPへ内向き道路フィット
@@ -1352,14 +1417,16 @@ function openModal(id) {
   const wp = wps.find(w=>w.id===id);
   if (!wp) return;
   document.getElementById('mType').value   = wp.type;
-  document.getElementById('mName').value   = wp.name;
+  const _nameParts = (wp.name||'').split('\n');
+  document.getElementById('mName').value   = _nameParts[0] || '';
+  const mN2el = document.getElementById('mName2');
+  if (mN2el) mN2el.value = _nameParts[1] || '';
   document.getElementById('mDesc2').value  = wp.desc;
   document.getElementById('mTel').value    = wp.tel;
   document.getElementById('mDwell').value   = wp.dwell || 0;
   document.getElementById('mFitBefore').checked = (wp.fitBefore !== false);
   document.getElementById('mFitAfter').checked  = (wp.fitAfter  !== false);
   document.getElementById('mLabelDir').value    = wp.labelDir  || 'top';
-  document.getElementById('mLabelWrap').checked = !!wp.labelWrap;
   _modalPhotos = [...(wp.photos || [])];
   renderModalPhotos();
   document.getElementById('mOver').classList.add('show');
@@ -1375,21 +1442,25 @@ function saveModal() {
   if (editId===null) return;
   const wp = wps.find(w=>w.id===editId);
   if (!wp) return;
+  const _oldType = wp.type;
   wp.type  = document.getElementById('mType').value;
-  wp.name  = document.getElementById('mName').value;
+  const _n1 = document.getElementById('mName').value.trim();
+  const _n2 = (document.getElementById('mName2')?.value||'').trim();
+  wp.name  = _n1 + (_n2 ? '\n' + _n2 : '');
   wp.desc  = document.getElementById('mDesc2').value;
   wp.tel   = document.getElementById('mTel').value;
   wp.dwell   = parseInt(document.getElementById('mDwell').value)||0;
   wp.fitBefore = document.getElementById('mFitBefore').checked;
   wp.fitAfter  = document.getElementById('mFitAfter').checked;
   wp.labelDir  = document.getElementById('mLabelDir').value;
-  wp.labelWrap = document.getElementById('mLabelWrap').checked;
   wp.photos    = [..._modalPhotos];
   if (wp.marker) wp.marker.setIcon(wpIcon(wp));
   updateTooltip(wp);
   closeModal();
   refreshIcons();
   redrawList();
+  // type変更時（course↔standalone切替）はルートを再計算
+  if ((_oldType==='course') !== (wp.type==='course')) { clearCache(); redrawStraight(); scheduleRouting(); }
   updateDistanceAndTime();
 }
 
@@ -1479,7 +1550,7 @@ function setMode(m) {
    ============================================================ */
 function _makeSnapshot() {
   return {
-    wps: wps.map(w=>({id:w.id,type:w.type,name:w.name,desc:w.desc,tel:w.tel,dwell:w.dwell||0,fitBefore:w.fitBefore!==false,fitAfter:w.fitAfter!==false,lat:w.lat,lng:w.lng,labelDir:w.labelDir||'top',labelWrap:!!w.labelWrap})),
+    wps: wps.map(w=>({id:w.id,type:w.type,name:w.name,desc:w.desc,tel:w.tel,dwell:w.dwell||0,fitBefore:w.fitBefore!==false,fitAfter:w.fitAfter!==false,lat:w.lat,lng:w.lng,labelDir:w.labelDir||'top'})),
     vps: vps.map(v=>({id:v.id,segAfter:v.segAfter,fitBefore:v.fitBefore!==false,fitAfter:v.fitAfter!==false,lat:v.lat,lng:v.lng,order:v.order||0})),
     idW, idV,
   };
@@ -1549,7 +1620,9 @@ function ctxConvertToWp() {
   const wpAIdx = wps.findIndex(w => w.id === vp.segAfter);
   if (wpAIdx < 0) return;
   const wpA = wps[wpAIdx];
-  const wpB = wps[wpAIdx + 1] || null;
+  const _cRw   = routeWps();
+  const _cRiIdx = _cRw.findIndex(w=>w.id===vp.segAfter);
+  const wpB = _cRw[_cRiIdx+1] || null;
 
   saveSnapshot();
 
@@ -1792,7 +1865,8 @@ function clearAllCustomRoadLines() {
 
 function toggleCustomRoadsVisibility() {
   _crVisible = !_crVisible;
-  document.getElementById('btnCrVis')?.classList.toggle('on', !_crVisible);
+  const btnCrV = document.getElementById('btnCrVis');
+  if (btnCrV) btnCrV.classList.toggle('btn-off', !_crVisible);
   if (_crVisible) drawAllCustomRoads(); else clearAllCustomRoadLines();
 }
 
@@ -1837,7 +1911,7 @@ function buildCurrentSaveData() {
     desc:    document.getElementById('iDesc')?.value||'',
     center:  leafMap ? {lat:leafMap.getCenter().lat, lng:leafMap.getCenter().lng} : null,
     zoom:    leafMap ? leafMap.getZoom() : 14,
-    wps:     wps.map(w=>({id:w.id,type:w.type,name:w.name,desc:w.desc,tel:w.tel,dwell:w.dwell||0,fitBefore:w.fitBefore!==false,fitAfter:w.fitAfter!==false,lat:w.lat,lng:w.lng,labelDir:w.labelDir||'top',labelWrap:!!w.labelWrap,photos:w.photos||[]})),
+    wps:     wps.map(w=>({id:w.id,type:w.type,name:w.name,desc:w.desc,tel:w.tel,dwell:w.dwell||0,fitBefore:w.fitBefore!==false,fitAfter:w.fitAfter!==false,lat:w.lat,lng:w.lng,labelDir:w.labelDir||'top',photos:w.photos||[]})),
     vps:     vps.map(v=>({id:v.id,segAfter:v.segAfter,fitBefore:v.fitBefore!==false,fitAfter:v.fitAfter!==false,lat:v.lat,lng:v.lng,order:v.order||0})),
     customRoads: customRoads.map(r=>({id:r.id,name:r.name,coords:r.coords})),
     maxWpId: idW,
