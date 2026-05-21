@@ -1034,7 +1034,7 @@ async function doRouting() {
     const {allCoords, segCoordsList} = await buildRoutedCoords();
     if (allCoords && allCoords.length >= 2) {
       removeLines();
-      drawLines(allCoords, segCoordsList); // ヒットオーバーレイにOSRM座標を使用
+      drawLines(allCoords, buildSegCoordsList()); // オーバーレイは直線WP→WP: OSRM迂回経路との重複誤反応を防ぐ
       updateDistanceAndTime(allCoords);
     }
   } catch(_) { /* keep straight lines on error */ }
