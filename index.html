@@ -1545,6 +1545,30 @@ async function saveMapAsImage() {
       if (el) el.style.opacity = '0';
     });
 
+    // ── html2canvas直前: 実DOM要素にインラインスタイルで色を書き込む ──
+    // oncloneやCSSクラスには依存しない。実DOM→クローンにそのままコピーされる。
+    document.querySelectorAll('.leaflet-tooltip.wp-tt').forEach(function(el) {
+      var m = el.className.match(/wp-tt-([a-z]+)/);
+      if (m) {
+        var t = WT.find(function(x){ return x.v === m[1]; });
+        if (t) {
+          el.style.setProperty('background', t.c, 'important');
+          el.style.setProperty('color', '#fff', 'important');
+          el.style.setProperty('border', 'none', 'important');
+          el.style.setProperty('border-radius', '4px', 'important');
+          el.style.setProperty('padding', '2px 7px', 'important');
+          el.style.setProperty('font-size', '11px', 'important');
+          el.style.setProperty('white-space', 'nowrap', 'important');
+          el.style.setProperty('box-shadow', '0 2px 6px rgba(0,0,0,.3)', 'important');
+        }
+      }
+    });
+    // WPアイコン(丸マーカー)の色も同様に実DOMへ直接書き込む
+    document.querySelectorAll('.leaflet-marker-icon div[data-wtype]').forEach(function(el) {
+      var t = WT.find(function(x){ return x.v === el.getAttribute('data-wtype'); });
+      if (t) el.style.setProperty('background', t.c, 'important');
+    });
+
     // 地図タイルの描画が完了するまで少し待つ
     await new Promise(r => setTimeout(r, 600));
 
