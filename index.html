@@ -111,6 +111,15 @@ html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:
 .wp-tt-wrap{white-space:normal!important;width:150px!important;max-width:200px!important;text-align:center!important;line-height:1.5!important;word-break:normal!important}
 .tsep{color:#D4C4A8;padding:0 3px;align-self:center}
 .btn.btn-off{opacity:0.55;background:#888!important;color:#fff!important;border-color:#888!important}
+/* 高低差グラフパネル */
+#elevPanel{background:#FAF5EE;border-top:1px solid #D4C4A8;padding:10px 14px 6px;flex-shrink:0}
+#elevPanel.hidden{display:none}
+#elevStats{font-size:11px;color:#6A4E2A;margin-bottom:6px;display:flex;flex-wrap:wrap;gap:10px}
+#elevStats span{white-space:nowrap}
+#elevStats b{color:#C4703A}
+#elevChartWrap{width:100%;overflow-x:auto}
+#elevChart{min-width:300px;width:100%;height:150px;display:block}
+#elevMsg{font-size:12px;color:#9A8070;text-align:center;padding:20px 0}
 .btn-nolabel{background:#5A3E28!important;color:#fff!important;border-color:#5A3E28!important}
 #wpTypePicker{display:none;position:fixed;z-index:5000;background:#fff;border:1px solid #C4B89A;border-radius:8px;padding:4px 0;min-width:200px;box-shadow:0 3px 16px rgba(0,0,0,.22)}
 /* カスタム道路描画UI */
@@ -218,7 +227,12 @@ html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:
         <textarea id="iDesc" placeholder="コースの特徴・見どころ・歴史など..."></textarea>
       </div>
     </div>
-    <div id="mapArea">
+    <div id="elevPanel" class="hidden">
+  <div id="elevStats"></div>
+  <div id="elevChartWrap"><svg id="elevChart"></svg></div>
+  <div id="elevMsg"></div>
+</div>
+<div id="mapArea">
       <div id="tbar">
         <button class="btn on" id="btnWp" onclick="setMode('wp')" title="📍 WP追加&#10;クリックでスポットをコースに追加">📍 WP</button>
         <button class="btn" id="btnVia" onclick="setMode('via')" title="↔ 調整点追加&#10;ルートラインをドラッグして経路を微調整">↔ 調整点</button>
@@ -233,6 +247,7 @@ html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:
         <button class="btn" id="btnRedo" onclick="redoAction()" title="↪ やり直し (⌘⇧Z)" disabled>↪</button>
         <button class="btn" onclick="clearAll()" title="🗑 全消去&#10;すべてのWP・調整点を削除">🗑</button>
         <span class="tsep">|</span>
+        <button class="btn" id="btnElev" onclick="toggleElevPanel()" title="📈 高低差グラフ&#10;コースの標高変化を表示（5〜15秒）">📈</button>
         <button class="btn" onclick="saveMapAsImage()" title="📷 マップを画像保存">📷</button>
         <button class="btn" onclick="saveMapNoText()" title="📷 ラベル非表示で保存&#10;WP名称と地図の文字を消して保存">📷✕文字</button>
         <button class="btn" onclick="openViewMode()" title="👁 閲覧モード&#10;閲覧専用画面を新しいタブで開く">👁</button>
@@ -420,6 +435,8 @@ let _routeCoordMap = [];   // OSRM座標→セグメントID対応表（クリ�
 let customRoads = [];     // カスタム道路 [{id,name,coords,visible,_line}]
 let _wpPickerLatlng = null; // WPタイプピッカー表示中の座標
 let _showMapLabels  = true;  // 地図ラベル表示フラグ
+let _lastRouteCoords= null;  // 最後に計算したルート座標（高低差グラフ用）
+let _elevOpen       = false; // 高低差パネル表示フラグ
 let _baseTileLayer  = null;  // 通常タイルレイヤー参照
 let _drawRoad   = null;   // 描画中のカスタム道路
 let _crIdCtr    = 0;      // カスタム道路IDカウンター
@@ -1285,21 +1302,48 @@ function clearCache() { segCache={}; }
 
 function scheduleRouting() {
   if (routingTimer) clearTimeout(routingTimer);
-  routingTimer = setTimeout(doRouting, 700);
+  routingTimer = setTimeout(doRouting, 500);
 }
 
 async function doRouting() {
   if (routeWps().length < 2) return;
   showRtMsg(true);
   try {
+    await _prefetchOsrm(); // 全セグメントのOSRM経路を並列先行取得
     const {allCoords, segCoordsList} = await buildRoutedCoords();
     if (allCoords && allCoords.length >= 2) {
+      _lastRouteCoords = allCoords; // 高低差グラフ用に保存
       removeLines();
-      drawLines(allCoords, buildSegCoordsList()); // オーバーレイは直線WP→WP: OSRM迂回経路との重複誤反応を防ぐ
+      drawLines(allCoords, buildSegCoordsList());
       updateDistanceAndTime(allCoords);
     }
   } catch(_) { /* keep straight lines on error */ }
   finally { showRtMsg(false); }
+}
+
+// 全OSRMルートを並列先行取得してキャッシュを充填
+// → buildRoutedCoords実行時はキャッシュから即座に取得できる
+async function _prefetchOsrm() {
+  const rw = routeWps();
+  if (rw.length < 2) return;
+  const tasks = [];
+  for (let i=0; i<rw.length-1; i++) {
+    const a=rw[i], b=rw[i+1];
+    const sv = segVpsOf(a.id, a, b);
+    const fitAout=a.fitAfter!==false, fitBin=b.fitBefore!==false;
+    if (sv.length===0) {
+      if (fitAout&&fitBin) { const k=`${a.lng.toFixed(6)},${a.lat.toFixed(6)};${b.lng.toFixed(6)},${b.lat.toFixed(6)}`; if(!segCache[k]) tasks.push(getCachedRoute(k,[{lat:a.lat,lng:a.lng},{lat:b.lat,lng:b.lng}])); }
+    } else {
+      const f=sv[0],l=sv[sv.length-1];
+      if (fitAout&&f.fitBefore!==false) { const k=`${a.lng.toFixed(6)},${a.lat.toFixed(6)};${f.lng.toFixed(6)},${f.lat.toFixed(6)}`; if(!segCache[k]) tasks.push(getCachedRoute(k,[{lat:a.lat,lng:a.lng},{lat:f.lat,lng:f.lng}])); }
+      for (let j=0;j<sv.length-1;j++) {
+        const va=sv[j],vb=sv[j+1];
+        if (va.fitAfter!==false&&vb.fitBefore!==false) { const k=`${va.lng.toFixed(6)},${va.lat.toFixed(6)};${vb.lng.toFixed(6)},${vb.lat.toFixed(6)}`; if(!segCache[k]) tasks.push(getCachedRoute(k,[{lat:va.lat,lng:va.lng},{lat:vb.lat,lng:vb.lng}])); }
+      }
+      if (l.fitAfter!==false&&fitBin) { const k=`${l.lng.toFixed(6)},${l.lat.toFixed(6)};${b.lng.toFixed(6)},${b.lat.toFixed(6)}`; if(!segCache[k]) tasks.push(getCachedRoute(k,[{lat:l.lat,lng:l.lng},{lat:b.lat,lng:b.lng}])); }
+    }
+  }
+  if (tasks.length) await Promise.all(tasks); // 並列実行
 }
 
 async function buildRoutedCoords() {
@@ -2163,6 +2207,148 @@ function routeAlongCustomRoad(fromLat, fromLng, toLat, toLng) {
     }
   }
   return null;
+}
+
+/* ============================================================
+   高低差グラフ
+   ============================================================ */
+async function toggleElevPanel() {
+  _elevOpen = !_elevOpen;
+  document.getElementById('elevPanel').classList.toggle('hidden', !_elevOpen);
+  document.getElementById('btnElev')?.classList.toggle('on', _elevOpen);
+  if (_elevOpen) await _refreshElevChart();
+}
+
+async function _refreshElevChart() {
+  const rw = routeWps();
+  if (rw.length < 2) { _showElevMsg('コースポイントを2点以上追加してください'); return; }
+  const coords = _lastRouteCoords || buildStraightCoords();
+  if (!coords || coords.length < 2) { _showElevMsg('ルートを作成してください'); return; }
+  _showElevMsg('標高データを取得中...');
+  try {
+    const pts = _sampleCoords(coords, 100);
+    const elevs = await _fetchElevs(pts);
+    _drawElevChart(pts, elevs);
+  } catch(e) {
+    _showElevMsg('標高データの取得に失敗しました（再試行してください）');
+  }
+}
+
+// 座標配列からMAX点を等間隔サンプリング
+function _sampleCoords(coords, max) {
+  const step = Math.max(1, Math.floor(coords.length / max));
+  const out = [];
+  for (let i=0; i<coords.length; i+=step) out.push(coords[i]);
+  if (out[out.length-1] !== coords[coords.length-1]) out.push(coords[coords.length-1]);
+  return out;
+}
+
+// Open-Elevation API（フォールバック: OpenTopoData）
+async function _fetchElevs(pts) {
+  const body = {locations: pts.map(p=>({latitude:+p[0].toFixed(6),longitude:+p[1].toFixed(6)}))};
+  const tryFetch = async (url, opt) => {
+    const r = await fetch(url, {...opt, signal:AbortSignal.timeout(12000)});
+    if (!r.ok) throw new Error(r.status);
+    return r;
+  };
+  try {
+    const r = await tryFetch('https://api.open-elevation.com/api/v1/lookup',
+      {method:'POST', headers:{'Content-Type':'application/json','Accept':'application/json'}, body:JSON.stringify(body)});
+    const d = await r.json();
+    return d.results.map(x=>x.elevation);
+  } catch(_) {
+    const locs = pts.map(p=>`${(+p[0].toFixed(6))},${(+p[1].toFixed(6))}`).join('|');
+    const r = await tryFetch(`https://api.opentopodata.org/v1/srtm90m?locations=${encodeURIComponent(locs)}`, {});
+    const d = await r.json();
+    if (d.status!=='OK') throw new Error();
+    return d.results.map(x=>x.elevation??0);
+  }
+}
+
+function _showElevMsg(msg) {
+  document.getElementById('elevMsg').textContent = msg;
+  document.getElementById('elevStats').innerHTML = '';
+  const svg = document.getElementById('elevChart');
+  if (svg) svg.innerHTML = '';
+}
+
+function _drawElevChart(pts, elevs) {
+  document.getElementById('elevMsg').textContent = '';
+  const DEG_M = 111000;
+  // 累積距離計算（メートル）
+  const dists = [0];
+  for (let i=1; i<pts.length; i++) {
+    const dlat=(pts[i][0]-pts[i-1][0])*DEG_M;
+    const dlng=(pts[i][1]-pts[i-1][1])*DEG_M*Math.cos(pts[i][0]*Math.PI/180);
+    dists.push(dists[i-1]+Math.sqrt(dlat*dlat+dlng*dlng));
+  }
+  const totalM = dists[dists.length-1];
+  const minE=Math.min(...elevs), maxE=Math.max(...elevs), rng=maxE-minE||1;
+  let gain=0,loss=0;
+  for (let i=1;i<elevs.length;i++) {
+    const d=elevs[i]-elevs[i-1]; if(d>0)gain+=d; else loss-=d;
+  }
+  // Stats
+  document.getElementById('elevStats').innerHTML =
+    `<span>🔺 最高 <b>${Math.round(maxE)}m</b></span>` +
+    `<span>🔻 最低 <b>${Math.round(minE)}m</b></span>` +
+    `<span>↗️ 累積登り <b>+${Math.round(gain)}m</b></span>` +
+    `<span>↘️ 累積下り <b>-${Math.round(loss)}m</b></span>` +
+    `<span>📏 総距離 <b>${(totalM/1000).toFixed(1)}km</b></span>`;
+
+  // SVG描画
+  const W=700, H=150, PL=46, PR=16, PT=12, PB=28;
+  const iW=W-PL-PR, iH=H-PT-PB;
+  const xi=d=>(d/totalM)*iW, yi=e=>iH-((e-minE)/rng)*iH;
+
+  // 塗りつぶしパス
+  const lineD=pts.map((p,i)=>`${i?'L':'M'}${(PL+xi(dists[i])).toFixed(1)},${(PT+yi(elevs[i])).toFixed(1)}`).join(' ');
+  const fillD=lineD+` L${(PL+iW).toFixed(1)},${(PT+iH).toFixed(1)} L${PL},${(PT+iH).toFixed(1)} Z`;
+
+  // グリッドラベル（標高）
+  const gridLines=[0,.25,.5,.75,1].map(t=>{
+    const e=Math.round(minE+rng*t), yy=(PT+iH*(1-t)).toFixed(1);
+    return `<line x1="${PL}" y1="${yy}" x2="${PL+iW}" y2="${yy}" stroke="#E8DDD0" stroke-width="0.8"/>` +
+           `<text x="${PL-4}" y="${(parseFloat(yy)+3.5).toFixed(1)}" text-anchor="end" font-size="9" fill="#9A8070">${e}m</text>`;
+  }).join('');
+
+  // 距離ラベル（X軸）
+  const distLabels=[0,.25,.5,.75,1].map(t=>{
+    const d=(totalM/1000*t).toFixed(1);
+    return `<text x="${(PL+iW*t).toFixed(1)}" y="${PT+iH+18}" text-anchor="middle" font-size="9" fill="#9A8070">${d}km</text>`;
+  }).join('');
+
+  // WPマーカー（コースポイントの位置を垂直線で表示）
+  const rw=routeWps();
+  let wpMarks='';
+  if (rw.length>=2 && totalM>0) {
+    let cumM=0;
+    const wpDists=[0];
+    for (let i=1;i<rw.length;i++) {
+      const dlat=(rw[i].lat-rw[i-1].lat)*DEG_M;
+      const dlng=(rw[i].lng-rw[i-1].lng)*DEG_M*Math.cos(rw[i].lat*Math.PI/180);
+      cumM+=Math.sqrt(dlat*dlat+dlng*dlng);
+      wpDists.push(cumM);
+    }
+    // wpDistsをtotalMに合わせてスケール
+    const scale = totalM / (wpDists[wpDists.length-1]||totalM);
+    rw.forEach((wp,i)=>{
+      const xp=(PL+xi(wpDists[i]*scale)).toFixed(1);
+      const num=i+1;
+      wpMarks+=`<line x1="${xp}" y1="${PT}" x2="${xp}" y2="${PT+iH}" stroke="#C4703A" stroke-width="1" stroke-dasharray="3,3" opacity="0.7"/>`;
+      wpMarks+=`<circle cx="${xp}" cy="${PT}" r="7" fill="#C4703A"/>`;
+      wpMarks+=`<text x="${xp}" y="${PT+4}" text-anchor="middle" font-size="7.5" fill="#fff" font-weight="bold">${num}</text>`;
+    });
+  }
+
+  const svg=document.getElementById('elevChart');
+  svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
+  svg.setAttribute('preserveAspectRatio','xMidYMid meet');
+  svg.innerHTML=`${gridLines}${distLabels}${fillD?`<path d="${fillD}" fill="#C4703A" fill-opacity="0.18"/>`:''}` +
+    `<path d="${lineD}" fill="none" stroke="#C4703A" stroke-width="2"/>` +
+    `${wpMarks}` +
+    `<line x1="${PL}" y1="${PT}" x2="${PL}" y2="${PT+iH}" stroke="#C0A882" stroke-width="1"/>` +
+    `<line x1="${PL}" y1="${PT+iH}" x2="${PL+iW}" y2="${PT+iH}" stroke="#C0A882" stroke-width="1"/>`;
 }
 
 /* ============================================================
