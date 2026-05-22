@@ -94,7 +94,7 @@ html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:
 .help-section p,.help-section li{font-size:12px;color:#5A3A1A;line-height:1.7}
 .help-section ul{padding-left:16px}
 /* Tooltip */
-.wp-tt{background:rgba(62,42,14,.85)!important;color:#F5EDD8!important;border:none!important;border-radius:4px!important;font-size:11px!important;padding:2px 7px!important;white-space:nowrap!important;box-shadow:0 2px 6px rgba(0,0,0,.3)!important;pointer-events:none!important}
+.wp-tt{background:rgba(62,42,14,.85);color:#F5EDD8!important;border:none!important;border-radius:4px!important;font-size:11px!important;padding:2px 7px!important;white-space:nowrap!important;box-shadow:0 2px 6px rgba(0,0,0,.3)!important;pointer-events:none!important}
 .wp-tt::before{display:none!important}
 /* WP種別ツールチップカラー */
 .wp-tt-course{background:#C4703A!important;border-color:#C4703A!important;color:#fff!important}
@@ -1545,18 +1545,6 @@ async function saveMapAsImage() {
       if (el) el.style.opacity = '0';
     });
 
-    // ── WPツールチップの色をhtml2canvas前に再確認・再適用 ──────────
-    // Leafletの再描画でインラインスタイルが失われた場合に備えて再設定
-    wps.forEach(wp => {
-      const _ct = WT.find(x=>x.v===(wp.type||'course')) || WT[0];
-      const _el = wp.marker?.getTooltip?.()?.getElement?.();
-      if (_el) {
-        _el.style.setProperty('background', _ct.c, 'important');
-        _el.style.setProperty('color',      '#fff', 'important');
-        _el.style.setProperty('border',     'none', 'important');
-      }
-    });
-
     // 地図タイルの描画が完了するまで少し待つ
     await new Promise(r => setTimeout(r, 600));
 
@@ -1581,43 +1569,6 @@ async function saveMapAsImage() {
           clonedMap.style.height = h + 'px';
           clonedMap.style.overflow = 'hidden';
         }
-        // html2canvasはCDN CSSを含まないため、WP要素の色をインラインスタイルで強制適用
-        // ツールチップ背景色マップ
-        const _ttColors = {
-          'wp-tt-course':'#C4703A','wp-tt-start':'#2E7D32','wp-tt-goal':'#B71C1C',
-          'wp-tt-view':'#1565C0','wp-tt-shop':'#C62828','wp-tt-shrine':'#6D4C41',
-          'wp-tt-history':'#E65100','wp-tt-park':'#388E3C','wp-tt-toilet':'#455A64',
-          'wp-tt-parking':'#1565C0','wp-tt-other':'#757575',
-        };
-        // ツールチップ色を強制適用
-        clonedDoc.querySelectorAll('.wp-tt').forEach(el => {
-          el.style.setProperty('background','rgba(62,42,14,.85)','important');
-          el.style.setProperty('color','#F5EDD8','important');
-          el.style.setProperty('border','none','important');
-          el.style.setProperty('border-radius','4px','important');
-          el.style.setProperty('padding','2px 7px','important');
-          el.style.setProperty('font-size','11px','important');
-          el.style.setProperty('box-shadow','0 2px 6px rgba(0,0,0,.3)','important');
-          for (const [cls, bg] of Object.entries(_ttColors)) {
-            if (el.classList.contains(cls)) {
-              el.style.setProperty('background', bg, 'important');
-              el.style.setProperty('color','#fff','important');
-              break;
-            }
-          }
-        });
-        // WPアイコン（丸い数字マーカー）の色を強制適用
-        const _wpColors = {
-          'course':'#C4703A','start':'#2E7D32','goal':'#B71C1C',
-          'view':'#1565C0','shop':'#C62828','shrine':'#6D4C41',
-          'history':'#E65100','park':'#388E3C','toilet':'#455A64',
-          'parking':'#1565C0','other':'#757575',
-        };
-        // data-wp-type属性またはクラスからアイコン色を復元
-        clonedDoc.querySelectorAll('.leaflet-marker-icon div[data-wtype]').forEach(el => {
-          const t = el.getAttribute('data-wtype');
-          if (_wpColors[t]) el.style.setProperty('background', _wpColors[t], 'important');
-        });
       },
     });
     const url = canvas.toDataURL('image/png');
