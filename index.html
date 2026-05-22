@@ -620,6 +620,14 @@ async function saveMapNoText() {
   // 保存前の状態を記録
   const _wasShowingLabels = _showMapLabels;
 
+  // カスタム道路ラインを非表示
+  const _savedCrNoText = customRoads.map(r => {
+    const el = r._line?.getElement ? r._line.getElement() : null;
+    const op = el?.style.opacity || '';
+    if (el) el.style.opacity = '0';
+    return op;
+  });
+
   // 全要素を非表示（_applyMapLabelStateで一括処理）
   if (_showMapLabels) {
     _showMapLabels = false;
@@ -651,6 +659,11 @@ async function saveMapNoText() {
   } catch(e) {
     showToast('❌ 保存に失敗: ' + e.message);
   } finally {
+    // カスタム道路ラインを復元
+    customRoads.forEach((r, i) => {
+      const el = r._line?.getElement ? r._line.getElement() : null;
+      if (el) el.style.opacity = _savedCrNoText[i] || '';
+    });
     // 元の表示状態を確実に復元
     if (_wasShowingLabels) {
       _showMapLabels = true;
