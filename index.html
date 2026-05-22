@@ -672,7 +672,7 @@ function updateTooltip(wp) {
     const cls  = `wp-tt wp-tt-${wp.type||'course'}`;
     // \nを<br>に変換してHTML表示（2行入力対応）
     const html_content = wp.name.split('\n').map(l=>escHtml(l)).join('<br>');
-    wp.marker.bindTooltip(html_content, {permanent:true, direction:dir, offset:off, className:cls});
+    wp.marker.bindTooltip(html_content, {permanent:true, direction:dir, offset:off, className:cls, opacity:1});
     // ── インラインスタイルで背景色を強制設定 ──────────────────────────
     // html2canvasはCSS !importantの競合を正しく解決できないため、
     // CSSクラスではなくインラインスタイルで色を直接指定する
@@ -1545,26 +1545,38 @@ async function saveMapAsImage() {
       if (el) el.style.opacity = '0';
     });
 
-    // ── html2canvas直前: 実DOM要素にインラインスタイルで色を書き込む ──
-    // oncloneやCSSクラスには依存しない。実DOM→クローンにそのままコピーされる。
+    // ── html2canvas直前: 色・opacity・box-shadowを正確に設定 ──────
+    // 問題1: Leafletはtootipにデフォルトopacity:0.9を設定する
+    //         → html2canvasでマップ背景との合成で色がずれる
+    //         → 撮影前にopacity:1に設定して復元
+    // 問題2: WPマーカーのbox-shadowがhtml2canvasで正確に再現されない
+    //         → 撮影前に除去して復元
+
+    // ツールチップの修正（opacityと背景色）
+    const _savedTtStyles = [];
     document.querySelectorAll('.leaflet-tooltip.wp-tt').forEach(function(el) {
+      _savedTtStyles.push({
+        el: el,
+        opacity: el.style.opacity,
+        background: el.style.background
+      });
+      // opacity:1で正確に描画、背景色をインラインで確定
+      el.style.opacity = '1'; // Leaflet setOpacityと同形式で直接上書き
       var m = el.className.match(/wp-tt-([a-z]+)/);
       if (m) {
         var t = WT.find(function(x){ return x.v === m[1]; });
-        if (t) {
-          el.style.setProperty('background', t.c, 'important');
-          el.style.setProperty('color', '#fff', 'important');
-          el.style.setProperty('border', 'none', 'important');
-          el.style.setProperty('border-radius', '4px', 'important');
-          el.style.setProperty('padding', '2px 7px', 'important');
-          el.style.setProperty('font-size', '11px', 'important');
-          el.style.setProperty('white-space', 'nowrap', 'important');
-          el.style.setProperty('box-shadow', '0 2px 6px rgba(0,0,0,.3)', 'important');
-        }
+        if (t) el.style.setProperty('background', t.c, 'important');
       }
     });
-    // WPアイコン(丸マーカー)の色も同様に実DOMへ直接書き込む
+
+    // WPマーカーの修正（box-shadowを除去して色を確定）
+    const _savedIconStyles = [];
     document.querySelectorAll('.leaflet-marker-icon div[data-wtype]').forEach(function(el) {
+      _savedIconStyles.push({
+        el: el,
+        boxShadow: el.style.boxShadow
+      });
+      el.style.setProperty('box-shadow', 'none', 'important');
       var t = WT.find(function(x){ return x.v === el.getAttribute('data-wtype'); });
       if (t) el.style.setProperty('background', t.c, 'important');
     });
@@ -1605,6 +1617,21 @@ async function saveMapAsImage() {
     showToast('❌ 画像保存に失敗: ' + e.message);
   } finally {
     // ── 編集要素を元の表示状態に復元 ──
+    // ツールチップのopacityと背景色を復元
+    if (typeof _savedTtStyles !== 'undefined') {
+      _savedTtStyles.forEach(function(s) {
+        s.el.style.opacity = s.opacity;
+        if (s.background) s.el.style.background = s.background;
+        else s.el.style.removeProperty('background');
+      });
+    }
+    // WPアイコンのbox-shadowを復元
+    if (typeof _savedIconStyles !== 'undefined') {
+      _savedIconStyles.forEach(function(s) {
+        if (s.boxShadow) s.el.style.boxShadow = s.boxShadow;
+        else s.el.style.removeProperty('box-shadow');
+      });
+    }
     vps.forEach((vp, i) => {
       const el = vp.marker?.getElement();
       if (el) el.style.opacity = _savedVpOpacity[i] ?? (viaVisible ? '1' : '0');
