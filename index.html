@@ -1608,6 +1608,34 @@ async function saveMapAsImage() {
           clonedMap.style.height = h + 'px';
           clonedMap.style.overflow = 'hidden';
         }
+        // クローンドキュメントにスタイルを追加
+        // → インラインスタイルより後に追加されるため確実に適用される
+        const _fix = clonedDoc.createElement('style');
+        _fix.textContent = [
+          // ツールチップ: box-shadow・borderを除去、opacityを1に
+          '.leaflet-tooltip{box-shadow:none!important;border:none!important;opacity:1!important}',
+          // WPアイコン: box-shadowを除去
+          '.leaflet-marker-icon div{box-shadow:none!important}',
+        ].join('');
+        clonedDoc.head.appendChild(_fix);
+        // ツールチップ背景色をインラインで確定（type別の色を適用）
+        var _colors = {
+          'wp-tt-course':'#C4703A','wp-tt-start':'#2E7D32','wp-tt-goal':'#B71C1C',
+          'wp-tt-view':'#1565C0','wp-tt-shop':'#C62828','wp-tt-shrine':'#6D4C41',
+          'wp-tt-history':'#E65100','wp-tt-park':'#388E3C','wp-tt-toilet':'#455A64',
+          'wp-tt-parking':'#1565C0','wp-tt-other':'#757575'
+        };
+        clonedDoc.querySelectorAll('.leaflet-tooltip.wp-tt').forEach(function(el) {
+          el.style.setProperty('opacity','1','important');
+          el.style.setProperty('box-shadow','none','important');
+          el.style.setProperty('border','none','important');
+          for (var cls in _colors) {
+            if (el.classList.contains(cls)) {
+              el.style.setProperty('background', _colors[cls], 'important');
+              break;
+            }
+          }
+        });
       },
     });
     const url = canvas.toDataURL('image/png');
