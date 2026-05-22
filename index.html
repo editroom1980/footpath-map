@@ -111,6 +111,7 @@ html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:
 .wp-tt-wrap{white-space:normal!important;width:150px!important;max-width:200px!important;text-align:center!important;line-height:1.5!important;word-break:normal!important}
 .tsep{color:#D4C4A8;padding:0 3px;align-self:center}
 .btn.btn-off{opacity:0.55;background:#888!important;color:#fff!important;border-color:#888!important}
+.btn-nolabel{background:#5A3E28!important;color:#fff!important;border-color:#5A3E28!important}
 #wpTypePicker{display:none;position:fixed;z-index:5000;background:#fff;border:1px solid #C4B89A;border-radius:8px;padding:4px 0;min-width:200px;box-shadow:0 3px 16px rgba(0,0,0,.22)}
 /* カスタム道路描画UI */
 #crFinishBar{display:none;position:fixed;top:50px;left:50%;transform:translateX(-50%);background:#fff;border:1.5px solid #1565C0;border-radius:8px;padding:6px 14px;z-index:2000;gap:10px;align-items:center;box-shadow:0 2px 12px rgba(0,0,0,.2)}
@@ -232,6 +233,8 @@ html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:
         <button class="btn" onclick="clearAll()" title="🗑 全消去&#10;すべてのWP・調整点を削除">🗑</button>
         <span class="tsep">|</span>
         <button class="btn" onclick="saveMapAsImage()" title="📷 マップを画像保存">📷</button>
+        <button class="btn" onclick="saveMapNoText()" title="📷 ラベル非表示で保存&#10;WP名称と地図の文字を消して保存">📷✕文字</button>
+        <button class="btn" id="btnMapLabels" onclick="toggleMapLabels()" title="🗺 地図の地名・文字の表示切替&#10;OFFにすると地図上のOSMテキストが消える">🗺 地名</button>
         <button class="btn" onclick="openViewMode()" title="👁 閲覧モード&#10;閲覧専用画面を新しいタブで開く">👁</button>
         <button class="btn" onclick="openHelp()" title="❓ 操作ガイド">❓</button>
         <span id="tbar-st">クリックでウェイポイント追加 / ルート線ドラッグで経路調整</span>
@@ -416,6 +419,8 @@ let viewMode    = false;   // 閲覧専用モード
 let _routeCoordMap = [];   // OSRM座標→セグメントID対応表（クリック判定用）
 let customRoads = [];     // カスタム道路 [{id,name,coords,visible,_line}]
 let _wpPickerLatlng = null; // WPタイプピッカー表示中の座標
+let _showMapLabels  = true;  // 地図ラベル表示フラグ
+let _baseTileLayer  = null;  // 通常タイルレイヤー参照
 let _drawRoad   = null;   // 描画中のカスタム道路
 let _crIdCtr    = 0;      // カスタム道路IDカウンター
 let _crVisible  = true;   // カスタム道路全体表示フラグ
@@ -534,7 +539,7 @@ async function geocode(address) {
    ============================================================ */
 function initMap() {
   leafMap = L.map('map', {center:[35.165,134.542], zoom:14, scrollWheelZoom:true, wheelPxPerZoomLevel:240, touchZoom:true, doubleClickZoom:false});
-  const tiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  const tiles = _baseTileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution:'© OpenStreetMap contributors', maxZoom:19
   }).addTo(leafMap);
   tiles.on('tileload', () => { const el=document.getElementById('mapMsg'); if(el)el.style.display='none'; });
@@ -560,6 +565,99 @@ function onMapClick(e) {
 /* ============================================================
    WAYPOINTS
    ============================================================ */
+/* ============================================================
+   地図ラベル切替・文字なし保存
+   ============================================================ */
+
+// CARTO Voyager（ラベルなし）タイルURL
+const _TILE_NOLABEL = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png';
+const _TILE_ATTR_CARTO = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>';
+
+// 地図の地名テキスト表示/非表示を切り替える
+function toggleMapLabels() {
+  _showMapLabels = !_showMapLabels;
+  const btn = document.getElementById('btnMapLabels');
+  if (btn) btn.classList.toggle('btn-off', !_showMapLabels);
+
+  if (!leafMap) return;
+
+  if (_showMapLabels) {
+    // 通常タイル（OSM）に戻す
+    leafMap.eachLayer(l => { if (l._noLabelTile) leafMap.removeLayer(l); });
+    if (_baseTileLayer) _baseTileLayer.addTo(leafMap);
+  } else {
+    // ラベルなしタイルに切り替え
+    if (_baseTileLayer) leafMap.removeLayer(_baseTileLayer);
+    const noLabel = L.tileLayer(_TILE_NOLABEL, {
+      attribution: _TILE_ATTR_CARTO, maxZoom:19, subdomains:'abcd'
+    });
+    noLabel._noLabelTile = true;
+    noLabel.addTo(leafMap);
+  }
+}
+
+// 全テキストを非表示にして画像を保存（イラスト化用）
+async function saveMapNoText() {
+  if (typeof html2canvas === 'undefined') { showToast('⚠️ ライブラリ未読み込み'); return; }
+  showToast('⏳ 文字なしマップを生成中...');
+  const mapEl = document.getElementById('map');
+
+  // ── 保存前の状態を記録 ──────────────────────────────────────────
+  const _wasShowingLabels = _showMapLabels;
+  const _savedTtDisplay = [];
+  // WP名称ラベル（ツールチップ）を全て非表示
+  document.querySelectorAll('.leaflet-tooltip').forEach(el => {
+    _savedTtDisplay.push({el, vis: el.style.visibility});
+    el.style.visibility = 'hidden';
+  });
+  // WPアイコン内の番号テキスト（数字）を非表示 - 背景色は維持
+  const _savedIconText = [];
+  document.querySelectorAll('.leaflet-marker-icon div[data-wtype]').forEach(el => {
+    _savedIconText.push({el, color: el.style.color});
+    el.style.color = 'transparent';
+  });
+
+  // ラベルなしタイルに切り替え（未切替の場合のみ）
+  if (_showMapLabels) toggleMapLabels();
+
+  try {
+    // タイル読み込み待機
+    await new Promise(r => setTimeout(r, 1500));
+
+    const w = mapEl.offsetWidth, h = mapEl.offsetHeight;
+    const canvas = await html2canvas(mapEl, {
+      useCORS:true, allowTaint:false, scale:1, logging:false,
+      width:w, height:h, windowWidth:w, windowHeight:h, imageTimeout:20000,
+      onclone: (clonedDoc) => {
+        const cm = clonedDoc.getElementById('map');
+        if (cm) { cm.style.width=w+'px'; cm.style.height=h+'px'; cm.style.overflow='hidden'; }
+        // クローン内のツールチップも非表示
+        clonedDoc.querySelectorAll('.leaflet-tooltip').forEach(el => el.style.visibility='hidden');
+        // 番号テキストも透明
+        clonedDoc.querySelectorAll('.leaflet-marker-icon div[data-wtype]').forEach(el => el.style.color='transparent');
+        // box-shadow・border除去
+        const s=clonedDoc.createElement('style');
+        s.textContent='.leaflet-tooltip{box-shadow:none!important;border:none!important;opacity:1!important}.leaflet-marker-icon div{box-shadow:none!important}';
+        clonedDoc.head.appendChild(s);
+      }
+    });
+
+    const url = canvas.toDataURL('image/png');
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${(courseInfo.name||'footpath').replace(/[^\w\u3040-\u9FFF]/g,'_')}_notext_map.png`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    showToast('📷 文字なしマップを保存しました');
+  } catch(e) {
+    showToast('❌ 保存に失敗: ' + e.message);
+  } finally {
+    // ── 元の状態に復元 ──────────────────────────────────────────
+    _savedTtDisplay.forEach(s => s.el.style.visibility = s.vis);
+    _savedIconText.forEach(s => s.el.style.color = s.color);
+    if (_wasShowingLabels && !_showMapLabels) toggleMapLabels(); // 地名表示を復元
+  }
+}
+
 /* ============================================================
    WPタイプピッカー（マップクリック時に種別選択）
    ============================================================ */
