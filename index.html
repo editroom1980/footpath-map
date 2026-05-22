@@ -2226,11 +2226,11 @@ async function _refreshElevChart() {
   if (!coords || coords.length < 2) { _showElevMsg('ルートを作成してください'); return; }
   _showElevMsg('標高データを取得中...');
   try {
-    const pts = _sampleCoords(coords, 100);
+    const pts = _sampleCoords(coords, 50); // GSIは1点ずつリクエスト・50点で十分な精度
     const elevs = await _fetchElevs(pts);
     _drawElevChart(pts, elevs);
   } catch(e) {
-    _showElevMsg('標高データの取得に失敗しました（再試行してください）');
+    _showElevMsg('標高データの取得に失敗しました。インターネット接続を確認して再試行してください。');
   }
 }
 
@@ -2243,26 +2243,28 @@ function _sampleCoords(coords, max) {
   return out;
 }
 
-// Open-Elevation API（フォールバック: OpenTopoData）
+// 国土地理院（GSI）標高API
+// 1mレーザー精度・日本全国対応・政府運営で高信頼性・CORSサポート
+// 1点ずつのリクエストをPromise.allで並列実行
 async function _fetchElevs(pts) {
-  const body = {locations: pts.map(p=>({latitude:+p[0].toFixed(6),longitude:+p[1].toFixed(6)}))};
-  const tryFetch = async (url, opt) => {
-    const r = await fetch(url, {...opt, signal:AbortSignal.timeout(12000)});
-    if (!r.ok) throw new Error(r.status);
-    return r;
-  };
-  try {
-    const r = await tryFetch('https://api.open-elevation.com/api/v1/lookup',
-      {method:'POST', headers:{'Content-Type':'application/json','Accept':'application/json'}, body:JSON.stringify(body)});
-    const d = await r.json();
-    return d.results.map(x=>x.elevation);
-  } catch(_) {
-    const locs = pts.map(p=>`${(+p[0].toFixed(6))},${(+p[1].toFixed(6))}`).join('|');
-    const r = await tryFetch(`https://api.opentopodata.org/v1/srtm90m?locations=${encodeURIComponent(locs)}`, {});
-    const d = await r.json();
-    if (d.status!=='OK') throw new Error();
-    return d.results.map(x=>x.elevation??0);
-  }
+  const GSI = 'https://cyberjapandata2.gsi.go.jp/general/dem/scripts/getelevation.php';
+  const elevs = await Promise.all(pts.map(p =>
+    fetch(`${GSI}?lon=${p[1].toFixed(6)}&lat=${p[0].toFixed(6)}&outtype=JSON`,
+          {signal: AbortSignal.timeout(8000)})
+      .then(r => r.json())
+      .then(d => typeof d.elevation === 'number' ? d.elevation : null)
+      .catch(() => null)
+  ));
+  // 有効データが80%未満なら失敗（範囲外など）
+  const validCount = elevs.filter(e => e !== null).length;
+  if (validCount < pts.length * 0.8) throw new Error('標高データ取得失敗（対応エリア外の可能性）');
+  // null点は前後の線形補完で埋める
+  return elevs.map((e, i) => {
+    if (e !== null) return e;
+    const prev = elevs.slice(0, i).reverse().find(x => x !== null) ?? 0;
+    const next = elevs.slice(i + 1).find(x => x !== null) ?? 0;
+    return (prev + next) / 2;
+  });
 }
 
 function _showElevMsg(msg) {
