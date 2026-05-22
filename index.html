@@ -1557,11 +1557,14 @@ async function saveMapAsImage() {
     document.querySelectorAll('.leaflet-tooltip.wp-tt').forEach(function(el) {
       _savedTtStyles.push({
         el: el,
-        opacity: el.style.opacity,
-        background: el.style.background
+        opacity:    el.style.opacity,
+        background: el.style.background,
+        boxShadow:  el.style.boxShadow,
+        border:     el.style.border
       });
-      // opacity:1で正確に描画、背景色をインラインで確定
-      el.style.opacity = '1'; // Leaflet setOpacityと同形式で直接上書き
+      el.style.opacity = '1';                                    // Leafletのopacity:0.9を上書き
+      el.style.setProperty('box-shadow', 'none', 'important'); // box-shadowによる暗化を除去
+      el.style.setProperty('border',     'none', 'important'); // border描画のずれを除去
       var m = el.className.match(/wp-tt-([a-z]+)/);
       if (m) {
         var t = WT.find(function(x){ return x.v === m[1]; });
@@ -1621,8 +1624,9 @@ async function saveMapAsImage() {
     if (typeof _savedTtStyles !== 'undefined') {
       _savedTtStyles.forEach(function(s) {
         s.el.style.opacity = s.opacity;
-        if (s.background) s.el.style.background = s.background;
-        else s.el.style.removeProperty('background');
+        if (s.boxShadow) s.el.style.boxShadow  = s.boxShadow;  else s.el.style.removeProperty('box-shadow');
+        if (s.border)    s.el.style.border      = s.border;     else s.el.style.removeProperty('border');
+        if (s.background) s.el.style.background = s.background; else s.el.style.removeProperty('background');
       });
     }
     // WPアイコンのbox-shadowを復元
