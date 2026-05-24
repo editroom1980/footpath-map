@@ -1377,6 +1377,35 @@ async function _prefetchOsrm() {
   if (tasks.length) await Promise.all(tasks);
 }
 
+
+// カスタム道路 + 両端OSRM接続を一元管理するヘルパー
+// from→to間にカスタム道路がある場合、OSRM(from→road_start) + road + OSRM(road_end→to) を返す
+// カスタム道路がない場合は null を返す
+async function _buildSegWithCustomRoad(fromLat, fromLng, toLat, toLng, fitOut, fitIn) {
+  const _cr = routeAlongCustomRoad(fromLat, fromLng, toLat, toLng);
+  if (!_cr) return null;
+
+  const MIN_D = 0.00005; // 約5m以上離れている場合のみOSRM接続
+  const rdSt  = _cr[0];
+  const rdEnd = _cr[_cr.length - 1];
+
+  // from → 道路開始点 をOSRMで接続
+  let connA = [rdSt];
+  if (fitOut && Math.hypot(fromLat-rdSt[0], fromLng-rdSt[1]) > MIN_D) {
+    const kA = `${fromLng.toFixed(6)},${fromLat.toFixed(6)};${rdSt[1].toFixed(6)},${rdSt[0].toFixed(6)}`;
+    try { connA = await getCachedRoute(kA, [{lat:fromLat,lng:fromLng},{lat:rdSt[0],lng:rdSt[1]}]); } catch(_){}
+  } else { connA = [[fromLat,fromLng], rdSt]; }
+
+  // 道路終了点 → to をOSRMで接続
+  let connB = [rdEnd];
+  if (fitIn && Math.hypot(toLat-rdEnd[0], toLng-rdEnd[1]) > MIN_D) {
+    const kB = `${rdEnd[1].toFixed(6)},${rdEnd[0].toFixed(6)};${toLng.toFixed(6)},${toLat.toFixed(6)}`;
+    try { connB = await getCachedRoute(kB, [{lat:rdEnd[0],lng:rdEnd[1]},{lat:toLat,lng:toLng}]); } catch(_){}
+  } else { connB = [rdEnd, [toLat,toLng]]; }
+
+  return [...connA.slice(0,-1), ..._cr, ...connB.slice(1)];
+}
+
 async function buildRoutedCoords() {
   const all = [];
   const segCoordsList = [];
@@ -1391,33 +1420,9 @@ async function buildRoutedCoords() {
 
     if (sv.length === 0) {
       // ── 調整点なし: カスタム道路→OSRM→直線 ──
-      const _crNoVia = routeAlongCustomRoad(a.lat, a.lng, b.lat, b.lng);
-      if (_crNoVia) {
-        // カスタム道路を使用: 前後をOSRMでスナップして白い道路に接続
-        const rdSt  = _crNoVia[0];                     // 道路の開始点 [lat,lng]
-        const rdEnd = _crNoVia[_crNoVia.length - 1];   // 道路の終了点 [lat,lng]
-        const MIN_D = 0.00005; // 約5m以上離れている場合のみOSRM接続
-
-        // WP A → 道路開始点 をOSRMで接続
-        let connA = [rdSt];
-        if (fitAout && Math.hypot(a.lat-rdSt[0], a.lng-rdSt[1]) > MIN_D) {
-          const kA = `${a.lng.toFixed(6)},${a.lat.toFixed(6)};${rdSt[1].toFixed(6)},${rdSt[0].toFixed(6)}`;
-          try { connA = await getCachedRoute(kA, [{lat:a.lat,lng:a.lng},{lat:rdSt[0],lng:rdSt[1]}]); } catch(_){}
-        } else {
-          connA = [[a.lat, a.lng], rdSt];
-        }
-
-        // 道路終了点 → WP B をOSRMで接続
-        let connB = [rdEnd];
-        if (fitBin && Math.hypot(b.lat-rdEnd[0], b.lng-rdEnd[1]) > MIN_D) {
-          const kB = `${rdEnd[1].toFixed(6)},${rdEnd[0].toFixed(6)};${b.lng.toFixed(6)},${b.lat.toFixed(6)}`;
-          try { connB = await getCachedRoute(kB, [{lat:rdEnd[0],lng:rdEnd[1]},{lat:b.lat,lng:b.lng}]); } catch(_){}
-        } else {
-          connB = [rdEnd, [b.lat, b.lng]];
-        }
-
-        // 接続: OSRM(A→道路開始) + カスタム道路 + OSRM(道路終了→B)
-        seg = [...connA.slice(0,-1), ..._crNoVia, ...connB.slice(1)];
+      const _crSeg = await _buildSegWithCustomRoad(a.lat, a.lng, b.lat, b.lng, fitAout, fitBin);
+      if (_crSeg) {
+        seg = _crSeg;
       } else if (fitAout && fitBin) {
         const key=`${a.lng.toFixed(6)},${a.lat.toFixed(6)};${b.lng.toFixed(6)},${b.lat.toFixed(6)}`;
         seg = await getCachedRoute(key, [{lat:a.lat,lng:a.lng},{lat:b.lat,lng:b.lng}]);
@@ -1432,8 +1437,8 @@ async function buildRoutedCoords() {
       const fitFirst = (first.fitBefore !== false); // 最初の調整点への入り方
       const fitLast  = (last.fitAfter   !== false); // 最後の調整点からの出方
 
-      // A → 最初の調整点: カスタム道路→OSRM→直線
-      const _crAF = routeAlongCustomRoad(a.lat, a.lng, first.lat, first.lng);
+      // A → 最初の調整点: カスタム道路（OSRM接続付き）→OSRM→直線
+      const _crAF = await _buildSegWithCustomRoad(a.lat, a.lng, first.lat, first.lng, fitAout, fitFirst);
       if (_crAF) {
         seg = _crAF;
       } else if (fitAout && fitFirst) {
@@ -1458,7 +1463,7 @@ async function buildRoutedCoords() {
           // セクションごとに判定
           for (let j=0; j<sv.length-1; j++) {
             const vpA=sv[j], vpB=sv[j+1];
-            const _crVV = routeAlongCustomRoad(vpA.lat, vpA.lng, vpB.lat, vpB.lng);
+            const _crVV = await _buildSegWithCustomRoad(vpA.lat, vpA.lng, vpB.lat, vpB.lng, vpA.fitAfter!==false, vpB.fitBefore!==false);
             if (_crVV) {
               seg.push(..._crVV.slice(1));
             } else if ((vpA.fitAfter !== false) && (vpB.fitBefore !== false)) {
@@ -1472,8 +1477,8 @@ async function buildRoutedCoords() {
         }
       }
 
-      // 最後の調整点 → B: カスタム道路→OSRM→直線
-      const _crLB = routeAlongCustomRoad(last.lat, last.lng, b.lat, b.lng);
+      // 最後の調整点 → B: カスタム道路（OSRM接続付き）→OSRM→直線
+      const _crLB = await _buildSegWithCustomRoad(last.lat, last.lng, b.lat, b.lng, fitLast, fitBin);
       if (_crLB) {
         seg.push(..._crLB.slice(1));
       } else if (fitLast && fitBin) {
@@ -2265,51 +2270,54 @@ function nearestRoadIdx(road, lat, lng) {
 }
 
 function routeAlongCustomRoad(fromLat, fromLng, toLat, toLng) {
-  // WP近傍しきい値（約200m）
-  const THR_WP   = 0.002;
-  // A→B直線の近傍しきい値（約400m）: 直線ルートの近くを通るカスタム道路を自動使用
-  const THR_LINE = 0.004;
+  // WP/VP が道路に「近い」とみなすしきい値（約200m）
+  const THR = 0.002;
 
-  // 点Pから線分AB への最短距離（緯度経度での近似）
-  function distToSeg(plat,plng, alat,alng, blat,blng) {
-    const dx=blng-alng, dy=blat-alat;
-    if (dx===0&&dy===0) return Math.hypot(plat-alat,plng-alng);
-    const t=Math.max(0,Math.min(1,((plng-alng)*dx+(plat-alat)*dy)/(dx*dx+dy*dy)));
-    return Math.hypot(plat-(alat+t*dy), plng-(alng+t*dx));
-  }
+  let best = null, bestScore = Infinity;
 
-  let best=null, bestScore=Infinity;
   for (const road of customRoads) {
-    if (!road.visible||!road.coords||road.coords.length<2) continue;
-    const i1=nearestRoadIdx(road,fromLat,fromLng);
-    const i2=nearestRoadIdx(road,toLat,  toLng);
-    if (Math.abs(i1-i2)<1) continue;
-    const d1=Math.hypot(fromLat-road.coords[i1][0],fromLng-road.coords[i1][1]);
-    const d2=Math.hypot(toLat  -road.coords[i2][0],toLng  -road.coords[i2][1]);
+    if (!road.visible || !road.coords || road.coords.length < 2) continue;
+    const n = road.coords.length;
+    const i1 = nearestRoadIdx(road, fromLat, fromLng);
+    const i2 = nearestRoadIdx(road, toLat,   toLng);
+    const d1 = Math.hypot(fromLat-road.coords[i1][0], fromLng-road.coords[i1][1]);
+    const d2 = Math.hypot(toLat  -road.coords[i2][0], toLng  -road.coords[i2][1]);
 
-    // ①WPが道路の近傍にある（既存動作 + しきい値拡大）
-    const wpMatch = d1<THR_WP && d2<THR_WP;
+    let seg = null, score = Infinity;
 
-    // ②A→B直線の近傍を道路の点が通る（自動スナップ）
-    let lineMatch = false;
-    if (!wpMatch) {
-      for (const c of road.coords) {
-        if (distToSeg(c[0],c[1],fromLat,fromLng,toLat,toLng)<THR_LINE) {
-          lineMatch=true; break;
-        }
-      }
+    if (d1 < THR && d2 < THR) {
+      // ケースA: 両側が道路近傍 → i1〜i2の区間を使用
+      if (i1 === i2) continue;
+      const s=Math.min(i1,i2), e=Math.max(i1,i2)+1;
+      seg = road.coords.slice(s,e);
+      if (i1 > i2) seg = [...seg].reverse();
+      score = d1+d2;
+
+    } else if (d1 < THR) {
+      // ケースB: from側のみ道路近傍 → i1からto側に近いエンドポイントまで走破
+      // 目的地に近い方の道路終端を「出口」にする
+      const dToStart = Math.hypot(toLat-road.coords[0][0],   toLng-road.coords[0][1]);
+      const dToEnd   = Math.hypot(toLat-road.coords[n-1][0], toLng-road.coords[n-1][1]);
+      const exitIdx  = dToStart < dToEnd ? 0 : n-1;
+      if (i1 === exitIdx) continue;
+      const s=Math.min(i1,exitIdx), e=Math.max(i1,exitIdx)+1;
+      seg = road.coords.slice(s,e);
+      if (i1 > exitIdx) seg = [...seg].reverse();
+      score = d1;
+
+    } else if (d2 < THR) {
+      // ケースC: to側のみ道路近傍 → from側に近いエンドポイントからi2まで走破
+      const dFromStart = Math.hypot(fromLat-road.coords[0][0],   fromLng-road.coords[0][1]);
+      const dFromEnd   = Math.hypot(fromLat-road.coords[n-1][0], fromLng-road.coords[n-1][1]);
+      const entryIdx   = dFromStart < dFromEnd ? 0 : n-1;
+      if (entryIdx === i2) continue;
+      const s=Math.min(entryIdx,i2), e=Math.max(entryIdx,i2)+1;
+      seg = road.coords.slice(s,e);
+      if (entryIdx > i2) seg = [...seg].reverse();
+      score = d2;
     }
 
-    if (wpMatch || lineMatch) {
-      const score = d1+d2;
-      if (score < bestScore) {
-        bestScore=score;
-        const s=Math.min(i1,i2), e=Math.max(i1,i2)+1;
-        const seg=road.coords.slice(s,e);
-        if(i1>i2) seg.reverse();
-        best=seg;
-      }
-    }
+    if (seg && score < bestScore) { bestScore = score; best = seg; }
   }
   return best;
 }
