@@ -111,15 +111,28 @@ html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:
 .wp-tt-wrap{white-space:normal!important;width:150px!important;max-width:200px!important;text-align:center!important;line-height:1.5!important;word-break:normal!important}
 .tsep{color:#D4C4A8;padding:0 3px;align-self:center}
 .btn.btn-off{opacity:0.55;background:#888!important;color:#fff!important;border-color:#888!important}
-/* 高低差グラフパネル */
-#elevPanel{background:#FAF5EE;border-top:1px solid #D4C4A8;padding:10px 14px 6px;flex-shrink:0}
-#elevPanel.hidden{display:none}
-#elevStats{font-size:11px;color:#6A4E2A;margin-bottom:6px;display:flex;flex-wrap:wrap;gap:10px}
+/* ミニ高低差チャート（サイドバー内・総距離の下） */
+#miniElevSec{padding:6px 10px 8px;border-top:1px solid #D4C4A8;flex-shrink:0;display:none}
+#miniElevSec.show{display:block}
+#miniElevChart{width:100%;cursor:pointer}
+#miniElevChart svg{display:block;width:100%;height:68px}
+#miniElevNoData{font-size:10px;color:#9A8070;text-align:center;padding:4px 0}
+/* 高低差詳細モーダル */
+#elevModal{display:none;position:fixed;inset:0;z-index:3000;align-items:center;justify-content:center}
+#elevModal.show{display:flex}
+#elevModalBg{position:absolute;inset:0;background:rgba(0,0,0,.45)}
+#elevModalBox{position:relative;z-index:1;background:#FAF5EE;border-radius:10px;box-shadow:0 8px 32px rgba(0,0,0,.3);padding:18px 20px 14px;width:min(700px,96vw);max-height:90vh;overflow-y:auto}
+#elevModalHeader{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+#elevModalTitle{font-size:14px;font-weight:bold;color:#4A2E0E}
+#elevModalClose{background:none;border:none;font-size:20px;cursor:pointer;color:#9A8070;padding:0 4px;line-height:1}
+#elevModalClose:hover{color:#4A2E0E}
+#elevStats{font-size:11px;color:#6A4E2A;margin-bottom:8px;display:flex;flex-wrap:wrap;gap:10px}
 #elevStats span{white-space:nowrap}
 #elevStats b{color:#C4703A}
 #elevChartWrap{width:100%;overflow-x:auto}
-#elevChart{min-width:300px;width:100%;height:150px;display:block}
+#elevChart{min-width:300px;width:100%;height:180px;display:block}
 #elevMsg{font-size:12px;color:#9A8070;text-align:center;padding:20px 0}
+#elevRecalcBtn{display:block;margin:6px auto 0;font-size:11px;padding:3px 12px;cursor:pointer;border:1px solid #C4703A;background:#FFF8F0;color:#C4703A;border-radius:4px}
 .btn-nolabel{background:#5A3E28!important;color:#fff!important;border-color:#5A3E28!important}
 #wpTypePicker{display:none;position:fixed;z-index:5000;background:#fff;border:1px solid #C4B89A;border-radius:8px;padding:4px 0;min-width:200px;box-shadow:0 3px 16px rgba(0,0,0,.22)}
 /* カスタム道路描画UI */
@@ -222,17 +235,19 @@ html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:
         <div id="distDisp">総距離: — km</div>
         <div id="timeDisp">所要時間: —</div>
       </div>
+      <!-- ミニ高低差チャート（総距離の下） -->
+      <div id="miniElevSec">
+        <div id="miniElevChart" onclick="openElevModal()" title="クリックで詳細を表示">
+          <div id="miniElevNoData">📈 ボタンを押すと高低差を表示</div>
+          <svg id="miniElevSvg"></svg>
+        </div>
+      </div>
       <div id="descSec">
         <label>コース説明・見どころ</label>
         <textarea id="iDesc" placeholder="コースの特徴・見どころ・歴史など..."></textarea>
       </div>
     </div>
-    <div id="elevPanel" class="hidden">
-  <div id="elevStats"></div>
-  <div id="elevChartWrap"><svg id="elevChart"></svg></div>
-  <div id="elevMsg"></div>
-</div>
-<div id="mapArea">
+    <div id="mapArea">
       <div id="tbar">
         <button class="btn on" id="btnWp" onclick="setMode('wp')" title="📍 WP追加&#10;クリックでスポットをコースに追加">📍 WP</button>
         <button class="btn" id="btnVia" onclick="setMode('via')" title="↔ 調整点追加&#10;ルートラインをドラッグして経路を微調整">↔ 調整点</button>
@@ -440,6 +455,7 @@ let _lastRouteCoords= null;  // 最後に計算したルート座標（高低差
 let _elevOpen       = false; // 高低差パネル表示フラグ
 let _baseTileLayer  = null;  // 通常タイルレイヤー参照
 let _drawRoad   = null;   // 描画中のカスタム道路
+let _editRoad   = null;   // 編集中のカスタム道路 {road, markers}
 let _crIdCtr    = 0;      // カスタム道路IDカウンター
 let _crVisible  = true;   // カスタム道路全体表示フラグ
 let _modalPhotos= [];      // モーダル編集中の写真
@@ -487,6 +503,10 @@ window.addEventListener('DOMContentLoaded', () => {
   // Context menu closes ONLY via Cancel button, Escape key, or map pan.
   // Close menu on Escape key; ⌘Z = undo; ⌘⇧Z = redo
   document.addEventListener('keydown', e => {
+  // Escキーで高低差モーダルを閉じる
+  if (e.key === 'Escape' && document.getElementById('elevModal')?.classList.contains('show')) {
+    closeElevModal(); return;
+  }
     if (e.key === 'Escape') { hideCtxMenu(); hideWpPicker(); if(mode==='road')cancelRoadDraw(); return; }
     if ((e.metaKey || e.ctrlKey) && e.key === 'z') {
       e.preventDefault();
@@ -1314,6 +1334,16 @@ async function doRouting() {
     const {allCoords, segCoordsList} = await buildRoutedCoords();
     if (allCoords && allCoords.length >= 2) {
       _lastRouteCoords = allCoords; // 高低差グラフ用に保存
+      // ルートが変更されたら高低差データを無効化して再計算ボタンを表示
+      if (_elevData) {
+        _elevData = null;
+        const recalcBtn = document.getElementById('elevRecalcBtn');
+        if (recalcBtn) recalcBtn.style.display = '';
+        const miniMsg = document.getElementById('miniElevNoData');
+        if (miniMsg) miniMsg.textContent = '⚠️ ルートが変更されました';
+        const miniSvg = document.getElementById('miniElevSvg');
+        if (miniSvg) miniSvg.innerHTML = '';
+      }
       removeLines();
       drawLines(allCoords, buildSegCoordsList());
       updateDistanceAndTime(allCoords);
@@ -1844,14 +1874,16 @@ async function saveMapAsImage() {
    ============================================================ */
 function setMode(m) {
   if (mode === 'road' && m !== 'road') cancelRoadDraw(); // 道路描画中にモード変更→キャンセル
+  if (mode === 'road-edit' && m !== 'road-edit') finishRoadEdit(); // 編集中に別モード→保存
   mode = m;
   document.getElementById('btnWp')?.classList.toggle('on',   m==='wp');
   document.getElementById('btnVia')?.classList.toggle('on',  m==='via');
   document.getElementById('btnRoad')?.classList.toggle('on', m==='road');
   const msgs = {
-    'wp':   'クリックでウェイポイント追加 / ルート線ドラッグで経路調整',
-    'via':  '調整点モード：ルートライン上をクリックまたはドラッグ',
-    'road': '🛤 道路描画モード：クリックで点を追加 → 完了ボタンで確定',
+    'wp':       'クリックでウェイポイント追加 / ルート線ドラッグで経路調整',
+    'via':      '調整点モード：ルートライン上をクリックまたはドラッグ',
+    'road':     '🛤 道路描画モード：クリックで点を追加 → 完了ボタンで確定',
+    'road-edit':'✏️ 道路編集：点をドラッグで移動 / ライン上クリックで追加 / 点を右クリックで削除',
   };
   const el = document.getElementById('tbar-st');
   if (el) el.textContent = msgs[m] || '';
@@ -1866,6 +1898,9 @@ function _makeSnapshot() {
     wps: wps.map(w=>({id:w.id,type:w.type,name:w.name,desc:w.desc,tel:w.tel,dwell:w.dwell||0,fitBefore:w.fitBefore!==false,fitAfter:w.fitAfter!==false,onRoute:w.onRoute!==undefined?w.onRoute!==false:(w.type==='course'),lat:w.lat,lng:w.lng,labelDir:w.labelDir||'top'})),
     vps: vps.map(v=>({id:v.id,segAfter:v.segAfter,fitBefore:v.fitBefore!==false,fitAfter:v.fitAfter!==false,lat:v.lat,lng:v.lng,order:v.order||0})),
     idW, idV,
+    // カスタム道路（_lineはDOM要素なので座標のみ保存）
+    customRoads: customRoads.map(r=>({id:r.id,name:r.name,coords:r.coords.map(c=>[...c]),visible:r.visible})),
+    crIdCtr: _crIdCtr,
   };
 }
 
@@ -1888,6 +1923,11 @@ function restoreSnapshot(snapshot) {
   idV = snapshot.idV;
   wps = snapshot.wps.map(w=>{ const wp={...w, photos:savedPhotos[w.id]||[], marker:null}; buildWpMarker(wp); return wp; });
   vps = snapshot.vps.map(v=>{ const vp={...v,marker:null}; buildVpMarker(vp); return vp; });
+  // カスタム道路を復元（既存ラインを削除してsnapshot座標から再描画）
+  customRoads.forEach(r => { if (r._line) leafMap.removeLayer(r._line); });
+  customRoads = (snapshot.customRoads || []).map(r => ({...r, _line:null}));
+  if (snapshot.crIdCtr !== undefined) _crIdCtr = snapshot.crIdCtr;
+  customRoads.forEach(r => drawCustomRoadLine(r));
   clearCache(); redrawStraight(); scheduleRouting(); redrawList(); refreshIcons();
 }
 
@@ -2104,7 +2144,21 @@ function closeViewInfo() {
 
 function openFullPhoto(src) {
   const w2 = window.open('', '_blank');
-  w2.document.write(`<!doctype html><html><body style="margin:0;background:#000;display:flex;align-items:center;justify-content:center;min-height:100vh"><img src="${src}" style="max-width:100%;max-height:100vh;object-fit:contain"></body></html>`);
+  w2.document.write(`<!doctype html><html><body style="margin:0;background:#000;display:flex;align-items:center;justify-content:center;min-height:100vh"><img src="${src}" style="max-width:100%;max-height:100vh;object-fit:contain"><!-- 高低差詳細モーダル -->
+<div id="elevModal">
+  <div id="elevModalBg" onclick="closeElevModal()"></div>
+  <div id="elevModalBox">
+    <div id="elevModalHeader">
+      <span id="elevModalTitle">📈 高低差グラフ</span>
+      <button id="elevModalClose" onclick="closeElevModal()">✕</button>
+    </div>
+    <div id="elevStats"></div>
+    <button id="elevRecalcBtn" onclick="_refreshElevChart(true)" style="display:none">🔄 再計算</button>
+    <div id="elevChartWrap"><svg id="elevChart"></svg></div>
+    <div id="elevMsg"></div>
+  </div>
+</div>
+</body></html>`);
   w2.document.close();
 }
 
@@ -2140,6 +2194,8 @@ function finishRoadDraw() {
   // 仮マーカー・ラインを削除
   _drawRoad.markers.forEach(m => leafMap.removeLayer(m));
   if (_drawRoad.previewLine) leafMap.removeLayer(_drawRoad.previewLine);
+  // 確定前にスナップショット保存（↩で取り消せるように）
+  saveSnapshot();
   // 確定道路を保存
   const road = {id:_drawRoad.id, name:_drawRoad.name, coords:[..._drawRoad.coords], visible:true, _line:null};
   customRoads.push(road);
@@ -2164,8 +2220,18 @@ function drawCustomRoadLine(road) {
   if (road._line) { leafMap.removeLayer(road._line); road._line=null; }
   if (!road.visible || !_crVisible) return;
   road._line = L.polyline(road.coords, {
-    color:'#1565C0', weight:3, dashArray:'10,5', opacity:0.55, interactive:false
+    color:'#1565C0', weight:3, dashArray:'10,5', opacity:0.55, interactive:true
   }).addTo(leafMap);
+  // クリックで編集モードに入る
+  road._line.on('click', function(e) {
+    if (mode === 'road-edit' && _editRoad && _editRoad.road === road) {
+      // 編集中の道路をクリック→クリック位置に点を挿入
+      _insertRoadPoint(road, e.latlng);
+    } else if (mode !== 'road' && mode !== 'road-edit') {
+      startRoadEdit(road);
+      L.DomEvent.stop(e);
+    }
+  });
 }
 
 function drawAllCustomRoads() {
@@ -2213,23 +2279,41 @@ function routeAlongCustomRoad(fromLat, fromLng, toLat, toLng) {
 /* ============================================================
    高低差グラフ
    ============================================================ */
+// 📈ボタン: データ取得 → 詳細モーダルを表示
 async function toggleElevPanel() {
-  _elevOpen = !_elevOpen;
-  document.getElementById('elevPanel').classList.toggle('hidden', !_elevOpen);
-  document.getElementById('btnElev')?.classList.toggle('on', _elevOpen);
-  if (_elevOpen) await _refreshElevChart();
+  if (!_elevData) {
+    // 初回: データ取得してからモーダルを開く
+    openElevModal();
+    await _refreshElevChart();
+  } else {
+    // 2回目以降: 即時モーダル表示
+    openElevModal();
+  }
+}
+function openElevModal() {
+  document.getElementById('elevModal').classList.add('show');
+  document.getElementById('btnElev')?.classList.add('on');
+}
+function closeElevModal() {
+  document.getElementById('elevModal').classList.remove('show');
+  document.getElementById('btnElev')?.classList.remove('on');
 }
 
-async function _refreshElevChart() {
+async function _refreshElevChart(force) {
   const rw = routeWps();
   if (rw.length < 2) { _showElevMsg('コースポイントを2点以上追加してください'); return; }
   const coords = _lastRouteCoords || buildStraightCoords();
   if (!coords || coords.length < 2) { _showElevMsg('ルートを作成してください'); return; }
   _showElevMsg('標高データを取得中...');
+  // 再計算ボタンを非表示にしてから取得
+  const recalcBtn = document.getElementById('elevRecalcBtn');
+  if (recalcBtn) recalcBtn.style.display = 'none';
   try {
-    const pts = _sampleCoords(coords, 50); // GSIは1点ずつリクエスト・50点で十分な精度
+    const pts = _sampleCoords(coords, 50);
     const elevs = await _fetchElevs(pts);
+    _elevData = {pts, elevs}; // キャッシュ保存
     _drawElevChart(pts, elevs);
+    _drawMiniChart(pts, elevs); // ミニチャートも更新
   } catch(e) {
     _showElevMsg('標高データの取得に失敗しました。インターネット接続を確認して再試行してください。');
   }
@@ -2504,6 +2588,144 @@ async function saveMapTransparent() {
       if (s.shadow) s.el.style.boxShadow = s.shadow; else s.el.style.removeProperty('box-shadow');
     });
   }
+}
+
+
+// ミニ高低差チャート描画（サイドバー用・シンプル版）
+function _drawMiniChart(pts, elevs) {
+  const miniSvg = document.getElementById('miniElevSvg');
+  const miniMsg = document.getElementById('miniElevNoData');
+  const miniSec = document.getElementById('miniElevSec');
+  if (!miniSvg || !miniSec) return;
+
+  miniSec.classList.add('show');
+  if (miniMsg) miniMsg.style.display = 'none';
+
+  const DEG_M = 111000;
+  const dists = [0];
+  for (let i=1; i<pts.length; i++) {
+    const dlat=(pts[i][0]-pts[i-1][0])*DEG_M;
+    const dlng=(pts[i][1]-pts[i-1][1])*DEG_M*Math.cos(pts[i][0]*Math.PI/180);
+    dists.push(dists[i-1]+Math.sqrt(dlat*dlat+dlng*dlng));
+  }
+  const totalM = dists[dists.length-1];
+  const minE = Math.min(...elevs), maxE = Math.max(...elevs), rng = maxE-minE||1;
+
+  // SVGサイズ
+  const W=220, H=60, PL=30, PR=6, PT=6, PB=16;
+  const iW=W-PL-PR, iH=H-PT-PB;
+  const xi=d=>(d/totalM)*iW, yi=e=>iH-((e-minE)/rng)*iH;
+
+  const lineD=pts.map((p,i)=>`${i?'L':'M'}${(PL+xi(dists[i])).toFixed(1)},${(PT+yi(elevs[i])).toFixed(1)}`).join(' ');
+  const fillD=lineD+` L${(PL+iW).toFixed(1)},${(PT+iH).toFixed(1)} L${PL},${(PT+iH).toFixed(1)} Z`;
+
+  miniSvg.setAttribute('viewBox',`0 0 ${W} ${H}`);
+  miniSvg.setAttribute('preserveAspectRatio','xMidYMid meet');
+  miniSvg.innerHTML =
+    // 背景グリッド（横線1本：中間標高）
+    `<line x1="${PL}" y1="${(PT+iH/2).toFixed(1)}" x2="${PL+iW}" y2="${(PT+iH/2).toFixed(1)}" stroke="#E8DDD0" stroke-width="0.8"/>` +
+    // 軸ラベル（最高・最低）
+    `<text x="${PL-2}" y="${(PT+4).toFixed(1)}" text-anchor="end" font-size="7.5" fill="#9A8070">${Math.round(maxE)}m</text>` +
+    `<text x="${PL-2}" y="${(PT+iH+4).toFixed(1)}" text-anchor="end" font-size="7.5" fill="#9A8070">${Math.round(minE)}m</text>` +
+    // 距離ラベル（0とtotal）
+    `<text x="${PL}" y="${PT+iH+13}" text-anchor="middle" font-size="7.5" fill="#9A8070">0</text>` +
+    `<text x="${PL+iW}" y="${PT+iH+13}" text-anchor="end" font-size="7.5" fill="#9A8070">${(totalM/1000).toFixed(1)}km</text>` +
+    // 塗りつぶし＋ライン
+    `<path d="${fillD}" fill="#C4703A" fill-opacity="0.18"/>` +
+    `<path d="${lineD}" fill="none" stroke="#C4703A" stroke-width="1.8"/>` +
+    // 縦軸
+    `<line x1="${PL}" y1="${PT}" x2="${PL}" y2="${PT+iH}" stroke="#C0A882" stroke-width="0.8"/>`;
+}
+
+/* ============================================================
+   カスタム道路 点の編集
+   ============================================================ */
+
+// 指定した道路の編集モードを開始
+function startRoadEdit(road) {
+  if (_editRoad) finishRoadEdit(); // 既存の編集を先に確定
+  saveSnapshot(); // 編集前にスナップショット保存（↩で取り消せるように）
+  mode = 'road-edit';
+  document.getElementById('btnWp')?.classList.remove('on');
+  document.getElementById('btnVia')?.classList.remove('on');
+  document.getElementById('btnRoad')?.classList.remove('on');
+  const el = document.getElementById('tbar-st');
+  if (el) el.textContent = '✏️ 道路編集：点をドラッグで移動 / ライン上クリックで追加 / 点を右クリックで削除';
+
+  // 道路ラインをハイライト
+  if (road._line) road._line.setStyle({opacity:0.9, weight:4});
+
+  // 各座標に編集用マーカーを配置
+  const markers = road.coords.map((coord, i) => _createRoadEditMarker(road, i));
+  _editRoad = {road, markers};
+
+  showToast('✏️ 道路編集モード：点をドラッグで移動、右クリックで削除');
+}
+
+// 編集用ドラッグマーカーを生成
+function _createRoadEditMarker(road, idx) {
+  const coord = road.coords[idx];
+  const m = L.circleMarker([coord[0], coord[1]], {
+    radius:6, color:'#0D47A1', weight:2,
+    fillColor:'#fff', fillOpacity:1,
+    draggable:true, interactive:true
+  }).addTo(leafMap);
+
+  // ドラッグで座標更新
+  m.on('drag', function(e) {
+    const ll = e.target.getLatLng();
+    road.coords[idx] = [ll.lat, ll.lng];
+    if (road._line) road._line.setLatLngs(road.coords);
+  });
+
+  // 右クリックで削除（2点未満になる場合は拒否）
+  m.on('contextmenu', function(e) {
+    L.DomEvent.stop(e);
+    if (road.coords.length <= 2) { showToast('⚠️ 最低2点必要です'); return; }
+    saveSnapshot();
+    road.coords.splice(idx, 1);
+    if (road._line) road._line.setLatLngs(road.coords);
+    // マーカーを全て再構築
+    if (_editRoad) {
+      _editRoad.markers.forEach(mk => leafMap.removeLayer(mk));
+      _editRoad.markers = road.coords.map((c, i) => _createRoadEditMarker(road, i));
+    }
+    clearCache(); scheduleRouting();
+  });
+
+  return m;
+}
+
+// ライン上クリックで点を挿入
+function _insertRoadPoint(road, latlng) {
+  if (!road.coords || road.coords.length < 2) return;
+  // 最近傍セグメントを探して挿入
+  let bestIdx = 0, bestDist = Infinity;
+  for (let i=0; i<road.coords.length-1; i++) {
+    const a=road.coords[i], b=road.coords[i+1];
+    const mx=(a[0]+b[0])/2, my=(a[1]+b[1])/2;
+    const d=Math.hypot(latlng.lat-mx, latlng.lng-my);
+    if (d<bestDist){bestDist=d; bestIdx=i;}
+  }
+  saveSnapshot();
+  road.coords.splice(bestIdx+1, 0, [latlng.lat, latlng.lng]);
+  if (road._line) road._line.setLatLngs(road.coords);
+  // マーカーを再構築
+  if (_editRoad) {
+    _editRoad.markers.forEach(mk => leafMap.removeLayer(mk));
+    _editRoad.markers = road.coords.map((c, i) => _createRoadEditMarker(road, i));
+  }
+  clearCache(); scheduleRouting();
+}
+
+// 編集を確定して通常モードに戻る
+function finishRoadEdit() {
+  if (!_editRoad) return;
+  _editRoad.markers.forEach(m => leafMap.removeLayer(m));
+  const road = _editRoad.road;
+  if (road._line) road._line.setStyle({opacity:0.55, weight:3}); // スタイルを元に戻す
+  _editRoad = null;
+  clearCache(); scheduleRouting();
 }
 
 /* ============================================================
