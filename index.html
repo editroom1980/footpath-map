@@ -2130,18 +2130,7 @@ function closeViewInfo() {
 
 function openFullPhoto(src) {
   const w2 = window.open('', '_blank');
-  w2.document.write(`<!doctype html><html><body style="margin:0;background:#000;display:flex;align-items:center;justify-content:center;min-height:100vh"><img src="${src}" style="max-width:100%;max-height:100vh;object-fit:contain"><div id="elevModal">
-  <div id="elevModalBox">
-    <div id="elevModalHdr">
-      <span>📈 高低差グラフ</span>
-      <button id="elevModalClose" onclick="closeElevModal()">✕</button>
-    </div>
-    <div id="elevStats"></div>
-    <div id="elevChartWrap"><svg id="elevChart"></svg></div>
-    <div id="elevMsg"></div>
-  </div>
-</div>
-</body></html>`);
+  w2.document.write(`<!doctype html><html><body style="margin:0;background:#000;display:flex;align-items:center;justify-content:center;min-height:100vh"><img src="${src}" style="max-width:100%;max-height:100vh;object-fit:contain"></body></html>`);;
   w2.document.close();
 }
 
@@ -2240,21 +2229,53 @@ function nearestRoadIdx(road, lat, lng) {
 }
 
 function routeAlongCustomRoad(fromLat, fromLng, toLat, toLng) {
-  const THR = 0.0003; // 約30m
+  // WP近傍しきい値（約200m）
+  const THR_WP   = 0.002;
+  // A→B直線の近傍しきい値（約400m）: 直線ルートの近くを通るカスタム道路を自動使用
+  const THR_LINE = 0.004;
+
+  // 点Pから線分AB への最短距離（緯度経度での近似）
+  function distToSeg(plat,plng, alat,alng, blat,blng) {
+    const dx=blng-alng, dy=blat-alat;
+    if (dx===0&&dy===0) return Math.hypot(plat-alat,plng-alng);
+    const t=Math.max(0,Math.min(1,((plng-alng)*dx+(plat-alat)*dy)/(dx*dx+dy*dy)));
+    return Math.hypot(plat-(alat+t*dy), plng-(alng+t*dx));
+  }
+
+  let best=null, bestScore=Infinity;
   for (const road of customRoads) {
-    if (!road.visible || !road.coords || road.coords.length < 2) continue; // _crVisibleは参照しない（表示状態はルーティングに影響しない）
-    const i1=nearestRoadIdx(road, fromLat, fromLng);
-    const i2=nearestRoadIdx(road, toLat,   toLng);
-    const d1=Math.hypot(fromLat-road.coords[i1][0], fromLng-road.coords[i1][1]);
-    const d2=Math.hypot(toLat  -road.coords[i2][0], toLng  -road.coords[i2][1]);
-    if (d1<THR && d2<THR && Math.abs(i1-i2)>=1) {
-      const s=Math.min(i1,i2), e=Math.max(i1,i2)+1;
-      const seg=road.coords.slice(s,e);
-      if(i1>i2) seg.reverse();
-      return seg;
+    if (!road.visible||!road.coords||road.coords.length<2) continue;
+    const i1=nearestRoadIdx(road,fromLat,fromLng);
+    const i2=nearestRoadIdx(road,toLat,  toLng);
+    if (Math.abs(i1-i2)<1) continue;
+    const d1=Math.hypot(fromLat-road.coords[i1][0],fromLng-road.coords[i1][1]);
+    const d2=Math.hypot(toLat  -road.coords[i2][0],toLng  -road.coords[i2][1]);
+
+    // ①WPが道路の近傍にある（既存動作 + しきい値拡大）
+    const wpMatch = d1<THR_WP && d2<THR_WP;
+
+    // ②A→B直線の近傍を道路の点が通る（自動スナップ）
+    let lineMatch = false;
+    if (!wpMatch) {
+      for (const c of road.coords) {
+        if (distToSeg(c[0],c[1],fromLat,fromLng,toLat,toLng)<THR_LINE) {
+          lineMatch=true; break;
+        }
+      }
+    }
+
+    if (wpMatch || lineMatch) {
+      const score = d1+d2;
+      if (score < bestScore) {
+        bestScore=score;
+        const s=Math.min(i1,i2), e=Math.max(i1,i2)+1;
+        const seg=road.coords.slice(s,e);
+        if(i1>i2) seg.reverse();
+        best=seg;
+      }
     }
   }
-  return null;
+  return best;
 }
 
 /* ============================================================
@@ -2262,11 +2283,16 @@ function routeAlongCustomRoad(fromLat, fromLng, toLat, toLng) {
    ============================================================ */
 
 function openElevModal() {
-  document.getElementById('elevModal').classList.add('show');
+  var el = document.getElementById('elevModal');
+  if (!el) return;
+  el.style.display = 'flex';
+  el.style.alignItems = 'center';
+  el.style.justifyContent = 'center';
   document.getElementById('btnElev')?.classList.add('on');
 }
 function closeElevModal() {
-  document.getElementById('elevModal').classList.remove('show');
+  var el = document.getElementById('elevModal');
+  if (el) el.style.display = 'none';
   document.getElementById('btnElev')?.classList.remove('on');
 }
 
@@ -2725,5 +2751,16 @@ function showToast(msg) {
   setTimeout(()=>{ t.style.opacity='0'; setTimeout(()=>t.remove(),500); }, 1800);
 }
 </script>
+<div id="elevModal">
+  <div id="elevModalBox">
+    <div id="elevModalHdr">
+      <span>📈 高低差グラフ</span>
+      <button id="elevModalClose" onclick="closeElevModal()">✕</button>
+    </div>
+    <div id="elevStats"></div>
+    <div id="elevChartWrap"><svg id="elevChart"></svg></div>
+    <div id="elevMsg"></div>
+  </div>
+</div>
 </body>
 </html>
