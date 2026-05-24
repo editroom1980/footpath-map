@@ -60,7 +60,7 @@ html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:
 #descSec{padding:8px 10px;flex-shrink:0;border-top:1px solid #D4C4A8}
 #descSec label{display:block;font-size:10px;font-weight:bold;color:#666;margin-bottom:3px}
 #iDesc{width:100%;padding:5px 7px;border:1px solid #D4C4A8;border-radius:3px;font-size:11px;font-family:inherit;background:#fff;outline:none;resize:vertical;min-height:55px}
-#mapArea{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+#mapArea{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;position:relative}
 #map,#mapArea,.leaflet-container{user-select:none;-webkit-user-select:none}
 #tbar{background:#F5EDD8;border-bottom:1px solid #D4C4A8;padding:4px 8px;display:flex;align-items:center;gap:4px;flex-shrink:0;flex-wrap:wrap}
 #tbar-st{font-size:10px;color:#888;flex:1;min-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -116,13 +116,14 @@ html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:
 #miniElevSec:hover{background:#F0E8D8}
 #miniElevHint{font-size:10px;color:#9A8070;margin-bottom:2px}
 #miniElevSvg{display:block;width:100%;height:64px}
-/* 高低差詳細モーダル */
-#elevModal{display:none;position:fixed;inset:0;z-index:3000;background:rgba(0,0,0,.45);align-items:center;justify-content:center}
-#elevModal.show{display:flex}
-#elevModalBox{background:#FAF5EE;border-radius:10px;box-shadow:0 8px 32px rgba(0,0,0,.3);padding:16px 18px 12px;width:min(680px,95vw);max-height:92vh;overflow-y:auto}
+/* 高低差詳細パネル（マップ左下・暗転なし） */
+#elevDetailPanel{display:none;position:absolute;bottom:40px;left:10px;z-index:900;
+  background:#FAF5EE;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,.25);
+  padding:12px 14px 10px;width:min(560px,calc(100vw - 280px));pointer-events:auto}
+#elevDetailPanel.show{display:block}
 #elevModalHdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
-#elevModalHdr span{font-size:14px;font-weight:bold;color:#4A2E0E}
-#elevModalClose{background:none;border:none;font-size:22px;cursor:pointer;color:#9A8070;line-height:1;padding:0 4px}
+#elevModalHdr span{font-size:13px;font-weight:bold;color:#4A2E0E}
+#elevModalClose{background:none;border:none;font-size:18px;cursor:pointer;color:#9A8070;line-height:1;padding:0 4px}
 #elevModalClose:hover{color:#4A2E0E}
 #elevStats{font-size:11px;color:#6A4E2A;margin-bottom:8px;display:flex;flex-wrap:wrap;gap:10px}
 #elevStats span{white-space:nowrap}
@@ -232,7 +233,7 @@ html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:
         <div id="distDisp">総距離: — km</div>
         <div id="timeDisp">所要時間: —</div>
       </div>
-      <div id="miniElevSec" onclick="openElevModal()" title="クリックで詳細表示">
+      <div id="miniElevSec" onclick="toggleElevPanel()" title="クリックで詳細表示">
         <div id="miniElevHint">📈 📈ボタンで高低差グラフを表示</div>
         <svg id="miniElevSvg"></svg>
       </div>
@@ -242,6 +243,16 @@ html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:
       </div>
     </div>
     <div id="mapArea">
+    <!-- 高低差詳細パネル（マップ左下・暗転なし） -->
+    <div id="elevDetailPanel">
+      <div id="elevModalHdr">
+        <span>📈 高低差グラフ</span>
+        <button id="elevModalClose" onclick="closeElevModal()">✕</button>
+      </div>
+      <div id="elevStats"></div>
+      <div id="elevChartWrap"><svg id="elevChart" style="min-width:240px;width:100%;height:160px;display:block"></svg></div>
+      <div id="elevMsg"></div>
+    </div>
       <div id="tbar">
         <button class="btn on" id="btnWp" onclick="setMode('wp')" title="📍 WP追加&#10;クリックでスポットをコースに追加">📍 WP</button>
         <button class="btn" id="btnVia" onclick="setMode('via')" title="↔ 調整点追加&#10;ルートラインをドラッグして経路を微調整">↔ 調整点</button>
@@ -446,6 +457,7 @@ let _wpPickerLatlng = null; // WPタイプピッカー表示中の座標
 let _showMapLabels  = true;  // 地図ラベル表示フラグ
 let _lastRouteCoords= null;  // 最後のルート座標（高低差用）
 let _elevData       = null;  // 高低差データキャッシュ
+let _elevFetchTimer = null;  // 自動fetch用タイマー
 let _baseTileLayer  = null;  // 通常タイルレイヤー参照
 let _drawRoad   = null;   // 描画中のカスタム道路
 let _editRoad   = null;   // 編集中のカスタム道路 {road, markers}
@@ -496,7 +508,7 @@ window.addEventListener('DOMContentLoaded', () => {
   // Context menu closes ONLY via Cancel button, Escape key, or map pan.
   // Close menu on Escape key; ⌘Z = undo; ⌘⇧Z = redo
   document.addEventListener('keydown', e => {
-  if (e.key === 'Escape' && document.getElementById('elevModal')?.classList.contains('show')) {
+  if (e.key === 'Escape' && document.getElementById('elevDetailPanel')?.style.display === 'block') {
     closeElevModal(); return;
   }
     if (e.key === 'Escape') { hideCtxMenu(); hideWpPicker(); if(mode==='road')cancelRoadDraw(); return; }
@@ -1327,13 +1339,13 @@ async function doRouting() {
     if (allCoords && allCoords.length >= 2) {
       _lastRouteCoords = allCoords;
       // ルート変更時に高低差データを無効化
-      if (_elevData) {
-        _elevData = null;
-        const el = document.getElementById('miniElevHint');
-        if (el) el.textContent = '⚠️ ルートが変更されました（再計算: 📈）';
-        const ms = document.getElementById('miniElevSvg');
-        if (ms) ms.innerHTML = '';
-      }
+      _elevData = null;
+      // ルート確定後に自動でミニチャートを更新（2秒debounce）
+      if (_elevFetchTimer) clearTimeout(_elevFetchTimer);
+      _elevFetchTimer = setTimeout(function() {
+        _elevFetchTimer = null;
+        _refreshElevChart(false); // バックグラウンドfetch（モーダルは開かない）
+      }, 2000);
       removeLines();
       drawLines(allCoords, buildSegCoordsList());
       updateDistanceAndTime(allCoords);
@@ -1381,7 +1393,31 @@ async function buildRoutedCoords() {
       // ── 調整点なし: カスタム道路→OSRM→直線 ──
       const _crNoVia = routeAlongCustomRoad(a.lat, a.lng, b.lat, b.lng);
       if (_crNoVia) {
-        seg = _crNoVia;
+        // カスタム道路を使用: 前後をOSRMでスナップして白い道路に接続
+        const rdSt  = _crNoVia[0];                     // 道路の開始点 [lat,lng]
+        const rdEnd = _crNoVia[_crNoVia.length - 1];   // 道路の終了点 [lat,lng]
+        const MIN_D = 0.00005; // 約5m以上離れている場合のみOSRM接続
+
+        // WP A → 道路開始点 をOSRMで接続
+        let connA = [rdSt];
+        if (fitAout && Math.hypot(a.lat-rdSt[0], a.lng-rdSt[1]) > MIN_D) {
+          const kA = `${a.lng.toFixed(6)},${a.lat.toFixed(6)};${rdSt[1].toFixed(6)},${rdSt[0].toFixed(6)}`;
+          try { connA = await getCachedRoute(kA, [{lat:a.lat,lng:a.lng},{lat:rdSt[0],lng:rdSt[1]}]); } catch(_){}
+        } else {
+          connA = [[a.lat, a.lng], rdSt];
+        }
+
+        // 道路終了点 → WP B をOSRMで接続
+        let connB = [rdEnd];
+        if (fitBin && Math.hypot(b.lat-rdEnd[0], b.lng-rdEnd[1]) > MIN_D) {
+          const kB = `${rdEnd[1].toFixed(6)},${rdEnd[0].toFixed(6)};${b.lng.toFixed(6)},${b.lat.toFixed(6)}`;
+          try { connB = await getCachedRoute(kB, [{lat:rdEnd[0],lng:rdEnd[1]},{lat:b.lat,lng:b.lng}]); } catch(_){}
+        } else {
+          connB = [rdEnd, [b.lat, b.lng]];
+        }
+
+        // 接続: OSRM(A→道路開始) + カスタム道路 + OSRM(道路終了→B)
+        seg = [...connA.slice(0,-1), ..._crNoVia, ...connB.slice(1)];
       } else if (fitAout && fitBin) {
         const key=`${a.lng.toFixed(6)},${a.lat.toFixed(6)};${b.lng.toFixed(6)},${b.lat.toFixed(6)}`;
         seg = await getCachedRoute(key, [{lat:a.lat,lng:a.lng},{lat:b.lat,lng:b.lng}]);
@@ -2283,25 +2319,35 @@ function routeAlongCustomRoad(fromLat, fromLng, toLat, toLng) {
    ============================================================ */
 
 function openElevModal() {
-  var el = document.getElementById('elevModal');
+  var el = document.getElementById('elevDetailPanel');
   if (!el) return;
-  el.style.display = 'flex';
-  el.style.alignItems = 'center';
-  el.style.justifyContent = 'center';
+  el.style.display = 'block';
   document.getElementById('btnElev')?.classList.add('on');
 }
 function closeElevModal() {
-  var el = document.getElementById('elevModal');
+  var el = document.getElementById('elevDetailPanel');
   if (el) el.style.display = 'none';
   document.getElementById('btnElev')?.classList.remove('on');
 }
 
 async function toggleElevPanel() {
+  // 詳細パネルのトグル
+  var panel = document.getElementById('elevDetailPanel');
+  if (!panel) return;
+  var isOpen = panel.style.display !== 'none';
+  if (isOpen) {
+    closeElevModal();
+    return;
+  }
   openElevModal();
-  if (!_elevData) await _refreshElevChart();
+  if (!_elevData) {
+    await _refreshElevChart(true);
+  } else {
+    _drawElevChart(_elevData.pts, _elevData.elevs);
+  }
 }
 
-async function _refreshElevChart() {
+async function _refreshElevChart(openModal) {
   const rw = routeWps();
   if (rw.length < 2) { _showElevMsg('コースポイントを2点以上追加してください'); return; }
   const coords = _lastRouteCoords || buildStraightCoords();
@@ -2311,8 +2357,8 @@ async function _refreshElevChart() {
     const pts = _sampleCoords(coords, 50);
     const elevs = await _fetchElevs(pts);
     _elevData = {pts, elevs};
-    _drawElevChart(pts, elevs);   // 詳細モーダル内に描画
     _drawMiniChart(pts, elevs);   // サイドバーのミニチャートに描画
+    if (openModal !== false) _drawElevChart(pts, elevs); // モーダル内描画（自動fetchはスキップ）
   } catch(e) {
     _showElevMsg('標高データの取得に失敗しました（インターネット接続を確認して再試行）');
   }
@@ -2751,16 +2797,6 @@ function showToast(msg) {
   setTimeout(()=>{ t.style.opacity='0'; setTimeout(()=>t.remove(),500); }, 1800);
 }
 </script>
-<div id="elevModal">
-  <div id="elevModalBox">
-    <div id="elevModalHdr">
-      <span>📈 高低差グラフ</span>
-      <button id="elevModalClose" onclick="closeElevModal()">✕</button>
-    </div>
-    <div id="elevStats"></div>
-    <div id="elevChartWrap"><svg id="elevChart"></svg></div>
-    <div id="elevMsg"></div>
-  </div>
-</div>
+
 </body>
 </html>
