@@ -1431,21 +1431,22 @@ async function _buildSegVP(fromLat, fromLng, toLat, toLng, fitOut, fitIn) {
 
     } else if (d1 < THR) {
       // ケースB: VPのみ道路近傍
-      // 出口 = VPに「近い端点」の反対側（道路を最大限走破する）
-      // 理由: VPがroad[n-1]寄りなら反対のroad[0]（分岐点）を出口とする
+      // 出口 = VPに「最も近い端点」
+      // 理由: FROM側の反対端を使うと、VPが分岐点側にある場合にWP6端へ向かい大回りになる
+      //       最近傍端点を使うことで「VPはその端点にいる」とみなしOSRMに引き渡す
       const dFrStart = Math.hypot(fromLat-road.coords[0][0],   fromLng-road.coords[0][1]);
       const dFrEnd   = Math.hypot(fromLat-road.coords[n-1][0], fromLng-road.coords[n-1][1]);
-      const exitIdx  = dFrStart < dFrEnd ? n-1 : 0;  // VPに近い端点の「反対側」
+      const exitIdx  = dFrStart < dFrEnd ? 0 : n-1;  // VPに最も近い端点
 
-      if (exitIdx === i1) {
-        // VPが既に出口端点にいる → 端点1点のみ（connBでOSRM接続）
-        seg = [road.coords[exitIdx]]; score = d1;
+      // VP→最近傍端点の区間（または端点1点のみ）
+      if (i1 === exitIdx || Math.max(i1,exitIdx)-Math.min(i1,exitIdx) < 1) {
+        seg = [road.coords[exitIdx]];
       } else {
         const s=Math.min(i1,exitIdx), e=Math.max(i1,exitIdx)+1;
         seg = road.coords.slice(s,e);
         if (i1 > exitIdx) seg = [...seg].reverse();
-        score = d1;
       }
+      score = d1;
     }
 
     if (seg && score < bestScore) { bestScore = score; best = seg; }
@@ -1453,14 +1454,12 @@ async function _buildSegVP(fromLat, fromLng, toLat, toLng, fitOut, fitIn) {
 
   if (!best) return null;
 
-  // OSRM接続
+  // connA: VP→道路端点 は常に直線（VPはカスタム道路上=OSM道路外のためOSRM不使用）
   const MIN_D = 0.00005;
   const rdSt = best[0], rdEnd = best[best.length-1];
-  let connA = [rdSt];
-  if (fitOut && Math.hypot(fromLat-rdSt[0], fromLng-rdSt[1]) > MIN_D) {
-    const kA = `${fromLng.toFixed(6)},${fromLat.toFixed(6)};${rdSt[1].toFixed(6)},${rdSt[0].toFixed(6)}`;
-    try { connA = await getCachedRoute(kA, [{lat:fromLat,lng:fromLng},{lat:rdSt[0],lng:rdSt[1]}]); } catch(_){}
-  } else { connA = [[fromLat,fromLng], rdSt]; }
+  const connA = [[fromLat,fromLng], rdSt];  // 常に直線
+
+  // connB: 道路端点→次のWP/VP はOSRM使用（端点は分岐点=OSM道路上の想定）
   let connB = [rdEnd];
   if (fitIn && Math.hypot(toLat-rdEnd[0], toLng-rdEnd[1]) > MIN_D) {
     const kB = `${rdEnd[1].toFixed(6)},${rdEnd[0].toFixed(6)};${toLng.toFixed(6)},${toLat.toFixed(6)}`;
@@ -1480,14 +1479,12 @@ async function _buildSegWithCustomRoad(fromLat, fromLng, toLat, toLng, fitOut, f
   const rdSt  = _cr[0];
   const rdEnd = _cr[_cr.length - 1];
 
-  // from → 道路開始点 をOSRMで接続
-  let connA = [rdSt];
-  if (fitOut && Math.hypot(fromLat-rdSt[0], fromLng-rdSt[1]) > MIN_D) {
-    const kA = `${fromLng.toFixed(6)},${fromLat.toFixed(6)};${rdSt[1].toFixed(6)},${rdSt[0].toFixed(6)}`;
-    try { connA = await getCachedRoute(kA, [{lat:fromLat,lng:fromLng},{lat:rdSt[0],lng:rdSt[1]}]); } catch(_){}
-  } else { connA = [[fromLat,fromLng], rdSt]; }
+  // from → 道路開始点: 常に直線（WPがOSM道路外の場合にOSRMが誤スナップするのを防ぐ）
+  const connA = Math.hypot(fromLat-rdSt[0], fromLng-rdSt[1]) > MIN_D
+    ? [[fromLat,fromLng], rdSt]
+    : [[fromLat,fromLng], rdSt];  // 距離に関わらず直線
 
-  // 道路終了点 → to をOSRMで接続
+  // 道路終了点 → to: OSRMで接続（終端は分岐点=OSM道路上にある想定）
   let connB = [rdEnd];
   if (fitIn && Math.hypot(toLat-rdEnd[0], toLng-rdEnd[1]) > MIN_D) {
     const kB = `${rdEnd[1].toFixed(6)},${rdEnd[0].toFixed(6)};${toLng.toFixed(6)},${toLat.toFixed(6)}`;
