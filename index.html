@@ -1499,111 +1499,99 @@ async function _buildSegWithCustomRoad(fromLat, fromLng, toLat, toLng, fitOut, f
 
 /* ============================================================
    統合ルーティング関数 buildAnySegment
-   カスタム道路・OSM道路を同一ルールで処理
+   ルール:
+   ① スナップON・距離≥50m → OSRM（白い道・手動の道どちらも同じ扱い）
+   ② スナップON・距離<50m  → 直線（WPと道路端点がほぼ同位置、自明な接続）
+   ③ スナップOFF           → 直線
    ケースA: 両端近傍（WP5→WP6など）
    ケースB: FROM近傍（WP6→WP7など、OSRM端点比較で出口選択）
-   ケースC: TO近傍（FROM遠い→OSRM→道路入口→道路→TO）
-   カスタム道路なし→純粋OSRM
+   ケースC: TO近傍（OSRM→道路→TO）
+   手動道路なし → 純粋OSRM
    ============================================================ */
 async function buildAnySegment(fromLat, fromLng, toLat, toLng, fitOut, fitIn) {
-  // EP_THR  : WPが道路エンドポイントの近傍と判定する閾値 (~200m)
-  //           WP5, WP6のように道路端点に意図的に配置されたWPを検出
-  // MID_THR : VPが道路上に直接配置されていると判定する閾値 (~50m)
-  //           「ルート上のどこか」に置かれたVPを検出
-  // 重要: d1/d2（任意の道路点への距離）だけでなく
-  //       d1ep/d2ep（エンドポイントへの距離）を使うことで
-  //       WP4のように「たまたまカスタム道路の近く」にあるWPを誤検出しない
-  const EP_THR  = 0.002;   // ~200m
-  const MID_THR = 0.0005;  // ~50m
-  const MIN_D   = 0.00005;
+  const EP_THR  = 0.002;   // ~200m: WPが道路端点の近傍
+  const MID_THR = 0.0005;  // ~50m: VP直接配置 / 接続距離が自明
   const rl = r => {if(!r||r.length<2)return Infinity;let d=0;for(let k=1;k<r.length;k++)d+=Math.hypot(r[k][0]-r[k-1][0],r[k][1]-r[k-1][1]);return d;};
+
+  // 2点間の接続: スナップON・距離≥50m→OSRM、それ以外→直線
+  // OSRM結果が直線の10倍超（到達不能等）→直線フォールバック
+  const conn = async (aLat, aLng, bLat, bLng, fit) => {
+    const ds = Math.hypot(aLat-bLat, aLng-bLng);
+    if (!fit || ds < MID_THR) return [[aLat,aLng],[bLat,bLng]];
+    const k = `${aLng.toFixed(6)},${aLat.toFixed(6)};${bLng.toFixed(6)},${bLat.toFixed(6)}`;
+    try {
+      const r = await getCachedRoute(k, [{lat:aLat,lng:aLng},{lat:bLat,lng:bLng}]);
+      return rl(r) < ds * 10 ? r : [[aLat,aLng],[bLat,bLng]];
+    } catch(_) { return [[aLat,aLng],[bLat,bLng]]; }
+  };
 
   for (const road of customRoads) {
     if (!road.visible||!road.coords||road.coords.length<2) continue;
-    const n=road.coords.length;
-    const i1=nearestRoadIdx(road,fromLat,fromLng);
-    const i2=nearestRoadIdx(road,toLat,toLng);
-    const d1=Math.hypot(fromLat-road.coords[i1][0],fromLng-road.coords[i1][1]);
-    const d2=Math.hypot(toLat-road.coords[i2][0],toLng-road.coords[i2][1]);
-
-    // エンドポイント（道路の両端）への距離
-    const d1ep=Math.min(
-      Math.hypot(fromLat-road.coords[0][0],fromLng-road.coords[0][1]),
-      Math.hypot(fromLat-road.coords[n-1][0],fromLng-road.coords[n-1][1])
-    );
-    const d2ep=Math.min(
-      Math.hypot(toLat-road.coords[0][0],toLng-road.coords[0][1]),
-      Math.hypot(toLat-road.coords[n-1][0],toLng-road.coords[n-1][1])
-    );
-
-    // 道路を「使う意図があるか」の判定:
-    // ① エンドポイントに近い (WP5, WP6など道路端点に置かれたWP)
-    // ② 道路上のどこかに非常に近い (VPが道路上に直接配置)
-    const f1 = d1ep < EP_THR || d1 < MID_THR;  // FROMが道路を使う意図あり
-    const f2 = d2ep < EP_THR || d2 < MID_THR;  // TOが道路を使う意図あり
-    if (!f1 && !f2) continue; // どちらも使う意図なし → スキップ
-
-    // 実際の最近傍点が遠すぎる場合もスキップ
+    const n = road.coords.length;
+    const i1 = nearestRoadIdx(road, fromLat, fromLng);
+    const i2 = nearestRoadIdx(road, toLat, toLng);
+    const d1 = Math.hypot(fromLat-road.coords[i1][0], fromLng-road.coords[i1][1]);
+    const d2 = Math.hypot(toLat-road.coords[i2][0], toLng-road.coords[i2][1]);
+    const d1ep = Math.min(Math.hypot(fromLat-road.coords[0][0],fromLng-road.coords[0][1]),
+                          Math.hypot(fromLat-road.coords[n-1][0],fromLng-road.coords[n-1][1]));
+    const d2ep = Math.min(Math.hypot(toLat-road.coords[0][0],toLng-road.coords[0][1]),
+                          Math.hypot(toLat-road.coords[n-1][0],toLng-road.coords[n-1][1]));
+    const f1 = d1ep < EP_THR || d1 < MID_THR;
+    const f2 = d2ep < EP_THR || d2 < MID_THR;
+    if (!f1 && !f2) continue;
     if (d1 >= EP_THR && d2 >= EP_THR) continue;
 
     let roadSeg, connA, connB;
 
     if (f1 && f2 && d1 < EP_THR && d2 < EP_THR && i1 !== i2) {
-      // ケースA: 両端近傍 → i1〜i2を直接使用
-      const s=Math.min(i1,i2),e=Math.max(i1,i2)+1;
-      roadSeg=road.coords.slice(s,e);
-      if(i1>i2) roadSeg=[...roadSeg].reverse();
-      connA=[[fromLat,fromLng],roadSeg[0]];
-      connB=[roadSeg[roadSeg.length-1],[toLat,toLng]];
+      // ケースA: 両端近傍 → i1〜i2区間を使用
+      const s=Math.min(i1,i2), e=Math.max(i1,i2)+1;
+      roadSeg = road.coords.slice(s,e);
+      if (i1>i2) roadSeg = [...roadSeg].reverse();
+      connA = await conn(fromLat, fromLng, roadSeg[0][0], roadSeg[0][1], fitOut);
+      connB = await conn(roadSeg[roadSeg.length-1][0], roadSeg[roadSeg.length-1][1], toLat, toLng, fitIn);
 
     } else if (f1 && d1 < EP_THR) {
-      // ケースB: FROMのみ道路近傍 → 両端点のOSRMコストを比較して最短出口を選択
-      const ep0=road.coords[0],epN=road.coords[n-1];
-      let rD0=0,rDN=0;
+      // ケースB: FROMのみ近傍 → OSRM並列比較で最短出口を選択
+      const ep0=road.coords[0], epN=road.coords[n-1];
+      let rD0=0, rDN=0;
       for(let k=0;k<i1;k++) rD0+=Math.hypot(road.coords[k][0]-road.coords[k+1][0],road.coords[k][1]-road.coords[k+1][1]);
       for(let k=i1;k<n-1;k++) rDN+=Math.hypot(road.coords[k][0]-road.coords[k+1][0],road.coords[k][1]-road.coords[k+1][1]);
-      const [o0,oN]=fitIn?await Promise.all([
+      const [o0,oN] = fitIn ? await Promise.all([
         getCachedRoute(`${ep0[1].toFixed(6)},${ep0[0].toFixed(6)};${toLng.toFixed(6)},${toLat.toFixed(6)}`,[{lat:ep0[0],lng:ep0[1]},{lat:toLat,lng:toLng}]).catch(()=>null),
         getCachedRoute(`${epN[1].toFixed(6)},${epN[0].toFixed(6)};${toLng.toFixed(6)},${toLat.toFixed(6)}`,[{lat:epN[0],lng:epN[1]},{lat:toLat,lng:toLng}]).catch(()=>null)
-      ]):[null,null];
-      const use0=rD0+rl(o0)<=rDN+rl(oN);
-      const xi=use0?0:n-1;
-      const exitEpCoords=road.coords[xi];
-      // 出口エンドポイントがFROMに近すぎる場合はカスタム道路のメリットなし → 純粋OSRMへ
-      // 例: WP2が道路南端点にある場合、出口=南端点≈WP2となり無意味
-      if (Math.hypot(fromLat-exitEpCoords[0],fromLng-exitEpCoords[1]) < 0.001) continue;
-      const s=Math.min(i1,xi),e=Math.max(i1,xi)+1;
-      roadSeg=road.coords.slice(s,e);
-      if(i1>xi) roadSeg=[...roadSeg].reverse();
-      connA=[[fromLat,fromLng],roadSeg[0]];
-      connB=(use0?o0:oN)||[roadSeg[roadSeg.length-1],[toLat,toLng]];
+      ]) : [null,null];
+      const use0 = rD0+rl(o0) <= rDN+rl(oN);
+      const xi = use0 ? 0 : n-1;
+      // 出口端点≈FROM → 手動道路区間が自明 → pure OSRM
+      if (Math.hypot(fromLat-road.coords[xi][0],fromLng-road.coords[xi][1]) < EP_THR) continue;
+      const s=Math.min(i1,xi), e=Math.max(i1,xi)+1;
+      roadSeg = road.coords.slice(s,e);
+      if (i1>xi) roadSeg = [...roadSeg].reverse();
+      connA = await conn(fromLat, fromLng, roadSeg[0][0], roadSeg[0][1], fitOut);
+      connB = (use0?o0:oN) || await conn(roadSeg[roadSeg.length-1][0],roadSeg[roadSeg.length-1][1],toLat,toLng,fitIn);
 
     } else if (f2 && d2 < EP_THR) {
-      // ケースC: TOのみ道路近傍 → FROMに近い端点から進入
-      const ep0=road.coords[0],epN=road.coords[n-1];
-      const xi=Math.hypot(fromLat-ep0[0],fromLng-ep0[1])<Math.hypot(fromLat-epN[0],fromLng-epN[1])?0:n-1;
-      const entryEp=road.coords[xi];
-      // 入口エンドポイントがTOに近すぎる場合はカスタム道路のメリットなし → 純粋OSRMへ
-      // 例: WP4→WP5でWP5が分岐点(road[0])に近い場合、入口=分岐点≈WP5となり無意味
-      if (Math.hypot(toLat-entryEp[0],toLng-entryEp[1]) < 0.001) continue;
-      const s=Math.min(xi,i2),e=Math.max(xi,i2)+1;
-      roadSeg=road.coords.slice(s,e);
-      if(xi>i2) roadSeg=[...roadSeg].reverse();
-      const rdSt=roadSeg[0];
-      if(fitOut&&Math.hypot(fromLat-rdSt[0],fromLng-rdSt[1])>MIN_D){
-        const kA=`${fromLng.toFixed(6)},${fromLat.toFixed(6)};${rdSt[1].toFixed(6)},${rdSt[0].toFixed(6)}`;
-        try{connA=await getCachedRoute(kA,[{lat:fromLat,lng:fromLng},{lat:rdSt[0],lng:rdSt[1]}]);}catch(_){connA=[[fromLat,fromLng],rdSt];}
-      } else {connA=[[fromLat,fromLng],rdSt];}
-      connB=[roadSeg[roadSeg.length-1],[toLat,toLng]];
+      // ケースC: TOのみ近傍 → FROMに近い端点から進入
+      const ep0=road.coords[0], epN=road.coords[n-1];
+      const xi = Math.hypot(fromLat-ep0[0],fromLng-ep0[1]) < Math.hypot(fromLat-epN[0],fromLng-epN[1]) ? 0 : n-1;
+      // 入口端点≈TO → 手動道路区間が自明 → pure OSRM
+      if (Math.hypot(toLat-road.coords[xi][0],toLng-road.coords[xi][1]) < EP_THR) continue;
+      const s=Math.min(xi,i2), e=Math.max(xi,i2)+1;
+      roadSeg = road.coords.slice(s,e);
+      if (xi>i2) roadSeg = [...roadSeg].reverse();
+      connA = await conn(fromLat, fromLng, roadSeg[0][0], roadSeg[0][1], fitOut);
+      connB = await conn(roadSeg[roadSeg.length-1][0],roadSeg[roadSeg.length-1][1],toLat,toLng,fitIn);
+
     } else continue;
 
-    return [...connA.slice(0,-1),...roadSeg,...connB.slice(1)];
+    return [...connA.slice(0,-1), ...roadSeg, ...connB.slice(1)];
   }
 
-  // カスタム道路なし → 純粋OSRM（またはスナップOFF直線）
-  if (fitOut&&fitIn) {
-    const k=`${fromLng.toFixed(6)},${fromLat.toFixed(6)};${toLng.toFixed(6)},${toLat.toFixed(6)}`;
-    return await getCachedRoute(k,[{lat:fromLat,lng:fromLng},{lat:toLat,lng:toLng}]);
+  // 手動道路なし → 純粋OSRM（またはスナップOFF直線）
+  if (fitOut && fitIn) {
+    const k = `${fromLng.toFixed(6)},${fromLat.toFixed(6)};${toLng.toFixed(6)},${toLat.toFixed(6)}`;
+    return await getCachedRoute(k, [{lat:fromLat,lng:fromLng},{lat:toLat,lng:toLng}]);
   }
   return [[fromLat,fromLng],[toLat,toLng]];
 }
@@ -1637,7 +1625,7 @@ async function buildRoutedCoords() {
         const t=Math.max(0,Math.min(1,((px-ax)*dx+(py-ay)*dy)/(dx*dx+dy*dy)));
         return Math.hypot(px-(ax+t*dx),py-(ay+t*dy));
       }
-      const ON_TOL=0.0005; // 約50m以内はルート上とみなす
+      const ON_TOL=0.0008; // 約80m以内はルート上とみなす（OSRMスナップ誤差を吸収）
       const effSV=sv.filter(v=>{
         if(!baseRoute||baseRoute.length<2) return true;
         for(let i=0;i<baseRoute.length-1;i++){
