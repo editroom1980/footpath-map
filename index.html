@@ -1509,6 +1509,9 @@ async function _buildSegWithCustomRoad(fromLat, fromLng, toLat, toLng, fitOut, f
    手動道路なし → 純粋OSRM
    ============================================================ */
 async function buildAnySegment(fromLat, fromLng, toLat, toLng, fitOut, fitIn) {
+  // 両方スナップOFF → 即直線（手動道路ループ不要）
+  if (!fitOut && !fitIn) return [[fromLat,fromLng],[toLat,toLng]];
+
   const EP_THR  = 0.002;   // ~200m: WPが道路端点の近傍
   const MID_THR = 0.0005;  // ~50m: VP直接配置 / 接続距離が自明
   const rl = r => {if(!r||r.length<2)return Infinity;let d=0;for(let k=1;k<r.length;k++)d+=Math.hypot(r[k][0]-r[k-1][0],r[k][1]-r[k-1][1]);return d;};
@@ -1627,11 +1630,15 @@ async function buildRoutedCoords() {
       }
       const ON_TOL=0.0008; // 約80m以内はルート上とみなす（OSRMスナップ誤差を吸収）
       const effSV=sv.filter(v=>{
+        // fitBefore/fitAfterのいずれかがOFF → ルートアンカーとして機能 → 必ず保持
+        // 例: VP.fitBefore=OFF → 前区間は直線固定、後区間はOSRM開始点として必要
+        if(v.fitBefore===false||v.fitAfter===false) return true;
+        // 両方ONの場合のみ距離判定（ベースルート上なら不要）
         if(!baseRoute||baseRoute.length<2) return true;
         for(let i=0;i<baseRoute.length-1;i++){
           if(_dSeg(v.lat,v.lng,baseRoute[i][0],baseRoute[i][1],baseRoute[i+1][0],baseRoute[i+1][1])<ON_TOL) return false;
         }
-        return true; // ルートから離れている → ルート変更意図あり
+        return true;
       });
 
       if (effSV.length===0) {
