@@ -1565,14 +1565,23 @@ async function buildAnySegment(fromLat, fromLng, toLat, toLng, fitOut, fitIn) {
         getCachedRoute(`${epN[1].toFixed(6)},${epN[0].toFixed(6)};${toLng.toFixed(6)},${toLat.toFixed(6)}`,[{lat:epN[0],lng:epN[1]},{lat:toLat,lng:toLng}]).catch(()=>null)
       ]) : [null,null];
       const use0 = rD0+rl(o0) <= rDN+rl(oN);
-      const xi = use0 ? 0 : n-1;
-      // 出口端点≈FROM → 手動道路区間が自明 → pure OSRM
-      if (Math.hypot(fromLat-road.coords[xi][0],fromLng-road.coords[xi][1]) < EP_THR) continue;
+      let xi = use0 ? 0 : n-1;
+      let osrmB = use0 ? o0 : oN;
+      // 選択した出口がFROM付近 → 手動道路を「戻る」べきケースを考慮して反対端点で再試行
+      // 例: WP1(行き止まり端点)→WP2 で来た道を戻る必要がある場合
+      if (Math.hypot(fromLat-road.coords[xi][0],fromLng-road.coords[xi][1]) < EP_THR) {
+        const xi2 = xi===0 ? n-1 : 0;
+        // 反対端点もFROM付近 → 道路が極短で手動道路不要 → pure OSRMへ
+        if (Math.hypot(fromLat-road.coords[xi2][0],fromLng-road.coords[xi2][1]) < EP_THR) continue;
+        // 反対端点で再構築（手動道路を走破して白い道に接続）
+        xi = xi2;
+        osrmB = xi2===0 ? o0 : oN; // 既計算のOSRM結果を流用
+      }
       const s=Math.min(i1,xi), e=Math.max(i1,xi)+1;
       roadSeg = road.coords.slice(s,e);
       if (i1>xi) roadSeg = [...roadSeg].reverse();
       connA = await conn(fromLat, fromLng, roadSeg[0][0], roadSeg[0][1], fitOut);
-      connB = (use0?o0:oN) || await conn(roadSeg[roadSeg.length-1][0],roadSeg[roadSeg.length-1][1],toLat,toLng,fitIn);
+      connB = osrmB || await conn(roadSeg[roadSeg.length-1][0],roadSeg[roadSeg.length-1][1],toLat,toLng,fitIn);
 
     } else if (f2 && d2 < EP_THR) {
       // ケースC: TOのみ近傍 → FROMに近い端点から進入
