@@ -1564,7 +1564,12 @@ async function buildAnySegment(fromLat, fromLng, toLat, toLng, fitOut, fitIn) {
         getCachedRoute(`${ep0[1].toFixed(6)},${ep0[0].toFixed(6)};${toLng.toFixed(6)},${toLat.toFixed(6)}`,[{lat:ep0[0],lng:ep0[1]},{lat:toLat,lng:toLng}]).catch(()=>null),
         getCachedRoute(`${epN[1].toFixed(6)},${epN[0].toFixed(6)};${toLng.toFixed(6)},${toLat.toFixed(6)}`,[{lat:epN[0],lng:epN[1]},{lat:toLat,lng:toLng}]).catch(()=>null)
       ]) : [null,null];
-      const use0 = rD0+rl(o0) <= rDN+rl(oN);
+      // OSRM品質チェック：直線フォールバック(2点)は到達不能扱い
+      const o0Real = o0 && o0.length > 2;
+      const oNReal = oN && oN.length > 2;
+      const use0 = (o0Real && !oNReal) ? true :
+                   (!o0Real && oNReal) ? false :
+                   rD0+rl(o0) <= rDN+rl(oN);
       let xi = use0 ? 0 : n-1;
       let osrmB = use0 ? o0 : oN;
       // 選択した出口がFROM付近 → 手動道路を「戻る」べきケースを考慮して反対端点で再試行
