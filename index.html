@@ -1568,6 +1568,10 @@ async function buildAnySegment(fromLat, fromLng, toLat, toLng, fitOut, fitIn) {
       ]):[null,null];
       const use0=rD0+rl(o0)<=rDN+rl(oN);
       const xi=use0?0:n-1;
+      const exitEpCoords=road.coords[xi];
+      // 出口エンドポイントがFROMに近すぎる場合はカスタム道路のメリットなし → 純粋OSRMへ
+      // 例: WP2が道路南端点にある場合、出口=南端点≈WP2となり無意味
+      if (Math.hypot(fromLat-exitEpCoords[0],fromLng-exitEpCoords[1]) < 0.001) continue;
       const s=Math.min(i1,xi),e=Math.max(i1,xi)+1;
       roadSeg=road.coords.slice(s,e);
       if(i1>xi) roadSeg=[...roadSeg].reverse();
@@ -1578,6 +1582,10 @@ async function buildAnySegment(fromLat, fromLng, toLat, toLng, fitOut, fitIn) {
       // ケースC: TOのみ道路近傍 → FROMに近い端点から進入
       const ep0=road.coords[0],epN=road.coords[n-1];
       const xi=Math.hypot(fromLat-ep0[0],fromLng-ep0[1])<Math.hypot(fromLat-epN[0],fromLng-epN[1])?0:n-1;
+      const entryEp=road.coords[xi];
+      // 入口エンドポイントがTOに近すぎる場合はカスタム道路のメリットなし → 純粋OSRMへ
+      // 例: WP4→WP5でWP5が分岐点(road[0])に近い場合、入口=分岐点≈WP5となり無意味
+      if (Math.hypot(toLat-entryEp[0],toLng-entryEp[1]) < 0.001) continue;
       const s=Math.min(xi,i2),e=Math.max(xi,i2)+1;
       roadSeg=road.coords.slice(s,e);
       if(xi>i2) roadSeg=[...roadSeg].reverse();
