@@ -1651,11 +1651,15 @@ async function buildRoutedCoords() {
         seg = baseRoute;
       } else {
         // ③ 有効なVPがある場合: カスタム道路/白い道路を問わずbuildAnySegmentで統一処理
+        // VPがカスタム道路上(50m以内)かどうかの判定
+        // 重要: 0.002(200m)を使うとWP5付近の全VP(junction200m圏内)が
+        //       「カスタム道路VP」と誤判定され単一OSRMコールを使えなくなる
+        const ON_CR_THR = 0.0005; // ~50m: VPがカスタム道路上に直接置かれている
         const onlyWhiteSnap = effSV.every(v=>v.fitBefore!==false&&v.fitAfter!==false) &&
           !effSV.some(v=>customRoads.some(r=>{
             if(!r.visible||!r.coords||r.coords.length<2) return false;
             const idx=nearestRoadIdx(r,v.lat,v.lng);
-            return Math.hypot(v.lat-r.coords[idx][0],v.lng-r.coords[idx][1])<0.002;
+            return Math.hypot(v.lat-r.coords[idx][0],v.lng-r.coords[idx][1])<ON_CR_THR;
           }));
 
         if (onlyWhiteSnap && fitAout && fitBin) {
