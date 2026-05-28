@@ -1574,7 +1574,7 @@ async function buildAnySegment(fromLat, fromLng, toLat, toLng, fitOut, fitIn) {
       if (_dFromXi < EP_THR) {
         const xi2 = xi===0 ? n-1 : 0;
         // 反対端点もFROM付近 → 道路が極短で手動道路不要 → pure OSRMへ
-        if (Math.hypot(fromLat-road.coords[xi2][0],fromLng-road.coords[xi2][1]) < EP_THR) continue;
+        if (Math.hypot(fromLat-road.coords[xi2][0],fromLng-road.coords[xi2][1]) < MID_THR) continue;
         // 反対端点で再構築（手動道路を走破して白い道に接続）
         xi = xi2;
         osrmB = xi2===0 ? o0 : oN; // 既計算のOSRM結果を流用
