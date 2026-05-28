@@ -1520,7 +1520,7 @@ async function buildAnySegment(fromLat, fromLng, toLat, toLng, fitOut, fitIn) {
   // OSRM結果が直線の10倍超（到達不能等）→直線フォールバック
   const conn = async (aLat, aLng, bLat, bLng, fit) => {
     const ds = Math.hypot(aLat-bLat, aLng-bLng);
-    if (!fit || ds < MID_THR) return [[aLat,aLng],[bLat,bLng]];
+    if (!fit || ds < 0.00005) return [[aLat,aLng],[bLat,bLng]]; // ~5m以下のみ直線（ほぼ同一点）
     const k = `${aLng.toFixed(6)},${aLat.toFixed(6)};${bLng.toFixed(6)},${bLat.toFixed(6)}`;
     try {
       const r = await getCachedRoute(k, [{lat:aLat,lng:aLng},{lat:bLat,lng:bLng}]);
@@ -1603,9 +1603,16 @@ async function buildAnySegment(fromLat, fromLng, toLat, toLng, fitOut, fitIn) {
   }
 
   // 手動道路なし → 純粋OSRM（またはスナップOFF直線）
-  if (fitOut && fitIn) {
+  // fitOut OR fitIn のどちらか一方でもONなら道路スナップを試みる
+  if (fitOut || fitIn) {
     const k = `${fromLng.toFixed(6)},${fromLat.toFixed(6)};${toLng.toFixed(6)},${toLat.toFixed(6)}`;
-    return await getCachedRoute(k, [{lat:fromLat,lng:fromLng},{lat:toLat,lng:toLng}]);
+    try {
+      const r = await getCachedRoute(k, [{lat:fromLat,lng:fromLng},{lat:toLat,lng:toLng}]);
+      // OSRM結果が直線距離の10倍超（到達不能）→ 直線フォールバック
+      const ds = Math.hypot(fromLat-toLat, fromLng-toLng);
+      const rl2 = r => {let d=0;for(let k=1;k<r.length;k++)d+=Math.hypot(r[k][0]-r[k-1][0],r[k][1]-r[k-1][1]);return d;};
+      return rl2(r) < ds * 12 ? r : [[fromLat,fromLng],[toLat,toLng]];
+    } catch(_) { return [[fromLat,fromLng],[toLat,toLng]]; }
   }
   return [[fromLat,fromLng],[toLat,toLng]];
 }
@@ -2218,7 +2225,7 @@ function ctxConvertToWp() {
   // 新しいWPを作成してwpAの直後に挿入
   idW++;
   const newWp = {id:idW, type:'course', name:'', desc:'', tel:'', dwell:0,
-                 fitBefore:true, fitAfter:true,
+                 fitBefore:true, fitAfter:true, onRoute:true,
                  lat:vp.lat, lng:vp.lng,
                  photos:[], labelDir:'top', labelWrap:false, marker:null};
   wps.splice(wpAIdx+1, 0, newWp);
