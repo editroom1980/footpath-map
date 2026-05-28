@@ -1367,7 +1367,7 @@ async function _prefetchOsrm() {
     const fitAout=a.fitAfter!==false, fitBin=b.fitBefore!==false;
     const addTask = (k, pts) => { if (!segCache[k]) tasks.push(getCachedRoute(k,pts).catch(()=>null)); };
     if (sv.length===0) {
-      if (fitAout&&fitBin) addTask(`${a.lng.toFixed(6)},${a.lat.toFixed(6)};${b.lng.toFixed(6)},${b.lat.toFixed(6)}`,[{lat:a.lat,lng:a.lng},{lat:b.lat,lng:b.lng}]);
+      if (fitAout||fitBin) addTask(`${a.lng.toFixed(6)},${a.lat.toFixed(6)};${b.lng.toFixed(6)},${b.lat.toFixed(6)}`,[{lat:a.lat,lng:a.lng},{lat:b.lat,lng:b.lng}]);
     } else {
       const f=sv[0],l=sv[sv.length-1];
       if (fitAout&&f.fitBefore!==false) addTask(`${a.lng.toFixed(6)},${a.lat.toFixed(6)};${f.lng.toFixed(6)},${f.lat.toFixed(6)}`,[{lat:a.lat,lng:a.lng},{lat:f.lat,lng:f.lng}]);
@@ -1602,16 +1602,15 @@ async function buildAnySegment(fromLat, fromLng, toLat, toLng, fitOut, fitIn) {
     return [...connA.slice(0,-1), ...roadSeg, ...connB.slice(1)];
   }
 
-  // 手動道路なし → 純粋OSRM（またはスナップOFF直線）
-  // fitOut OR fitIn のどちらか一方でもONなら道路スナップを試みる
+  // 手動道路なし → 純粋OSRM
+  // fitOut または fitIn の片方でもONなら道路スナップを試みる（両方OFFのときだけ直線）
   if (fitOut || fitIn) {
     const k = `${fromLng.toFixed(6)},${fromLat.toFixed(6)};${toLng.toFixed(6)},${toLat.toFixed(6)}`;
     try {
       const r = await getCachedRoute(k, [{lat:fromLat,lng:fromLng},{lat:toLat,lng:toLng}]);
-      // OSRM結果が直線距離の10倍超（到達不能）→ 直線フォールバック
-      const ds = Math.hypot(fromLat-toLat, fromLng-toLng);
-      const rl2 = r => {let d=0;for(let k=1;k<r.length;k++)d+=Math.hypot(r[k][0]-r[k-1][0],r[k][1]-r[k-1][1]);return d;};
-      return rl2(r) < ds * 12 ? r : [[fromLat,fromLng],[toLat,toLng]];
+      const _rl = r=>{let d=0;for(let k=1;k<r.length;k++)d+=Math.hypot(r[k][0]-r[k-1][0],r[k][1]-r[k-1][1]);return d;};
+      const ds2 = Math.hypot(fromLat-toLat, fromLng-toLng);
+      return (_rl(r) < ds2 * 12) ? r : [[fromLat,fromLng],[toLat,toLng]];
     } catch(_) { return [[fromLat,fromLng],[toLat,toLng]]; }
   }
   return [[fromLat,fromLng],[toLat,toLng]];
@@ -1918,6 +1917,8 @@ function saveModal() {
   wp.fitAfter  = document.getElementById('mFitAfter').checked;
   wp.labelDir  = document.getElementById('mLabelDir').value;
   wp.onRoute   = document.getElementById('mOnRoute').checked;
+  // onRoute=trueの場合、fitBefore/fitAfterを誤ってOFFにしても道路スナップは維持する
+  // （UIで明示的にOFFにした場合のみ直線になるよう、buildAnySegment側で対処済み）
   wp.photos    = [..._modalPhotos];
   if (wp.marker) wp.marker.setIcon(wpIcon(wp));
   updateTooltip(wp);
@@ -2225,7 +2226,7 @@ function ctxConvertToWp() {
   // 新しいWPを作成してwpAの直後に挿入
   idW++;
   const newWp = {id:idW, type:'course', name:'', desc:'', tel:'', dwell:0,
-                 fitBefore:true, fitAfter:true, onRoute:true,
+                 fitBefore:true, fitAfter:true,
                  lat:vp.lat, lng:vp.lng,
                  photos:[], labelDir:'top', labelWrap:false, marker:null};
   wps.splice(wpAIdx+1, 0, newWp);
