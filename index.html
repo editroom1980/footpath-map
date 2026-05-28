@@ -1564,17 +1564,14 @@ async function buildAnySegment(fromLat, fromLng, toLat, toLng, fitOut, fitIn) {
         getCachedRoute(`${ep0[1].toFixed(6)},${ep0[0].toFixed(6)};${toLng.toFixed(6)},${toLat.toFixed(6)}`,[{lat:ep0[0],lng:ep0[1]},{lat:toLat,lng:toLng}]).catch(()=>null),
         getCachedRoute(`${epN[1].toFixed(6)},${epN[0].toFixed(6)};${toLng.toFixed(6)},${toLat.toFixed(6)}`,[{lat:epN[0],lng:epN[1]},{lat:toLat,lng:toLng}]).catch(()=>null)
       ]) : [null,null];
-      // OSRM品質チェック：直線フォールバック(2点)は到達不能扱い
-      const o0Real = o0 && o0.length > 2;
-      const oNReal = oN && oN.length > 2;
-      const use0 = (o0Real && !oNReal) ? true :
-                   (!o0Real && oNReal) ? false :
-                   rD0+rl(o0) <= rDN+rl(oN);
+      const use0 = rD0+rl(o0) <= rDN+rl(oN);
       let xi = use0 ? 0 : n-1;
       let osrmB = use0 ? o0 : oN;
       // 選択した出口がFROM付近 → 手動道路を「戻る」べきケースを考慮して反対端点で再試行
       // 例: WP1(行き止まり端点)→WP2 で来た道を戻る必要がある場合
-      if (Math.hypot(fromLat-road.coords[xi][0],fromLng-road.coords[xi][1]) < EP_THR) {
+      const _dFromXi = Math.hypot(fromLat-road.coords[xi][0],fromLng-road.coords[xi][1]);
+      console.log('[DEBUG_CASEB] road='+road.name+' n='+n+' i1='+i1+' xi='+xi+' use0='+use0+' dFromXi='+_dFromXi.toFixed(5)+' EP_THR='+EP_THR+' rD0='+rD0.toFixed(4)+' rDN='+rDN.toFixed(4)+' rl_o0='+(o0?rl(o0).toFixed(4):'null')+' rl_oN='+(oN?rl(oN).toFixed(4):'null'));
+      if (_dFromXi < EP_THR) {
         const xi2 = xi===0 ? n-1 : 0;
         // 反対端点もFROM付近 → 道路が極短で手動道路不要 → pure OSRMへ
         if (Math.hypot(fromLat-road.coords[xi2][0],fromLng-road.coords[xi2][1]) < EP_THR) continue;
