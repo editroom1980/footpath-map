@@ -803,13 +803,7 @@ function wpIcon(wp, sz, anc) {
 // ルート接続WP（onRoute !== false）を元の配列順で返す
 // onRouteはWPごとに個別設定可能。未設定の場合はtype==='course'をデフォルトとする
 function routeWps() {
-  // start/goalは onRoute設定に関わらず絶対にルートに含めない
-  return wps.filter(w =>
-    w.type !== 'start' &&
-    w.type !== 'goal' &&
-    w.onRoute !== false &&
-    (w.onRoute === true || w.type === 'course')
-  );
+  return wps.filter(w => w.type !== 'start' && w.type !== 'goal' && w.onRoute !== false && (w.onRoute === true || w.type === 'course'));
 }
 
 function courseNum(wp) {
@@ -1373,7 +1367,7 @@ async function _prefetchOsrm() {
     const fitAout=a.fitAfter!==false, fitBin=b.fitBefore!==false;
     const addTask = (k, pts) => { if (!segCache[k]) tasks.push(getCachedRoute(k,pts).catch(()=>null)); };
     if (sv.length===0) {
-      if (fitAout&&fitBin) addTask(`${a.lng.toFixed(6)},${a.lat.toFixed(6)};${b.lng.toFixed(6)},${b.lat.toFixed(6)}`,[{lat:a.lat,lng:a.lng},{lat:b.lat,lng:b.lng}]);
+      if (fitAout||fitBin) addTask(`${a.lng.toFixed(6)},${a.lat.toFixed(6)};${b.lng.toFixed(6)},${b.lat.toFixed(6)}`,[{lat:a.lat,lng:a.lng},{lat:b.lat,lng:b.lng}]);
     } else {
       const f=sv[0],l=sv[sv.length-1];
       if (fitAout&&f.fitBefore!==false) addTask(`${a.lng.toFixed(6)},${a.lat.toFixed(6)};${f.lng.toFixed(6)},${f.lat.toFixed(6)}`,[{lat:a.lat,lng:a.lng},{lat:f.lat,lng:f.lng}]);
@@ -1526,7 +1520,7 @@ async function buildAnySegment(fromLat, fromLng, toLat, toLng, fitOut, fitIn) {
   // OSRM結果が直線の10倍超（到達不能等）→直線フォールバック
   const conn = async (aLat, aLng, bLat, bLng, fit) => {
     const ds = Math.hypot(aLat-bLat, aLng-bLng);
-    if (!fit || ds < 0.00005) return [[aLat,aLng],[bLat,bLng]]; // 約5m以下のみ直線
+    if (!fit || ds < 0.00005) return [[aLat,aLng],[bLat,bLng]];
     const k = `${aLng.toFixed(6)},${aLat.toFixed(6)};${bLng.toFixed(6)},${bLat.toFixed(6)}`;
     try {
       const r = await getCachedRoute(k, [{lat:aLat,lng:aLng},{lat:bLat,lng:bLng}]);
@@ -1579,8 +1573,8 @@ async function buildAnySegment(fromLat, fromLng, toLat, toLng, fitOut, fitIn) {
       console.log('[DEBUG_CASEB] road='+road.name+' n='+n+' i1='+i1+' xi='+xi+' use0='+use0+' dFromXi='+_dFromXi.toFixed(5)+' EP_THR='+EP_THR+' rD0='+rD0.toFixed(4)+' rDN='+rDN.toFixed(4)+' rl_o0='+(o0?rl(o0).toFixed(4):'null')+' rl_oN='+(oN?rl(oN).toFixed(4):'null'));
       if (_dFromXi < EP_THR) {
         const xi2 = xi===0 ? n-1 : 0;
-        // 反対端点もFROM付近 → 道路が極短で手動道路不要 → pure OSRMへ
-        if (Math.hypot(fromLat-road.coords[xi2][0],fromLng-road.coords[xi2][1]) < MID_THR) continue;
+        // 反対端点がFROMとほぼ同一点（5m以内）のみスキップ → 50mでは正常な道路も誤スキップする
+        if (Math.hypot(fromLat-road.coords[xi2][0],fromLng-road.coords[xi2][1]) < 0.00005) continue;
         // 反対端点で再構築（手動道路を走破して白い道に接続）
         xi = xi2;
         osrmB = xi2===0 ? o0 : oN; // 既計算のOSRM結果を流用
@@ -1608,12 +1602,11 @@ async function buildAnySegment(fromLat, fromLng, toLat, toLng, fitOut, fitIn) {
     return [...connA.slice(0,-1), ...roadSeg, ...connB.slice(1)];
   }
 
-  // 手動道路なし → fitOut||fitIn のどちらかONならOSRM（両方OFFのみ直線）
+  // 手動道路なし → fitOut||fitIn のどちらかONならOSRM
   if (fitOut || fitIn) {
     const k = `${fromLng.toFixed(6)},${fromLat.toFixed(6)};${toLng.toFixed(6)},${toLat.toFixed(6)}`;
-    try {
-      return await getCachedRoute(k, [{lat:fromLat,lng:fromLng},{lat:toLat,lng:toLng}]);
-    } catch(_) { return [[fromLat,fromLng],[toLat,toLng]]; }
+    try { return await getCachedRoute(k, [{lat:fromLat,lng:fromLng},{lat:toLat,lng:toLng}]); }
+    catch(_) { return [[fromLat,fromLng],[toLat,toLng]]; }
   }
   return [[fromLat,fromLng],[toLat,toLng]];
 }
@@ -1919,7 +1912,6 @@ function saveModal() {
   wp.fitAfter  = document.getElementById('mFitAfter').checked;
   wp.labelDir  = document.getElementById('mLabelDir').value;
   wp.onRoute   = document.getElementById('mOnRoute').checked;
-  // start/goalは onRoute設定に関わらず強制false
   if (wp.type === 'start' || wp.type === 'goal') wp.onRoute = false;
   wp.photos    = [..._modalPhotos];
   if (wp.marker) wp.marker.setIcon(wpIcon(wp));
