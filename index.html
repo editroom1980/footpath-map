@@ -803,7 +803,6 @@ function wpIcon(wp, sz, anc) {
 // ルート接続WP（onRoute !== false）を元の配列順で返す
 // onRouteはWPごとに個別設定可能。未設定の場合はtype==='course'をデフォルトとする
 function routeWps() {
-  // start/goalはonRoute設定に関わらずルートに絶対含めない
   return wps.filter(w => w.type !== 'start' && w.type !== 'goal' && w.onRoute !== false && (w.onRoute === true || w.type === 'course'));
 }
 
@@ -1641,7 +1640,7 @@ async function buildRoutedCoords() {
         const t=Math.max(0,Math.min(1,((px-ax)*dx+(py-ay)*dy)/(dx*dx+dy*dy)));
         return Math.hypot(px-(ax+t*dx),py-(ay+t*dy));
       }
-      const ON_TOL=0.00005; // 約5m以内のみルート上とみなす（手動道路VP誤削除防止）
+      const ON_TOL=0.0008; // 約80m以内はルート上とみなす（OSRMスナップ誤差を吸収）
       const effSV=sv.filter(v=>{
         // fitBefore/fitAfterのいずれかがOFF → ルートアンカーとして機能 → 必ず保持
         // 例: VP.fitBefore=OFF → 前区間は直線固定、後区間はOSRM開始点として必要
@@ -1670,18 +1669,8 @@ async function buildRoutedCoords() {
             return Math.hypot(v.lat-r.coords[idx][0],v.lng-r.coords[idx][1])<ON_CR_THR;
           }));
 
-        // WPがカスタム道路端点にある場合は単一OSRMコール禁止
-        const _wpAtCR = (wp) => customRoads.some(r => {
-          if(!r.visible||!r.coords||r.coords.length<2) return false;
-          const n=r.coords.length;
-          return Math.hypot(wp.lat-r.coords[0][0],wp.lng-r.coords[0][1])<EP_THR ||
-                 Math.hypot(wp.lat-r.coords[n-1][0],wp.lng-r.coords[n-1][1])<EP_THR;
-        });
-        if (onlyWhiteSnap && fitAout && fitBin && !_wpAtCR(a) && !_wpAtCR(b)) {
-          // 全VP白い道路上・WP非カスタム道路端点 → 単一OSRM
-          const allPts=[{lat:a.lat,lng:a.lng},...effSV.map(v=>({lat:v.lat,lng:v.lng})),{lat:b.lat,lng:b.lng}];
-          const key=allPts.map(p=>`${p.lng.toFixed(6)},${p.lat.toFixed(6)}`).join(';');
-          seg = await getCachedRoute(key, allPts);
+        if (false) { // 単一OSRMコール廃止: カスタム道路起点WPのスナップ位置がずれるため
+          void 0;
         } else {
           // buildAnySegmentで各サブセグメントを処理（カスタム道路・白い道路を統一処理）
           seg = await buildAnySegment(a.lat,a.lng,effSV[0].lat,effSV[0].lng,fitAout,effSV[0].fitBefore!==false);
