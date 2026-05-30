@@ -458,8 +458,6 @@ let _elevData       = null;  // 高低差データキャッシュ
 let _elevFetchTimer = null;  // 自動fetch用タイマー
 let _baseTileLayer  = null;  // 通常タイルレイヤー参照
 let _drawRoad   = null;   // 描画中のカスタム道路
-let _editRoad   = null;   // 編集中のカスタム道路 {road, markers}
-let _crIdCtr    = 0;      // カスタム道路IDカウンター
 let _crVisible  = true;   // カスタム道路全体表示フラグ
 let _modalPhotos= [];      // モーダル編集中の写真
 let lineDragging= false;
@@ -2452,8 +2450,7 @@ function loadCourseData(data) {
     const descEl = document.getElementById('iDesc');
     if (descEl) descEl.value = data.desc||'';
 
-    // カスタム道路: 機能廃止につき読み込まない（青い線を表示しない）
-    clearAllCustomRoadLines();
+    // カスタム道路: 機能廃止につき読み込まない
     customRoads = [];
 
     refreshIcons();
