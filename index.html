@@ -1573,7 +1573,7 @@ async function buildAnySegment(fromLat, fromLng, toLat, toLng, fitOut, fitIn) {
       console.log('[DEBUG_CASEB] road='+road.name+' n='+n+' i1='+i1+' xi='+xi+' use0='+use0+' dFromXi='+_dFromXi.toFixed(5)+' EP_THR='+EP_THR+' rD0='+rD0.toFixed(4)+' rDN='+rDN.toFixed(4)+' rl_o0='+(o0?rl(o0).toFixed(4):'null')+' rl_oN='+(oN?rl(oN).toFixed(4):'null'));
       if (_dFromXi < EP_THR) {
         const xi2 = xi===0 ? n-1 : 0;
-        // 反対端点がFROMとほぼ同一点（5m以内）のみスキップ → 50mでは正常な道路も誤スキップする
+        // 反対端点がFROMとほぼ同一点（5m以内）のみスキップ
         if (Math.hypot(fromLat-road.coords[xi2][0],fromLng-road.coords[xi2][1]) < 0.00005) continue;
         // 反対端点で再構築（手動道路を走破して白い道に接続）
         xi = xi2;
@@ -1669,11 +1669,8 @@ async function buildRoutedCoords() {
             return Math.hypot(v.lat-r.coords[idx][0],v.lng-r.coords[idx][1])<ON_CR_THR;
           }));
 
-        if (onlyWhiteSnap && fitAout && fitBin) {
-          // 全VP白い道路上・スナップON → 単一OSRMコールで一貫したスナップ
-          const allPts=[{lat:a.lat,lng:a.lng},...effSV.map(v=>({lat:v.lat,lng:v.lng})),{lat:b.lat,lng:b.lng}];
-          const key=allPts.map(p=>`${p.lng.toFixed(6)},${p.lat.toFixed(6)}`).join(';');
-          seg = await getCachedRoute(key, allPts);
+        if (false) { // 単一OSRMコール廃止: カスタム道路起点WPのスナップ位置がずれるため
+          void 0;
         } else {
           // buildAnySegmentで各サブセグメントを処理（カスタム道路・白い道路を統一処理）
           seg = await buildAnySegment(a.lat,a.lng,effSV[0].lat,effSV[0].lng,fitAout,effSV[0].fitBefore!==false);
