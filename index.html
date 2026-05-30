@@ -263,6 +263,7 @@ html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:
         <button class="btn" id="btnCrVis" onclick="toggleCustomRoadsVisibility()" title="🗺 カスタム道路 表示/非表示">🗺 道路</button>
         <button class="btn" id="btnMapLabels" onclick="toggleMapLabels()" title="🌐 地名/WP○ 表示切替&#10;OFFにすると地図の文字・WPマーカーが消え&#10;コースの点線だけ残ります">🌐 地名</button>
         <button class="btn" id="btnSpline" onclick="toggleSpline()" title="〜 スプライン曲線&#10;調整点間をなめらかな曲線で描画">〜 曲線</button>
+        <button class="btn" id="btnManual" onclick="toggleManualMode()" title="✋ 手動モード&#10;ONの間は調整点が白い道にフィットしない&#10;OSMにない山道・農道をルートにする際に使用">✋ 手動</button>
         <span class="tsep">|</span>
         <button class="btn" id="btnUndo" onclick="undoLast()" title="↩ 取り消し (⌘Z)" disabled>↩</button>
         <button class="btn" id="btnRedo" onclick="redoAction()" title="↪ やり直し (⌘⇧Z)" disabled>↪</button>
@@ -471,6 +472,7 @@ let segCache    = {};
 let splineEnabled  = false;
 let canvasRenderer = null;
 let ctxVpId        = null;  // via point whose context menu is open   // Canvas renderer for html2canvas compatibility
+let manualMode     = false; // 手動モード: ONの間は調整点の前後フィットがデフォルトOFF
 let routingTimer= null;
 let currentCourseId = null;
 let courseInfo  = {name:'', area:'', start:'', goal:''};
@@ -875,7 +877,10 @@ function addVp(lat, lng) {
   const _wpB    = _vrw[_vriIdx+1] || _wpA; // 次のルートWP（standalone WPをスキップ）
   const _svs    = vps.filter(v=>v.segAfter===_saId);
   const _ord    = calcVpOrder(lat, lng, _svs, _wpA, _wpB);
-  const vp = {id:'v'+idV, segAfter:_saId, order:_ord, fitBefore:true, fitAfter:true, lat, lng, marker:null};
+  const vp = {id:'v'+idV, segAfter:_saId, order:_ord,
+    fitBefore: manualMode ? false : true,
+    fitAfter:  manualMode ? false : true,
+    lat, lng, marker:null};
   vps.push(vp);
   buildVpMarker(vp);
   clearCache(); redrawStraight(); scheduleRouting();
@@ -1021,6 +1026,28 @@ function hideCtxMenu() {
 function ctxDoToggleSpline() {
   hideCtxMenu();
   toggleSpline();
+}
+
+function toggleManualMode() {
+  manualMode = !manualMode;
+  const btn = document.getElementById('btnManual');
+  if (btn) btn.classList.toggle('on', manualMode);
+
+  if (manualMode) {
+    // 手動モードON: 直前に打った調整点のfitAfterをfalseにする
+    // （白い道→手動区間の接続点として機能させる）
+    if (vps.length > 0) {
+      const lastVp = vps[vps.length - 1];
+      if (lastVp.fitAfter !== false) {
+        saveSnapshot();
+        lastVp.fitAfter = false;
+        clearCache(); scheduleRouting();
+      }
+    }
+    showToast('✋ 手動モード ON：調整点が白い道にフィットしません');
+  } else {
+    showToast('手動モード OFF：調整点は白い道にフィットします');
+  }
 }
 
 function ctxDoToggleFit(dir) {
