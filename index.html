@@ -1606,7 +1606,22 @@ async function buildAnySegment(fromLat, fromLng, toLat, toLng, fitOut, fitIn) {
   if (fitOut || fitIn) {
     const k = `${fromLng.toFixed(6)},${fromLat.toFixed(6)};${toLng.toFixed(6)},${toLat.toFixed(6)}`;
     try { return await getCachedRoute(k, [{lat:fromLat,lng:fromLng},{lat:toLat,lng:toLng}]); }
-    catch(_) { return [[fromLat,fromLng],[toLat,toLng]]; }
+    catch(_) {
+      // OSRM失敗（山道など）→ 同じ手動道路上なら道路沿いにフォールバック
+      for (const road of customRoads) {
+        if (!road.visible || !road.coords || road.coords.length < 2) continue;
+        const i1 = nearestRoadIdx(road, fromLat, fromLng);
+        const i2 = nearestRoadIdx(road, toLat, toLng);
+        const d1 = Math.hypot(fromLat-road.coords[i1][0], fromLng-road.coords[i1][1]);
+        const d2 = Math.hypot(toLat-road.coords[i2][0], toLng-road.coords[i2][1]);
+        if (d1 < EP_THR && d2 < EP_THR && i1 !== i2) {
+          const s = Math.min(i1,i2), e = Math.max(i1,i2)+1;
+          const seg = road.coords.slice(s, e);
+          return i1 > i2 ? [...seg].reverse() : seg;
+        }
+      }
+      return [[fromLat,fromLng],[toLat,toLng]];
+    }
   }
   return [[fromLat,fromLng],[toLat,toLng]];
 }
@@ -1646,10 +1661,12 @@ async function buildRoutedCoords() {
         if(v.fitBefore===false||v.fitAfter===false) return true;
         // 手動道路上の調整点 → ON_TOLに関係なく必ず保持
         // 理由: 公道と80m以内で並行する手動道路の調整点が誤削除されるのを防ぐ
+        // ON_CR_THR_EFF=100m: 道路ポイント間隔が広い場合もVPを手動道路と認識
+        const ON_CR_THR_EFF = 0.001; // ~100m
         if(customRoads.some(r=>{
           if(!r.visible||!r.coords||r.coords.length<2) return false;
           const idx=nearestRoadIdx(r,v.lat,v.lng);
-          return Math.hypot(v.lat-r.coords[idx][0],v.lng-r.coords[idx][1])<ON_CR_THR;
+          return Math.hypot(v.lat-r.coords[idx][0],v.lng-r.coords[idx][1])<ON_CR_THR_EFF;
         })) return true;
         // 白い道路上の調整点 → ベースルート上にあれば不要
         if(!baseRoute||baseRoute.length<2) return true;
