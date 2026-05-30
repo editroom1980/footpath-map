@@ -1642,10 +1642,17 @@ async function buildRoutedCoords() {
       }
       const ON_TOL=0.0008; // 約80m以内はルート上とみなす（OSRMスナップ誤差を吸収）
       const effSV=sv.filter(v=>{
-        // fitBefore/fitAfterのいずれかがOFF → ルートアンカーとして機能 → 必ず保持
-        // 例: VP.fitBefore=OFF → 前区間は直線固定、後区間はOSRM開始点として必要
+        // fitBefore/fitAfterのいずれかがOFF → 必ず保持
         if(v.fitBefore===false||v.fitAfter===false) return true;
-        // 両方ONの場合のみ距離判定（ベースルート上なら不要）
+        // カスタム道路上のVPは必ず保持（白い道路のbaseRouteと重なっていても除外しない）
+        // 理由: カスタム道路が公道と並行する場合、VP除外でルートが公道に流れてしまう
+        const ON_CR_THR_EFF = 0.0005; // ~50m: VPがカスタム道路上に直接置かれている
+        if(customRoads.some(r=>{
+          if(!r.visible||!r.coords||r.coords.length<2) return false;
+          const idx=nearestRoadIdx(r,v.lat,v.lng);
+          return Math.hypot(v.lat-r.coords[idx][0],v.lng-r.coords[idx][1])<ON_CR_THR_EFF;
+        })) return true;
+        // 白い道路上のVP: baseRoute上にあれば不要（ルート変更意図なし）
         if(!baseRoute||baseRoute.length<2) return true;
         for(let i=0;i<baseRoute.length-1;i++){
           if(_dSeg(v.lat,v.lng,baseRoute[i][0],baseRoute[i][1],baseRoute[i+1][0],baseRoute[i+1][1])<ON_TOL) return false;
@@ -1669,7 +1676,7 @@ async function buildRoutedCoords() {
             return Math.hypot(v.lat-r.coords[idx][0],v.lng-r.coords[idx][1])<ON_CR_THR;
           }));
 
-        if (false) { // 単一OSRMコール廃止: カスタム道路起点WPのスナップ位置がずれるため
+        if (false) {
           void 0;
         } else {
           // buildAnySegmentで各サブセグメントを処理（カスタム道路・白い道路を統一処理）
