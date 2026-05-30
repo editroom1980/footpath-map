@@ -134,9 +134,6 @@ html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:
 #elevMsg{font-size:12px;color:#9A8070;text-align:center;padding:16px 0}
 .btn-nolabel{background:#5A3E28!important;color:#fff!important;border-color:#5A3E28!important}
 #wpTypePicker{display:none;position:fixed;z-index:5000;background:#fff;border:1px solid #C4B89A;border-radius:8px;padding:4px 0;min-width:200px;box-shadow:0 3px 16px rgba(0,0,0,.22)}
-/* カスタム道路描画UI */
-#crFinishBar{display:none;position:fixed;top:50px;left:50%;transform:translateX(-50%);background:#fff;border:1.5px solid #1565C0;border-radius:8px;padding:6px 14px;z-index:2000;gap:10px;align-items:center;box-shadow:0 2px 12px rgba(0,0,0,.2)}
-#crFinishBar.show{display:flex}
 /* 写真プレビュー */
 .photo-strip{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
 .photo-thumb{position:relative;width:72px;height:72px;border-radius:6px;overflow:hidden;border:1px solid #D4C4A8;flex-shrink:0}
@@ -257,10 +254,8 @@ html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:
       <div id="tbar">
         <button class="btn on" id="btnWp" onclick="setMode('wp')" title="📍 WP追加&#10;クリックでスポットをコースに追加">📍 WP</button>
         <button class="btn" id="btnVia" onclick="setMode('via')" title="↔ 調整点追加&#10;ルートラインをドラッグして経路を微調整">↔ 調整点</button>
-        <button class="btn" id="btnRoad" onclick="setMode('road')" title="🛤 カスタム道路描画&#10;OSRMが通れない細い道を手動で引く&#10;クリックで点を追加→完了で確定">🛤 道路</button>
         <span class="tsep">|</span>
         <button class="btn" id="btnToggleVia" onclick="toggleViaVisibility()" title="● 調整点 表示/非表示">● 調整点</button>
-        <button class="btn" id="btnCrVis" onclick="toggleCustomRoadsVisibility()" title="🗺 カスタム道路 表示/非表示">🗺 道路</button>
         <button class="btn" id="btnMapLabels" onclick="toggleMapLabels()" title="🌐 地名/WP○ 表示切替&#10;OFFにすると地図の文字・WPマーカーが消え&#10;コースの点線だけ残ります">🌐 地名</button>
         <button class="btn" id="btnSpline" onclick="toggleSpline()" title="〜 スプライン曲線&#10;調整点間をなめらかな曲線で描画">〜 曲線</button>
         <button class="btn" id="btnManual" onclick="toggleManualMode()" title="✋ 手動モード&#10;ONの間は調整点が白い道にフィットしない&#10;OSMにない山道・農道をルートにする際に使用">✋ 手動</button>
@@ -348,12 +343,6 @@ html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:
 <!-- WPタイプピッカー -->
 <div id="wpTypePicker"></div>
 
-<!-- カスタム道路描画 完了バー -->
-<div id="crFinishBar">
-  <span style="font-size:11px;color:#1565C0;font-weight:bold">🛤 道路描画中 — クリックで点を追加</span>
-  <button class="btn" onclick="finishRoadDraw()" style="background:#1565C0;color:#fff;border-color:#1565C0;padding:4px 12px">✓ 完了</button>
-  <button class="btn" onclick="cancelRoadDraw()" style="padding:4px 10px">✕ キャンセル</button>
-</div>
 
 <!-- Help Modal -->
 <div id="helpModal" onclick="if(event.target===this)closeHelp()">
@@ -454,17 +443,13 @@ let undoStack   = [];      // 取り消し履歴 (最大30ステップ)
 let redoStack   = [];      // やり直し履歴
 let viewMode    = false;   // 閲覧専用モード
 let _routeCoordMap = [];   // OSRM座標→セグメントID対応表（クリック判定用）
-let customRoads = [];     // カスタム道路 [{id,name,coords,visible,_line}]
+let customRoads = [];     // 廃止済み（参照エラー防止）
 let _wpPickerLatlng = null; // WPタイプピッカー表示中の座標
 let _showMapLabels  = true;  // 地図ラベル表示フラグ
 let _lastRouteCoords= null;  // 最後のルート座標（高低差用）
 let _elevData       = null;  // 高低差データキャッシュ
 let _elevFetchTimer = null;  // 自動fetch用タイマー
 let _baseTileLayer  = null;  // 通常タイルレイヤー参照
-let _drawRoad   = null;   // 描画中のカスタム道路
-let _editRoad   = null;   // 編集中のカスタム道路 {road, markers}
-let _crIdCtr    = 0;      // カスタム道路IDカウンター
-let _crVisible  = true;   // カスタム道路全体表示フラグ
 let _modalPhotos= [];      // モーダル編集中の写真
 let lineDragging= false;
 let dragSrcId   = null;
@@ -514,7 +499,7 @@ window.addEventListener('DOMContentLoaded', () => {
   if (e.key === 'Escape' && document.getElementById('elevDetailPanel')?.style.display === 'block') {
     closeElevModal(); return;
   }
-    if (e.key === 'Escape') { hideCtxMenu(); hideWpPicker(); if(mode==='road')cancelRoadDraw(); return; }
+    if (e.key === 'Escape') { hideCtxMenu(); hideWpPicker(); return; }
     if ((e.metaKey || e.ctrlKey) && e.key === 'z') {
       e.preventDefault();
       if (e.shiftKey) redoAction(); else undoLast();
@@ -604,7 +589,6 @@ function onMapClick(e) {
     return;
   }
   if (mode==='via')  addVp(e.latlng.lat, e.latlng.lng);
-  if (mode==='road') addRoadPoint(e.latlng.lat, e.latlng.lng);
 }
 
 /* ============================================================
@@ -665,13 +649,6 @@ async function saveMapNoText() {
   // 保存前の状態を記録
   const _wasShowingLabels = _showMapLabels;
 
-  // カスタム道路ラインを非表示
-  const _savedCrNoText = customRoads.map(r => {
-    const el = r._line?.getElement ? r._line.getElement() : null;
-    const op = el?.style.opacity || '';
-    if (el) el.style.opacity = '0';
-    return op;
-  });
 
   // 全要素を非表示（_applyMapLabelStateで一括処理）
   if (_showMapLabels) {
@@ -704,11 +681,6 @@ async function saveMapNoText() {
   } catch(e) {
     showToast('❌ 保存に失敗: ' + e.message);
   } finally {
-    // カスタム道路ラインを復元
-    customRoads.forEach((r, i) => {
-      const el = r._line?.getElement ? r._line.getElement() : null;
-      if (el) el.style.opacity = _savedCrNoText[i] || '';
-    });
     // 元の表示状態を確実に復元
     if (_wasShowingLabels) {
       _showMapLabels = true;
@@ -1388,254 +1360,21 @@ async function _prefetchOsrm() {
   const rw = routeWps();
   if (rw.length < 2) return;
   const tasks = [];
+  const addTask = (k, pts) => { if (!segCache[k]) tasks.push(getCachedRoute(k,pts).catch(()=>{})); };
   for (let i=0; i<rw.length-1; i++) {
     const a=rw[i], b=rw[i+1];
-    const sv = segVpsOf(a.id, a, b);
-    const fitAout=a.fitAfter!==false, fitBin=b.fitBefore!==false;
-    const addTask = (k, pts) => { if (!segCache[k]) tasks.push(getCachedRoute(k,pts).catch(()=>null)); };
-    if (sv.length===0) {
-      if (fitAout||fitBin) addTask(`${a.lng.toFixed(6)},${a.lat.toFixed(6)};${b.lng.toFixed(6)},${b.lat.toFixed(6)}`,[{lat:a.lat,lng:a.lng},{lat:b.lat,lng:b.lng}]);
-    } else {
-      const f=sv[0],l=sv[sv.length-1];
-      if (fitAout&&f.fitBefore!==false) addTask(`${a.lng.toFixed(6)},${a.lat.toFixed(6)};${f.lng.toFixed(6)},${f.lat.toFixed(6)}`,[{lat:a.lat,lng:a.lng},{lat:f.lat,lng:f.lng}]);
-      sv.slice(0,-1).forEach((va,j)=>{ const vb=sv[j+1]; if(va.fitAfter!==false&&vb.fitBefore!==false) addTask(`${va.lng.toFixed(6)},${va.lat.toFixed(6)};${vb.lng.toFixed(6)},${vb.lat.toFixed(6)}`,[{lat:va.lat,lng:va.lng},{lat:vb.lat,lng:vb.lng}]); });
-      if (l.fitAfter!==false&&fitBin) addTask(`${l.lng.toFixed(6)},${l.lat.toFixed(6)};${b.lng.toFixed(6)},${b.lat.toFixed(6)}`,[{lat:l.lat,lng:l.lng},{lat:b.lat,lng:b.lng}]);
-    }
+    if (a.fitAfter!==false || b.fitBefore!==false)
+      addTask(`${a.lng.toFixed(6)},${a.lat.toFixed(6)};${b.lng.toFixed(6)},${b.lat.toFixed(6)}`,
+              [{lat:a.lat,lng:a.lng},{lat:b.lat,lng:b.lng}]);
   }
-  if (tasks.length) await Promise.all(tasks);
+  await Promise.allSettled(tasks);
 }
 
-
-// VPサブセグメント用: ケースA（両側が道路近傍）のみ適用
-// VPは明示的な経由点なのでケースB/Cは適用しない
-function _routeCustomRoadCaseAOnly(fromLat, fromLng, toLat, toLng) {
-  const THR = 0.002;
-  let best = null, bestScore = Infinity;
-  for (const road of customRoads) {
-    if (!road.visible || !road.coords || road.coords.length < 2) continue;
-    const n = road.coords.length;
-    const i1 = nearestRoadIdx(road, fromLat, fromLng);
-    const i2 = nearestRoadIdx(road, toLat,   toLng);
-    const d1 = Math.hypot(fromLat-road.coords[i1][0], fromLng-road.coords[i1][1]);
-    const d2 = Math.hypot(toLat  -road.coords[i2][0], toLng  -road.coords[i2][1]);
-    if (d1 < THR && d2 < THR && i1 !== i2) {
-      const score = d1+d2;
-      if (score < bestScore) {
-        bestScore = score;
-        const s=Math.min(i1,i2), e=Math.max(i1,i2)+1;
-        const seg = road.coords.slice(s,e);
-        if (i1 > i2) seg.reverse();
-        best = seg;
-      }
-    }
-  }
-  return best;
-}
-
-// VP用ヘルパー（ケースA + ケースB + OSRM接続）
-// ケースA: 両側が道路近傍（VP→VP間など）
-// ケースB: VP側のみ道路近傍 → 道路距離+直線距離で最短コストの端点へ出口
-async function _buildSegVP(fromLat, fromLng, toLat, toLng, fitOut, fitIn) {
-  const THR = 0.002;
-  let best = null, bestScore = Infinity;
-
-  for (const road of customRoads) {
-    if (!road.visible || !road.coords || road.coords.length < 2) continue;
-    const n = road.coords.length;
-    const i1 = nearestRoadIdx(road, fromLat, fromLng);
-    const i2 = nearestRoadIdx(road, toLat,   toLng);
-    const d1 = Math.hypot(fromLat-road.coords[i1][0], fromLng-road.coords[i1][1]);
-    const d2 = Math.hypot(toLat  -road.coords[i2][0], toLng  -road.coords[i2][1]);
-
-    let seg = null, score = Infinity;
-
-    if (d1 < THR && d2 < THR && i1 !== i2) {
-      // ケースA: 両側が道路近傍
-      const s=Math.min(i1,i2), e=Math.max(i1,i2)+1;
-      seg = road.coords.slice(s,e);
-      if (i1 > i2) seg = [...seg].reverse();
-      score = d1+d2;
-
-    } else if (d1 < THR) {
-      // ケースB: VPのみ道路近傍
-      // 出口 = VPに「近い端点」の反対側（道路を最大限走破する）
-      // 理由: VPがroad[n-1]寄りなら反対のroad[0]（分岐点）を出口とする
-      const dFrStart = Math.hypot(fromLat-road.coords[0][0],   fromLng-road.coords[0][1]);
-      const dFrEnd   = Math.hypot(fromLat-road.coords[n-1][0], fromLng-road.coords[n-1][1]);
-      const exitIdx  = dFrStart < dFrEnd ? n-1 : 0;  // VPに近い端点の「反対側」
-
-      if (exitIdx === i1) {
-        // VPが既に出口端点にいる → 端点1点のみ（connBでOSRM接続）
-        seg = [road.coords[exitIdx]]; score = d1;
-      } else {
-        const s=Math.min(i1,exitIdx), e=Math.max(i1,exitIdx)+1;
-        seg = road.coords.slice(s,e);
-        if (i1 > exitIdx) seg = [...seg].reverse();
-        score = d1;
-      }
-    }
-
-    if (seg && score < bestScore) { bestScore = score; best = seg; }
-  }
-
-  if (!best) return null;
-
-  // OSRM接続
-  const MIN_D = 0.00005;
-  const rdSt = best[0], rdEnd = best[best.length-1];
-  let connA = [rdSt];
-  if (fitOut && Math.hypot(fromLat-rdSt[0], fromLng-rdSt[1]) > MIN_D) {
-    const kA = `${fromLng.toFixed(6)},${fromLat.toFixed(6)};${rdSt[1].toFixed(6)},${rdSt[0].toFixed(6)}`;
-    try { connA = await getCachedRoute(kA, [{lat:fromLat,lng:fromLng},{lat:rdSt[0],lng:rdSt[1]}]); } catch(_){}
-  } else { connA = [[fromLat,fromLng], rdSt]; }
-  let connB = [rdEnd];
-  if (fitIn && Math.hypot(toLat-rdEnd[0], toLng-rdEnd[1]) > MIN_D) {
-    const kB = `${rdEnd[1].toFixed(6)},${rdEnd[0].toFixed(6)};${toLng.toFixed(6)},${toLat.toFixed(6)}`;
-    try { connB = await getCachedRoute(kB, [{lat:rdEnd[0],lng:rdEnd[1]},{lat:toLat,lng:toLng}]); } catch(_){}
-  } else { connB = [rdEnd, [toLat,toLng]]; }
-  return [...connA.slice(0,-1), ...best, ...connB.slice(1)];
-}
-
-// カスタム道路 + 両端OSRM接続を一元管理するヘルパー
-// from→to間にカスタム道路がある場合、OSRM(from→road_start) + road + OSRM(road_end→to) を返す
-// カスタム道路がない場合は null を返す
-async function _buildSegWithCustomRoad(fromLat, fromLng, toLat, toLng, fitOut, fitIn) {
-  const _cr = routeAlongCustomRoad(fromLat, fromLng, toLat, toLng);
-  if (!_cr) return null;
-
-  const MIN_D = 0.00005; // 約5m以上離れている場合のみOSRM接続
-  const rdSt  = _cr[0];
-  const rdEnd = _cr[_cr.length - 1];
-
-  // from → 道路開始点 をOSRMで接続
-  let connA = [rdSt];
-  if (fitOut && Math.hypot(fromLat-rdSt[0], fromLng-rdSt[1]) > MIN_D) {
-    const kA = `${fromLng.toFixed(6)},${fromLat.toFixed(6)};${rdSt[1].toFixed(6)},${rdSt[0].toFixed(6)}`;
-    try { connA = await getCachedRoute(kA, [{lat:fromLat,lng:fromLng},{lat:rdSt[0],lng:rdSt[1]}]); } catch(_){}
-  } else { connA = [[fromLat,fromLng], rdSt]; }
-
-  // 道路終了点 → to をOSRMで接続
-  let connB = [rdEnd];
-  if (fitIn && Math.hypot(toLat-rdEnd[0], toLng-rdEnd[1]) > MIN_D) {
-    const kB = `${rdEnd[1].toFixed(6)},${rdEnd[0].toFixed(6)};${toLng.toFixed(6)},${toLat.toFixed(6)}`;
-    try { connB = await getCachedRoute(kB, [{lat:rdEnd[0],lng:rdEnd[1]},{lat:toLat,lng:toLng}]); } catch(_){}
-  } else { connB = [rdEnd, [toLat,toLng]]; }
-
-  return [...connA.slice(0,-1), ..._cr, ...connB.slice(1)];
-}
-
-/* ============================================================
-   統合ルーティング関数 buildAnySegment
-   ルール:
-   ① スナップON・距離≥50m → OSRM（白い道・手動の道どちらも同じ扱い）
-   ② スナップON・距離<50m  → 直線（WPと道路端点がほぼ同位置、自明な接続）
-   ③ スナップOFF           → 直線
-   ケースA: 両端近傍（WP5→WP6など）
-   ケースB: FROM近傍（WP6→WP7など、OSRM端点比較で出口選択）
-   ケースC: TO近傍（OSRM→道路→TO）
-   手動道路なし → 純粋OSRM
-   ============================================================ */
 async function buildAnySegment(fromLat, fromLng, toLat, toLng, fitOut, fitIn) {
-  // 両方スナップOFF → 即直線（手動道路ループ不要）
   if (!fitOut && !fitIn) return [[fromLat,fromLng],[toLat,toLng]];
-
-  const EP_THR  = 0.002;   // ~200m: WPが道路端点の近傍
-  const MID_THR = 0.0005;  // ~50m: VP直接配置 / 接続距離が自明
-  const rl = r => {if(!r||r.length<2)return Infinity;let d=0;for(let k=1;k<r.length;k++)d+=Math.hypot(r[k][0]-r[k-1][0],r[k][1]-r[k-1][1]);return d;};
-
-  // 2点間の接続: スナップON・距離≥50m→OSRM、それ以外→直線
-  // OSRM結果が直線の10倍超（到達不能等）→直線フォールバック
-  const conn = async (aLat, aLng, bLat, bLng, fit) => {
-    const ds = Math.hypot(aLat-bLat, aLng-bLng);
-    if (!fit || ds < 0.00005) return [[aLat,aLng],[bLat,bLng]];
-    const k = `${aLng.toFixed(6)},${aLat.toFixed(6)};${bLng.toFixed(6)},${bLat.toFixed(6)}`;
-    try {
-      const r = await getCachedRoute(k, [{lat:aLat,lng:aLng},{lat:bLat,lng:bLng}]);
-      return rl(r) < ds * 10 ? r : [[aLat,aLng],[bLat,bLng]];
-    } catch(_) { return [[aLat,aLng],[bLat,bLng]]; }
-  };
-
-  for (const road of customRoads) {
-    if (!road.visible||!road.coords||road.coords.length<2) continue;
-    const n = road.coords.length;
-    const i1 = nearestRoadIdx(road, fromLat, fromLng);
-    const i2 = nearestRoadIdx(road, toLat, toLng);
-    const d1 = Math.hypot(fromLat-road.coords[i1][0], fromLng-road.coords[i1][1]);
-    const d2 = Math.hypot(toLat-road.coords[i2][0], toLng-road.coords[i2][1]);
-    const d1ep = Math.min(Math.hypot(fromLat-road.coords[0][0],fromLng-road.coords[0][1]),
-                          Math.hypot(fromLat-road.coords[n-1][0],fromLng-road.coords[n-1][1]));
-    const d2ep = Math.min(Math.hypot(toLat-road.coords[0][0],toLng-road.coords[0][1]),
-                          Math.hypot(toLat-road.coords[n-1][0],toLng-road.coords[n-1][1]));
-    const f1 = d1ep < EP_THR || d1 < MID_THR;
-    const f2 = d2ep < EP_THR || d2 < MID_THR;
-    if (!f1 && !f2) continue;
-    if (d1 >= EP_THR && d2 >= EP_THR) continue;
-
-    let roadSeg, connA, connB;
-
-    if (f1 && f2 && d1 < EP_THR && d2 < EP_THR && i1 !== i2) {
-      // ケースA: 両端近傍 → i1〜i2区間を使用
-      const s=Math.min(i1,i2), e=Math.max(i1,i2)+1;
-      roadSeg = road.coords.slice(s,e);
-      if (i1>i2) roadSeg = [...roadSeg].reverse();
-      connA = await conn(fromLat, fromLng, roadSeg[0][0], roadSeg[0][1], fitOut);
-      connB = await conn(roadSeg[roadSeg.length-1][0], roadSeg[roadSeg.length-1][1], toLat, toLng, fitIn);
-
-    } else if (f1 && d1 < EP_THR) {
-      // ケースB: FROMのみ近傍 → OSRM並列比較で最短出口を選択
-      const ep0=road.coords[0], epN=road.coords[n-1];
-      let rD0=0, rDN=0;
-      for(let k=0;k<i1;k++) rD0+=Math.hypot(road.coords[k][0]-road.coords[k+1][0],road.coords[k][1]-road.coords[k+1][1]);
-      for(let k=i1;k<n-1;k++) rDN+=Math.hypot(road.coords[k][0]-road.coords[k+1][0],road.coords[k][1]-road.coords[k+1][1]);
-      const [o0,oN] = fitIn ? await Promise.all([
-        getCachedRoute(`${ep0[1].toFixed(6)},${ep0[0].toFixed(6)};${toLng.toFixed(6)},${toLat.toFixed(6)}`,[{lat:ep0[0],lng:ep0[1]},{lat:toLat,lng:toLng}]).catch(()=>null),
-        getCachedRoute(`${epN[1].toFixed(6)},${epN[0].toFixed(6)};${toLng.toFixed(6)},${toLat.toFixed(6)}`,[{lat:epN[0],lng:epN[1]},{lat:toLat,lng:toLng}]).catch(()=>null)
-      ]) : [null,null];
-      const use0 = rD0+rl(o0) <= rDN+rl(oN);
-      let xi = use0 ? 0 : n-1;
-      let osrmB = use0 ? o0 : oN;
-      // 選択した出口がFROM付近 → 手動道路を「戻る」べきケースを考慮して反対端点で再試行
-      // 例: WP1(行き止まり端点)→WP2 で来た道を戻る必要がある場合
-      const _dFromXi = Math.hypot(fromLat-road.coords[xi][0],fromLng-road.coords[xi][1]);
-      console.log('[DEBUG_CASEB] road='+road.name+' n='+n+' i1='+i1+' xi='+xi+' use0='+use0+' dFromXi='+_dFromXi.toFixed(5)+' EP_THR='+EP_THR+' rD0='+rD0.toFixed(4)+' rDN='+rDN.toFixed(4)+' rl_o0='+(o0?rl(o0).toFixed(4):'null')+' rl_oN='+(oN?rl(oN).toFixed(4):'null'));
-      if (_dFromXi < EP_THR) {
-        const xi2 = xi===0 ? n-1 : 0;
-        // 反対端点がFROMとほぼ同一点（5m以内）のみスキップ
-        if (Math.hypot(fromLat-road.coords[xi2][0],fromLng-road.coords[xi2][1]) < 0.00005) continue;
-        // 反対端点で再構築（手動道路を走破して白い道に接続）
-        xi = xi2;
-        osrmB = xi2===0 ? o0 : oN; // 既計算のOSRM結果を流用
-      }
-      const s=Math.min(i1,xi), e=Math.max(i1,xi)+1;
-      roadSeg = road.coords.slice(s,e);
-      if (i1>xi) roadSeg = [...roadSeg].reverse();
-      connA = await conn(fromLat, fromLng, roadSeg[0][0], roadSeg[0][1], fitOut);
-      connB = osrmB || await conn(roadSeg[roadSeg.length-1][0],roadSeg[roadSeg.length-1][1],toLat,toLng,fitIn);
-
-    } else if (f2 && d2 < EP_THR) {
-      // ケースC: TOのみ近傍 → FROMに近い端点から進入
-      const ep0=road.coords[0], epN=road.coords[n-1];
-      const xi = Math.hypot(fromLat-ep0[0],fromLng-ep0[1]) < Math.hypot(fromLat-epN[0],fromLng-epN[1]) ? 0 : n-1;
-      // 入口端点≈TO → 手動道路区間が自明 → pure OSRM
-      if (Math.hypot(toLat-road.coords[xi][0],toLng-road.coords[xi][1]) < EP_THR) continue;
-      const s=Math.min(xi,i2), e=Math.max(xi,i2)+1;
-      roadSeg = road.coords.slice(s,e);
-      if (xi>i2) roadSeg = [...roadSeg].reverse();
-      connA = await conn(fromLat, fromLng, roadSeg[0][0], roadSeg[0][1], fitOut);
-      connB = await conn(roadSeg[roadSeg.length-1][0],roadSeg[roadSeg.length-1][1],toLat,toLng,fitIn);
-
-    } else continue;
-
-    return [...connA.slice(0,-1), ...roadSeg, ...connB.slice(1)];
-  }
-
-  // 手動道路なし → fitOut||fitIn のどちらかONならOSRM
-  if (fitOut || fitIn) {
-    const k = `${fromLng.toFixed(6)},${fromLat.toFixed(6)};${toLng.toFixed(6)},${toLat.toFixed(6)}`;
-    try { return await getCachedRoute(k, [{lat:fromLat,lng:fromLng},{lat:toLat,lng:toLng}]); }
-    catch(_) { return [[fromLat,fromLng],[toLat,toLng]]; }
-  }
-  return [[fromLat,fromLng],[toLat,toLng]];
+  const k = `${fromLng.toFixed(6)},${fromLat.toFixed(6)};${toLng.toFixed(6)},${toLat.toFixed(6)}`;
+  try { return await getCachedRoute(k, [{lat:fromLat,lng:fromLng},{lat:toLat,lng:toLng}]); }
+  catch(_) { return [[fromLat,fromLng],[toLat,toLng]]; }
 }
 
 async function buildRoutedCoords() {
@@ -1688,16 +1427,13 @@ async function buildRoutedCoords() {
         // VPがカスタム道路上(50m以内)かどうかの判定
         // 重要: 0.002(200m)を使うとWP5付近の全VP(junction200m圏内)が
         //       「カスタム道路VP」と誤判定され単一OSRMコールを使えなくなる
-        const ON_CR_THR = 0.0005; // ~50m: VPがカスタム道路上に直接置かれている
-        const onlyWhiteSnap = effSV.every(v=>v.fitBefore!==false&&v.fitAfter!==false) &&
-          !effSV.some(v=>customRoads.some(r=>{
-            if(!r.visible||!r.coords||r.coords.length<2) return false;
-            const idx=nearestRoadIdx(r,v.lat,v.lng);
-            return Math.hypot(v.lat-r.coords[idx][0],v.lng-r.coords[idx][1])<ON_CR_THR;
-          }));
+        const onlyWhiteSnap = effSV.every(v=>v.fitBefore!==false&&v.fitAfter!==false);
 
-        if (false) { // 単一OSRMコール廃止: カスタム道路起点WPのスナップ位置がずれるため
-          void 0;
+        if (onlyWhiteSnap && fitAout && fitBin) {
+          const allPts=[{lat:a.lat,lng:a.lng},...effSV.map(v=>({lat:v.lat,lng:v.lng})),{lat:b.lat,lng:b.lng}];
+          const key=allPts.map(p=>`${p.lng.toFixed(6)},${p.lat.toFixed(6)}`).join(';');
+          try { seg = await getCachedRoute(key, allPts); }
+          catch(_) { seg = baseRoute; }
         } else {
           // buildAnySegmentで各サブセグメントを処理（カスタム道路・白い道路を統一処理）
           seg = await buildAnySegment(a.lat,a.lng,effSV[0].lat,effSV[0].lng,fitAout,effSV[0].fitBefore!==false);
@@ -2130,21 +1866,16 @@ async function saveMapAsImage() {
    MODE / UNDO / CLEAR
    ============================================================ */
 function setMode(m) {
-  if (mode === 'road' && m !== 'road') cancelRoadDraw();
-  if (mode === 'road-edit' && m !== 'road-edit') finishRoadEdit(); // 道路描画中にモード変更→キャンセル
   mode = m;
   document.getElementById('btnWp')?.classList.toggle('on',   m==='wp');
   document.getElementById('btnVia')?.classList.toggle('on',  m==='via');
-  document.getElementById('btnRoad')?.classList.toggle('on', m==='road');
   const msgs = {
     'wp':       'クリックでウェイポイント追加 / ルート線ドラッグで経路調整',
     'via':      '調整点モード：ルートライン上をクリックまたはドラッグ',
     'road':     '🛤 道路描画モード：クリックで点を追加 → 完了ボタンで確定',
-    'road-edit':'✏️ 編集中：点をドラッグで移動 / ライン上クリックで追加 / 点を右クリックで削除 / 他モードで終了',
   };
   const el = document.getElementById('tbar-st');
   if (el) el.textContent = msgs[m] || '';
-  if (m === 'road') startRoadDraw();
 }
 
 /* ============================================================
@@ -2155,7 +1886,6 @@ function _makeSnapshot() {
     wps: wps.map(w=>({id:w.id,type:w.type,name:w.name,desc:w.desc,tel:w.tel,dwell:w.dwell||0,fitBefore:w.fitBefore!==false,fitAfter:w.fitAfter!==false,onRoute:w.onRoute!==undefined?w.onRoute!==false:(w.type==='course'),lat:w.lat,lng:w.lng,labelDir:w.labelDir||'top'})),
     vps: vps.map(v=>({id:v.id,segAfter:v.segAfter,fitBefore:v.fitBefore!==false,fitAfter:v.fitAfter!==false,lat:v.lat,lng:v.lng,order:v.order||0})),
     idW, idV,
-    customRoads: customRoads.map(r=>({id:r.id,name:r.name,coords:r.coords.map(c=>[...c]),visible:r.visible})),
     crIdCtr: _crIdCtr,
   };
 }
@@ -2179,10 +1909,8 @@ function restoreSnapshot(snapshot) {
   idV = snapshot.idV;
   wps = snapshot.wps.map(w=>{ const wp={...w, photos:savedPhotos[w.id]||[], marker:null}; buildWpMarker(wp); return wp; });
   vps = snapshot.vps.map(v=>{ const vp={...v,marker:null}; buildVpMarker(vp); return vp; });
-  customRoads.forEach(r => { if (r._line) leafMap.removeLayer(r._line); });
-  customRoads = (snapshot.customRoads || []).map(r => ({...r, _line:null}));
+
   if (snapshot.crIdCtr !== undefined) _crIdCtr = snapshot.crIdCtr;
-  customRoads.forEach(r => drawCustomRoadLine(r));
   clearCache(); redrawStraight(); scheduleRouting(); redrawList(); refreshIcons();
 }
 
@@ -2404,158 +2132,6 @@ function openFullPhoto(src) {
 }
 
 /* ============================================================
-   カスタム道路描画・ルーティング
-   ============================================================ */
-function startRoadDraw() {
-  if (_drawRoad) cancelRoadDraw(); // 念のため既存をキャンセル
-  _drawRoad = {id:++_crIdCtr, name:'道路'+_crIdCtr, coords:[], markers:[], previewLine:null};
-  document.getElementById('crFinishBar')?.classList.add('show');
-}
-
-function addRoadPoint(lat, lng) {
-  if (!_drawRoad) return;
-  _drawRoad.coords.push([lat, lng]);
-  // 仮マーカー
-  const m = L.circleMarker([lat, lng], {
-    radius:5, color:'#1565C0', fillColor:'#1565C0', fillOpacity:1, weight:2, interactive:false
-  }).addTo(leafMap);
-  _drawRoad.markers.push(m);
-  // プレビューライン更新
-  if (_drawRoad.previewLine) { leafMap.removeLayer(_drawRoad.previewLine); _drawRoad.previewLine=null; }
-  if (_drawRoad.coords.length >= 2) {
-    _drawRoad.previewLine = L.polyline(_drawRoad.coords, {
-      color:'#1565C0', weight:3, dashArray:'8,4', opacity:0.8, interactive:false
-    }).addTo(leafMap);
-  }
-}
-
-function finishRoadDraw() {
-  if (!_drawRoad) return;
-  if (_drawRoad.coords.length < 2) { cancelRoadDraw(); return; }
-  // 仮マーカー・ラインを削除
-  _drawRoad.markers.forEach(m => leafMap.removeLayer(m));
-  if (_drawRoad.previewLine) leafMap.removeLayer(_drawRoad.previewLine);
-  saveSnapshot(); // undo対応: 確定前にスナップショット保存
-  // 確定道路を保存
-  const road = {id:_drawRoad.id, name:_drawRoad.name, coords:[..._drawRoad.coords], visible:true, _line:null};
-  customRoads.push(road);
-  _drawRoad = null;
-  document.getElementById('crFinishBar')?.classList.remove('show');
-  drawCustomRoadLine(road);
-  showToast('🛤 カスタム道路を保存しました（' + road.coords.length + '点）');
-  clearCache(); scheduleRouting(); // 新しい道路でルートを再計算
-  setMode('wp');
-}
-
-function cancelRoadDraw() {
-  if (!_drawRoad) return;
-  _drawRoad.markers.forEach(m => leafMap.removeLayer(m));
-  if (_drawRoad.previewLine) leafMap.removeLayer(_drawRoad.previewLine);
-  _drawRoad = null;
-  document.getElementById('crFinishBar')?.classList.remove('show');
-}
-
-function drawCustomRoadLine(road) {
-  if (!leafMap || !road.coords || road.coords.length < 2) return;
-  if (road._line) { leafMap.removeLayer(road._line); road._line=null; }
-  if (!road.visible || !_crVisible) return;
-  road._line = L.polyline(road.coords, {
-    color:'#1565C0', weight:3, dashArray:'10,5', opacity:0.55, interactive:true
-  }).addTo(leafMap);
-  road._line.on('click', function(e) {
-    if (mode === 'road') return; // 道路描画中はスキップ
-    if (mode === 'road-edit' && _editRoad && _editRoad.road === road) {
-      _insertRoadPoint(road, e.latlng); // 編集中のラインクリック→点挿入
-    } else {
-      L.DomEvent.stop(e);
-      startRoadEdit(road); // クリックで編集開始
-    }
-  });
-}
-
-function drawAllCustomRoads() {
-  customRoads.forEach(r => drawCustomRoadLine(r));
-}
-
-function clearAllCustomRoadLines() {
-  customRoads.forEach(r => { if(r._line&&leafMap){leafMap.removeLayer(r._line);r._line=null;} });
-}
-
-function toggleCustomRoadsVisibility() {
-  _crVisible = !_crVisible;
-  const btnCrV = document.getElementById('btnCrVis');
-  if (btnCrV) btnCrV.classList.toggle('btn-off', !_crVisible);
-  if (_crVisible) drawAllCustomRoads(); else clearAllCustomRoadLines();
-}
-
-function nearestRoadIdx(road, lat, lng) {
-  let bestIdx=0, bestD=Infinity;
-  for (let i=0; i<road.coords.length; i++) {
-    const d=Math.hypot(lat-road.coords[i][0], lng-road.coords[i][1]);
-    if(d<bestD){bestD=d;bestIdx=i;}
-  }
-  return bestIdx;
-}
-
-function routeAlongCustomRoad(fromLat, fromLng, toLat, toLng) {
-  // WP/VP が道路に「近い」とみなすしきい値（約200m）
-  const THR = 0.002;
-
-  let best = null, bestScore = Infinity;
-
-  for (const road of customRoads) {
-    if (!road.visible || !road.coords || road.coords.length < 2) continue;
-    const n = road.coords.length;
-    const i1 = nearestRoadIdx(road, fromLat, fromLng);
-    const i2 = nearestRoadIdx(road, toLat,   toLng);
-    const d1 = Math.hypot(fromLat-road.coords[i1][0], fromLng-road.coords[i1][1]);
-    const d2 = Math.hypot(toLat  -road.coords[i2][0], toLng  -road.coords[i2][1]);
-
-    let seg = null, score = Infinity;
-
-    if (d1 < THR && d2 < THR) {
-      // ケースA: 両側が道路近傍 → i1〜i2の区間を使用
-      if (i1 === i2) continue;
-      const s=Math.min(i1,i2), e=Math.max(i1,i2)+1;
-      seg = road.coords.slice(s,e);
-      if (i1 > i2) seg = [...seg].reverse();
-      score = d1+d2;
-
-    } else if (d1 < THR) {
-      // ケースB: from側のみ道路近傍
-      // 出口エンドポイント = fromに「近い方の端点」の反対側
-      // 理由: TO側の距離で出口を決めると WP_BがWP_Aの端点側にある場合に
-      //       exitIdx=i1となってスキップされ null が返ってしまうバグが発生する
-      const dFrStart = Math.hypot(fromLat-road.coords[0][0],   fromLng-road.coords[0][1]);
-      const dFrEnd   = Math.hypot(fromLat-road.coords[n-1][0], fromLng-road.coords[n-1][1]);
-      // fromに近い端点の「反対側」を出口とする（道路を最大限に活用する）
-      const exitIdx  = dFrStart < dFrEnd ? n-1 : 0;
-      if (i1 === exitIdx) continue;
-      const s=Math.min(i1,exitIdx), e=Math.max(i1,exitIdx)+1;
-      seg = road.coords.slice(s,e);
-      if (i1 > exitIdx) seg = [...seg].reverse();
-      score = d1;
-
-    } else if (d2 < THR) {
-      // ケースC: to側のみ道路近傍
-      // 入口 = WP_Aに近い方の端点。ただしそれがi2と同じなら反対側へ
-      const dFromStart = Math.hypot(fromLat-road.coords[0][0],   fromLng-road.coords[0][1]);
-      const dFromEnd   = Math.hypot(fromLat-road.coords[n-1][0], fromLng-road.coords[n-1][1]);
-      let entryIdx = dFromStart < dFromEnd ? 0 : n-1;
-      if (entryIdx === i2) entryIdx = entryIdx === 0 ? n-1 : 0;
-      if (entryIdx === i2) continue;
-      const s=Math.min(entryIdx,i2), e=Math.max(entryIdx,i2)+1;
-      seg = road.coords.slice(s,e);
-      if (entryIdx > i2) seg = [...seg].reverse();
-      score = d2;
-    }
-
-    if (seg && score < bestScore) { bestScore = score; best = seg; }
-  }
-  return best;
-}
-
-/* ============================================================
    高低差グラフ
    ============================================================ */
 
@@ -2739,83 +2315,7 @@ function _drawMiniChart(pts, elevs) {
 /* ============================================================
    カスタム道路 点の編集
    ============================================================ */
-function startRoadEdit(road) {
-  if (_editRoad) finishRoadEdit();
-  saveSnapshot(); // 編集前スナップ（↩で取り消せる）
-  mode = 'road-edit';
-  ['btnWp','btnVia','btnRoad'].forEach(id=>document.getElementById(id)?.classList.remove('on'));
-  const el=document.getElementById('tbar-st');
-  if(el) el.textContent='✏️ 編集中：点をドラッグで移動 / ライン上クリックで追加 / 点を右クリックで削除 / 他モードで終了';
-  if(road._line) road._line.setStyle({opacity:0.9,weight:5,color:'#1565C0'});
-  const markers=road.coords.map((_,i)=>_makeEditMarker(road,i));
-  _editRoad={road,markers};
-  showToast('✏️ 道路編集モード（青い点線をクリックして点を追加、点を右クリックで削除）');
-}
 
-// L.marker + divIcon で円形の編集点マーカーを作成
-// 重要: L.circleMarkerはdraggableをサポートしないためL.markerを使用
-function _makeEditMarker(road, idx) {
-  const coord = road.coords[idx];
-  const icon = L.divIcon({
-    className: '',
-    html: '<div style="width:14px;height:14px;border-radius:50%;background:#fff;border:2.5px solid #0D47A1;cursor:move;box-sizing:border-box"></div>',
-    iconSize: [14,14], iconAnchor: [7,7]
-  });
-  const m = L.marker([coord[0],coord[1]], {icon, draggable:true, interactive:true, zIndexOffset:2000}).addTo(leafMap);
-
-  m.on('drag', function(e) {
-    const ll = e.target.getLatLng();
-    road.coords[idx] = [ll.lat, ll.lng];
-    if (road._line) road._line.setLatLngs(road.coords);
-  });
-  m.on('dragend', function() {
-    clearCache(); scheduleRouting();
-  });
-  m.on('contextmenu', function(e) {
-    L.DomEvent.stop(e);
-    if (road.coords.length <= 2) { showToast('⚠️ 最低2点必要です'); return; }
-    saveSnapshot();
-    road.coords.splice(idx, 1);
-    if (road._line) road._line.setLatLngs(road.coords);
-    if (_editRoad) {
-      _editRoad.markers.forEach(mk=>leafMap.removeLayer(mk));
-      _editRoad.markers = road.coords.map((_,i)=>_makeEditMarker(road,i));
-    }
-    clearCache(); scheduleRouting();
-  });
-  return m;
-}
-
-function _insertRoadPoint(road, latlng) {
-  let bestIdx=0, bestDist=Infinity;
-  for (let i=0;i<road.coords.length-1;i++) {
-    const a=road.coords[i],b=road.coords[i+1];
-    const mx=(a[0]+b[0])/2,my=(a[1]+b[1])/2;
-    const d=Math.hypot(latlng.lat-mx,latlng.lng-my);
-    if(d<bestDist){bestDist=d;bestIdx=i;}
-  }
-  saveSnapshot();
-  road.coords.splice(bestIdx+1,0,[latlng.lat,latlng.lng]);
-  if(road._line) road._line.setLatLngs(road.coords);
-  if(_editRoad){
-    _editRoad.markers.forEach(mk=>leafMap.removeLayer(mk));
-    _editRoad.markers=road.coords.map((_,i)=>_makeEditMarker(road,i));
-  }
-  clearCache(); scheduleRouting();
-}
-
-function finishRoadEdit() {
-  if (!_editRoad) return;
-  _editRoad.markers.forEach(m=>leafMap.removeLayer(m));
-  const road=_editRoad.road;
-  if(road._line) road._line.setStyle({opacity:0.55,weight:3,color:'#1565C0'});
-  _editRoad=null;
-  clearCache(); scheduleRouting();
-}
-
-/* ============================================================
-   COURSE SAVE / LOAD
-   ============================================================ */
 function buildCurrentSaveData() {
   if (!courseInfo.name) return null;
   return {
@@ -2829,7 +2329,6 @@ function buildCurrentSaveData() {
     zoom:    leafMap ? leafMap.getZoom() : 14,
     wps:     wps.map(w=>({id:w.id,type:w.type,name:w.name,desc:w.desc,tel:w.tel,dwell:w.dwell||0,fitBefore:w.fitBefore!==false,fitAfter:w.fitAfter!==false,onRoute:w.onRoute!==undefined?w.onRoute!==false:(w.type==='course'),lat:w.lat,lng:w.lng,labelDir:w.labelDir||'top',photos:w.photos||[]})),
     vps:     vps.map(v=>({id:v.id,segAfter:v.segAfter,fitBefore:v.fitBefore!==false,fitAfter:v.fitAfter!==false,lat:v.lat,lng:v.lng,order:v.order||0})),
-    customRoads: customRoads.map(r=>({id:r.id,name:r.name,coords:r.coords})),
     maxWpId: idW,
     maxVpNum:idV,
     savedAt: new Date().toISOString(),
@@ -2926,10 +2425,6 @@ function loadCourseData(data) {
     const descEl = document.getElementById('iDesc');
     if (descEl) descEl.value = data.desc||'';
 
-    // カスタム道路を復元
-    clearAllCustomRoadLines();
-    customRoads = (data.customRoads || []).map(r=>({...r, visible:true, _line:null}));
-    drawAllCustomRoads();
 
     refreshIcons();
     redrawStraight();
