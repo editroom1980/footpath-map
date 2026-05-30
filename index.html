@@ -1642,17 +1642,10 @@ async function buildRoutedCoords() {
       }
       const ON_TOL=0.0008; // 約80m以内はルート上とみなす（OSRMスナップ誤差を吸収）
       const effSV=sv.filter(v=>{
-        // fitBefore/fitAfterのいずれかがOFF → 必ず保持
+        // fitBefore/fitAfterのいずれかがOFF → ルートアンカーとして機能 → 必ず保持
+        // 例: VP.fitBefore=OFF → 前区間は直線固定、後区間はOSRM開始点として必要
         if(v.fitBefore===false||v.fitAfter===false) return true;
-        // カスタム道路上のVPは必ず保持（白い道路のbaseRouteと重なっていても除外しない）
-        // 理由: カスタム道路が公道と並行する場合、VP除外でルートが公道に流れてしまう
-        const ON_CR_THR_EFF = 0.0005; // ~50m: VPがカスタム道路上に直接置かれている
-        if(customRoads.some(r=>{
-          if(!r.visible||!r.coords||r.coords.length<2) return false;
-          const idx=nearestRoadIdx(r,v.lat,v.lng);
-          return Math.hypot(v.lat-r.coords[idx][0],v.lng-r.coords[idx][1])<ON_CR_THR_EFF;
-        })) return true;
-        // 白い道路上のVP: baseRoute上にあれば不要（ルート変更意図なし）
+        // 両方ONの場合のみ距離判定（ベースルート上なら不要）
         if(!baseRoute||baseRoute.length<2) return true;
         for(let i=0;i<baseRoute.length-1;i++){
           if(_dSeg(v.lat,v.lng,baseRoute[i][0],baseRoute[i][1],baseRoute[i+1][0],baseRoute[i+1][1])<ON_TOL) return false;
@@ -1676,8 +1669,19 @@ async function buildRoutedCoords() {
             return Math.hypot(v.lat-r.coords[idx][0],v.lng-r.coords[idx][1])<ON_CR_THR;
           }));
 
-        if (false) {
-          void 0;
+        // WPがカスタム道路端点にある場合はOSRMスナップが正確な位置からずれるため
+        // 単一OSRMコールではなくサブセグメント処理（buildAnySegment）を使う
+        const _wpAtCR = (wp) => customRoads.some(r => {
+          if(!r.visible||!r.coords||r.coords.length<2) return false;
+          const n = r.coords.length;
+          return Math.hypot(wp.lat-r.coords[0][0],wp.lng-r.coords[0][1]) < EP_THR ||
+                 Math.hypot(wp.lat-r.coords[n-1][0],wp.lng-r.coords[n-1][1]) < EP_THR;
+        });
+        if (onlyWhiteSnap && fitAout && fitBin && !_wpAtCR(a) && !_wpAtCR(b)) {
+          // 全VP白い道路上・WP非カスタム道路端点 → 単一OSRMで効率的なスナップ
+          const allPts=[{lat:a.lat,lng:a.lng},...effSV.map(v=>({lat:v.lat,lng:v.lng})),{lat:b.lat,lng:b.lng}];
+          const key=allPts.map(p=>`${p.lng.toFixed(6)},${p.lat.toFixed(6)}`).join(';');
+          seg = await getCachedRoute(key, allPts);
         } else {
           // buildAnySegmentで各サブセグメントを処理（カスタム道路・白い道路を統一処理）
           seg = await buildAnySegment(a.lat,a.lng,effSV[0].lat,effSV[0].lng,fitAout,effSV[0].fitBefore!==false);
