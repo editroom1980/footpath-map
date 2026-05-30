@@ -1030,22 +1030,9 @@ function toggleManualMode() {
   manualMode = !manualMode;
   const btn = document.getElementById('btnManual');
   if (btn) btn.classList.toggle('on', manualMode);
-
-  if (manualMode) {
-    // 手動モードON: 直前に打った調整点のfitAfterをfalseにする
-    // （白い道→手動区間の接続点として機能させる）
-    if (vps.length > 0) {
-      const lastVp = vps[vps.length - 1];
-      if (lastVp.fitAfter !== false) {
-        saveSnapshot();
-        lastVp.fitAfter = false;
-        clearCache(); scheduleRouting();
-      }
-    }
-    showToast('✋ 手動モード ON：調整点が白い道にフィットしません');
-  } else {
-    showToast('手動モード OFF：調整点は白い道にフィットします');
-  }
+  showToast(manualMode
+    ? '✋ 手動モード ON：以降の調整点は白い道にフィットしません'
+    : '手動モード OFF：以降の調整点は白い道にフィットします');
 }
 
 function ctxDoToggleFit(dir) {
@@ -1360,21 +1347,54 @@ async function doRouting() {
   if (routeWps().length < 2) return;
   showRtMsg(true);
   try {
-    await _prefetchOsrm(); // OSRM並列先行取得（失敗してもbuildRoutedCoordsが個別取得）
+    await _prefetchOsrm();
     const {allCoords, segCoordsList} = await buildRoutedCoords();
     if (allCoords && allCoords.length >= 2) {
-      _lastRouteCoords = allCoords;
-      // ルート変更時に高低差データを無効化
+
+      // ── start→① のルートを前に結合 ──────────────────────────
+      const startWp = wps.find(w => w.type === 'start');
+      const firstRw = routeWps()[0];
+      let startCoords = [];
+      if (startWp && firstRw) {
+        const k = `${startWp.lng.toFixed(6)},${startWp.lat.toFixed(6)};${firstRw.lng.toFixed(6)},${firstRw.lat.toFixed(6)}`;
+        try {
+          startCoords = await getCachedRoute(k, [{lat:startWp.lat,lng:startWp.lng},{lat:firstRw.lat,lng:firstRw.lng}]);
+        } catch(_) {
+          startCoords = [[startWp.lat,startWp.lng],[firstRw.lat,firstRw.lng]];
+        }
+      }
+
+      // ── lastWP→goal のルートを後ろに結合 ──────────────────────
+      const goalWp = wps.find(w => w.type === 'goal');
+      const lastRw = routeWps()[routeWps().length - 1];
+      let goalCoords = [];
+      if (goalWp && lastRw) {
+        const k = `${lastRw.lng.toFixed(6)},${lastRw.lat.toFixed(6)};${goalWp.lng.toFixed(6)},${goalWp.lat.toFixed(6)}`;
+        try {
+          goalCoords = await getCachedRoute(k, [{lat:lastRw.lat,lng:lastRw.lng},{lat:goalWp.lat,lng:goalWp.lng}]);
+        } catch(_) {
+          goalCoords = [[lastRw.lat,lastRw.lng],[goalWp.lat,goalWp.lng]];
+        }
+      }
+
+      // ── 全座標を結合 ────────────────────────────────────────
+      const fullCoords = [
+        ...(startCoords.length >= 2 ? startCoords.slice(0, -1) : []),
+        ...allCoords,
+        ...(goalCoords.length >= 2 ? goalCoords.slice(1) : [])
+      ];
+      const combined = fullCoords.length >= 2 ? fullCoords : allCoords;
+
+      _lastRouteCoords = combined;
       _elevData = null;
-      // ルート確定後に自動でミニチャートを更新（2秒debounce）
       if (_elevFetchTimer) clearTimeout(_elevFetchTimer);
       _elevFetchTimer = setTimeout(function() {
         _elevFetchTimer = null;
-        _refreshElevChart(false); // バックグラウンドfetch（モーダルは開かない）
+        _refreshElevChart(false);
       }, 2000);
       removeLines();
-      drawLines(allCoords, buildSegCoordsList());
-      updateDistanceAndTime(allCoords);
+      drawLines(combined, buildSegCoordsList());
+      updateDistanceAndTime(combined);
     }
   } catch(_) { /* keep straight lines on error */ }
   finally { showRtMsg(false); }
@@ -1934,7 +1954,6 @@ function saveModal() {
   wp.fitAfter  = document.getElementById('mFitAfter').checked;
   wp.labelDir  = document.getElementById('mLabelDir').value;
   wp.onRoute   = document.getElementById('mOnRoute').checked;
-  if (wp.type === 'start' || wp.type === 'goal') wp.onRoute = false;
   wp.photos    = [..._modalPhotos];
   if (wp.marker) wp.marker.setIcon(wpIcon(wp));
   updateTooltip(wp);
