@@ -760,11 +760,11 @@ function addWp(lat, lng, type) {
   type = type || 'course';
   saveSnapshot();
   idW++;
-  const onRoute = (type === 'course'); // course=ルート接続, その他=独立ポイント（後からモーダルで変更可）
+  const onRoute = true; // 全種別でデフォルトはルートに含める（モーダルで変更可）
   const wp = {id:idW, type, name:'', desc:'', tel:'', dwell:0, fitBefore:true, fitAfter:true, onRoute, lat, lng, photos:[], labelDir:'top', marker:null};
   wps.push(wp);
   buildWpMarker(wp);
-  if (type === 'course') { redrawStraight(); scheduleRouting(); }
+  redrawStraight(); scheduleRouting(); // 全種別でルートを再計算
   redrawList(); refreshIcons();
   return wp; // openModalで使用
 }
@@ -797,10 +797,11 @@ function wpIcon(wp, sz, anc) {
   });
 }
 
-// ルート接続WP（onRoute !== false）を元の配列順で返す
-// onRouteはWPごとに個別設定可能。未設定の場合はtype==='course'をデフォルトとする
+// ルート接続WP（onRoute=true）を元の配列順で返す
+// 型に関わらずonRoute=trueであればルートに含める
+// → コースポイント→スタート変更時もルートが変わらない
 function routeWps() {
-  return wps.filter(w => w.type !== 'start' && w.type !== 'goal' && w.onRoute !== false && (w.onRoute === true || w.type === 'course'));
+  return wps.filter(w => w.onRoute !== false && (w.onRoute === true || w.type === 'course'));
 }
 
 function courseNum(wp) {
@@ -861,7 +862,7 @@ function deleteWp(id) {
    VIA POINTS
    ============================================================ */
 function addVp(lat, lng) {
-  if (routeWps().length < 2) { alert('コースポイントを2点以上追加してから経路調整点を追加してください。'); return; }
+  if (routeWps().length < 2) { alert('ルートに含めるウェイポイントを2点以上追加してから経路調整点を追加してください。'); return; }
   saveSnapshot();
   idV++;
   const _saId   = nearestSegWpId(lat, lng);
@@ -1275,20 +1276,24 @@ function removeLines() {
 }
 
 function buildStraightCoords() {
-  const c  = [];
-  const rw = routeWps();
-  // スタートが存在し、かつコースWPがある場合は先頭に追加
+  const rw      = routeWps();
   const startWp = wps.find(w => w.type === 'start');
   const goalWp  = wps.find(w => w.type === 'goal');
-  if (startWp && rw.length > 0) c.push([startWp.lat, startWp.lng]);
+  const c = [];
+  // スタートがrouteWpsに含まれない場合のみ先頭に追加
+  if (startWp && rw.length > 0 && rw[0].id !== startWp.id) {
+    c.push([startWp.lat, startWp.lng]);
+  }
   for (let i = 0; i < rw.length; i++) {
     c.push([rw[i].lat, rw[i].lng]);
     if (i + 1 < rw.length) {
       segVpsOf(rw[i].id, rw[i], rw[i+1]).forEach(v => c.push([v.lat, v.lng]));
     }
   }
-  // ゴールが存在し、かつコースWPがある場合は末尾に追加
-  if (goalWp && rw.length > 0) c.push([goalWp.lat, goalWp.lng]);
+  // ゴールがrouteWpsに含まれない場合のみ末尾に追加
+  if (goalWp && rw.length > 0 && rw[rw.length - 1].id !== goalWp.id) {
+    c.push([goalWp.lat, goalWp.lng]);
+  }
   return c;
 }
 
@@ -1357,11 +1362,12 @@ async function doRouting() {
     const {allCoords, segCoordsList} = await buildRoutedCoords();
     if (allCoords && allCoords.length >= 2) {
 
-      // ── start→① のルートを前に結合 ──────────────────────────
-      const startWp = wps.find(w => w.type === 'start');
-      const firstRw = routeWps()[0];
+      // ── start→① のルートを前に結合（startがrouteWpsに未含有の場合のみ）──
+      const rw_      = routeWps();
+      const startWp  = wps.find(w => w.type === 'start');
+      const firstRw  = rw_[0];
       let startCoords = [];
-      if (startWp && firstRw) {
+      if (startWp && firstRw && startWp.id !== firstRw.id) {
         const k = `${startWp.lng.toFixed(6)},${startWp.lat.toFixed(6)};${firstRw.lng.toFixed(6)},${firstRw.lat.toFixed(6)}`;
         try {
           startCoords = await getCachedRoute(k, [{lat:startWp.lat,lng:startWp.lng},{lat:firstRw.lat,lng:firstRw.lng}]);
@@ -1370,11 +1376,11 @@ async function doRouting() {
         }
       }
 
-      // ── lastWP→goal のルートを後ろに結合 ──────────────────────
-      const goalWp = wps.find(w => w.type === 'goal');
-      const lastRw = routeWps()[routeWps().length - 1];
+      // ── lastWP→goal のルートを後ろに結合（goalがrouteWpsに未含有の場合のみ）──
+      const goalWp   = wps.find(w => w.type === 'goal');
+      const lastRw   = rw_[rw_.length - 1];
       let goalCoords = [];
-      if (goalWp && lastRw) {
+      if (goalWp && lastRw && goalWp.id !== lastRw.id) {
         const k = `${lastRw.lng.toFixed(6)},${lastRw.lat.toFixed(6)};${goalWp.lng.toFixed(6)},${goalWp.lat.toFixed(6)}`;
         try {
           goalCoords = await getCachedRoute(k, [{lat:lastRw.lat,lng:lastRw.lng},{lat:goalWp.lat,lng:goalWp.lng}]);
@@ -1701,7 +1707,7 @@ function saveModal() {
   redrawList();
   // type変更またはonRoute変更時はルートを再計算
   const _newOnRoute = wp.onRoute !== false;
-  if ((_oldType==='course') !== (wp.type==='course') || _oldOnRoute !== _newOnRoute) { clearCache(); redrawStraight(); scheduleRouting(); }
+  if (_oldType !== wp.type || _oldOnRoute !== _newOnRoute) { clearCache(); redrawStraight(); scheduleRouting(); }
   updateDistanceAndTime();
 }
 
@@ -1908,8 +1914,7 @@ function _makeSnapshot() {
     wps: wps.map(w=>({id:w.id,type:w.type,name:w.name,desc:w.desc,tel:w.tel,dwell:w.dwell||0,fitBefore:w.fitBefore!==false,fitAfter:w.fitAfter!==false,onRoute:w.onRoute!==undefined?w.onRoute!==false:(w.type==='course'),lat:w.lat,lng:w.lng,labelDir:w.labelDir||'top'})),
     vps: vps.map(v=>({id:v.id,segAfter:v.segAfter,fitBefore:v.fitBefore!==false,fitAfter:v.fitAfter!==false,lat:v.lat,lng:v.lng,order:v.order||0})),
     idW, idV,
-    customRoads: customRoads.map(r=>({id:r.id,name:r.name,coords:r.coords.map(c=>[...c]),visible:r.visible})),
-    crIdCtr: _crIdCtr,
+
   };
 }
 
@@ -1932,9 +1937,7 @@ function restoreSnapshot(snapshot) {
   idV = snapshot.idV;
   wps = snapshot.wps.map(w=>{ const wp={...w, photos:savedPhotos[w.id]||[], marker:null}; buildWpMarker(wp); return wp; });
   vps = snapshot.vps.map(v=>{ const vp={...v,marker:null}; buildVpMarker(vp); return vp; });
-  customRoads.forEach(r => { if (r._line) leafMap.removeLayer(r._line); });
-  customRoads = (snapshot.customRoads || []).map(r => ({...r, _line:null}));
-  if (snapshot.crIdCtr !== undefined) _crIdCtr = snapshot.crIdCtr;
+
   clearCache(); redrawStraight(); scheduleRouting(); redrawList(); refreshIcons();
 }
 
@@ -2404,9 +2407,8 @@ function loadCourseData(data) {
         fitAfter:  w.fitAfter  !== undefined ? w.fitAfter  !== false : _fitR,
         labelDir:  w.labelDir  || 'top',
         labelWrap: !!w.labelWrap,
-        // onRoute: 旧データはtypeで自動判定（backward compat）
-        // goal/startはroute非接続デフォルト（course以外はonRoute:false）
-        onRoute:   (w.type === 'start' || w.type === 'goal') ? false : (w.onRoute !== undefined ? w.onRoute !== false : w.type === 'course'),
+        // onRoute: 保存値を尊重。旧データはtype===courseをデフォルト
+        onRoute:   w.onRoute !== undefined ? w.onRoute !== false : w.type === 'course',
         photos:    w.photos    || [],
         marker:    null
       };
