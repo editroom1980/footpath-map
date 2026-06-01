@@ -165,14 +165,56 @@ html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:
 .ctx-it.ctx-cancel{color:#888;font-size:11px;justify-content:center}
 .ctx-sep{height:1px;background:#EEE8DE;margin:2px 0}
 /* Mobile */
-@media(max-width:700px){
-  #main{flex-direction:column}
+/* モバイル共通 */
+  @media(max-width:768px){
+  .btn{min-height:36px;font-size:12px;padding:6px 10px}
+  .wp-dot{width:26px;height:26px;font-size:11px}
+  #hdr{display:none!important}
+  #tbar{display:none!important}
+  #sidebar{display:none!important}
+  #s2{height:100dvh;height:100vh}
+  #main{position:absolute;inset:0}
+  #mapArea{position:absolute;inset:0;display:flex;flex-direction:column}
+  #mapWrap{flex:1;min-height:0;position:relative}
+  #mobileTopBar{display:flex!important}
+  #mobileRbtns{display:flex!important}
+  #mobileShelf{display:flex!important}
+  #mobileElevBand{display:block!important}}
   #sidebar{width:100%;border-right:none;border-top:2px solid #C4703A;max-height:44vh;order:2;flex-shrink:0}
   #mapArea{order:1;flex:1;min-height:0}
   .btn{min-height:36px;font-size:12px;padding:6px 10px}
   .wp-dot{width:26px;height:26px;font-size:11px}
   .wp-row{padding:7px 10px}
 }
+
+/* ━━━ モバイルUI要素 ━━━ */
+#mobileTopBar,#mobileRbtns,#mobileShelf,#mobileElevBand{display:none}
+#mobileTopBar{position:absolute;top:0;left:0;right:0;z-index:1000;padding:8px 12px;align-items:center;gap:10px;background:rgba(255,255,255,0.92)}
+.mob-back{width:30px;height:30px;border-radius:50%;background:#F5F4F2;border:0.5px solid rgba(0,0,0,0.1);display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer}
+.mob-back i{font-size:15px;color:#1C1917}
+#mobileCourseTitle{flex:1;font-size:14px;font-weight:700;color:#1C1917;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mob-save{background:#F97316;color:#fff;font-size:11px;font-weight:700;padding:5px 14px;border-radius:14px;border:none;cursor:pointer;flex-shrink:0}
+#mobileRbtns{position:absolute;right:10px;top:52px;z-index:1000;flex-direction:column;gap:5px}
+.mrb{width:32px;height:32px;background:rgba(255,255,255,0.92);border:0.5px solid rgba(0,0,0,0.09);border-radius:9px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;color:#3D3835}
+.mrb:disabled{opacity:0.35;cursor:default}
+.mrb.mt{margin-top:5px}
+#mobileShelf{background:#fff;border-top:0.5px solid rgba(0,0,0,0.07);height:54px;flex-shrink:0;padding:0 12px;gap:6px;align-items:center}
+.mob-modes{display:flex;gap:3px;align-items:center;flex-shrink:0}
+.mob-mode{height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;border:none;background:transparent;color:#C4BEB8;font-size:14px;padding:0 8px}
+.mob-mode.lbl{font-size:10px;font-weight:700;gap:4px}
+.mob-mode.lbl span{font-size:10px;font-weight:700}
+.mob-mode.on{background:#FFF3EC;color:#F97316}
+.mob-mode.on span{color:#F97316}
+.mob-sdiv{width:0.5px;height:22px;background:rgba(0,0,0,0.08);flex-shrink:0}
+.mob-stats{flex:1;display:flex;align-items:center;justify-content:center;gap:5px;font-family:'Hiragino Sans','Meiryo',sans-serif}
+.mob-stat-v{font-size:15px;font-weight:bold;color:#1C1917}
+.mob-stat-u{font-size:9px;color:#A8A29E}
+.mob-stat-s{font-size:10px;color:#E2DDD4}
+#mobileElevBand{background:#fff;border-top:0.5px solid rgba(0,0,0,0.06);padding:5px 14px 7px;flex-shrink:0}
+.mob-elev-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px}
+.mob-elev-hdr span{font-size:9px;color:#C4BEB8}
+#mobileElevStats{font-size:9px;color:#F97316;font-weight:bold}
+#mobileElevSvg{display:block;width:100%;height:36px}
 </style>
 </head>
 <body>
@@ -278,6 +320,42 @@ html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:
         <div id="map"></div>
         <div id="mapMsg">⚠️ プレビュー環境では地図タイルは表示されません<br><span style="font-size:10px">GitHub Pagesに公開すると正常に表示されます</span></div>
         <div id="rtMsg">🔄 ルートを計算中...</div>
+        <!-- モバイル: 地図上フロートUI -->
+        <div id="mobileTopBar">
+          <div class="mob-back" onclick="backToS1()" aria-label="一覧へ戻る"><i class="ti ti-arrow-left" aria-hidden="true"></i></div>
+          <span id="mobileCourseTitle"></span>
+          <button class="mob-save" onclick="saveCourse()">保存</button>
+        </div>
+        <div id="mobileRbtns">
+          <button class="mrb" id="mobileUndoBtn" onclick="undoLast()" disabled aria-label="取り消し"><i class="ti ti-arrow-back-up" aria-hidden="true"></i></button>
+          <button class="mrb" id="mobileRedoBtn" onclick="redoAction()" disabled aria-label="やり直し"><i class="ti ti-arrow-forward-up" aria-hidden="true"></i></button>
+          <button class="mrb mt" onclick="saveMapAsImage()" aria-label="画像保存"><i class="ti ti-camera" aria-hidden="true"></i></button>
+          <button class="mrb mt" onclick="leafMap&&leafMap.zoomIn()" aria-label="拡大"><i class="ti ti-plus" aria-hidden="true"></i></button>
+          <button class="mrb" onclick="leafMap&&leafMap.zoomOut()" aria-label="縮小"><i class="ti ti-minus" aria-hidden="true"></i></button>
+        </div>
+      </div>
+      <!-- モバイル: コントロールシェルフ -->
+      <div id="mobileShelf">
+        <div class="mob-modes">
+          <button id="mobileWpBtn"  class="mob-mode lbl on" onclick="setMode('wp')"><i class="ti ti-map-pin" aria-hidden="true"></i><span>WP</span></button>
+          <button id="mobileViaBtn" class="mob-mode" onclick="setMode('via')" aria-label="調整点"><i class="ti ti-adjustments-horizontal" aria-hidden="true"></i></button>
+          <button id="mobileLblBtn" class="mob-mode" onclick="toggleMapLabels()" aria-label="地名"><i class="ti ti-typography" aria-hidden="true"></i></button>
+          <button id="mobileManBtn" class="mob-mode" onclick="toggleManualMode()" aria-label="手動モード"><i class="ti ti-hand-stop" aria-hidden="true"></i></button>
+        </div>
+        <div class="mob-sdiv"></div>
+        <div class="mob-stats">
+          <span id="mobileDistDisp" class="mob-stat-v">—</span><span class="mob-stat-u">km</span>
+          <span class="mob-stat-s">·</span>
+          <span id="mobileTimeDisp" class="mob-stat-v">—</span>
+        </div>
+        <div class="mob-sdiv"></div>
+        <button class="mrb" onclick="toggleElevPanel()" aria-label="高低差"><i class="ti ti-chart-line" aria-hidden="true"></i></button>
+        <button class="mrb" onclick="openViewMode()" aria-label="閲覧モード"><i class="ti ti-eye" aria-hidden="true"></i></button>
+      </div>
+      <!-- モバイル: 高低差バンド -->
+      <div id="mobileElevBand">
+        <div class="mob-elev-hdr"><span>高低差</span><span id="mobileElevStats"></span></div>
+        <svg id="mobileElevSvg" viewBox="0 0 200 36" preserveAspectRatio="none"></svg>
       </div>
     </div>
   </div>
@@ -538,6 +616,7 @@ async function newCourse() {
   document.getElementById('s1').style.display = 'none';
   document.getElementById('s2').style.display = 'flex';
   document.getElementById('cnDisp').textContent = name;
+  const mct=document.getElementById('mobileCourseTitle'); if(mct) mct.textContent=name;
 
   setTimeout(async () => {
     if (!leafMap) initMap(); else leafMap.invalidateSize();
@@ -1026,6 +1105,7 @@ function toggleManualMode() {
   manualMode = !manualMode;
   const btn = document.getElementById('btnManual');
   if (btn) btn.classList.toggle('on', manualMode);
+  document.getElementById('mobileManBtn')?.classList.toggle('on', manualMode);
   showToast(manualMode
     ? '✋ 手動モード ON：以降の調整点は白い道にフィットしません'
     : '手動モード OFF：以降の調整点は白い道にフィットします');
@@ -1575,12 +1655,18 @@ function updateDistanceAndTime(coords) {
 
   const distEl = document.getElementById('distDisp');
   const timeEl = document.getElementById('timeDisp');
+  const mobDist = document.getElementById('mobileDistDisp');
+  const mobTime = document.getElementById('mobileTimeDisp');
   if (c.length >= 2) {
     if (distEl) distEl.textContent = `総距離: ${(dist/1000).toFixed(2)} km`;
     if (timeEl) timeEl.textContent = `所要時間: 約${calcTotalTime(dist)}（歩行4km/h）`;
+    if (mobDist) mobDist.textContent = (dist/1000).toFixed(1);
+    if (mobTime) mobTime.textContent = calcTotalTime(dist);
   } else {
     if (distEl) distEl.textContent = '総距離: — km';
     if (timeEl) timeEl.textContent = '所要時間: —';
+    if (mobDist) mobDist.textContent = '—';
+    if (mobTime) mobTime.textContent = '—';
   }
 }
 
@@ -1894,6 +1980,8 @@ function setMode(m) {
   document.getElementById('btnWp')?.classList.toggle('on',   m==='wp');
   document.getElementById('btnVia')?.classList.toggle('on',  m==='via');
   document.getElementById('btnRoad')?.classList.toggle('on', m==='road');
+  document.getElementById('mobileWpBtn')?.classList.toggle('on',  m==='wp');
+  document.getElementById('mobileViaBtn')?.classList.toggle('on', m==='via');
   const msgs = {
     'wp':       'クリックでウェイポイント追加 / ルート線ドラッグで経路調整',
     'via':      '調整点モード：ルートライン上をクリックまたはドラッグ',
@@ -1958,6 +2046,8 @@ function updateUndoRedoBtns() {
   const r = document.getElementById('btnRedo');
   if (u) u.disabled = (undoStack.length === 0);
   if (r) r.disabled = (redoStack.length === 0);
+  document.getElementById('mobileUndoBtn')?.toggleAttribute('disabled', undoStack.length===0);
+  document.getElementById('mobileRedoBtn')?.toggleAttribute('disabled', redoStack.length===0);
 }
 
 function clearAll() {
@@ -2336,6 +2426,14 @@ function _drawMiniChart(pts, elevs) {
     `<path d="${fillD}" fill="#C4703A" fill-opacity="0.18"/>`+
     `<path d="${lineD}" fill="none" stroke="#C4703A" stroke-width="1.8"/>`+
     `<line x1="${PL}" y1="${PT}" x2="${PL}" y2="${PT+iH}" stroke="#C0A882" stroke-width="0.8"/>`;
+  // モバイル高低差SVGに同期
+  const mobElev = document.getElementById('mobileElevSvg');
+  if (mobElev) { mobElev.setAttribute('viewBox',`0 0 ${W} ${H}`); mobElev.innerHTML = miniSvg.innerHTML; }
+  const mobStats = document.getElementById('mobileElevStats');
+  if (mobStats && elevs.length) {
+    const asc = elevs.reduce((s,e,i)=>i>0&&e>elevs[i-1]?s+(e-elevs[i-1]):s,0);
+    mobStats.textContent = `+${Math.round(asc)}m`;
+  }
 }
 
 /* ============================================================
