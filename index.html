@@ -257,14 +257,14 @@ html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:
 /* …メニューシート */
 #mobileMenuScrim{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.34);z-index:2000}
 #mobileMenuScrim.show{display:block}
-#mobileMenuSheet{display:none;position:fixed;left:0;right:0;bottom:0;z-index:2001;background:#fff;border-radius:24px 24px 0 0;padding:10px 18px calc(18px + env(safe-area-inset-bottom));max-height:86vh;overflow-y:auto}
+#mobileMenuSheet{display:none;position:fixed;left:0;right:0;bottom:0;z-index:2001;background:#fff;border-radius:22px 22px 0 0;padding:8px 18px calc(14px + env(safe-area-inset-bottom));max-height:90vh;overflow-y:auto}
 #mobileMenuSheet.show{display:block}
-.mm-dh{width:40px;height:5px;background:#E5E7EB;border-radius:3px;margin:0 auto 12px}
-.mm-t{font-family:'Plus Jakarta Sans',sans-serif;font-size:16px;font-weight:800;color:#1C1917;margin-bottom:16px;text-align:center;position:relative}
+.mm-dh{width:36px;height:4px;background:#E5E7EB;border-radius:3px;margin:0 auto 9px}
+.mm-t{font-family:'Plus Jakarta Sans',sans-serif;font-size:15px;font-weight:800;color:#1C1917;margin-bottom:11px;text-align:center;position:relative}
 .mm-close{position:absolute;right:0;top:-3px;width:28px;height:28px;border-radius:50%;background:#F2EFEA;border:none;display:flex;align-items:center;justify-content:center;color:#8A8077;font-size:15px;cursor:pointer}
-.mm-sec{font-size:10px;font-weight:700;color:#B0A99F;font-family:'Plus Jakarta Sans',sans-serif;letter-spacing:0.06em;margin:0 2px 8px}
-.mm-tog-wrap{background:#F9F7F4;border-radius:14px;padding:2px 14px;margin-bottom:18px}
-.mm-tog{display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:0.5px solid rgba(0,0,0,0.05);cursor:pointer}
+.mm-sec{font-size:9px;font-weight:700;color:#B0A99F;font-family:'Plus Jakarta Sans',sans-serif;letter-spacing:0.06em;margin:0 2px 5px}
+.mm-tog-wrap{background:#F9F7F4;border-radius:13px;padding:1px 14px;margin-bottom:12px}
+.mm-tog{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:0.5px solid rgba(0,0,0,0.05);cursor:pointer}
 .mm-tog:last-child{border-bottom:none}
 .mm-tog-ic{font-size:16px;color:#6A645E;display:flex}
 .mm-tog-l{flex:1;font-size:13px;color:#2C2620;font-weight:500}
@@ -272,17 +272,20 @@ html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:
 .mm-sw::after{content:'';position:absolute;width:21px;height:21px;border-radius:50%;background:#fff;top:2px;left:2px;box-shadow:0 1px 3px rgba(0,0,0,0.2);transition:left .15s}
 .mm-sw.on{background:#F2670E}
 .mm-sw.on::after{left:19px}
-.mm-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:18px}
-.mm-act{display:flex;flex-direction:column;align-items:center;gap:7px;padding:14px 4px;border-radius:15px;background:#F9F7F4;color:#3D3835;font-size:20px;border:none;cursor:pointer;font-family:inherit}
+.mm-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.mm-act{display:flex;flex-direction:column;align-items:center;gap:6px;padding:11px 4px;border-radius:13px;background:#F9F7F4;color:#3D3835;font-size:19px;border:none;cursor:pointer;font-family:inherit}
 .mm-act span{font-size:10px;color:#5A554E;text-align:center;line-height:1.3;font-weight:500}
 .mm-act-ph{visibility:hidden}
-.mm-danger{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:13px;border-radius:14px;background:#FEF2F2;color:#DC2626;border:none;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer}
+.mm-danger{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:11px;border-radius:13px;background:#FEF2F2;color:#DC2626;border:none;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer}
 /* なぞり描きモード：3モード構成でボタンを詰める */
 #mobileShelf .mob-modes{gap:2px}
 .mob-mode.lbl{padding:0 9px;gap:4px}
 /* なぞり描き中はマップ上のテキスト選択を防止 */
 body.drawing-active{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 #map.draw-cursor{cursor:crosshair}
+/* なぞり描き中はマーカー（WP/VP）がタッチを拾わない＝確実に動かない */
+body.drawing-active .leaflet-marker-pane{pointer-events:none!important}
+body.drawing-active .leaflet-overlay-pane{pointer-events:none!important}
 </style>
 </head>
 <body>
@@ -1368,6 +1371,13 @@ function _drawNearbyWp(ll, thrPx) {
 
 function _drawStart(ev) {
   if (!_drawActive) return;
+  // 2本指以上（ピンチ）はなぞらない → Leafletのズーム操作に委ねる
+  if (ev.touches && ev.touches.length > 1) {
+    _drawing = false;
+    if (_drawPreview) { try { leafMap.removeLayer(_drawPreview); } catch(_){} _drawPreview = null; }
+    _drawPts = [];
+    return;
+  }
   const ll = _drawEvtLatLng(ev);
   if (!ll) return;
   if (ev.cancelable) ev.preventDefault();
@@ -1382,6 +1392,13 @@ function _drawStart(ev) {
 
 function _drawMove(ev) {
   if (!_drawActive || !_drawing) return;
+  // なぞり中に2本目の指 → ピンチに切替。トレースを中断しズームに委ねる
+  if (ev.touches && ev.touches.length > 1) {
+    _drawing = false;
+    if (_drawPreview) { try { leafMap.removeLayer(_drawPreview); } catch(_){} _drawPreview = null; }
+    _drawPts = [];
+    return;
+  }
   const ll = _drawEvtLatLng(ev);
   if (!ll) return;
   if (ev.cancelable) ev.preventDefault();
@@ -1423,8 +1440,15 @@ function _addTraceWp(lat, lng, type, afterWp) {
   return wp;
 }
 
+// セグメント内の次のorder値
+function _nextOrder(segId) {
+  let mx = -1;
+  vps.forEach(v => { if (v.segAfter === segId && (v.order||0) > mx) mx = v.order||0; });
+  return mx + 1;
+}
+
 function _finalizeTrace(rawPts, startWp) {
-  // 1. 画面座標で間引き補正（Leaflet標準のsimplify）
+  // 1. 画面座標で間引き補正（Leaflet標準のsimplify）→ なぞった軌跡を見やすい線に
   const cpts = rawPts.map(p => leafMap.latLngToContainerPoint(L.latLng(p[0], p[1])));
   const simp = L.LineUtil.simplify(cpts, 10);
   const llpts = simp.map(p => { const ll = leafMap.containerPointToLatLng(p); return [ll.lat, ll.lng]; });
@@ -1432,31 +1456,39 @@ function _finalizeTrace(rawPts, startWp) {
 
   saveSnapshot();
 
-  // 2. 開始WPを決定（近傍WP > ルート末尾WP > 新規）
-  let sWp = startWp;
-  if (!sWp) {
-    const rw = routeWps();
-    if (rw.length > 0) sWp = rw[rw.length-1];
-    else sWp = _addTraceWp(llpts[0][0], llpts[0][1], wps.length===0 ? 'start' : 'course');
+  // 2. スタート(S)を確保（コース全体で1つ）
+  let sWp = wps.find(w => w.type === 'start');
+  let firstStroke = false;
+  if (!sWp) { sWp = _addTraceWp(llpts[0][0], llpts[0][1], 'start'); firstStroke = true; }
+
+  // 3. ゴール(G)を確保。既存なら現在地を調整点として残し、後でGを終点へ移動
+  let gWp = wps.find(w => w.type === 'goal');
+
+  // 4. 軌跡の点を「調整点(VP)」として配置（fit=false＝軌跡通りに必ず描画）
+  //    すべて segAfter=S.id の単一セグメント上に順番通り並べる
+  let ord = _nextOrder(sWp.id);
+  const vpPos = [];
+  if (gWp) vpPos.push({lat:gWp.lat, lng:gWp.lng}); // 続きのなぞり：旧ゴールを調整点化
+  const startIdx = firstStroke ? 1 : 0;            // 初回はllpts[0]=Sと重複するのでスキップ
+  for (let i = startIdx; i < llpts.length - 1; i++) vpPos.push({lat:llpts[i][0], lng:llpts[i][1]});
+  vpPos.forEach(p => {
+    idV++;
+    const vp = {id:'v'+idV, segAfter:sWp.id, order:ord++, fitBefore:false, fitAfter:false, lat:p.lat, lng:p.lng, marker:null};
+    vps.push(vp);
+    buildVpMarker(vp);
+    if (_drawActive) { try { if (vp.marker && vp.marker.dragging) vp.marker.dragging.disable(); } catch(_){} }
+  });
+
+  // 5. ゴール(G)を終点へ作成 or 移動（コース全体でWPはS・Gの2つだけ）
+  const endP = llpts[llpts.length - 1];
+  if (gWp) {
+    gWp.lat = endP[0]; gWp.lng = endP[1];
+    if (gWp.marker) gWp.marker.setLatLng([gWp.lat, gWp.lng]);
+  } else {
+    gWp = _addTraceWp(endP[0], endP[1], 'goal');
   }
 
-  // 3. 終点WPを sWp の直後に作成
-  const eWp = _addTraceWp(llpts[llpts.length-1][0], llpts[llpts.length-1][1], 'course', sWp);
-
-  // 4. 中間点を sWp〜eWp セグメントのVPとして配置（fit=true→道路フィット試行）
-  const mid = llpts.slice(1, -1);
-  let ord = 0;
-  const newVps = [];
-  mid.forEach(p => {
-    idV++;
-    const vp = {id:'v'+idV, segAfter:sWp.id, order:ord++,
-      fitBefore:true, fitAfter:true, lat:p[0], lng:p[1], marker:null};
-    vps.push(vp);
-    newVps.push(vp);
-  });
-  newVps.forEach(v => { buildVpMarker(v); if (_drawActive) { try { if (v.marker && v.marker.dragging) v.marker.dragging.disable(); } catch(_){} } });
-
-  // 5. 再描画・ルーティング（既存処理に委ねる）
+  // 6. 再描画・ルーティング（既存処理に委ねる）
   clearCache(); redrawStraight(); scheduleRouting();
   refreshIcons(); redrawList();
 }
