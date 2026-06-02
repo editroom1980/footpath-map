@@ -99,14 +99,14 @@ html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:
 /* Modal */
 .m-over{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:3000;align-items:center;justify-content:center}
 .m-over.show{display:flex}
-.m-box{background:#fff;border-radius:10px;width:min(360px,95vw);max-height:88vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.35)}
-.m-hdr{background:#3E2A0E;color:#F5EDD8;padding:11px 14px;border-radius:10px 10px 0 0;display:flex;justify-content:space-between;align-items:center;font-size:13px;font-weight:bold}
-.m-body{padding:14px}
+.m-box{background:#fff;border-radius:10px;width:min(360px,95vw);max-height:90vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,.35)}
+.m-hdr{background:#3E2A0E;color:#F5EDD8;padding:11px 14px;border-radius:10px 10px 0 0;display:flex;justify-content:space-between;align-items:center;font-size:13px;font-weight:bold;flex-shrink:0}
+.m-body{padding:14px;overflow-y:auto;flex:1;min-height:0}
 .m-body label{display:block;font-size:10px;font-weight:bold;color:#555;margin-bottom:2px}
 .m-body input,.m-body select,.m-body textarea{width:100%;padding:7px 9px;border:1px solid #D4C4A8;border-radius:5px;font-size:13px;font-family:inherit;background:#fff;outline:none;margin-bottom:10px}
 .m-body input[type=number]{width:120px}
 .m-body textarea{resize:vertical;min-height:55px}
-.m-ftr{padding:10px 14px;border-top:1px solid #EEE;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.m-ftr{padding:10px 14px;border-top:1px solid #EEE;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-shrink:0;background:#fff}
 /* Help modal */
 #helpModal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:4000;overflow-y:auto;padding:20px 12px}
 #helpModal.show{display:block}
@@ -190,6 +190,11 @@ html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:
 /* Mobile */
 /* モバイル共通 */
   @media(max-width:768px){
+    .m-box{width:96vw;max-height:92vh}
+    .m-body{padding:11px}
+    .m-body input,.m-body select,.m-body textarea{padding:6px 8px;font-size:13px;margin-bottom:7px}
+    .m-body textarea{min-height:42px}
+    .m-body label{margin-bottom:1px}
   .btn{min-height:36px;font-size:12px;padding:6px 10px}
   .wp-dot{width:26px;height:26px;font-size:11px}
   #hdr{display:none!important}
@@ -383,7 +388,6 @@ body.drawing-active .leaflet-overlay-pane{pointer-events:none!important}
         <span class="tsep">|</span>
         <button class="btn" id="btnToggleVia" onclick="toggleViaVisibility()" title="● 調整点 表示/非表示">● 調整点</button>
         <button class="btn" id="btnMapLabels" onclick="toggleMapLabels()" title="🌐 地名/WP○ 表示切替&#10;OFFにすると地図の文字・WPマーカーが消え&#10;コースの点線だけ残ります">🌐 地名</button>
-        <button class="btn" id="btnSpline" onclick="toggleSpline()" title="〜 スプライン曲線&#10;調整点間をなめらかな曲線で描画">〜 曲線</button>
         <button class="btn" id="btnManual" onclick="toggleManualMode()" title="✋ 手動モード&#10;ONの間は調整点が白い道にフィットしない&#10;OSMにない山道・農道をルートにする際に使用">✋ 手動</button>
         <span class="tsep">|</span>
         <button class="btn" id="btnUndo" onclick="undoLast()" title="↩ 取り消し (⌘Z)" disabled>↩</button>
@@ -612,8 +616,9 @@ const WT = [
   {v:'toilet',  l:'トイレ',                      c:'#455A64'},
   {v:'parking', l:'駐車場',                      c:'#1565C0'},
   {v:'other',   l:'その他',                      c:'#757575'},
+  {v:'node',    l:'なぞり点（調整点）',            c:'#444444'},
 ];
-const SYM = {start:'S',goal:'G',view:'◎',shop:'★',shrine:'⛩',history:'碑',park:'🌿',toilet:'WC',parking:'P',other:'●'};
+const SYM = {start:'S',goal:'G',view:'◎',shop:'★',shrine:'⛩',history:'碑',park:'🌿',toilet:'WC',parking:'P',other:'●',node:''};
 const LINE_STYLE = {color:'#E84040', weight:4, dashArray:'8,5', opacity:.9};
 
 /* ============================================================
@@ -652,7 +657,6 @@ let _modalPhotos= [];      // モーダル編集中の写真
 let lineDragging= false;
 let dragSrcId   = null;
 let segCache    = {};
-let splineEnabled  = false;
 let canvasRenderer = null;
 let ctxVpId        = null;  // via point whose context menu is open   // Canvas renderer for html2canvas compatibility
 let manualMode     = false; // 手動モード: ONの間は調整点の前後フィットがデフォルトOFF
@@ -913,7 +917,7 @@ function showWpTypePicker(lat, lng, e) {
   if (!picker) return;
 
   // WT種別ごとのメニュー項目を生成
-  picker.innerHTML = WT.map(t => {
+  picker.innerHTML = WT.filter(t => t.v !== 'node').map(t => {
     const isCourse = t.v === 'course';
     const style = isCourse
       ? 'font-weight:bold;color:#C4703A;border-bottom:1px solid #EEE8DE;margin-bottom:3px;padding-bottom:6px'
@@ -977,6 +981,13 @@ function buildWpMarker(wp) {
 function wpIcon(wp, sz, anc) {
   if (!sz)  sz  = isMobile() ? [36,36] : [30,30];
   if (!anc) anc = [sz[0]/2, sz[1]/2];
+  // なぞりの端点(node)：調整点と同じ灰色の点（番号・S/Gなし）
+  if (wp.type === 'node') {
+    const d = isMobile() ? 18 : 13;
+    return L.divIcon({className:'',
+      html:`<div style="width:${d}px;height:${d}px;border-radius:50%;background:#444;border:2px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.55);cursor:grab"></div>`,
+      iconSize:[d,d], iconAnchor:[d/2,d/2]});
+  }
   const t   = WT.find(x=>x.v===wp.type)||WT[0];
   const sym = wp.type==='course' ? (courseNum(wp)||'?') : (SYM[wp.type]||'●');
   return L.divIcon({
@@ -1159,7 +1170,6 @@ function showViaCtxMenu(vpId, x, y) {
 
   const fb = vp.fitBefore !== false;
   const fa = vp.fitAfter  !== false;
-  const sp = splineEnabled;
 
   const menu = document.getElementById('ctxMenu');
   menu.innerHTML = '';
@@ -1170,8 +1180,6 @@ function showViaCtxMenu(vpId, x, y) {
   menu.appendChild(hdr);
 
   const items = [
-    {label: (sp?'☑':'☐') + ' スプライン曲線（コース全体）', fn: ctxDoToggleSpline},
-    null, // separator
     {label: (fb?'☑':'☐') + ' 前の区間を道路に沿う',         fn: () => ctxDoToggleFit('before')},
     {label: (fa?'☑':'☐') + ' 後の区間を道路に沿う',         fn: () => ctxDoToggleFit('after')},
     null, // separator
@@ -1206,11 +1214,6 @@ function hideCtxMenu() {
   const menu = document.getElementById('ctxMenu');
   if (menu) menu.style.display = 'none';
   ctxVpId = null;
-}
-
-function ctxDoToggleSpline() {
-  hideCtxMenu();
-  toggleSpline();
 }
 
 function toggleManualMode() {
@@ -1426,8 +1429,8 @@ function _drawEnd(ev) {
 // なぞり用WPを直接生成（addWpはsaveSnapshot/append固定のため流用しない）
 function _addTraceWp(lat, lng, type, afterWp) {
   idW++;
-  const wp = {id:idW, type:type||'course', name:'', desc:'', tel:'', dwell:0,
-    fitBefore:true, fitAfter:true, onRoute:true, lat:lat, lng:lng,
+  const wp = {id:idW, type:type||'node', name:'', desc:'', tel:'', dwell:0,
+    fitBefore:false, fitAfter:false, onRoute:true, lat:lat, lng:lng,
     photos:[], labelDir:'top', marker:null};
   if (afterWp) {
     const i = wps.findIndex(w=>w.id===afterWp.id);
@@ -1456,39 +1459,37 @@ function _finalizeTrace(rawPts, startWp) {
 
   saveSnapshot();
 
-  // 2. スタート(S)を確保（コース全体で1つ）
-  let sWp = wps.find(w => w.type === 'start');
-  let firstStroke = false;
-  if (!sWp) { sWp = _addTraceWp(llpts[0][0], llpts[0][1], 'start'); firstStroke = true; }
-
-  // 3. ゴール(G)を確保。既存なら現在地を調整点として残し、後でGを終点へ移動
-  let gWp = wps.find(w => w.type === 'goal');
-
-  // 4. 軌跡の点を「調整点(VP)」として配置（fit=false＝軌跡通りに必ず描画）
-  //    すべて segAfter=S.id の単一セグメント上に順番通り並べる
-  let ord = _nextOrder(sWp.id);
-  const vpPos = [];
-  if (gWp) vpPos.push({lat:gWp.lat, lng:gWp.lng}); // 続きのなぞり：旧ゴールを調整点化
-  const startIdx = firstStroke ? 1 : 0;            // 初回はllpts[0]=Sと重複するのでスキップ
-  for (let i = startIdx; i < llpts.length - 1; i++) vpPos.push({lat:llpts[i][0], lng:llpts[i][1]});
-  vpPos.forEach(p => {
+  // 端点は灰色の点(node)＝調整点と同じ見た目。S/G・番号は作らない。
+  // すべての点（端点・中間点）を fit=false にして、なぞった軌跡通りに必ず描画する。
+  const _mkVp = (lat, lng, seg, ord) => {
     idV++;
-    const vp = {id:'v'+idV, segAfter:sWp.id, order:ord++, fitBefore:false, fitAfter:false, lat:p.lat, lng:p.lng, marker:null};
-    vps.push(vp);
-    buildVpMarker(vp);
+    const vp = {id:'v'+idV, segAfter:seg, order:ord, fitBefore:false, fitAfter:false, lat:lat, lng:lng, marker:null};
+    vps.push(vp); buildVpMarker(vp);
     if (_drawActive) { try { if (vp.marker && vp.marker.dragging) vp.marker.dragging.disable(); } catch(_){} }
-  });
+  };
 
-  // 5. ゴール(G)を終点へ作成 or 移動（コース全体でWPはS・Gの2つだけ）
-  const endP = llpts[llpts.length - 1];
-  if (gWp) {
-    gWp.lat = endP[0]; gWp.lng = endP[1];
-    if (gWp.marker) gWp.marker.setLatLng([gWp.lat, gWp.lng]);
+  const rw = routeWps();
+  if (rw.length === 0) {
+    // 初回：始点ノード + 終点ノード（どちらも灰色の調整点風）。間は調整点。
+    const startNode = _addTraceWp(llpts[0][0], llpts[0][1], 'node');
+    let ord = 0;
+    for (let i = 1; i < llpts.length - 1; i++) _mkVp(llpts[i][0], llpts[i][1], startNode.id, ord++);
+    _addTraceWp(llpts[llpts.length-1][0], llpts[llpts.length-1][1], 'node', startNode);
   } else {
-    gWp = _addTraceWp(endP[0], endP[1], 'goal');
+    // 続き：最後のルートWPを終点とし、その手前のWPを調整点のアンカーに
+    const endNode   = rw[rw.length - 1];
+    const segAnchor = rw.length >= 2 ? rw[rw.length - 2] : rw[0];
+    let ord = _nextOrder(segAnchor.id);
+    // 旧終点位置を調整点として残してから
+    _mkVp(endNode.lat, endNode.lng, segAnchor.id, ord++);
+    // 新しい軌跡の点（最後の点はendNodeへ移動するので除く）
+    for (let i = 0; i < llpts.length - 1; i++) _mkVp(llpts[i][0], llpts[i][1], segAnchor.id, ord++);
+    // 終点ノードを新しい終点へ移動
+    endNode.lat = llpts[llpts.length-1][0];
+    endNode.lng = llpts[llpts.length-1][1];
+    if (endNode.marker) endNode.marker.setLatLng([endNode.lat, endNode.lng]);
   }
 
-  // 6. 再描画・ルーティング（既存処理に委ねる）
   clearCache(); redrawStraight(); scheduleRouting();
   refreshIcons(); redrawList();
 }
@@ -1927,16 +1928,7 @@ async function buildRoutedCoords() {
       const from = pts[j], to = pts[j+1];
       const fitOut = (from.fitAfter  !== false);
       const fitIn  = (to.fitBefore   !== false);
-      let sub;
-      if (!fitOut && !fitIn && splineEnabled && j > 0 && j < pts.length - 2) {
-        // 手動モード中間区間 + スプラインON: 前後のVPも含めてcatmullRomで補間
-        const p0 = pts[Math.max(0, j-1)];
-        const p3 = pts[Math.min(pts.length-1, j+2)];
-        sub = catmullRom([[p0.lat,p0.lng],[from.lat,from.lng],[to.lat,to.lng],[p3.lat,p3.lng]], 20).slice(1, -1);
-        if (sub.length === 0) sub = [[from.lat,from.lng],[to.lat,to.lng]];
-      } else {
-        sub = await buildAnySegment(from.lat, from.lng, to.lat, to.lng, fitOut, fitIn);
-      }
+      const sub = await buildAnySegment(from.lat, from.lng, to.lat, to.lng, fitOut, fitIn);
       if (seg.length === 0) seg.push(...sub);
       else seg.push(...sub.slice(1));
     }
@@ -1951,44 +1943,8 @@ async function buildRoutedCoords() {
   return {allCoords: all, segCoordsList};
 }
 
-/* ============================================================
-   CATMULL-ROM SPLINE
-   調整点間をなめらかな補間曲線で結ぶ
-   pts: [[lat,lng], ...]  segs: 2点間の補間点数
-   ============================================================ */
-function catmullRom(pts, segs) {
-  if (pts.length < 2) return pts;
-  const out = [];
-  const n = pts.length;
-  for (let i=0; i<n-1; i++) {
-    const p0 = pts[Math.max(0, i-1)];
-    const p1 = pts[i];
-    const p2 = pts[i+1];
-    const p3 = pts[Math.min(n-1, i+2)];
-    out.push(p1);
-    for (let k=1; k<segs; k++) {
-      const t=k/segs, t2=t*t, t3=t2*t;
-      out.push([
-        0.5*((2*p1[0])+(-p0[0]+p2[0])*t+(2*p0[0]-5*p1[0]+4*p2[0]-p3[0])*t2+(-p0[0]+3*p1[0]-3*p2[0]+p3[0])*t3),
-        0.5*((2*p1[1])+(-p0[1]+p2[1])*t+(2*p0[1]-5*p1[1]+4*p2[1]-p3[1])*t2+(-p0[1]+3*p1[1]-3*p2[1]+p3[1])*t3)
-      ]);
-    }
-  }
-  out.push(pts[n-1]);
-  return out;
-}
 
-/* toggleSpline: コース全体のスプライン曲線ON/OFF */
-function toggleSpline() {
-  splineEnabled = !splineEnabled;
-  const btn = document.getElementById('btnSpline');
-  if (btn) {
-    btn.classList.toggle('on', splineEnabled);
-    btn.textContent = splineEnabled ? '〜 スプライン ON' : '〜 スプライン';
-    btn.title = splineEnabled ? 'スプライン曲線をオフにする（調整点間が直線に戻る）' : 'スプライン曲線をオンにする（調整点間がなめらかな曲線になる）';
-  }
-  clearCache(); redrawStraight(); scheduleRouting();
-}
+
 
 async function getCachedRoute(key, pts) {
   if (segCache[key]) return segCache[key];
