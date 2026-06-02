@@ -101,6 +101,12 @@ html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:
 .m-over.show{display:flex}
 .m-box{background:#fff;border-radius:10px;width:min(360px,95vw);max-height:90vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,.35)}
 .m-hdr{background:#3E2A0E;color:#F5EDD8;padding:11px 14px;border-radius:10px 10px 0 0;display:flex;justify-content:space-between;align-items:center;font-size:13px;font-weight:bold;flex-shrink:0}
+.m-hdr-acts{display:flex;gap:6px;align-items:center}
+.m-hbtn{border:none;cursor:pointer;font-family:inherit;font-weight:700;display:flex;align-items:center;justify-content:center}
+.m-hbtn.del{background:#DC2626;color:#fff;font-size:12px;padding:6px 14px;border-radius:14px}
+.m-hbtn.save{background:linear-gradient(135deg,#FB8B3E,#F2670E);color:#fff;font-size:12px;padding:6px 14px;border-radius:14px;box-shadow:0 2px 6px rgba(242,103,14,.35)}
+.m-hbtn.x{background:rgba(255,255,255,.15);color:#F5EDD8;width:28px;height:28px;border-radius:50%;font-size:15px;padding:0}
+.m-hbtn.x .svgi{width:15px;height:15px}
 .m-body{padding:14px;overflow-y:auto;flex:1;min-height:0}
 .m-body label{display:block;font-size:10px;font-weight:bold;color:#555;margin-bottom:2px}
 .m-body input,.m-body select,.m-body textarea{width:100%;padding:7px 9px;border:1px solid #D4C4A8;border-radius:5px;font-size:13px;font-family:inherit;background:#fff;outline:none;margin-bottom:10px}
@@ -181,10 +187,13 @@ html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:
 .ctx-it.ctx-convert{color:#2E7D32}
 /* Context menu */
 #ctxMenu{display:none;position:fixed;z-index:5000;background:#fff;border:1px solid #C4B89A;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,.25);min-width:215px;overflow:hidden;font-family:'Hiragino Sans','Meiryo',sans-serif}
-.ctx-hdr{padding:8px 14px 7px;font-size:11px;font-weight:bold;color:#4A2E0E;background:#F0E8D8;border-bottom:1px solid #D4C4A8}
+.ctx-hdr{padding:7px 8px 7px 14px;font-size:11px;font-weight:bold;color:#4A2E0E;background:#F0E8D8;border-bottom:1px solid #D4C4A8;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.ctx-hx{background:rgba(0,0,0,.06);border:none;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#6A5640;cursor:pointer;flex-shrink:0}
+.ctx-it svg,.ctx-hx svg{flex-shrink:0}
 .ctx-it{padding:10px 14px;font-size:12px;color:#2C1B0E;cursor:pointer;display:flex;align-items:center;gap:8px;user-select:none;-webkit-user-select:none}
 .ctx-it:hover,.ctx-it:active{background:#F5EDD8}
 .ctx-it.ctx-del{color:#B71C1C}
+.ctx-it.wpick{padding:7px 14px;font-size:12px}
 .ctx-it.ctx-cancel{color:#888;font-size:11px;justify-content:center}
 .ctx-sep{height:1px;background:#EEE8DE;margin:2px 0}
 /* Mobile */
@@ -290,7 +299,9 @@ body.drawing-active{-webkit-user-select:none;user-select:none;-webkit-touch-call
 #map.draw-cursor{cursor:crosshair}
 /* なぞり描き中はマーカー（WP/VP）がタッチを拾わない＝確実に動かない */
 body.drawing-active .leaflet-marker-pane{pointer-events:none!important}
+body.drawing-active .leaflet-marker-icon{pointer-events:none!important}
 body.drawing-active .leaflet-overlay-pane{pointer-events:none!important}
+body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
 </style>
 </head>
 <body>
@@ -474,7 +485,11 @@ body.drawing-active .leaflet-overlay-pane{pointer-events:none!important}
   <div class="m-box">
     <div class="m-hdr">
       <span>ウェイポイント編集</span>
-      <button onclick="closeModal()" style="background:none;border:none;color:inherit;font-size:18px;cursor:pointer;padding:0 4px;line-height:1">✕</button>
+      <div class="m-hdr-acts">
+        <button class="m-hbtn del" onclick="deleteEditing()">削除</button>
+        <button class="m-hbtn save" onclick="saveModal()">保存</button>
+        <button class="m-hbtn x" onclick="closeModal()" aria-label="閉じる"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6l-12 12" /> <path d="M6 6l12 12" /></svg></button>
+      </div>
     </div>
     <div class="m-body">
       <label>種別</label><select id="mType"></select>
@@ -487,7 +502,7 @@ body.drawing-active .leaflet-overlay-pane{pointer-events:none!important}
       <div style="font-size:10px;font-weight:bold;color:#555;margin-bottom:4px">前後の接続設定</div>
       <label style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:normal;cursor:pointer;margin-bottom:5px">
         <input type="checkbox" id="mOnRoute" style="width:auto;padding:0;margin:0">
-        このウェイポイントをルートに含める（番号付き接続ポイントにする）
+        このウェイポイントをルートに含める
       </label>
       <div style="height:6px"></div>
       <label style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:normal;cursor:pointer;margin-bottom:5px">
@@ -498,27 +513,20 @@ body.drawing-active .leaflet-overlay-pane{pointer-events:none!important}
         <input type="checkbox" id="mFitAfter" checked style="width:auto;padding:0;margin:0">
         後のラインを道路に沿う
       </label>
-      <div style="font-size:10px;font-weight:bold;color:#555;margin-bottom:5px">名称ラベル設定</div>
-      <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
-        <label style="font-size:12px;font-weight:normal">表示位置&nbsp;<select id="mLabelDir" style="font-size:11px;padding:2px 4px;border:1px solid #C4B89A;border-radius:4px;background:#FAF6EE"><option value="top">上</option><option value="bottom">下</option><option value="left">左</option><option value="right">右</option></select></label>
-        
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+        <span style="font-size:10px;font-weight:bold;color:#555">名称ラベル表示位置</span>
+        <select id="mLabelDir" style="font-size:11px;padding:2px 4px;border:1px solid #C4B89A;border-radius:4px;background:#FAF6EE;width:auto;margin:0"><option value="top">上</option><option value="bottom">下</option><option value="left">左</option><option value="right">右</option></select>
       </div>
       <div style="font-size:10px;font-weight:bold;color:#555;margin-bottom:5px">写真（最大5枚）</div>
       <div id="mPhotoStrip" class="photo-strip"></div>
       <div style="display:flex;gap:8px;margin-bottom:10px">
         <input type="file" accept="image/*" id="mPhotoFile" style="display:none" multiple>
         <input type="file" accept="image/*" capture="environment" id="mPhotoCamera" style="display:none">
-        <button class="photo-add-btn" onclick="document.getElementById('mPhotoFile').click()" title="ファイルから選択">📁</button>
-        <button class="photo-add-btn" onclick="document.getElementById('mPhotoCamera').click()" title="カメラで撮影">📷</button>
+        <button class="photo-add-btn" onclick="document.getElementById('mPhotoFile').click()" title="ファイルから選択"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h4l3 3h7a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-11a2 2 0 0 1 2 -2" /></svg></button>
+        <button class="photo-add-btn" onclick="document.getElementById('mPhotoCamera').click()" title="カメラで撮影"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h1a2 2 0 0 0 2 -2a1 1 0 0 1 1 -1h6a1 1 0 0 1 1 1a2 2 0 0 0 2 2h1a2 2 0 0 1 2 2v9a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-9a2 2 0 0 1 2 -2" /> <path d="M9 13a3 3 0 1 0 6 0a3 3 0 0 0 -6 0" /></svg></button>
       </div>
     </div>
-    <div class="m-ftr">
-      <button class="btn btn-rd" onclick="deleteEditing()">🗑 削除</button>
-      <div style="display:flex;gap:8px">
-        <button class="btn" onclick="closeModal()">キャンセル</button>
-        <button class="btn on" style="padding:7px 16px" onclick="saveModal()">💾 保存</button>
-      </div>
-    </div>
+
   </div>
 </div>
 
@@ -605,7 +613,7 @@ body.drawing-active .leaflet-overlay-pane{pointer-events:none!important}
    CONSTANTS
    ============================================================ */
 const WT = [
-  {v:'course',  l:'コースポイント（番号付き）', c:'#C4703A'},
+  {v:'course',  l:'コースポイント', c:'#C4703A'},
   {v:'start',   l:'スタート',                    c:'#2E7D32'},
   {v:'goal',    l:'ゴール',                      c:'#B71C1C'},
   {v:'view',    l:'ビュースポット',              c:'#1565C0'},
@@ -771,7 +779,7 @@ async function geocode(address) {
    MAP INIT
    ============================================================ */
 function initMap() {
-  leafMap = L.map('map', {center:[35.165,134.542], zoom:14, scrollWheelZoom:true, wheelPxPerZoomLevel:240, touchZoom:true, doubleClickZoom:false});
+  leafMap = L.map('map', {center:[35.165,134.542], zoom:14, scrollWheelZoom:true, wheelPxPerZoomLevel:240, touchZoom:true, doubleClickZoom:false, zoomControl:false});
   const tiles = _baseTileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution:'© OpenStreetMap contributors', maxZoom:19
   }).addTo(leafMap);
@@ -912,20 +920,22 @@ async function saveMapNoText() {
    WPタイプピッカー（マップクリック時に種別選択）
    ============================================================ */
 function showWpTypePicker(lat, lng, e) {
+  _closeAllPopups('picker');
   _wpPickerLatlng = {lat, lng};
   const picker = document.getElementById('wpTypePicker');
   if (!picker) return;
 
-  // WT種別ごとのメニュー項目を生成
-  picker.innerHTML = WT.filter(t => t.v !== 'node').map(t => {
-    const isCourse = t.v === 'course';
-    const style = isCourse
-      ? 'font-weight:bold;color:#C4703A;border-bottom:1px solid #EEE8DE;margin-bottom:3px;padding-bottom:6px'
-      : '';
-    return `<div class="ctx-it" style="${style}" onclick="event.stopPropagation();addWpFromPicker('${t.v}')">${t.l}</div>`;
-  }).join('') +
-  `<div class="ctx-sep"></div>
-   <div class="ctx-it" style="color:#888" onclick="event.stopPropagation();hideWpPicker()">✕ キャンセル</div>`;
+  // ヘッダー（タイトル＋×閉じる）＋ WT種別ごとの項目を生成
+  picker.innerHTML =
+    `<div class="ctx-hdr"><span>ポイントの種類を選択</span>` +
+    `<button class="ctx-hx" aria-label="閉じる" onclick="event.stopPropagation();hideWpPicker()"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M18 6l-12 12" /> <path d="M6 6l12 12" /></svg></button></div>` +
+    WT.filter(t => t.v !== 'node').map(t => {
+      const isCourse = t.v === 'course';
+      const style = isCourse
+        ? 'font-weight:bold;color:#C4703A;border-bottom:1px solid #EEE8DE;margin-bottom:2px;padding-bottom:7px'
+        : '';
+      return `<div class="ctx-it wpick" style="${style}" onclick="event.stopPropagation();addWpFromPicker('${t.v}')">${t.l}</div>`;
+    }).join('');
 
   // 画面端を超えないよう位置調整
   const cx = e.originalEvent ? e.originalEvent.clientX : 100;
@@ -973,6 +983,7 @@ function buildWpMarker(wp) {
   m.on('click', e => { L.DomEvent.stopPropagation(e); viewMode ? showViewInfo(wp.id) : openModal(wp.id); });
 
   wp.marker = m;       // set BEFORE addWpLongPress
+  if (_drawActive) { try { m.dragging && m.dragging.disable(); } catch(_){} }  // なぞり中生成は即ロック
   updateTooltip(wp);   // 色・方向・折り返しを正しく適用（設定画面を経由しなくても反映）
   addWpLongPress(wp);
   return m;
@@ -1120,6 +1131,7 @@ function buildVpMarker(vp) {
   }
 
   vp.marker = m;
+  if (_drawActive) { try { m.dragging && m.dragging.disable(); } catch(_){} }  // なぞり中生成は即ロック
 
   // Mobile: long press (700ms) → context menu
   // Mobile: single tap  → context menu (if not after long press or drag)
@@ -1163,6 +1175,7 @@ function buildVpMarker(vp) {
    VIA POINT CONTEXT MENU
    ============================================================ */
 function showViaCtxMenu(vpId, x, y) {
+  _closeAllPopups('ctx');
   hideCtxMenu();
   const vp = vps.find(v => v.id === vpId);
   if (!vp) return;
@@ -1176,18 +1189,24 @@ function showViaCtxMenu(vpId, x, y) {
 
   const hdr = document.createElement('div');
   hdr.className = 'ctx-hdr';
-  hdr.textContent = '📍 経路調整点の設定';
+  hdr.innerHTML = '<span>経路調整点の設定</span>';
+  const _hx = document.createElement('button');
+  _hx.className = 'ctx-hx';
+  _hx.setAttribute('aria-label','閉じる');
+  _hx.innerHTML = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;vertical-align:middle"><path d="M18 6l-12 12" /> <path d="M6 6l12 12" /></svg>';
+  _hx.addEventListener('click', e => { e.stopPropagation(); hideCtxMenu(); });
+  _hx.addEventListener('touchend', e => { e.stopPropagation(); e.preventDefault(); hideCtxMenu(); });
+  hdr.appendChild(_hx);
   menu.appendChild(hdr);
 
+  const _ICO_ON = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;vertical-align:middle"><path d="M3 5a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-14" /> <path d="M9 12l2 2l4 -4" /></svg>', _ICO_OFF = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;vertical-align:middle"><path d="M3 5a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-14" /></svg>';
   const items = [
-    {label: (fb?'☑':'☐') + ' 前の区間を道路に沿う',         fn: () => ctxDoToggleFit('before')},
-    {label: (fa?'☑':'☐') + ' 後の区間を道路に沿う',         fn: () => ctxDoToggleFit('after')},
-    null, // separator
-    {label: '🔄 ウェイポイントに変換', fn: ctxConvertToWp, cls: 'ctx-convert'},
-    null, // separator
-    {label: '🗑 この調整点を削除', fn: ctxDoDeleteVp, cls: 'ctx-del'},
+    {html: (fb?_ICO_ON:_ICO_OFF) + '<span>前の区間を道路に沿う</span>',  fn: () => ctxDoToggleFit('before')},
+    {html: (fa?_ICO_ON:_ICO_OFF) + '<span>後の区間を道路に沿う</span>',  fn: () => ctxDoToggleFit('after')},
     null,
-    {label: '✕ キャンセル', fn: hideCtxMenu, cls: 'ctx-cancel'},
+    {html: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;vertical-align:middle"><path d="M20 11a8.1 8.1 0 0 0 -15.5 -2m-.5 -4v4h4" /> <path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4" /></svg><span>ウェイポイントに変換</span>', fn: ctxConvertToWp, cls: 'ctx-convert'},
+    null,
+    {html: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;vertical-align:middle"><path d="M4 7l16 0" /> <path d="M10 11l0 6" /> <path d="M14 11l0 6" /> <path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12" /> <path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3" /></svg><span>この調整点を削除</span>', fn: ctxDoDeleteVp, cls: 'ctx-del'},
   ];
 
   items.forEach(item => {
@@ -1196,7 +1215,7 @@ function showViaCtxMenu(vpId, x, y) {
     } else {
       const it = document.createElement('div');
       it.className = 'ctx-it' + (item.cls ? ' ' + item.cls : '');
-      it.textContent = item.label;
+      it.innerHTML = item.html || item.label || '';
       it.addEventListener('click',       e => { e.stopPropagation(); item.fn(); });
       it.addEventListener('touchend',    e => { e.stopPropagation(); e.preventDefault(); item.fn(); });
       menu.appendChild(it);
@@ -1230,6 +1249,7 @@ function toggleManualMode() {
    モバイル …メニューシート
    ============================================================ */
 function openMobileMenu() {
+  _closeAllPopups('menu');
   _syncMobileMenu();
   document.getElementById('mobileMenuScrim')?.classList.add('show');
   document.getElementById('mobileMenuSheet')?.classList.add('show');
@@ -1286,6 +1306,16 @@ function gotoCurrentLocation() {
    道路フィットは既存ルーティング（fetchOSRM→失敗時直線）に委ねる。
    結果は通常のWP/VPなので後修正も既存機能でそのまま可能。
    ============================================================ */
+// なぞり中：全マーカー（WP/VP）のドラッグを確実に無効化（進行中ドラッグも強制終了）
+function _lockAllMarkers() {
+  wps.forEach(w => { try { if (w.marker && w.marker.dragging && w.marker.dragging.enabled()) w.marker.dragging.disable(); } catch(_){} });
+  vps.forEach(v => { try { if (v.marker && v.marker.dragging && v.marker.dragging.enabled()) v.marker.dragging.disable(); } catch(_){} });
+}
+function _unlockAllMarkers() {
+  wps.forEach(w => { try { if (w.marker && w.marker.dragging && !w.marker.dragging.enabled()) w.marker.dragging.enable(); } catch(_){} });
+  vps.forEach(v => { try { if (v.marker && v.marker.dragging && !v.marker.dragging.enabled()) v.marker.dragging.enable(); } catch(_){} });
+}
+
 function enterDrawMode() {
   if (!leafMap || _drawActive) return;
   _drawActive = true;
@@ -1295,8 +1325,7 @@ function enterDrawMode() {
   // マップ固定
   try { leafMap.dragging.disable(); } catch(_){}
   // WP/VPマーカーのドラッグを一時無効化（なぞり開始の誤動作防止）
-  wps.forEach(w => { try { if (w.marker && w.marker.dragging) w.marker.dragging.disable(); } catch(_){} });
-  vps.forEach(v => { try { if (v.marker && v.marker.dragging) v.marker.dragging.disable(); } catch(_){} });
+  _lockAllMarkers();
   // タッチ・マウス両対応のハンドラを登録
   const c = leafMap.getContainer();
   const h = {
@@ -1342,8 +1371,7 @@ function exitDrawMode() {
   document.getElementById('map')?.classList.remove('draw-cursor');
   document.body.classList.remove('drawing-active');
   // マーカードラッグを復帰
-  wps.forEach(w => { try { if (w.marker && w.marker.dragging) w.marker.dragging.enable(); } catch(_){} });
-  vps.forEach(v => { try { if (v.marker && v.marker.dragging) v.marker.dragging.enable(); } catch(_){} });
+  _unlockAllMarkers();
 }
 
 // イベント→latlng（タッチ・マウス両対応）
@@ -1386,6 +1414,7 @@ function _drawStart(ev) {
   if (ev.cancelable) ev.preventDefault();
   _drawing = true;
   _drawPts = [];
+  _lockAllMarkers();           // なぞり開始の瞬間に全マーカーのドラッグを強制無効化（保険）
   _drawStartWp = _drawNearbyWp(ll, 28);
   const sp = _drawStartWp ? [_drawStartWp.lat, _drawStartWp.lng] : [ll.lat, ll.lng];
   _drawPts.push(sp);
@@ -2076,10 +2105,40 @@ function flyEdit(id) {
 /* ============================================================
    MODAL
    ============================================================ */
+// 種別ドロップダウンを動的生成：スタート/ゴールはコースラインの先頭/末尾の点のみ選択可能
+function _buildTypeOptions(wp) {
+  const sel = document.getElementById('mType');
+  if (!sel) return;
+  const rw = routeWps();
+  const isFirst = rw.length > 0 && rw[0].id === wp.id;
+  const isLast  = rw.length > 0 && rw[rw.length-1].id === wp.id;
+  sel.innerHTML = '';
+  WT.forEach(t => {
+    // start は先頭の点のみ、goal は末尾の点のみ提示（現在その型なら常に残す）
+    if (t.v === 'start' && !isFirst && wp.type !== 'start') return;
+    if (t.v === 'goal'  && !isLast  && wp.type !== 'goal')  return;
+    // node は通常選ばせない（現在 node のときのみ残す）
+    if (t.v === 'node' && wp.type !== 'node') return;
+    const o = document.createElement('option');
+    o.value = t.v; o.textContent = t.l;
+    sel.appendChild(o);
+  });
+}
+
+// 全ての設定ウィンドウ/ポップアップを閉じる（排他制御用）
+function _closeAllPopups(except) {
+  if (except !== 'modal'  && typeof closeModal       === 'function') { const m=document.getElementById('mOver'); if (m && m.classList.contains('show')) closeModal(); }
+  if (except !== 'ctx'    && typeof hideCtxMenu       === 'function') hideCtxMenu();
+  if (except !== 'picker' && typeof hideWpPicker      === 'function') hideWpPicker();
+  if (except !== 'menu'   && typeof closeMobileMenu   === 'function') closeMobileMenu();
+}
+
 function openModal(id) {
+  _closeAllPopups('modal');
   editId = id;
   const wp = wps.find(w=>w.id===id);
   if (!wp) return;
+  _buildTypeOptions(wp);   // スタート/ゴールはコース両端の点のみ選択可
   document.getElementById('mType').value   = wp.type;
   const _nameParts = (wp.name||'').split('\n');
   document.getElementById('mName').value   = _nameParts[0] || '';
@@ -2916,7 +2975,7 @@ function renderCourseList() {
     cont.parentNode.insertBefore(notice, cont);
   }
   notice.innerHTML = lsAvail()
-    ? '<span style="color:#2E7D32">✅ ブラウザに保存されます</span>'
+    ? ''
     : '<span style="color:#E65100">⚠️ プレビュー環境：ページを閉じると消えます。JSONエクスポートで保存してください。</span>';
 
   const cntEl = document.getElementById('s1Count');
