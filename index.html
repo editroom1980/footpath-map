@@ -100,12 +100,12 @@ html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:
 .m-over{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:3000;align-items:center;justify-content:center}
 .m-over.show{display:flex}
 .m-box{background:#fff;border-radius:10px;width:min(360px,95vw);max-height:90vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,.35)}
-.m-hdr{background:#3E2A0E;color:#F5EDD8;padding:11px 14px;border-radius:10px 10px 0 0;display:flex;justify-content:space-between;align-items:center;font-size:13px;font-weight:bold;flex-shrink:0}
+.m-hdr{background:#F0E8D8;color:#4A2E0E;padding:9px 14px;border-radius:10px 10px 0 0;display:flex;justify-content:space-between;align-items:center;font-size:13px;font-weight:bold;flex-shrink:0;border-bottom:1px solid #D4C4A8}
 .m-hdr-acts{display:flex;gap:6px;align-items:center}
 .m-hbtn{border:none;cursor:pointer;font-family:inherit;font-weight:700;display:flex;align-items:center;justify-content:center}
 .m-hbtn.del{background:#DC2626;color:#fff;font-size:12px;padding:6px 14px;border-radius:14px}
 .m-hbtn.save{background:linear-gradient(135deg,#FB8B3E,#F2670E);color:#fff;font-size:12px;padding:6px 14px;border-radius:14px;box-shadow:0 2px 6px rgba(242,103,14,.35)}
-.m-hbtn.x{background:rgba(255,255,255,.15);color:#F5EDD8;width:28px;height:28px;border-radius:50%;font-size:15px;padding:0}
+.m-hbtn.x{background:rgba(0,0,0,.06);color:#6A5640;width:30px;height:30px;border-radius:50%;font-size:15px;padding:0}
 .m-hbtn.x .svgi{width:15px;height:15px}
 .m-body{padding:14px;overflow-y:auto;flex:1;min-height:0}
 .m-body label{display:block;font-size:10px;font-weight:bold;color:#555;margin-bottom:2px}
@@ -162,7 +162,7 @@ html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:
 #elevChart{min-width:280px;width:100%;height:170px;display:block}
 #elevMsg{font-size:12px;color:#9A8070;text-align:center;padding:16px 0}
 .btn-nolabel{background:#5A3E28!important;color:#fff!important;border-color:#5A3E28!important}
-#wpTypePicker{display:none;position:fixed;z-index:5000;background:#fff;border:1px solid #C4B89A;border-radius:8px;padding:4px 0;min-width:200px;box-shadow:0 3px 16px rgba(0,0,0,.22)}
+#wpTypePicker{display:none;position:fixed;z-index:5000;background:#fff;border:1px solid #C4B89A;border-radius:8px;overflow:hidden;min-width:215px;box-shadow:0 4px 20px rgba(0,0,0,.25)}
 /* カスタム道路描画UI */
 #crFinishBar{display:none;position:fixed;top:50px;left:50%;transform:translateX(-50%);background:#fff;border:1.5px solid #1565C0;border-radius:8px;padding:6px 14px;z-index:2000;gap:10px;align-items:center;box-shadow:0 2px 12px rgba(0,0,0,.2)}
 #crFinishBar.show{display:flex}
@@ -247,11 +247,22 @@ html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:
 .mob-stat-v{font-size:15px;font-weight:bold;color:#1C1917}
 .mob-stat-u{font-size:9px;color:#A8A29E}
 .mob-stat-s{font-size:10px;color:#E2DDD4}
-#mobileElevBand{background:#fff;border-top:0.5px solid rgba(0,0,0,0.06);padding:5px 14px 7px;flex-shrink:0}
+#mobileElevBand{background:#fff;border-top:0.5px solid rgba(0,0,0,0.06);padding:5px 14px 7px;flex-shrink:0;touch-action:none;transition:none}
+#mobileElevGrip{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px}
+#mobileElevChev{color:#C4BEB8;font-size:15px;display:flex;transition:transform .2s}
+#mobileElevBand.expanded #mobileElevChev{transform:rotate(180deg)}
+#mobileElevStatsRow{display:none}
+#mobileElevBand.expanded #mobileElevStatsRow{display:flex;gap:10px;flex-wrap:nowrap;justify-content:space-between;margin:2px 0 5px;padding:5px 2px;border-top:0.5px solid rgba(0,0,0,0.05);border-bottom:0.5px solid rgba(0,0,0,0.05)}
+.mev-stat{display:flex;align-items:center;gap:3px;font-size:10px;color:#6A645E;white-space:nowrap}
+.mev-stat .svgi{width:13px;height:13px}
+.mev-stat b{font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:11px}
+.mev-up{color:#16A34A}.mev-dn{color:#DC2626}.mev-hi{color:#C4703A}.mev-lo{color:#2563EB}
+#mobileElevSvg{display:block;width:100%;height:40px;transition:height .22s ease}
+#mobileElevBand.expanded #mobileElevSvg{height:170px}
 .mob-elev-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px}
 .mob-elev-hdr span{font-size:9px;color:#C4BEB8}
 #mobileElevStats{font-size:9px;color:#F97316;font-weight:bold}
-#mobileElevSvg{display:block;width:100%;height:36px}
+
 /* インラインSVGアイコン */
 .svgi{width:1em;height:1em;display:block;flex-shrink:0}
 /* 高低差バンド洗練 */
@@ -446,10 +457,14 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
         <div class="mob-sdiv"></div>
         <button class="mob-more" onclick="openMobileMenu()" aria-label="メニュー"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" /> <path d="M11 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" /> <path d="M18 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" /></svg></button>
       </div>
-      <!-- モバイル: 高低差バンド（タップで詳細展開）-->
-      <div id="mobileElevBand" onclick="toggleElevPanel()">
-        <div class="mob-elev-hdr"><div class="mob-elev-hl"><span>高低差</span><strong id="mobileElevStats"></strong></div><span class="mob-elev-chev"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6 -6l6 6" /></svg></span></div>
-        <svg id="mobileElevSvg" viewBox="0 0 200 36" preserveAspectRatio="none"></svg>
+      <!-- モバイル: 高低差バンド（上フリックでせり上げ） -->
+      <div id="mobileElevBand">
+        <div id="mobileElevGrip">
+          <div class="mob-elev-hl"><span>高低差</span><strong id="mobileElevStats"></strong></div>
+          <span class="mob-elev-chev" id="mobileElevChev"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6 -6l6 6" /></svg></span>
+        </div>
+        <div id="mobileElevStatsRow"></div>
+        <svg id="mobileElevSvg" preserveAspectRatio="xMidYMid meet"></svg>
       </div>
       <!-- モバイル: …メニューシート -->
       <div id="mobileMenuScrim" onclick="closeMobileMenu()"></div>
@@ -488,7 +503,6 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
       <div class="m-hdr-acts">
         <button class="m-hbtn del" onclick="deleteEditing()">削除</button>
         <button class="m-hbtn save" onclick="saveModal()">保存</button>
-        <button class="m-hbtn x" onclick="closeModal()" aria-label="閉じる"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6l-12 12" /> <path d="M6 6l12 12" /></svg></button>
       </div>
     </div>
     <div class="m-body">
@@ -526,7 +540,9 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
         <button class="photo-add-btn" onclick="document.getElementById('mPhotoCamera').click()" title="カメラで撮影"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h1a2 2 0 0 0 2 -2a1 1 0 0 1 1 -1h6a1 1 0 0 1 1 1a2 2 0 0 0 2 2h1a2 2 0 0 1 2 2v9a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-9a2 2 0 0 1 2 -2" /> <path d="M9 13a3 3 0 1 0 6 0a3 3 0 0 0 -6 0" /></svg></button>
       </div>
     </div>
-
+    <div class="m-ftr" style="justify-content:flex-end">
+      <button class="m-hbtn x" onclick="closeModal()" aria-label="閉じる"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6l-12 12" /> <path d="M6 6l12 12" /></svg></button>
+    </div>
   </div>
 </div>
 
@@ -666,7 +682,8 @@ let lineDragging= false;
 let dragSrcId   = null;
 let segCache    = {};
 let canvasRenderer = null;
-let ctxVpId        = null;  // via point whose context menu is open   // Canvas renderer for html2canvas compatibility
+let ctxVpId        = null;  // via point whose context menu is open
+let _ctxNodeId     = null;  // 端点nodeメニュー対象   // Canvas renderer for html2canvas compatibility
 let manualMode     = false; // 手動モード: ONの間は調整点の前後フィットがデフォルトOFF
 let routingTimer= null;
 let currentCourseId = null;
@@ -780,6 +797,7 @@ async function geocode(address) {
    ============================================================ */
 function initMap() {
   leafMap = L.map('map', {center:[35.165,134.542], zoom:14, scrollWheelZoom:true, wheelPxPerZoomLevel:240, touchZoom:true, doubleClickZoom:false, zoomControl:false});
+  _initElevFlick();   // 高低差バンドのフリック検知を初期化
   const tiles = _baseTileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution:'© OpenStreetMap contributors', maxZoom:19
   }).addTo(leafMap);
@@ -937,12 +955,19 @@ function showWpTypePicker(lat, lng, e) {
       return `<div class="ctx-it wpick" style="${style}" onclick="event.stopPropagation();addWpFromPicker('${t.v}')">${t.l}</div>`;
     }).join('');
 
-  // 画面端を超えないよう位置調整
+  // まず表示してから実際の高さを測り、画面内に確実に収める（はみ出し防止）
   const cx = e.originalEvent ? e.originalEvent.clientX : 100;
   const cy = e.originalEvent ? e.originalEvent.clientY : 100;
-  picker.style.left = Math.min(cx + 8, window.innerWidth  - 210) + 'px';
-  picker.style.top  = Math.min(cy + 8, window.innerHeight - 330) + 'px';
+  picker.style.visibility = 'hidden';
   picker.style.display = 'block';
+  const mg = 10;
+  const pw = picker.offsetWidth  || 215;
+  const ph = picker.offsetHeight || 300;
+  const left = Math.max(mg, Math.min(cx + 8, window.innerWidth  - pw - mg));
+  const top  = Math.max(mg, Math.min(cy + 8, window.innerHeight - ph - mg));
+  picker.style.left = left + 'px';
+  picker.style.top  = top  + 'px';
+  picker.style.visibility = 'visible';
 }
 
 function hideWpPicker() {
@@ -980,7 +1005,16 @@ function buildWpMarker(wp) {
   m.on('dragstart', () => saveSnapshot());
   m.on('drag', () => { wp.lat=m.getLatLng().lat; wp.lng=m.getLatLng().lng; redrawStraight(); });
   m.on('dragend', () => { wp.lat=m.getLatLng().lat; wp.lng=m.getLatLng().lng; clearCache(); scheduleRouting(); });
-  m.on('click', e => { L.DomEvent.stopPropagation(e); viewMode ? showViewInfo(wp.id) : openModal(wp.id); });
+  m.on('click', e => {
+    L.DomEvent.stopPropagation(e);
+    if (viewMode) { showViewInfo(wp.id); return; }
+    if (wp.type === 'node') {
+      const oe = e.originalEvent || {};
+      showNodeCtxMenu(wp.id, oe.clientX || 0, oe.clientY || 0);
+    } else {
+      openModal(wp.id);
+    }
+  });
 
   wp.marker = m;       // set BEFORE addWpLongPress
   if (_drawActive) { try { m.dragging && m.dragging.disable(); } catch(_){} }  // なぞり中生成は即ロック
@@ -1174,6 +1208,120 @@ function buildVpMarker(vp) {
 /* ============================================================
    VIA POINT CONTEXT MENU
    ============================================================ */
+// 端点node（灰色の点）専用メニュー：調整点として扱い、昇格・削除を提供
+function showNodeCtxMenu(wpId, x, y) {
+  _closeAllPopups('ctx');
+  hideCtxMenu();
+  const wp = wps.find(w => w.id === wpId);
+  if (!wp) return;
+  ctxVpId = null;
+  _ctxNodeId = wpId;
+
+  const rw = routeWps();
+  const isFirst = rw.length > 0 && rw[0].id === wpId;
+  const isLast  = rw.length > 0 && rw[rw.length-1].id === wpId;
+
+  const menu = document.getElementById('ctxMenu');
+  menu.innerHTML = '';
+  const hdr = document.createElement('div');
+  hdr.className = 'ctx-hdr';
+  hdr.innerHTML = '<span>経路の端点</span>';
+  const hx = document.createElement('button');
+  hx.className = 'ctx-hx'; hx.setAttribute('aria-label','閉じる');
+  hx.innerHTML = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;vertical-align:middle"><path d="M18 6l-12 12" /> <path d="M6 6l12 12" /></svg>';
+  hx.addEventListener('click', e => { e.stopPropagation(); hideCtxMenu(); });
+  hx.addEventListener('touchend', e => { e.stopPropagation(); e.preventDefault(); hideCtxMenu(); });
+  hdr.appendChild(hx);
+  menu.appendChild(hdr);
+
+  const items = [];
+  if (isFirst) items.push({html:'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;vertical-align:middle"><path d="M5 5a5 5 0 0 1 7 0a5 5 0 0 0 7 0v9a5 5 0 0 1 -7 0a5 5 0 0 0 -7 0v-9" /> <path d="M5 21v-7" /></svg><span>スタートに設定</span>', fn:() => _promoteNode(wpId,'start'), cls:'ctx-convert'});
+  if (isLast)  items.push({html:'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;vertical-align:middle"><path d="M5 5a5 5 0 0 1 7 0a5 5 0 0 0 7 0v9a5 5 0 0 1 -7 0a5 5 0 0 0 -7 0v-9" /> <path d="M5 21v-7" /></svg><span>ゴールに設定</span>',   fn:() => _promoteNode(wpId,'goal'),  cls:'ctx-convert'});
+  if (items.length) items.push(null);
+  items.push({html:'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;vertical-align:middle"><path d="M4 7l16 0" /> <path d="M10 11l0 6" /> <path d="M14 11l0 6" /> <path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12" /> <path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3" /></svg><span>この点を削除</span>', fn:() => _deleteNode(wpId), cls:'ctx-del'});
+
+  items.forEach(item => {
+    if (item === null) { const sep=document.createElement('div'); sep.className='ctx-sep'; menu.appendChild(sep); }
+    else {
+      const it=document.createElement('div'); it.className='ctx-it'+(item.cls?' '+item.cls:'');
+      it.innerHTML=item.html;
+      it.addEventListener('click', e=>{ e.stopPropagation(); item.fn(); });
+      it.addEventListener('touchend', e=>{ e.stopPropagation(); e.preventDefault(); item.fn(); });
+      menu.appendChild(it);
+    }
+  });
+
+  // 画面内に収める（実測クランプ）
+  menu.style.visibility='hidden'; menu.style.display='block';
+  const mw=menu.offsetWidth||220, mh=menu.offsetHeight||160, mg=10;
+  menu.style.left=Math.max(mg, Math.min(x, window.innerWidth - mw - mg))+'px';
+  menu.style.top =Math.max(mg, Math.min(y, window.innerHeight - mh - mg))+'px';
+  menu.style.visibility='visible';
+}
+
+// 端点nodeをスタート/ゴールに昇格
+function _promoteNode(wpId, newType) {
+  hideCtxMenu();
+  const wp = wps.find(w => w.id === wpId);
+  if (!wp) return;
+  saveSnapshot();
+  // 既存の同種(start/goal)があれば調整点(node)に戻して1つに保つ
+  wps.forEach(w => { if (w.type === newType && w.id !== wpId) w.type = 'node'; });
+  wp.type = newType;
+  refreshIcons(); redrawStraight(); redrawList();
+  showToast(newType === 'start' ? 'スタートに設定しました' : 'ゴールに設定しました');
+}
+
+// 端点nodeを安全に削除（隣の調整点を新しい端点に繰り上げて線を保つ）
+function _deleteNode(wpId) {
+  hideCtxMenu();
+  const wp = wps.find(w => w.id === wpId);
+  if (!wp) return;
+  saveSnapshot();
+  const rw = routeWps();
+  const idx = rw.findIndex(w => w.id === wpId);
+  const isFirst = idx === 0;
+  const isLast  = idx === rw.length - 1;
+
+  if (isLast && !isFirst) {
+    // 末尾削除：直前WPのセグメントの最後の調整点を新端点に昇格
+    const prevWp = rw[idx-1];
+    const seg = vps.filter(v => v.segAfter === prevWp.id).sort((a,b)=>(a.order||0)-(b.order||0));
+    if (wp.marker) leafMap.removeLayer(wp.marker);
+    wps = wps.filter(w => w.id !== wpId);
+    if (seg.length > 0) {
+      const last = seg[seg.length-1];
+      idW++;
+      const nn = {id:idW, type:'node', name:'', desc:'', tel:'', dwell:0, fitBefore:false, fitAfter:false, onRoute:true, lat:last.lat, lng:last.lng, photos:[], labelDir:'top', marker:null};
+      const pi = wps.findIndex(w => w.id === prevWp.id);
+      wps.splice(pi+1, 0, nn); buildWpMarker(nn);
+      if (last.marker) leafMap.removeLayer(last.marker);
+      vps = vps.filter(v => v.id !== last.id);
+    }
+  } else if (isFirst && !isLast) {
+    // 先頭削除：このnodeのセグメントの最初の調整点を新startに昇格、残りを付け替え
+    const seg = vps.filter(v => v.segAfter === wpId).sort((a,b)=>(a.order||0)-(b.order||0));
+    if (wp.marker) leafMap.removeLayer(wp.marker);
+    const oldIdx = wps.findIndex(w => w.id === wpId);
+    wps = wps.filter(w => w.id !== wpId);
+    if (seg.length > 0) {
+      const first = seg[0];
+      idW++;
+      const nn = {id:idW, type:'node', name:'', desc:'', tel:'', dwell:0, fitBefore:false, fitAfter:false, onRoute:true, lat:first.lat, lng:first.lng, photos:[], labelDir:'top', marker:null};
+      wps.splice(Math.max(0,oldIdx), 0, nn); buildWpMarker(nn);
+      vps.forEach(v => { if (v.segAfter === wpId) v.segAfter = nn.id; });
+      if (first.marker) leafMap.removeLayer(first.marker);
+      vps = vps.filter(v => v.id !== first.id);
+    }
+  } else {
+    // 単独・中間：通常削除
+    if (wp.marker) leafMap.removeLayer(wp.marker);
+    wps = wps.filter(w => w.id !== wpId);
+  }
+  clearCache(); redrawStraight(); scheduleRouting(); redrawList(); refreshIcons();
+  showToast('端点を削除しました');
+}
+
 function showViaCtxMenu(vpId, x, y) {
   _closeAllPopups('ctx');
   hideCtxMenu();
@@ -2830,14 +2978,147 @@ function _drawMiniChart(pts, elevs) {
     `<path d="${fillD}" fill="#C4703A" fill-opacity="0.18"/>`+
     `<path d="${lineD}" fill="none" stroke="#C4703A" stroke-width="1.8"/>`+
     `<line x1="${PL}" y1="${PT}" x2="${PL}" y2="${PT+iH}" stroke="#C0A882" stroke-width="0.8"/>`;
-  // モバイル高低差SVGに同期
-  const mobElev = document.getElementById('mobileElevSvg');
-  if (mobElev) { mobElev.setAttribute('viewBox',`0 0 ${W} ${H}`); mobElev.innerHTML = miniSvg.innerHTML; }
+  // モバイル高低差バンドを描画（折りたたみ/展開の現在状態で）
+  _drawElevBand();
   const mobStats = document.getElementById('mobileElevStats');
   if (mobStats && elevs.length) {
     const asc = elevs.reduce((s,e,i)=>i>0&&e>elevs[i-1]?s+(e-elevs[i-1]):s,0);
     mobStats.textContent = `+${Math.round(asc)}m`;
   }
+}
+
+// ── モバイル高低差バンド：折りたたみ/展開を1つの描画関数で（縦幅で目盛り本数可変）──
+let _elevExpanded = false;
+
+function _niceElevStep(rng, targetLines) {
+  // レンジと目標本数から、0/50/100…のキリの良いステップを選ぶ
+  const raw = rng / Math.max(1, targetLines);
+  const steps = [5,10,20,25,50,100,200,250,500,1000];
+  for (const s of steps) if (s >= raw) return s;
+  return 1000;
+}
+
+function _drawElevBand() {
+  const svg = document.getElementById('mobileElevSvg');
+  if (!svg || !_elevData) return;
+  const {pts, elevs} = _elevData;
+  if (!pts || pts.length < 2) return;
+  const expanded = _elevExpanded;
+  const dists = _calcElevDists(pts);
+  const totalM = dists[dists.length-1] || 1;
+  const minE=Math.min(...elevs), maxE=Math.max(...elevs), rng=(maxE-minE)||1;
+
+  const W = 360;
+  const H = expanded ? 170 : 40;
+  const PL = expanded ? 34 : 26, PR = expanded ? 10 : 4;
+  const PT = expanded ? 10 : 4,  PB = expanded ? 22 : 12;
+  const iW = W-PL-PR, iH = H-PT-PB;
+  const xi=d=>(d/totalM)*iW, yi=e=>iH-((e-minE)/rng)*iH;
+
+  // 目盛り：縦幅に応じて本数を増やす（キリの良い標高値）
+  let grid='';
+  if (expanded) {
+    const step = _niceElevStep(rng, Math.max(2, Math.floor(iH/34)));
+    const startV = Math.floor(minE/step)*step;
+    for (let v=startV; v<=maxE+step; v+=step) {
+      if (v < minE-0.5 || v > maxE+0.5) continue;
+      const yy=(PT+yi(v)).toFixed(1);
+      grid+=`<line x1="${PL}" y1="${yy}" x2="${PL+iW}" y2="${yy}" stroke="#E8DDD0" stroke-width="0.8"/>`+
+            `<text x="${PL-3}" y="${(parseFloat(yy)+3).toFixed(1)}" text-anchor="end" font-size="8.5" fill="#9A8070">${Math.round(v)}m</text>`;
+    }
+  } else {
+    // 折りたたみ：最高・最低のみ
+    [maxE,minE].forEach(v=>{
+      const yy=(PT+yi(v)).toFixed(1);
+      grid+=`<text x="${PL-2}" y="${(parseFloat(yy)+3).toFixed(1)}" text-anchor="end" font-size="7" fill="#9A8070">${Math.round(v)}m</text>`;
+    });
+  }
+
+  const lineD=pts.map((p,i)=>`${i?'L':'M'}${(PL+xi(dists[i])).toFixed(1)},${(PT+yi(elevs[i])).toFixed(1)}`).join(' ');
+  const fillD=lineD+` L${PL+iW},${PT+iH} L${PL},${PT+iH} Z`;
+
+  // 展開時：WPマーク（番号・S/G）と距離ラベル
+  let extra='';
+  if (expanded) {
+    const rw=routeWps();
+    if (rw.length>=2 && totalM>0) {
+      let cum=0; const wpD=[0];
+      for(let i=1;i<rw.length;i++){const dlat=(rw[i].lat-rw[i-1].lat)*111000,dlng=(rw[i].lng-rw[i-1].lng)*111000*Math.cos(rw[i].lat*Math.PI/180);cum+=Math.sqrt(dlat*dlat+dlng*dlng);wpD.push(cum);}
+      const sc=totalM/(wpD[wpD.length-1]||totalM);
+      rw.forEach((wp,i)=>{
+        const xp=(PL+xi(wpD[i]*sc)).toFixed(1);
+        const lbl = wp.type==='start'?'S':wp.type==='goal'?'G':wp.type==='course'?(courseNum(wp)||'?'):wp.type==='node'?'':(SYM[wp.type]||'').substring(0,1);
+        const col=(WT.find(x=>x.v===wp.type)||WT[0]).c;
+        extra+=`<line x1="${xp}" y1="${PT}" x2="${xp}" y2="${PT+iH}" stroke="${col}" stroke-width="1" stroke-dasharray="3,3" opacity="0.5"/>`;
+        extra+=`<circle cx="${xp}" cy="${PT}" r="6" fill="${col}"/>`;
+        if(lbl) extra+=`<text x="${xp}" y="${PT+3}" text-anchor="middle" font-size="7" fill="#fff" font-weight="bold">${lbl}</text>`;
+      });
+    }
+    extra+=`<text x="${PL}" y="${PT+iH+15}" text-anchor="start" font-size="8" fill="#9A8070">0</text>`+
+           `<text x="${PL+iW}" y="${PT+iH+15}" text-anchor="end" font-size="8" fill="#9A8070">${(totalM/1000).toFixed(1)}km</text>`;
+  } else {
+    extra+=`<text x="${PL+iW}" y="${PT+iH+9}" text-anchor="end" font-size="7" fill="#9A8070">${(totalM/1000).toFixed(1)}km</text>`;
+  }
+
+  svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
+  svg.innerHTML = grid +
+    `<path d="${fillD}" fill="#C4703A" fill-opacity="0.18"/>`+
+    `<path d="${lineD}" fill="none" stroke="#C4703A" stroke-width="${expanded?2:1.6}"/>`+
+    extra +
+    `<line x1="${PL}" y1="${PT}" x2="${PL}" y2="${PT+iH}" stroke="#C0A882" stroke-width="0.8"/>`+
+    `<line x1="${PL}" y1="${PT+iH}" x2="${PL+iW}" y2="${PT+iH}" stroke="#C0A882" stroke-width="0.8"/>`;
+
+  // 展開時の統計行（最高/最低/上り/下り）
+  const row = document.getElementById('mobileElevStatsRow');
+  if (row) {
+    if (expanded) {
+      let gain=0,loss=0;
+      for(let i=1;i<elevs.length;i++){const d=elevs[i]-elevs[i-1];if(d>0)gain+=d;else loss-=d;}
+      row.innerHTML =
+        `<span class="mev-stat mev-hi">${ICO_MOUNTAIN}<span>最高</span><b>${Math.round(maxE)}m</b></span>`+
+        `<span class="mev-stat mev-lo">${ICO_ARRDR}<span>最低</span><b>${Math.round(minE)}m</b></span>`+
+        `<span class="mev-stat mev-up">${ICO_UP}<span>上り</span><b>+${Math.round(gain)}m</b></span>`+
+        `<span class="mev-stat mev-dn">${ICO_DN}<span>下り</span><b>-${Math.round(loss)}m</b></span>`;
+    } else {
+      row.innerHTML = '';
+    }
+  }
+}
+
+const ICO_MOUNTAIN = '<svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 20h18l-6.921 -14.612a2.3 2.3 0 0 0 -4.158 0l-6.921 14.612" /> <path d="M7.5 11l2 2.5l2.5 -2.5l2 3l2.5 -2" /></svg>';
+const ICO_UP = '<svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6 -6l4 4l8 -8" /> <path d="M14 7l7 0l0 7" /></svg>';
+const ICO_DN = '<svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7l6 6l4 -4l8 8" /> <path d="M21 10l0 7l-7 0" /></svg>';
+const ICO_ARRDR = '<svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 7l-10 10" /> <path d="M8 7l9 0l0 9" /></svg>';
+
+function _setElevExpanded(b) {
+  _elevExpanded = b;
+  const band = document.getElementById('mobileElevBand');
+  if (band) band.classList.toggle('expanded', b);
+  _drawElevBand();
+}
+
+// フリック検知（上＝展開／下＝折りたたみ）。地図のなぞりとは別要素なので競合しない
+function _initElevFlick() {
+  const band = document.getElementById('mobileElevBand');
+  if (!band || band._flickInit) return;
+  band._flickInit = true;
+  let sy=null, st=0;
+  const start = e => { const t=e.touches?e.touches[0]:e; sy=t.clientY; st=Date.now(); };
+  const end = e => {
+    if (sy===null) return;
+    const t=e.changedTouches?e.changedTouches[0]:e;
+    const dy=t.clientY - sy; const dt=Date.now()-st;
+    sy=null;
+    if (dt < 600 && Math.abs(dy) > 24) {
+      if (dy < 0) _setElevExpanded(true);   // 上フリック→展開
+      else        _setElevExpanded(false);  // 下フリック→折りたたみ
+    }
+  };
+  band.addEventListener('touchstart', start, {passive:true});
+  band.addEventListener('touchend', end, {passive:true});
+  // マウス（PCプレビュー）でも一応動かす
+  band.addEventListener('mousedown', start);
+  band.addEventListener('mouseup', end);
 }
 
 /* ============================================================
