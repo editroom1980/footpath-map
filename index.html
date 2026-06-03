@@ -219,6 +219,8 @@ html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:
   #mobileRbtns{display:flex!important}
   #mobileShelf{display:flex!important}
   #mobileElevBand{display:block!important}
+  #mobileElevBand.hidden-empty{display:none!important}
+  #mobileShelf.no-route .mob-stats,#mobileShelf.no-route .mob-sdiv{display:none!important}
   #sidebar{width:100%;border-right:none;border-top:2px solid #C4703A;max-height:44vh;order:2;flex-shrink:0}
   #mapArea{order:1;flex:1;min-height:0}
   .btn{min-height:36px;font-size:12px;padding:6px 10px}
@@ -656,6 +658,7 @@ let vps         = [];
 let routeLine   = null;
 let hitOverlays = [];      // per-segment hit overlays — prevents segment misattribution
 let viaVisible  = true;
+let _vpDragged  = false;   // 調整点ドラッグ直後フラグ（クリックでメニューを開かないため）
 let mode        = 'wp';
 // ── なぞり描き（iPhone専用）状態 ──
 let _drawActive   = false;  // なぞり描きモード中か
@@ -754,6 +757,7 @@ async function newCourse() {
   wps=[]; vps=[]; idW=0; idV=0; segCache={};
   if (document.getElementById('iDesc')) document.getElementById('iDesc').value='';
   redrawList();
+  updateDistanceAndTime();  // 空コースなので高低差バンド・距離を非表示にする
 
   document.getElementById('s1').style.display = 'none';
   document.getElementById('s2').style.display = 'flex';
@@ -1153,7 +1157,7 @@ function buildVpMarker(vp) {
     zIndexOffset:500
   }).addTo(leafMap);
 
-  m.on('dragstart', () => saveSnapshot());
+  m.on('dragstart', () => { _vpDragged = true; saveSnapshot(); });
   m.on('drag',    () => { vp.lat=m.getLatLng().lat; vp.lng=m.getLatLng().lng; redrawStraight(); });
   m.on('dragend', () => { vp.lat=m.getLatLng().lat; vp.lng=m.getLatLng().lng; clearCache(); scheduleRouting(); });
 
@@ -1204,9 +1208,10 @@ function buildVpMarker(vp) {
     el.addEventListener('touchend',    cancelPress, {passive: true});
     el.addEventListener('touchcancel', cancelPress, {passive: true});
 
-    // Tap (click after touch): show menu — but skip if long press already fired
+    // Tap (click after touch): show menu — but skip if long press already fired or just dragged
     m.on('click', e => {
       L.DomEvent.stopPropagation(e);
+      if (_vpDragged) { _vpDragged = false; return; }   // ドラッグ移動直後はメニューを開かない
       if (longPressJustFired) { longPressJustFired = false; return; }
       const oe = e.originalEvent || {};
       const touch = oe.changedTouches && oe.changedTouches[0];
@@ -2282,6 +2287,13 @@ function updateDistanceAndTime(coords) {
   let dist = 0;
   for (let i=0; i<c.length-1; i++) dist += haversine(c[i][0],c[i][1],c[i+1][0],c[i+1][1]);
 
+  // コースがまだ無い（2点未満）間は、高低差バンドと距離表示を隠す
+  const hasRoute = c.length >= 2;
+  const band  = document.getElementById('mobileElevBand');
+  const shelf = document.getElementById('mobileShelf');
+  if (band)  band.classList.toggle('hidden-empty', !hasRoute);
+  if (shelf) shelf.classList.toggle('no-route', !hasRoute);
+
   const distEl = document.getElementById('distDisp');
   const timeEl = document.getElementById('timeDisp');
   const mobDist = document.getElementById('mobileDistDisp');
@@ -3236,23 +3248,23 @@ function _initElevFlick() {
   const band = document.getElementById('mobileElevBand');
   if (!band || band._flickInit) return;
   band._flickInit = true;
-  let sy=null, st=0;
-  const start = e => { const t=e.touches?e.touches[0]:e; sy=t.clientY; st=Date.now(); };
-  const end = e => {
+  // タップで開閉トグル（移動が大きい場合はスクロール等とみなしトグルしない）
+  let sx=null, sy=null, st=0, moved=false;
+  const start = e => { const t=e.touches?e.touches[0]:e; sx=t.clientX; sy=t.clientY; st=Date.now(); moved=false; };
+  const move  = e => { if(sy===null) return; const t=e.touches?e.touches[0]:e; if(Math.abs(t.clientX-sx)>10||Math.abs(t.clientY-sy)>10) moved=true; };
+  const end   = e => {
     if (sy===null) return;
-    const t=e.changedTouches?e.changedTouches[0]:e;
-    const dy=t.clientY - sy; const dt=Date.now()-st;
+    const dt = Date.now()-st;
     sy=null;
-    if (dt < 600 && Math.abs(dy) > 24) {
-      if (dy < 0) _setElevExpanded(true);   // 上フリック→展開
-      else        _setElevExpanded(false);  // 下フリック→折りたたみ
-    }
+    if (!moved && dt < 500) _setElevExpanded(!_elevExpanded);  // タップ → 開閉
   };
   band.addEventListener('touchstart', start, {passive:true});
-  band.addEventListener('touchend', end, {passive:true});
-  // マウス（PCプレビュー）でも一応動かす
+  band.addEventListener('touchmove',  move,  {passive:true});
+  band.addEventListener('touchend',   end,   {passive:true});
+  // マウス（PCプレビュー）でも動かす
   band.addEventListener('mousedown', start);
-  band.addEventListener('mouseup', end);
+  band.addEventListener('mousemove', move);
+  band.addEventListener('mouseup',   end);
 }
 
 /* ============================================================
