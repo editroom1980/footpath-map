@@ -249,8 +249,7 @@ html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:
 .mob-stat-v{font-size:15px;font-weight:bold;color:#1C1917}
 .mob-stat-u{font-size:9px;color:#A8A29E}
 .mob-stat-s{font-size:10px;color:#E2DDD4}
-#mobileElevBand{background:#fff;border-top:0.5px solid rgba(0,0,0,0.06);padding:5px 14px 7px;flex-shrink:0;touch-action:none;overflow:hidden;max-height:84px;transition:max-height .26s ease}
-#mobileElevBand.expanded{max-height:280px}
+#mobileElevBand{background:#fff;border-top:0.5px solid rgba(0,0,0,0.06);padding:5px 14px 7px;flex-shrink:0;touch-action:none;overflow:hidden;transition:height .34s cubic-bezier(.33,.0,.2,1)}
 #mobileElevGrip{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px}
 #mobileElevChev{color:#C4BEB8;font-size:15px;display:flex;transition:transform .2s}
 #mobileElevBand.expanded #mobileElevChev{transform:rotate(180deg)}
@@ -1243,11 +1242,22 @@ function showNodeCtxMenu(wpId, x, y) {
   hdr.appendChild(hx);
   menu.appendChild(hdr);
 
+  const _ICO_ON = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;vertical-align:middle"><path d="M3 5a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-14" /> <path d="M9 12l2 2l4 -4" /></svg>';
+  const _ICO_OFF = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;vertical-align:middle"><path d="M3 5a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-14" /></svg>';
+  const _ICO_REFRESH = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;vertical-align:middle"><path d="M20 11a8.1 8.1 0 0 0 -15.5 -2m-.5 -4v4h4" /> <path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4" /></svg>';
+  const _ICO_FLAG = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;vertical-align:middle"><path d="M5 5a5 5 0 0 1 7 0a5 5 0 0 0 7 0v9a5 5 0 0 1 -7 0a5 5 0 0 0 -7 0v-9" /> <path d="M5 21v-7" /></svg>';
+  const _ICO_TRASH = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;vertical-align:middle"><path d="M4 7l16 0" /> <path d="M10 11l0 6" /> <path d="M14 11l0 6" /> <path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12" /> <path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3" /></svg>';
+  const fb = wp.fitBefore !== false, fa = wp.fitAfter !== false;
+
   const items = [];
-  if (isFirst) items.push({html:'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;vertical-align:middle"><path d="M5 5a5 5 0 0 1 7 0a5 5 0 0 0 7 0v9a5 5 0 0 1 -7 0a5 5 0 0 0 -7 0v-9" /> <path d="M5 21v-7" /></svg><span>スタートに設定</span>', fn:() => _promoteNode(wpId,'start'), cls:'ctx-convert'});
-  if (isLast)  items.push({html:'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;vertical-align:middle"><path d="M5 5a5 5 0 0 1 7 0a5 5 0 0 0 7 0v9a5 5 0 0 1 -7 0a5 5 0 0 0 -7 0v-9" /> <path d="M5 21v-7" /></svg><span>ゴールに設定</span>',   fn:() => _promoteNode(wpId,'goal'),  cls:'ctx-convert'});
-  if (items.length) items.push(null);
-  items.push({html:'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;vertical-align:middle"><path d="M4 7l16 0" /> <path d="M10 11l0 6" /> <path d="M14 11l0 6" /> <path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12" /> <path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3" /></svg><span>この点を削除</span>', fn:() => _deleteNode(wpId), cls:'ctx-del'});
+  items.push({html:(fb?_ICO_ON:_ICO_OFF)+'<span>前の区間を道路に沿う</span>', fn:() => _nodeToggleFit(wpId,'before')});
+  items.push({html:(fa?_ICO_ON:_ICO_OFF)+'<span>後の区間を道路に沿う</span>', fn:() => _nodeToggleFit(wpId,'after')});
+  items.push(null);
+  items.push({html:_ICO_REFRESH+'<span>ウェイポイントに変換</span>', fn:() => _nodeConvertToWp(wpId), cls:'ctx-convert'});
+  if (isFirst) items.push({html:_ICO_FLAG+'<span>スタートに設定</span>', fn:() => _promoteNode(wpId,'start'), cls:'ctx-convert'});
+  if (isLast)  items.push({html:_ICO_FLAG+'<span>ゴールに設定</span>',   fn:() => _promoteNode(wpId,'goal'),  cls:'ctx-convert'});
+  items.push(null);
+  items.push({html:_ICO_TRASH+'<span>この調整点を削除</span>', fn:() => _deleteNode(wpId), cls:'ctx-del'});
 
   items.forEach(item => {
     if (item === null) { const sep=document.createElement('div'); sep.className='ctx-sep'; menu.appendChild(sep); }
@@ -1266,6 +1276,27 @@ function showNodeCtxMenu(wpId, x, y) {
   menu.style.left=Math.max(mg, Math.min(x, window.innerWidth - mw - mg))+'px';
   menu.style.top =Math.max(mg, Math.min(y, window.innerHeight - mh - mg))+'px';
   menu.style.visibility='visible';
+}
+
+// 端点nodeの前後区間の道路フィットを切替
+function _nodeToggleFit(wpId, dir) {
+  hideCtxMenu();
+  const wp = wps.find(w => w.id === wpId);
+  if (!wp) return;
+  if (dir === 'before') wp.fitBefore = (wp.fitBefore !== false) ? false : true;
+  else                  wp.fitAfter  = (wp.fitAfter  !== false) ? false : true;
+  clearCache(); scheduleRouting();
+}
+
+// 端点nodeを通常のウェイポイント（コースポイント）に変換
+function _nodeConvertToWp(wpId) {
+  hideCtxMenu();
+  const wp = wps.find(w => w.id === wpId);
+  if (!wp) return;
+  saveSnapshot();
+  wp.type = 'course';
+  refreshIcons(); redrawStraight(); redrawList(); scheduleRouting();
+  showToast('ウェイポイントに変換しました');
 }
 
 // 端点nodeをスタート/ゴールに昇格
@@ -1655,11 +1686,15 @@ function _finalizeTrace(rawPts, startWp) {
   };
 
   const rw = routeWps();
-  // 既存ルートの最後がnode（過去のなぞり終点）の場合のみ「なぞりの続き」として終点を延長。
-  // それ以外（ユーザーが置いたWPが最後）の場合は、既存WPを一切動かさず独立したなぞりとして追加する。
-  const canExtend = rw.length > 0 && rw[rw.length - 1].type === 'node';
-  if (!canExtend) {
-    // 初回 or 既存WPあり：始点ノード + 調整点 + 終点ノードを新規作成（既存WPは不動）
+  // 開始点が既存WPの近く（スナップ範囲内）なら、そのWPをアンカーにして重複点を作らない
+  const canExtend = rw.length > 0 && rw[rw.length - 1].type === 'node' && !startWp;
+  if (startWp) {
+    // 既存WPを起点に：始点ノードは作らず、調整点＋終点ノードを追加（既存WPは不動）
+    let ord = _nextOrder(startWp.id);
+    for (let i = 1; i < llpts.length - 1; i++) _mkVp(llpts[i][0], llpts[i][1], startWp.id, ord++);
+    _addTraceWp(llpts[llpts.length-1][0], llpts[llpts.length-1][1], 'node', startWp);
+  } else if (!canExtend) {
+    // 初回 or 既存WPあり（開始点はWP近傍でない）：始点ノード + 調整点 + 終点ノードを新規作成
     const startNode = _addTraceWp(llpts[0][0], llpts[0][1], 'node');
     let ord = 0;
     for (let i = 1; i < llpts.length - 1; i++) _mkVp(llpts[i][0], llpts[i][1], startNode.id, ord++);
@@ -3102,13 +3137,32 @@ function _drawElevBand() {
 const ICO_MOUNTAIN = '<svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 20h18l-6.921 -14.612a2.3 2.3 0 0 0 -4.158 0l-6.921 14.612" /> <path d="M7.5 11l2 2.5l2.5 -2.5l2 3l2.5 -2" /></svg>';
 const ICO_UP = '<svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6 -6l4 4l8 -8" /> <path d="M14 7l7 0l0 7" /></svg>';
 const ICO_DN = '<svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7l6 6l4 -4l8 8" /> <path d="M21 10l0 7l-7 0" /></svg>';
-const ICO_ARRDR = '<svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><g transform="translate(0,24) scale(1,-1)"><path d="M3 20h18l-6.921 -14.612a2.3 2.3 0 0 0 -4.158 0l-6.921 14.612" /></g></svg>';
+const ICO_ARRDR = '<svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7 L6 7 L11 16 Q12 18 13 16 L18 7 L21 7" /></svg>';
 
 function _setElevExpanded(b) {
-  _elevExpanded = b;
   const band = document.getElementById('mobileElevBand');
-  if (band) band.classList.toggle('expanded', b);
+  if (!band) { _elevExpanded = b; _drawElevBand(); return; }
+  if (_elevExpanded === b) { _drawElevBand(); return; }
+  _elevExpanded = b;
+
+  // 1. 現在の高さ（アニメ開始点）
+  const startH = band.offsetHeight;
+  // 2. 状態を切替え、中身（SVG高さ・統計行）を更新
+  band.classList.toggle('expanded', b);
   _drawElevBand();
+  // 3. 目標の自然な高さを実測（height:autoで測ってから開始点へ戻す）
+  band.style.height = 'auto';
+  const targetH = band.offsetHeight;
+  band.style.height = startH + 'px';
+  void band.offsetHeight;             // 強制リフロー（開始点を確定）
+  // 4. 目標高さへアニメーション
+  requestAnimationFrame(() => { band.style.height = targetH + 'px'; });
+  // 5. アニメ完了後にheightをautoへ戻す（保険のタイマー付き）
+  clearTimeout(band._elevAnimTimer);
+  const _clear = () => { band.style.height = ''; band.removeEventListener('transitionend', _onEnd); };
+  const _onEnd = (e) => { if (e.target === band && e.propertyName === 'height') _clear(); };
+  band.addEventListener('transitionend', _onEnd);
+  band._elevAnimTimer = setTimeout(_clear, 500);
 }
 
 // フリック検知（上＝展開／下＝折りたたみ）。地図のなぞりとは別要素なので競合しない
