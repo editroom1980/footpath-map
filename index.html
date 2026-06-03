@@ -249,7 +249,8 @@ html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:
 .mob-stat-v{font-size:15px;font-weight:bold;color:#1C1917}
 .mob-stat-u{font-size:9px;color:#A8A29E}
 .mob-stat-s{font-size:10px;color:#E2DDD4}
-#mobileElevBand{background:#fff;border-top:0.5px solid rgba(0,0,0,0.06);padding:5px 14px 7px;flex-shrink:0;touch-action:none;transition:none}
+#mobileElevBand{background:#fff;border-top:0.5px solid rgba(0,0,0,0.06);padding:5px 14px 7px;flex-shrink:0;touch-action:none;overflow:hidden;max-height:84px;transition:max-height .26s ease}
+#mobileElevBand.expanded{max-height:280px}
 #mobileElevGrip{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px}
 #mobileElevChev{color:#C4BEB8;font-size:15px;display:flex;transition:transform .2s}
 #mobileElevBand.expanded #mobileElevChev{transform:rotate(180deg)}
@@ -259,7 +260,7 @@ html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:
 .mev-stat .svgi{width:13px;height:13px}
 .mev-stat b{font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:11px}
 .mev-up{color:#16A34A}.mev-dn{color:#DC2626}.mev-hi{color:#C4703A}.mev-lo{color:#2563EB}
-#mobileElevSvg{display:block;width:100%;height:46px;transition:height .22s ease}
+#mobileElevSvg{display:block;width:100%;height:46px}
 #mobileElevBand.expanded #mobileElevSvg{height:170px}
 .mob-elev-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px}
 .mob-elev-hdr span{font-size:9px;color:#C4BEB8}
@@ -949,7 +950,13 @@ function showWpTypePicker(lat, lng, e) {
   picker.innerHTML =
     `<div class="ctx-hdr"><span>ポイントの種類を選択</span>` +
     `<button class="ctx-hx" aria-label="閉じる" onclick="event.stopPropagation();hideWpPicker()"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M18 6l-12 12" /> <path d="M6 6l12 12" /></svg></button></div>` +
-    WT.filter(t => t.v !== 'node').map(t => {
+    WT.filter(t => {
+      if (t.v === 'node') return false;
+      // 既にスタート/ゴールがある場合は選択肢から除外（1つずつに制限）
+      if (t.v === 'start' && wps.some(w => w.type === 'start')) return false;
+      if (t.v === 'goal'  && wps.some(w => w.type === 'goal'))  return false;
+      return true;
+    }).map(t => {
       const isCourse = t.v === 'course';
       const style = isCourse
         ? 'font-weight:bold;color:#C4703A;border-bottom:1px solid #EEE8DE;margin-bottom:2px;padding-bottom:7px'
@@ -1648,14 +1655,17 @@ function _finalizeTrace(rawPts, startWp) {
   };
 
   const rw = routeWps();
-  if (rw.length === 0) {
-    // 初回：始点ノード + 終点ノード（どちらも灰色の調整点風）。間は調整点。
+  // 既存ルートの最後がnode（過去のなぞり終点）の場合のみ「なぞりの続き」として終点を延長。
+  // それ以外（ユーザーが置いたWPが最後）の場合は、既存WPを一切動かさず独立したなぞりとして追加する。
+  const canExtend = rw.length > 0 && rw[rw.length - 1].type === 'node';
+  if (!canExtend) {
+    // 初回 or 既存WPあり：始点ノード + 調整点 + 終点ノードを新規作成（既存WPは不動）
     const startNode = _addTraceWp(llpts[0][0], llpts[0][1], 'node');
     let ord = 0;
     for (let i = 1; i < llpts.length - 1; i++) _mkVp(llpts[i][0], llpts[i][1], startNode.id, ord++);
     _addTraceWp(llpts[llpts.length-1][0], llpts[llpts.length-1][1], 'node', startNode);
   } else {
-    // 続き：最後のルートWPを終点とし、その手前のWPを調整点のアンカーに
+    // 続き：直前のなぞり終点ノードから延長（終点ノードを新しい終点へ移動）
     const endNode   = rw[rw.length - 1];
     const segAnchor = rw.length >= 2 ? rw[rw.length - 2] : rw[0];
     let ord = _nextOrder(segAnchor.id);
@@ -3026,13 +3036,13 @@ function _drawElevBand() {
       if (v < minE-0.5 || v > maxE+0.5) continue;
       const yy=(PT+yi(v)).toFixed(1);
       grid+=`<line x1="${PL}" y1="${yy}" x2="${PL+iW}" y2="${yy}" stroke="#E8DDD0" stroke-width="0.8"/>`+
-            `<text x="${PL-3}" y="${(parseFloat(yy)+3).toFixed(1)}" text-anchor="end" font-size="8.5" fill="#9A8070">${Math.round(v)}m</text>`;
+            `<text x="${PL-3}" y="${(parseFloat(yy)+3).toFixed(1)}" text-anchor="end" font-size="8" fill="#9A8070">${Math.round(v)}m</text>`;
     }
   } else {
     // 折りたたみ：最高・最低のみ
     [maxE,minE].forEach(v=>{
       const yy=(PT+yi(v)).toFixed(1);
-      grid+=`<text x="${PL-2}" y="${(parseFloat(yy)+3).toFixed(1)}" text-anchor="end" font-size="7" fill="#9A8070">${Math.round(v)}m</text>`;
+      grid+=`<text x="${PL-2}" y="${(parseFloat(yy)+3).toFixed(1)}" text-anchor="end" font-size="8" fill="#9A8070">${Math.round(v)}m</text>`;
     });
   }
 
@@ -3061,7 +3071,7 @@ function _drawElevBand() {
     extra+=`<text x="${PL}" y="${PT+iH+15}" text-anchor="start" font-size="8" fill="#9A8070">0</text>`+
            `<text x="${PL+iW}" y="${PT+iH+15}" text-anchor="end" font-size="8" fill="#9A8070">${(totalM/1000).toFixed(1)}km</text>`;
   } else {
-    extra+=`<text x="${PL+iW}" y="${PT+iH+9}" text-anchor="end" font-size="7" fill="#9A8070">${(totalM/1000).toFixed(1)}km</text>`;
+    extra+=`<text x="${PL+iW}" y="${PT+iH+9}" text-anchor="end" font-size="8" fill="#9A8070">${(totalM/1000).toFixed(1)}km</text>`;
   }
 
   svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
@@ -3092,7 +3102,7 @@ function _drawElevBand() {
 const ICO_MOUNTAIN = '<svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 20h18l-6.921 -14.612a2.3 2.3 0 0 0 -4.158 0l-6.921 14.612" /> <path d="M7.5 11l2 2.5l2.5 -2.5l2 3l2.5 -2" /></svg>';
 const ICO_UP = '<svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6 -6l4 4l8 -8" /> <path d="M14 7l7 0l0 7" /></svg>';
 const ICO_DN = '<svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7l6 6l4 -4l8 8" /> <path d="M21 10l0 7l-7 0" /></svg>';
-const ICO_ARRDR = '<svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5l0 14" /> <path d="M18 13l-6 6" /> <path d="M6 13l6 6" /></svg>';
+const ICO_ARRDR = '<svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><g transform="translate(0,24) scale(1,-1)"><path d="M3 20h18l-6.921 -14.612a2.3 2.3 0 0 0 -4.158 0l-6.921 14.612" /></g></svg>';
 
 function _setElevExpanded(b) {
   _elevExpanded = b;
