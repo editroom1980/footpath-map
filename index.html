@@ -1026,6 +1026,12 @@ function buildWpMarker(wp) {
 
   wp.marker = m;       // set BEFORE addWpLongPress
   if (_drawActive) { try { m.dragging && m.dragging.disable(); } catch(_){} }  // なぞり中生成は即ロック
+  // 端点nodeは調整点と同じ表示状態に合わせる（調整点非表示中は隠す）
+  if (wp.type === 'node' && !viaVisible) {
+    m.setOpacity(0);
+    const el = m.getElement();
+    if (el) el.style.pointerEvents = 'none';
+  }
   updateTooltip(wp);   // 色・方向・折り返しを正しく適用（設定画面を経由しなくても反映）
   addWpLongPress(wp);
   return m;
@@ -1678,27 +1684,34 @@ function _finalizeTrace(rawPts, startWp) {
 
   // 端点は灰色の点(node)＝調整点と同じ見た目。S/G・番号は作らない。
   // すべての点（端点・中間点）を fit=false にして、なぞった軌跡通りに必ず描画する。
+  const traceVps = [];
   const _mkVp = (lat, lng, seg, ord) => {
     idV++;
     const vp = {id:'v'+idV, segAfter:seg, order:ord, fitBefore:false, fitAfter:false, lat:lat, lng:lng, marker:null};
     vps.push(vp); buildVpMarker(vp);
     if (_drawActive) { try { if (vp.marker && vp.marker.dragging) vp.marker.dragging.disable(); } catch(_){} }
+    traceVps.push(vp);
+    return vp;
   };
 
   const rw = routeWps();
+  // なぞり後に道路フィット判定する点列（起点→調整点→終点の順）
+  let _fitOrdered = null;
   // 開始点が既存WPの近く（スナップ範囲内）なら、そのWPをアンカーにして重複点を作らない
   const canExtend = rw.length > 0 && rw[rw.length - 1].type === 'node' && !startWp;
   if (startWp) {
     // 既存WPを起点に：始点ノードは作らず、調整点＋終点ノードを追加（既存WPは不動）
     let ord = _nextOrder(startWp.id);
     for (let i = 1; i < llpts.length - 1; i++) _mkVp(llpts[i][0], llpts[i][1], startWp.id, ord++);
-    _addTraceWp(llpts[llpts.length-1][0], llpts[llpts.length-1][1], 'node', startWp);
+    const endNode = _addTraceWp(llpts[llpts.length-1][0], llpts[llpts.length-1][1], 'node', startWp);
+    _fitOrdered = [startWp, ...traceVps, endNode];
   } else if (!canExtend) {
     // 初回 or 既存WPあり（開始点はWP近傍でない）：始点ノード + 調整点 + 終点ノードを新規作成
     const startNode = _addTraceWp(llpts[0][0], llpts[0][1], 'node');
     let ord = 0;
     for (let i = 1; i < llpts.length - 1; i++) _mkVp(llpts[i][0], llpts[i][1], startNode.id, ord++);
-    _addTraceWp(llpts[llpts.length-1][0], llpts[llpts.length-1][1], 'node', startNode);
+    const endNode = _addTraceWp(llpts[llpts.length-1][0], llpts[llpts.length-1][1], 'node', startNode);
+    _fitOrdered = [startNode, ...traceVps, endNode];
   } else {
     // 続き：直前のなぞり終点ノードから延長（終点ノードを新しい終点へ移動）
     const endNode   = rw[rw.length - 1];
@@ -1712,10 +1725,15 @@ function _finalizeTrace(rawPts, startWp) {
     endNode.lat = llpts[llpts.length-1][0];
     endNode.lng = llpts[llpts.length-1][1];
     if (endNode.marker) endNode.marker.setLatLng([endNode.lat, endNode.lng]);
+    // 新規トレース部分のみフィット対象（traceVps[0]は旧終点位置＝開始アンカー）
+    _fitOrdered = [...traceVps, endNode];
   }
 
   clearCache(); redrawStraight(); scheduleRouting();
   refreshIcons(); redrawList();
+
+  // 道路フィット（非同期・非破壊）：道に沿った区間だけ道路ルートに、道のない区間はフリーハンド維持
+  if (_fitOrdered && _fitOrdered.length >= 2) _roadFitTrace(_fitOrdered);
 }
 
 function ctxDoToggleFit(dir) {
@@ -1752,6 +1770,14 @@ function toggleViaVisibility() {
     if (!vp.marker) return;
     vp.marker.setOpacity(viaVisible ? 1 : 0);
     const el = vp.marker.getElement();
+    if (el) el.style.pointerEvents = viaVisible ? '' : 'none';
+  });
+
+  // 端点node（灰色の点）も調整点と同じく表示/非表示を切り替える（線は保持）
+  wps.forEach(w => {
+    if (w.type !== 'node' || !w.marker) return;
+    w.marker.setOpacity(viaVisible ? 1 : 0);
+    const el = w.marker.getElement();
     if (el) el.style.pointerEvents = viaVisible ? '' : 'none';
   });
 
@@ -2126,6 +2152,46 @@ async function _prefetchOsrm() {
   await Promise.allSettled(tasks);
 }
 
+
+// なぞり線の道路フィット用：各点の最寄り道路へのスナップ距離(m)を取得（1回のOSRM呼び出し）
+async function _osrmSnapDistances(points) {
+  if (!points || points.length < 2) return null;
+  const coordStr = points.map(p => `${p[1].toFixed(6)},${p[0].toFixed(6)}`).join(';');
+  const url = `https://router.project-osrm.org/route/v1/foot/${coordStr}?overview=false`;
+  const ctrl = new AbortController();
+  const tid  = setTimeout(() => ctrl.abort(), 8000);
+  try {
+    const res = await fetch(url, {signal: ctrl.signal});
+    clearTimeout(tid);
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data.code === 'Ok' && Array.isArray(data.waypoints)) {
+      return data.waypoints.map(w => (typeof w.distance === 'number' ? w.distance : 9999));
+    }
+  } catch(_) { clearTimeout(tid); }
+  return null;  // 失敗時はnull → 呼び出し側でフリーハンド維持
+}
+
+// なぞり直後の道路フィット：両端が道路に近い区間だけfit=trueにして道路ルートに、
+// 道のない区間はfit=falseのまま（フリーハンド）。失敗時は何も変えない（非破壊）。
+async function _roadFitTrace(orderedPoints) {
+  if (!orderedPoints || orderedPoints.length < 2) return;
+  let dists;
+  try {
+    dists = await _osrmSnapDistances(orderedPoints.map(p => [p.lat, p.lng]));
+  } catch(_) { return; }
+  if (!dists || dists.length !== orderedPoints.length) return;  // 失敗 → フリーハンド維持
+  const TH = 25;  // m：この距離以内に道路があれば「道に沿っている」とみなす
+  let changed = false;
+  for (let i = 0; i < orderedPoints.length - 1; i++) {
+    if (dists[i] < TH && dists[i+1] < TH) {
+      orderedPoints[i].fitAfter    = true;
+      orderedPoints[i+1].fitBefore = true;
+      changed = true;
+    }
+  }
+  if (changed) { clearCache(); scheduleRouting(); }
+}
 
 async function buildAnySegment(fromLat, fromLng, toLat, toLng, fitOut, fitIn) {
   // 両方フィットOFF → 直線（手動モード区間）
