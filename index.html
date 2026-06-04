@@ -13,7 +13,7 @@
 html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:13px;color:#2C1B0E;overflow:hidden}
 
 /* ====== SCREEN 1 ====== */
-#s1{height:100vh;overflow-y:auto;background:linear-gradient(135deg,#F5EDD8,#E8D8B8);display:flex;flex-direction:column;align-items:center;padding:calc(20px + env(safe-area-inset-top)) 12px max(20px,env(safe-area-inset-bottom))}
+#s1{height:100vh;height:calc(100dvh + env(safe-area-inset-bottom));overflow-y:auto;background:linear-gradient(135deg,#F5EDD8,#E8D8B8);display:flex;flex-direction:column;align-items:center;padding:calc(20px + env(safe-area-inset-top)) 12px max(20px,env(safe-area-inset-bottom))}
 .s1-inner{width:100%;max-width:480px;margin:0 auto;display:flex;flex-direction:column;height:100%}
 .s1-header{padding:24px 4px 16px}
 .s1-wordmark{font-family:'Plus Jakarta Sans','Hiragino Sans',sans-serif;font-size:24px;font-weight:800;color:#1C1917;letter-spacing:-0.03em}
@@ -215,7 +215,7 @@ html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:
   #tbar{display:none!important}
   #sidebar{display:none!important}
   #elevDetailPanel{display:none!important}
-  #s2{height:100vh}
+  #s2{height:100vh;height:calc(100dvh + env(safe-area-inset-bottom))}
   #main{position:absolute;inset:0}
   #mapArea{position:absolute;inset:0;display:block}
   #mapWrap{position:absolute;inset:0}
@@ -258,7 +258,7 @@ html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:
   #tbar{display:none!important}
   #sidebar{display:none!important}
   #elevDetailPanel{display:none!important}
-  #s2{height:100vh}
+  #s2{height:100vh;height:calc(100dvh + env(safe-area-inset-bottom))}
   #main{position:absolute!important;inset:0!important;display:block!important}
   #mapArea{position:absolute!important;inset:0!important;display:block!important;order:0!important;max-height:none!important}
   #mapWrap{position:absolute!important;inset:0!important;flex:none!important;min-height:0!important}
