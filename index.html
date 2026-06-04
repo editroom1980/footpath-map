@@ -3,6 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#FB8B3E">
 <title>Footpath Mapmaker</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <style>
@@ -164,7 +168,7 @@ html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:
 #elevChart{min-width:280px;width:100%;height:170px;display:block}
 #elevMsg{font-size:12px;color:#9A8070;text-align:center;padding:16px 0}
 .btn-nolabel{background:#5A3E28!important;color:#fff!important;border-color:#5A3E28!important}
-#wpTypePicker{display:none;position:fixed;z-index:5000;background:#fff;border:1px solid #C4B89A;border-radius:8px;overflow:hidden;min-width:215px;box-shadow:0 4px 20px rgba(0,0,0,.25)}
+#wpTypePicker{display:none;position:fixed;z-index:5000;background:#fff;border:1px solid #C4B89A;border-radius:8px;overflow-y:auto;min-width:215px;max-width:min(300px,calc(100vw - 24px - env(safe-area-inset-left) - env(safe-area-inset-right)));max-height:calc(100vh - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom));box-shadow:0 4px 20px rgba(0,0,0,.25)}
 /* カスタム道路描画UI */
 #crFinishBar{display:none;position:fixed;top:50px;left:50%;transform:translateX(-50%);background:#fff;border:1.5px solid #1565C0;border-radius:8px;padding:6px 14px;z-index:2000;gap:10px;align-items:center;box-shadow:0 2px 12px rgba(0,0,0,.2)}
 #crFinishBar.show{display:flex}
@@ -188,14 +192,14 @@ html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:
 #viewBadge{position:fixed;top:8px;left:50%;transform:translateX(-50%);background:rgba(196,112,58,.9);color:#fff;font-size:11px;padding:4px 14px;border-radius:14px;z-index:2500;pointer-events:none;display:none}
 .ctx-it.ctx-convert{color:#2E7D32}
 /* Context menu */
-#ctxMenu{display:none;position:fixed;z-index:5000;background:#fff;border:1px solid #C4B89A;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,.25);min-width:215px;overflow:hidden;font-family:'Hiragino Sans','Meiryo',sans-serif}
+#ctxMenu{display:none;position:fixed;z-index:5000;background:#fff;border:1px solid #C4B89A;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,.25);min-width:215px;max-width:min(300px,calc(100vw - 24px - env(safe-area-inset-left) - env(safe-area-inset-right)));max-height:calc(100vh - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom));overflow-y:auto;font-family:'Hiragino Sans','Meiryo',sans-serif}
 .ctx-hdr{padding:7px 8px 7px 14px;font-size:11px;font-weight:bold;color:#4A2E0E;background:#F0E8D8;border-bottom:1px solid #D4C4A8;display:flex;align-items:center;justify-content:space-between;gap:8px}
 .ctx-hx{background:rgba(0,0,0,.06);border:none;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#6A5640;cursor:pointer;flex-shrink:0}
 .ctx-it svg,.ctx-hx svg{flex-shrink:0}
-.ctx-it{padding:10px 14px;font-size:12px;color:#2C1B0E;cursor:pointer;display:flex;align-items:center;gap:8px;user-select:none;-webkit-user-select:none}
+.ctx-it{padding:8px 14px;font-size:12px;color:#2C1B0E;cursor:pointer;display:flex;align-items:center;gap:8px;user-select:none;-webkit-user-select:none}
 .ctx-it:hover,.ctx-it:active{background:#F5EDD8}
 .ctx-it.ctx-del{color:#B71C1C}
-.ctx-it.wpick{padding:7px 14px;font-size:12px}
+.ctx-it.wpick{padding:6px 14px;font-size:12px}
 .ctx-it.ctx-cancel{color:#888;font-size:11px;justify-content:center}
 .ctx-sep{height:1px;background:#EEE8DE;margin:2px 0}
 /* Mobile */
@@ -219,12 +223,12 @@ html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:
   #map{width:100%;height:100%}
   /* 上部：戻る/保存を個別フロート（白帯なし） */
   #mobileTopBar{display:flex!important;justify-content:space-between;background:transparent!important;
-    padding:8px max(8px,env(safe-area-inset-right)) 0 max(8px,env(safe-area-inset-left))!important;pointer-events:none}
+    padding:max(8px,env(safe-area-inset-top)) max(8px,env(safe-area-inset-right)) 0 max(8px,env(safe-area-inset-left))!important;pointer-events:none}
   #mobileTopBar > *{pointer-events:auto}
   #mobileCourseTitle{display:none!important}
   .mob-back{background:rgba(255,255,255,0.95)!important;box-shadow:0 2px 8px rgba(0,0,0,0.18)}
   .mob-save{box-shadow:0 2px 8px rgba(0,0,0,0.22)}
-  #mobileRbtns{display:flex!important;top:50px;right:max(8px,env(safe-area-inset-right))}
+  #mobileRbtns{display:flex!important;top:calc(50px + env(safe-area-inset-top));bottom:auto;right:max(8px,env(safe-area-inset-right))}
   /* 下部：モード行（下段）＋簡易高低差（上段）を1つのカードとしてフローティング */
   #mobileShelf{display:flex!important;position:absolute;left:max(8px,env(safe-area-inset-left));right:max(8px,env(safe-area-inset-right));
     bottom:max(8px,env(safe-area-inset-bottom));width:auto;height:48px!important;box-sizing:border-box;
@@ -263,12 +267,12 @@ html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:
 
   /* フロートUIを表示 */
   #mobileTopBar{display:flex!important;justify-content:space-between;background:transparent!important;
-    padding:8px max(8px,env(safe-area-inset-right)) 0 max(8px,env(safe-area-inset-left))!important;pointer-events:none}
+    padding:max(8px,env(safe-area-inset-top)) max(8px,env(safe-area-inset-right)) 0 max(8px,env(safe-area-inset-left))!important;pointer-events:none}
   #mobileTopBar > *{pointer-events:auto}
   #mobileCourseTitle{display:none!important}  /* タイトルは隠して地図を最大化 */
   .mob-back{background:rgba(255,255,255,0.95)!important;box-shadow:0 2px 8px rgba(0,0,0,0.18)}
   .mob-save{box-shadow:0 2px 8px rgba(0,0,0,0.22)}
-  #mobileRbtns{display:flex!important;top:50px;bottom:auto;right:max(8px,env(safe-area-inset-right))}
+  #mobileRbtns{display:flex!important;top:calc(50px + env(safe-area-inset-top));bottom:auto;right:max(8px,env(safe-area-inset-right))}
   #mobileShelf{display:flex!important}
   #mobileElevBand{display:block!important}
 
@@ -1076,8 +1080,9 @@ function showWpTypePicker(lat, lng, e) {
   const mg = 10;
   const pw = picker.offsetWidth  || 215;
   const ph = picker.offsetHeight || 300;
-  const left = Math.max(mg, Math.min(cx + 8, window.innerWidth  - pw - mg));
-  const top  = Math.max(mg, Math.min(cy + 8, window.innerHeight - ph - mg));
+  const si = _safeInsets();
+  const left = Math.max(mg + si.l, Math.min(cx + 8, window.innerWidth  - pw - mg - si.r));
+  const top  = Math.max(mg + si.t, Math.min(cy + 8, window.innerHeight - ph - mg - si.b));
   picker.style.left = left + 'px';
   picker.style.top  = top  + 'px';
   picker.style.visibility = 'visible';
@@ -1385,8 +1390,9 @@ function showNodeCtxMenu(wpId, x, y) {
   // 画面内に収める（実測クランプ）
   menu.style.visibility='hidden'; menu.style.display='block';
   const mw=menu.offsetWidth||220, mh=menu.offsetHeight||160, mg=10;
-  menu.style.left=Math.max(mg, Math.min(x, window.innerWidth - mw - mg))+'px';
-  menu.style.top =Math.max(mg, Math.min(y, window.innerHeight - mh - mg))+'px';
+  const _si=_safeInsets();
+  menu.style.left=Math.max(mg + _si.l, Math.min(x, window.innerWidth - mw - mg - _si.r))+'px';
+  menu.style.top =Math.max(mg + _si.t, Math.min(y, window.innerHeight - mh - mg - _si.b))+'px';
   menu.style.visibility='visible';
 }
 
@@ -1524,8 +1530,9 @@ function showViaCtxMenu(vpId, x, y) {
 
   // Position: keep within viewport
   const mw = 220, mh = 200, mg = 10;
-  menu.style.left    = Math.max(mg, Math.min(x, window.innerWidth  - mw - mg)) + 'px';
-  menu.style.top     = Math.max(mg, Math.min(y, window.innerHeight - mh - mg)) + 'px';
+  const _si = _safeInsets();
+  menu.style.left    = Math.max(mg + _si.l, Math.min(x, window.innerWidth  - mw - mg - _si.r)) + 'px';
+  menu.style.top     = Math.max(mg + _si.t, Math.min(y, window.innerHeight - mh - mg - _si.b)) + 'px';
   menu.style.display = 'block';
 }
 
@@ -2507,6 +2514,21 @@ function _closeAllPopups(except) {
   if (except !== 'menu'   && typeof closeMobileMenu   === 'function') closeMobileMenu();
 }
 
+// セーフエリア(ノッチ/ステータスバー)の余白量を取得（メニューがノッチに被らないようにするため）
+function _safeInsets() {
+  let probe = document.getElementById('_saProbe');
+  if (!probe) {
+    probe = document.createElement('div');
+    probe.id = '_saProbe';
+    probe.style.cssText = 'position:fixed;top:0;left:0;width:0;height:0;visibility:hidden;pointer-events:none;'
+      + 'padding-top:env(safe-area-inset-top);padding-right:env(safe-area-inset-right);'
+      + 'padding-bottom:env(safe-area-inset-bottom);padding-left:env(safe-area-inset-left)';
+    document.body.appendChild(probe);
+  }
+  const p = getComputedStyle(probe);
+  return { t:parseFloat(p.paddingTop)||0, r:parseFloat(p.paddingRight)||0, b:parseFloat(p.paddingBottom)||0, l:parseFloat(p.paddingLeft)||0 };
+}
+
 function openModal(id) {
   _closeAllPopups('modal');
   editId = id;
@@ -3359,7 +3381,7 @@ function _initElevFlick() {
   const finish = () => {
     if (sy===null) return;
     const dt = Date.now()-st; sy=null;
-    if (!moved && dt < 500) _setElevExpanded(!_elevExpanded);  // タップ → 開閉
+    if (!moved && dt < 500) { _closeAllPopups('elev'); _setElevExpanded(!_elevExpanded); }  // タップ → 設定ウインドウを閉じて開閉
   };
   band.addEventListener('touchstart', e => { const t=e.touches&&e.touches[0]; if(t) begin(t.clientX,t.clientY); }, {passive:true});
   band.addEventListener('touchmove',  e => { const t=e.touches&&e.touches[0]; if(t) moveTo(t.clientX,t.clientY); }, {passive:true});
