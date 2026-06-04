@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Footpath Mapmaker</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <style>
@@ -10,7 +13,7 @@
 html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:13px;color:#2C1B0E;overflow:hidden}
 
 /* ====== SCREEN 1 ====== */
-#s1{height:100vh;overflow-y:auto;background:linear-gradient(135deg,#F5EDD8,#E8D8B8);display:flex;flex-direction:column;align-items:center;padding:20px 12px 40px}
+#s1{height:100vh;height:100dvh;overflow-y:auto;background:linear-gradient(135deg,#F5EDD8,#E8D8B8);display:flex;flex-direction:column;align-items:center;padding:max(20px,env(safe-area-inset-top)) 12px max(40px,env(safe-area-inset-bottom))}
 .s1-inner{width:100%;max-width:480px;margin:0 auto;display:flex;flex-direction:column;height:100%}
 .s1-header{padding:24px 4px 16px}
 .s1-wordmark{font-family:'Plus Jakarta Sans','Hiragino Sans',sans-serif;font-size:24px;font-weight:800;color:#1C1917;letter-spacing:-0.03em}
@@ -212,19 +215,19 @@ html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:
   #tbar{display:none!important}
   #sidebar{display:none!important}
   #elevDetailPanel{display:none!important}
-  #s2{height:100dvh;height:100vh}
+  #s2{height:100vh;height:100dvh}
   #main{position:absolute;inset:0}
   #mapArea{position:absolute;inset:0;display:block}
   #mapWrap{position:absolute;inset:0}
   #map{width:100%;height:100%}
   /* 上部：戻る/保存を個別フロート（白帯なし） */
   #mobileTopBar{display:flex!important;justify-content:space-between;background:transparent!important;
-    padding:8px max(8px,env(safe-area-inset-right)) 0 max(8px,env(safe-area-inset-left))!important;pointer-events:none}
+    padding:max(8px,env(safe-area-inset-top)) max(8px,env(safe-area-inset-right)) 0 max(8px,env(safe-area-inset-left))!important;pointer-events:none}
   #mobileTopBar > *{pointer-events:auto}
   #mobileCourseTitle{display:none!important}
   .mob-back{background:rgba(255,255,255,0.95)!important;box-shadow:0 2px 8px rgba(0,0,0,0.18)}
   .mob-save{box-shadow:0 2px 8px rgba(0,0,0,0.22)}
-  #mobileRbtns{display:flex!important;top:50px;bottom:auto;right:max(8px,env(safe-area-inset-right))}
+  #mobileRbtns{display:flex!important;top:calc(50px + env(safe-area-inset-top));bottom:auto;right:max(8px,env(safe-area-inset-right))}
   /* 下部：モード行（下段）＋簡易高低差（上段）を1つのカードとしてフローティング */
   #mobileShelf{display:flex!important;position:absolute;left:max(8px,env(safe-area-inset-left));right:max(8px,env(safe-area-inset-right));
     bottom:max(8px,env(safe-area-inset-bottom));width:auto;height:48px!important;box-sizing:border-box;
@@ -263,12 +266,12 @@ html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:
 
   /* フロートUIを表示 */
   #mobileTopBar{display:flex!important;justify-content:space-between;background:transparent!important;
-    padding:8px max(8px,env(safe-area-inset-right)) 0 max(8px,env(safe-area-inset-left))!important;pointer-events:none}
+    padding:max(8px,env(safe-area-inset-top)) max(8px,env(safe-area-inset-right)) 0 max(8px,env(safe-area-inset-left))!important;pointer-events:none}
   #mobileTopBar > *{pointer-events:auto}
   #mobileCourseTitle{display:none!important}  /* タイトルは隠して地図を最大化 */
   .mob-back{background:rgba(255,255,255,0.95)!important;box-shadow:0 2px 8px rgba(0,0,0,0.18)}
   .mob-save{box-shadow:0 2px 8px rgba(0,0,0,0.22)}
-  #mobileRbtns{display:flex!important;top:50px;bottom:auto;right:max(8px,env(safe-area-inset-right))}
+  #mobileRbtns{display:flex!important;top:calc(50px + env(safe-area-inset-top));bottom:auto;right:max(8px,env(safe-area-inset-right))}
   #mobileShelf{display:flex!important}
   #mobileElevBand{display:block!important}
 
@@ -740,6 +743,7 @@ let routeLine   = null;
 let hitOverlays = [];      // per-segment hit overlays — prevents segment misattribution
 let viaVisible  = true;
 let _vpDragged  = false;   // 調整点ドラッグ直後フラグ（クリックでメニューを開かないため）
+let _vpLastDragEnd = 0;    // 調整点を最後にドラッグした時刻（直後のクリック誤判定を防ぐ）
 let mode        = 'wp';
 // ── なぞり描き（iPhone専用）状態 ──
 let _drawActive   = false;  // なぞり描きモード中か
@@ -1259,11 +1263,10 @@ function buildVpMarker(vp) {
     zIndexOffset:500
   }).addTo(leafMap);
 
-  m.on('dragstart', () => { _vpDragged = true; saveSnapshot(); });
-  m.on('drag',    () => { vp.lat=m.getLatLng().lat; vp.lng=m.getLatLng().lng; redrawStraight(); });
-  m.on('dragend', () => { vp.lat=m.getLatLng().lat; vp.lng=m.getLatLng().lng; clearCache(); scheduleRouting();
-    // 合成clickの猶予後にフラグ解除（立ちっぱなしで次のタップを飲み込むのを防ぐ）
-    setTimeout(() => { _vpDragged = false; }, 400); });
+  let _vpPressTimer = null;   // ロングプレス用タイマー（ドラッグ開始で確実に解除するため関数スコープに）
+  m.on('dragstart', () => { _vpDragged = true; _vpLastDragEnd = Date.now(); if (_vpPressTimer){clearTimeout(_vpPressTimer);_vpPressTimer=null;} saveSnapshot(); });
+  m.on('drag',    () => { _vpLastDragEnd = Date.now(); vp.lat=m.getLatLng().lat; vp.lng=m.getLatLng().lng; redrawStraight(); });
+  m.on('dragend', () => { _vpLastDragEnd = Date.now(); vp.lat=m.getLatLng().lat; vp.lng=m.getLatLng().lng; clearCache(); scheduleRouting(); });
 
   // PC: right-click → context menu (no immediate delete)
   m.on('contextmenu', e => {
@@ -1293,38 +1296,39 @@ function buildVpMarker(vp) {
   // Mobile: single tap  → context menu (if not after long press or drag)
   const el = m.getElement();
   if (el) {
-    let pressTimer = null;
     let lpX = 0, lpY = 0;
-    let sX = 0, sY = 0;           // touchstart座標
-    let tMoved = false;          // 少しでも動いたらドラッグ扱い（メニューを出さない）
     let longPressJustFired = false;
 
     el.addEventListener('touchstart', e => {
       const t = e.touches[0];
-      if (t) { lpX = t.clientX; lpY = t.clientY; sX = t.clientX; sY = t.clientY; }
-      tMoved = false;
-      longPressJustFired = false;
-      pressTimer = setTimeout(() => {
-        pressTimer = null;
-        if (tMoved) return;        // 動いていたら長押しメニューを出さない
+      if (t) { lpX = t.clientX; lpY = t.clientY; }
+      if (_vpPressTimer) clearTimeout(_vpPressTimer);
+      _vpPressTimer = setTimeout(() => {
+        _vpPressTimer = null;
+        if (_vpDragged) return;                 // ドラッグ中ならメニューを出さない
         longPressJustFired = true;
         showViaCtxMenu(vp.id, lpX, lpY);
       }, 700);
     }, {passive: true});
 
-    const cancelPress = () => { if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; } };
-    el.addEventListener('touchmove', e => {
-      const t = e.touches[0];
-      if (t && (Math.abs(t.clientX - sX) > 8 || Math.abs(t.clientY - sY) > 8)) { tMoved = true; cancelPress(); }
-    }, {passive: true});
+    // 指が少しでも動いたら（=ドラッグ意図）ロングプレスを解除
+    const cancelPress = (e) => {
+      if (_vpPressTimer) {
+        const t = e && e.touches && e.touches[0];
+        if (t && (Math.abs(t.clientX - lpX) > 6 || Math.abs(t.clientY - lpY) > 6)) {
+          clearTimeout(_vpPressTimer); _vpPressTimer = null;
+        } else if (!t) { clearTimeout(_vpPressTimer); _vpPressTimer = null; }
+      }
+    };
+    el.addEventListener('touchmove',   cancelPress, {passive: true});
     el.addEventListener('touchend',    cancelPress, {passive: true});
     el.addEventListener('touchcancel', cancelPress, {passive: true});
 
-    // Tap (click after touch): show menu — but skip if dragged / moved / long-pressed
+    // Tap (click after touch): show menu — but skip if long press already fired or just dragged
     m.on('click', e => {
       L.DomEvent.stopPropagation(e);
-      if (_vpDragged)         { return; }                 // ドラッグ移動直後（フラグはdragendのタイマーで解除）
-      if (tMoved)             { tMoved = false; return; } // 微小ドラッグでもメニューを開かない
+      // ドラッグ直後（フラグ or 400ms以内）はメニューを開かない（ドラッグ移動の誤判定防止）
+      if (_vpDragged || (Date.now() - _vpLastDragEnd) < 400) { _vpDragged = false; return; }
       if (longPressJustFired) { longPressJustFired = false; return; }
       const oe = e.originalEvent || {};
       const touch = oe.changedTouches && oe.changedTouches[0];
@@ -3380,24 +3384,20 @@ function _initElevFlick() {
   const band = document.getElementById('mobileElevBand');
   if (!band || band._flickInit) return;
   band._flickInit = true;
-  // 上フリックで詳細を展開／下フリックで折りたたみ。タップでは開かない
-  // （タップだと地図に外れて誤って調整点が作られるため）。
-  // タッチ端末ではtouchend後に合成mouseイベントが発火するため、直前にタッチがあればmouseは無視。
-  let sx=null, sy=null, lastX=0, lastY=0, st=0, moved=false, lastTouchEnd=0;
-  const begin  = (x,y) => { sx=x; sy=y; lastX=x; lastY=y; st=Date.now(); moved=false; };
-  const moveTo = (x,y) => { if(sy===null) return; lastX=x; lastY=y; if(Math.abs(x-sx)>8||Math.abs(y-sy)>8) moved=true; };
+  // フリックで開閉（上スワイプ=展開／下スワイプ=折りたたみ）。タップでは開閉しない＝
+  // 開こうとして窓を外しても、地図がパンされるだけで調整点が作られない（誤操作防止）。
+  let sx=null, sy=null, ex=0, ey=0, st=0, lastTouchEnd=0;
+  const TH = 24;   // この縦移動量を超えたらフリックと判定
+  const begin  = (x,y) => { sx=x; sy=y; ex=x; ey=y; st=Date.now(); };
+  const moveTo = (x,y) => { if(sy===null) return; ex=x; ey=y; };
   const finish = () => {
     if (sy===null) return;
-    const dy = sy - lastY;             // 上方向スワイプで正
-    const dx = Math.abs(lastX - sx);
-    sy=null;
-    const TH = 24;                     // フリック判定の最小縦移動量(px)
-    if (dy > TH && dy > dx) {          // 上フリック → 詳細を展開
-      _closeAllPopups('elev'); _setElevExpanded(true);
-    } else if (dy < -TH && (-dy) > dx) { // 下フリック → 折りたたみ
-      _setElevExpanded(false);
+    const dx = ex - sx, dy = ey - sy; sy=null;
+    if (Math.abs(dy) > TH && Math.abs(dy) > Math.abs(dx)) {   // 縦方向のフリックのみ反応
+      _closeAllPopups('elev');
+      _setElevExpanded(dy < 0);   // 上フリック→展開 / 下フリック→折りたたみ
     }
-    // タップ（移動が小さい）では開閉しない
+    // タップ（移動が小さい）場合は何もしない
   };
   band.addEventListener('touchstart', e => { const t=e.touches&&e.touches[0]; if(t) begin(t.clientX,t.clientY); }, {passive:true});
   band.addEventListener('touchmove',  e => { const t=e.touches&&e.touches[0]; if(t) moveTo(t.clientX,t.clientY); }, {passive:true});
