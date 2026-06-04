@@ -228,6 +228,40 @@ html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:
   .wp-row{padding:7px 10px}
 }
 
+/* ━━━ 横向き（低い画面＝スマホ横）専用：地図を全画面にして各UIをフローティング ━━━ */
+/* PC（縦に高い画面）・縦向きには影響しない */
+@media (orientation: landscape) and (max-height: 500px) {
+  /* デスクトップ枠を隠して地図を全画面に */
+  #hdr{display:none!important}
+  #tbar{display:none!important}
+  #sidebar{display:none!important}
+  #elevDetailPanel{display:none!important}
+  #s2{height:100vh;height:100dvh}
+  #main{position:absolute!important;inset:0!important;display:block!important}
+  #mapArea{position:absolute!important;inset:0!important;display:block!important;order:0!important;max-height:none!important}
+  #mapWrap{position:absolute!important;inset:0!important;flex:none!important;min-height:0!important}
+  #map{width:100%!important;height:100%!important}
+
+  /* フロートUIを表示 */
+  #mobileTopBar{display:flex!important;padding:5px 10px;background:rgba(255,255,255,0.86)}
+  #mobileRbtns{display:flex!important;top:44px;right:8px}
+  #mobileShelf{display:flex!important}
+  #mobileElevBand{display:block!important}
+
+  /* モード切替シェルフを左下にフローティング */
+  #mobileShelf{position:absolute!important;left:8px;bottom:8px;width:auto;height:auto;
+    border-top:none!important;border-radius:14px;padding:5px 8px;gap:5px;
+    background:rgba(255,255,255,0.94);box-shadow:0 2px 10px rgba(0,0,0,0.18);z-index:1000}
+  #mobileShelf .mob-sdiv{display:none}
+
+  /* 高低差バンドを右下にフローティング（タップで上へ展開） */
+  #mobileElevBand{position:absolute!important;right:8px;bottom:8px;left:auto;width:min(360px, calc(100vw - 366px));
+    border-top:none!important;border-radius:14px;box-shadow:0 2px 10px rgba(0,0,0,0.18);
+    background:rgba(255,255,255,0.96);z-index:1000;padding:5px 12px 7px}
+  #mobileElevBand.hidden-empty{display:none!important}
+  #mobileShelf.no-route .mob-stats,#mobileShelf.no-route .mob-sdiv{display:none!important}
+}
+
 /* ━━━ モバイルUI要素 ━━━ */
 #mobileTopBar,#mobileRbtns,#mobileShelf,#mobileElevBand{display:none}
 #mobileTopBar{position:absolute;top:0;left:0;right:0;z-index:1000;padding:8px 12px;align-items:center;gap:10px;background:rgba(255,255,255,0.92)}
@@ -3248,23 +3282,23 @@ function _initElevFlick() {
   const band = document.getElementById('mobileElevBand');
   if (!band || band._flickInit) return;
   band._flickInit = true;
-  // タップで開閉トグル（移動が大きい場合はスクロール等とみなしトグルしない）
-  let sx=null, sy=null, st=0, moved=false;
-  const start = e => { const t=e.touches?e.touches[0]:e; sx=t.clientX; sy=t.clientY; st=Date.now(); moved=false; };
-  const move  = e => { if(sy===null) return; const t=e.touches?e.touches[0]:e; if(Math.abs(t.clientX-sx)>10||Math.abs(t.clientY-sy)>10) moved=true; };
-  const end   = e => {
+  // タップで開閉トグル。タッチ端末ではtouchend後に合成mouseイベントが発火するため、
+  // 直前にタッチがあった場合はmouseイベントを無視して二重発火を防ぐ。
+  let sx=null, sy=null, st=0, moved=false, lastTouchEnd=0;
+  const begin  = (x,y) => { sx=x; sy=y; st=Date.now(); moved=false; };
+  const moveTo = (x,y) => { if(sy===null) return; if(Math.abs(x-sx)>10||Math.abs(y-sy)>10) moved=true; };
+  const finish = () => {
     if (sy===null) return;
-    const dt = Date.now()-st;
-    sy=null;
+    const dt = Date.now()-st; sy=null;
     if (!moved && dt < 500) _setElevExpanded(!_elevExpanded);  // タップ → 開閉
   };
-  band.addEventListener('touchstart', start, {passive:true});
-  band.addEventListener('touchmove',  move,  {passive:true});
-  band.addEventListener('touchend',   end,   {passive:true});
-  // マウス（PCプレビュー）でも動かす
-  band.addEventListener('mousedown', start);
-  band.addEventListener('mousemove', move);
-  band.addEventListener('mouseup',   end);
+  band.addEventListener('touchstart', e => { const t=e.touches&&e.touches[0]; if(t) begin(t.clientX,t.clientY); }, {passive:true});
+  band.addEventListener('touchmove',  e => { const t=e.touches&&e.touches[0]; if(t) moveTo(t.clientX,t.clientY); }, {passive:true});
+  band.addEventListener('touchend',   ()=> { finish(); lastTouchEnd=Date.now(); }, {passive:true});
+  // マウス（PCプレビュー）：直前にタッチがあれば合成イベントなので無視
+  band.addEventListener('mousedown', e => { if(Date.now()-lastTouchEnd<700) return; begin(e.clientX,e.clientY); });
+  band.addEventListener('mousemove', e => { if(Date.now()-lastTouchEnd<700) return; moveTo(e.clientX,e.clientY); });
+  band.addEventListener('mouseup',   e => { if(Date.now()-lastTouchEnd<700) return; finish(); });
 }
 
 /* ============================================================
