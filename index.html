@@ -243,22 +243,35 @@ html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:
   #map{width:100%!important;height:100%!important}
 
   /* フロートUIを表示 */
-  #mobileTopBar{display:flex!important;padding:5px 10px;background:rgba(255,255,255,0.86)}
-  #mobileRbtns{display:flex!important;top:44px;right:8px}
+  #mobileTopBar{display:flex!important;justify-content:space-between;background:transparent!important;
+    padding:8px max(8px,env(safe-area-inset-right)) 0 max(8px,env(safe-area-inset-left))!important;pointer-events:none}
+  #mobileTopBar > *{pointer-events:auto}
+  #mobileCourseTitle{display:none!important}  /* タイトルは隠して地図を最大化 */
+  .mob-back{background:rgba(255,255,255,0.95)!important;box-shadow:0 2px 8px rgba(0,0,0,0.18)}
+  .mob-save{box-shadow:0 2px 8px rgba(0,0,0,0.22)}
+  #mobileRbtns{display:flex!important;top:50px;bottom:auto;right:max(8px,env(safe-area-inset-right))}
   #mobileShelf{display:flex!important}
   #mobileElevBand{display:block!important}
 
-  /* モード切替シェルフを左下にフローティング */
-  #mobileShelf{position:absolute!important;left:8px;bottom:8px;width:auto;height:auto;
-    border-top:none!important;border-radius:14px;padding:5px 8px;gap:5px;
-    background:rgba(255,255,255,0.94);box-shadow:0 2px 10px rgba(0,0,0,0.18);z-index:1000}
+  /* モード切替シェルフを左下にフローティング（高さ44pxに統一） */
+  #mobileShelf{position:absolute!important;left:max(8px,env(safe-area-inset-left));bottom:max(8px,env(safe-area-inset-bottom));width:auto;height:44px!important;box-sizing:border-box;
+    border-top:none!important;border-radius:14px;padding:0 8px!important;gap:4px;align-items:center;
+    background:rgba(255,255,255,0.95);box-shadow:0 2px 10px rgba(0,0,0,0.2);z-index:1000}
   #mobileShelf .mob-sdiv{display:none}
+  #mobileShelf .mob-mode{height:34px;padding:0 7px}
+  #mobileShelf .mob-stats{font-size:13px;gap:2px;padding:0 2px}
 
-  /* 高低差バンドを右下にフローティング（タップで上へ展開） */
-  #mobileElevBand{position:absolute!important;right:8px;bottom:8px;left:auto;width:min(360px, calc(100vw - 366px));
-    border-top:none!important;border-radius:14px;box-shadow:0 2px 10px rgba(0,0,0,0.18);
-    background:rgba(255,255,255,0.96);z-index:1000;padding:5px 12px 7px}
+  /* 高低差バンドを右下にフローティング。折りたたみ時は44pxのピル（グラフ非表示でシェルフと同高） */
+  #mobileElevBand{position:absolute!important;right:max(8px,env(safe-area-inset-right));bottom:max(8px,env(safe-area-inset-bottom));left:auto;
+    width:min(360px, calc(100vw - 360px));box-sizing:border-box;
+    border-top:none!important;border-radius:14px;box-shadow:0 2px 10px rgba(0,0,0,0.2);
+    background:rgba(255,255,255,0.97);z-index:1000;padding:0 14px}
   #mobileElevBand.hidden-empty{display:none!important}
+  #mobileElevBand:not(.expanded){width:auto!important;height:44px;display:flex;align-items:center}
+  #mobileElevBand:not(.expanded) #mobileElevGrip{margin-bottom:0;gap:8px}
+  #mobileElevBand:not(.expanded) #mobileElevSvg{display:none!important}
+  /* 展開時は上方向に開く（グラフ表示・幅を広げる） */
+  #mobileElevBand.expanded{height:auto;padding:6px 14px 8px;width:min(360px, calc(100vw - 360px))}
   #mobileShelf.no-route .mob-stats,#mobileShelf.no-route .mob-sdiv{display:none!important}
 }
 
@@ -845,6 +858,16 @@ function initMap() {
   leafMap.on('click', onMapClick);
   leafMap.on('movestart', hideCtxMenu);
   canvasRenderer = L.canvas({padding: 0.5}); // Canvas renderer for polylines
+
+  // 画面回転・リサイズ時に地図サイズを再計算（横向きで地図がずれるのを防ぐ）
+  let _rzTimer = null;
+  const _recalcMap = () => {
+    if (!leafMap) return;
+    leafMap.invalidateSize();
+    if (typeof _drawElevBand === 'function') _drawElevBand();
+  };
+  window.addEventListener('resize', () => { clearTimeout(_rzTimer); _rzTimer = setTimeout(_recalcMap, 150); });
+  window.addEventListener('orientationchange', () => { setTimeout(_recalcMap, 250); setTimeout(_recalcMap, 500); });
 }
 
 function onMapClick(e) {
