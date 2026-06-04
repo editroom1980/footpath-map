@@ -10,10 +10,10 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100%;background:#E8D8B8;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:13px;color:#2C1B0E;overflow:hidden}
+html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:13px;color:#2C1B0E;overflow:hidden}
 
 /* ====== SCREEN 1 ====== */
-#s1{position:fixed;inset:0;overflow-y:auto;background:linear-gradient(135deg,#F5EDD8,#E8D8B8);display:flex;flex-direction:column;align-items:center;padding:calc(20px + env(safe-area-inset-top)) 12px max(20px,env(safe-area-inset-bottom))}
+#s1{height:100vh;overflow-y:auto;background:linear-gradient(135deg,#F5EDD8,#E8D8B8);display:flex;flex-direction:column;align-items:center;padding:calc(20px + env(safe-area-inset-top)) 12px max(20px,env(safe-area-inset-bottom))}
 .s1-inner{width:100%;max-width:480px;margin:0 auto;display:flex;flex-direction:column;height:100%}
 .s1-header{padding:24px 4px 16px}
 .s1-wordmark{font-family:'Plus Jakarta Sans','Hiragino Sans',sans-serif;font-size:24px;font-weight:800;color:#1C1917;letter-spacing:-0.03em}
@@ -61,7 +61,7 @@ html,body{height:100%;background:#E8D8B8;font-family:'Hiragino Sans','Meiryo',sa
 .ncs-btn .svgi{font-size:18px}
 
 /* ====== SCREEN 2 ====== */
-#s2{height:100vh;display:none;flex-direction:column}
+#s2{height:100vh;display:none;flex-direction:column;position:relative}
 #hdr{background:#3E2A0E;color:#F5EDD8;padding:0 10px;height:44px;display:flex;align-items:center;gap:7px;flex-shrink:0}
 #hdr h1{font-size:13px;white-space:nowrap}
 #cnDisp{font-size:11px;opacity:.7;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
@@ -215,7 +215,7 @@ html,body{height:100%;background:#E8D8B8;font-family:'Hiragino Sans','Meiryo',sa
   #tbar{display:none!important}
   #sidebar{display:none!important}
   #elevDetailPanel{display:none!important}
-  #s2{height:100vh;height:100dvh}
+  #s2{height:100vh}
   #main{position:absolute;inset:0}
   #mapArea{position:absolute;inset:0;display:block}
   #mapWrap{position:absolute;inset:0}
@@ -258,7 +258,7 @@ html,body{height:100%;background:#E8D8B8;font-family:'Hiragino Sans','Meiryo',sa
   #tbar{display:none!important}
   #sidebar{display:none!important}
   #elevDetailPanel{display:none!important}
-  #s2{height:100vh;height:100dvh}
+  #s2{height:100vh}
   #main{position:absolute!important;inset:0!important;display:block!important}
   #mapArea{position:absolute!important;inset:0!important;display:block!important;order:0!important;max-height:none!important}
   #mapWrap{position:absolute!important;inset:0!important;flex:none!important;min-height:0!important}
