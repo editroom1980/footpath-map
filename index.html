@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Footpath Mapmaker</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <style>
@@ -266,13 +266,30 @@ html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:
     width:min(360px, calc(100vw - 360px));box-sizing:border-box;
     border-top:none!important;border-radius:14px;box-shadow:0 2px 10px rgba(0,0,0,0.2);
     background:rgba(255,255,255,0.97);z-index:1000;padding:0 14px}
+  /* 高低差バンドを右下にフローティング。折りたたみでも簡易グラフを広幅で表示し、縦幅は圧縮 */
+  #mobileElevBand{position:absolute!important;right:max(8px,env(safe-area-inset-right));bottom:max(8px,env(safe-area-inset-bottom));left:auto;
+    width:min(360px, calc(100vw - 360px));box-sizing:border-box;
+    border-top:none!important;border-radius:14px;box-shadow:0 2px 10px rgba(0,0,0,0.2);
+    background:rgba(255,255,255,0.97);z-index:1000;padding:4px 12px 5px}
   #mobileElevBand.hidden-empty{display:none!important}
-  #mobileElevBand:not(.expanded){width:auto!important;height:44px;display:flex;align-items:center}
-  #mobileElevBand:not(.expanded) #mobileElevGrip{margin-bottom:0;gap:8px}
-  #mobileElevBand:not(.expanded) #mobileElevSvg{display:none!important}
-  /* 展開時は上方向に開く（グラフ表示・幅を広げる） */
-  #mobileElevBand.expanded{height:auto;padding:6px 14px 8px;width:min(360px, calc(100vw - 360px))}
+  #mobileElevBand:not(.expanded) #mobileElevGrip{margin-bottom:1px}
+  #mobileElevBand:not(.expanded) #mobileElevSvg{display:block!important;height:34px!important}  /* 簡易グラフを薄く表示 */
+  /* 展開時は上方向に開く（詳細グラフ） */
+  #mobileElevBand.expanded{height:auto;padding:6px 12px 8px;width:min(360px, calc(100vw - 360px))}
   #mobileShelf.no-route .mob-stats,#mobileShelf.no-route .mob-sdiv{display:none!important}
+
+  /* 横向きメニューを1画面に収める（余白圧縮・トグル3列） */
+  #mobileMenuSheet{max-height:100vh!important;padding:6px 16px calc(8px + env(safe-area-inset-bottom))!important;border-radius:18px 18px 0 0}
+  #mobileMenuSheet .mm-dh{display:none}
+  #mobileMenuSheet .mm-t{margin-bottom:5px;font-size:14px}
+  #mobileMenuSheet .mm-sec{margin:3px 2px 3px}
+  #mobileMenuSheet .mm-tog-wrap{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;padding:6px 8px;margin-bottom:7px}
+  #mobileMenuSheet .mm-tog{flex-direction:column;gap:4px;padding:4px 2px;border-bottom:none;text-align:center}
+  #mobileMenuSheet .mm-tog-l{flex:none;font-size:11px;line-height:1.2}
+  #mobileMenuSheet .mm-grid{gap:6px;margin-bottom:7px}
+  #mobileMenuSheet .mm-act{padding:7px 4px;font-size:16px;gap:3px}
+  #mobileMenuSheet .mm-act span{font-size:11px}
+  #mobileMenuSheet .mm-danger{padding:8px;font-size:12px}
 }
 
 /* ━━━ モバイルUI要素 ━━━ */
@@ -860,14 +877,24 @@ function initMap() {
   canvasRenderer = L.canvas({padding: 0.5}); // Canvas renderer for polylines
 
   // 画面回転・リサイズ時に地図サイズを再計算（横向きで地図がずれるのを防ぐ）
+  // ResizeObserverでコンテナのサイズ変化を確実に捕捉（回転のたびに発火し、タイル位置を再計算）
   let _rzTimer = null;
   const _recalcMap = () => {
     if (!leafMap) return;
-    leafMap.invalidateSize();
+    leafMap.invalidateSize({animate:false});
     if (typeof _drawElevBand === 'function') _drawElevBand();
   };
-  window.addEventListener('resize', () => { clearTimeout(_rzTimer); _rzTimer = setTimeout(_recalcMap, 150); });
-  window.addEventListener('orientationchange', () => { setTimeout(_recalcMap, 250); setTimeout(_recalcMap, 500); });
+  const _scheduleRecalc = () => { clearTimeout(_rzTimer); _rzTimer = setTimeout(_recalcMap, 80); };
+  try {
+    const mapEl = document.getElementById('map');
+    if (window.ResizeObserver && mapEl) {
+      const ro = new ResizeObserver(() => _scheduleRecalc());
+      ro.observe(mapEl);
+    }
+  } catch(_) {}
+  // 念のためのフォールバック（ResizeObserver非対応環境）
+  window.addEventListener('resize', _scheduleRecalc);
+  window.addEventListener('orientationchange', () => { setTimeout(_recalcMap, 120); setTimeout(_recalcMap, 350); setTimeout(_recalcMap, 650); });
 }
 
 function onMapClick(e) {
