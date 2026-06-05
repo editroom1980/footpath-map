@@ -3644,5 +3644,110 @@ function showToast(msg) {
 }
 </script>
 
+<!-- ============================================================
+     DEBUG OVERLAY (v4.3d) : ?debug=1 のときだけ動作。
+     既存レイアウト/JSには一切触れない非破壊の追加。
+     白帯の実測値を画面に表示するための診断専用。
+     ============================================================ -->
+<script>
+(function(){
+  var params = new URLSearchParams(location.search);
+  if (params.get('debug') !== '1') return;  // 通常時は何もしない
+
+  function px(n){ return (n==null || isNaN(n)) ? '-' : Math.round(n*10)/10; }
+  function rect(sel){ var el=document.querySelector(sel); if(!el) return null; var r=el.getBoundingClientRect(); return {top:r.top, bottom:r.bottom, height:r.height}; }
+  function bgc(sel){ var el=document.querySelector(sel); return el ? getComputedStyle(el).backgroundColor : '-'; }
+
+  // --- safe-area inset 計測プローブ ---
+  var saProbe=document.createElement('div');
+  saProbe.style.cssText='position:fixed;top:0;left:0;width:0;height:0;visibility:hidden;pointer-events:none;'
+    +'padding-top:env(safe-area-inset-top);padding-right:env(safe-area-inset-right);'
+    +'padding-bottom:env(safe-area-inset-bottom);padding-left:env(safe-area-inset-left);';
+  document.body.appendChild(saProbe);
+
+  // --- ビューポート単位プローブ (vh/dvh/svh/lvh) ---
+  function unitProbe(h){ var d=document.createElement('div');
+    d.style.cssText='position:fixed;top:0;left:0;width:0;visibility:hidden;pointer-events:none;height:'+h+';';
+    document.body.appendChild(d); return d; }
+  var pVh=unitProbe('100vh'), pDvh=unitProbe('100dvh'), pSvh=unitProbe('100svh'), pLvh=unitProbe('100lvh');
+
+  // --- 表示レイヤー（すべて pointer-events:none で操作を妨げない） ---
+  function layer(z,css){ var d=document.createElement('div'); d.style.cssText='position:fixed;pointer-events:none;z-index:'+z+';'+css; document.body.appendChild(d); return d; }
+
+  var safeBottom=layer(2147483001,'left:0;right:0;bottom:0;height:env(safe-area-inset-bottom);'
+    +'background:rgba(255,160,0,.30);border-top:1px solid #FFA000;');
+  var safeLbl=document.createElement('div');
+  safeLbl.style.cssText='position:absolute;left:4px;top:1px;font:bold 10px/1 monospace;color:#5a3500;background:rgba(255,200,120,.9);padding:1px 4px;';
+  safeLbl.textContent='safe-bottom (env)';
+  safeBottom.appendChild(safeLbl);
+
+  var band=layer(2147483000,'left:0;right:0;background:rgba(255,0,170,.22);');
+
+  var mapLine=layer(2147483002,'left:0;right:0;height:0;border-top:2px dashed #00E5FF;');
+  var mapLbl=document.createElement('div');
+  mapLbl.style.cssText='position:absolute;right:4px;top:-15px;font:bold 11px/1 monospace;color:#003;background:rgba(0,229,255,.9);padding:1px 4px;';
+  mapLbl.textContent='MAP END';
+  mapLine.appendChild(mapLbl);
+
+  var vpBottom=layer(2147483003,'left:0;right:0;bottom:0;height:3px;background:#39FF14;');
+  var vpLbl=document.createElement('div');
+  vpLbl.style.cssText='position:absolute;left:4px;bottom:3px;font:bold 10px/1 monospace;color:#063;background:rgba(120,255,120,.9);padding:1px 4px;';
+  vpLbl.textContent='innerHeight 下端';
+  vpBottom.appendChild(vpLbl);
+
+  var panel=layer(2147483004,'top:env(safe-area-inset-top);left:env(safe-area-inset-left);'
+    +'max-width:80vw;background:rgba(0,0,0,.84);color:#fff;font:11px/1.45 monospace;'
+    +'padding:8px 10px;white-space:pre;border-radius:0 0 8px 0;letter-spacing:.2px;');
+
+  function update(){
+    var cs=getComputedStyle(saProbe);
+    var saT=parseFloat(cs.paddingTop)||0, saR=parseFloat(cs.paddingRight)||0,
+        saB=parseFloat(cs.paddingBottom)||0, saL=parseFloat(cs.paddingLeft)||0;
+    var vh=pVh.getBoundingClientRect().height, dvh=pDvh.getBoundingClientRect().height,
+        svh=pSvh.getBoundingClientRect().height, lvh=pLvh.getBoundingClientRect().height;
+    var iw=window.innerWidth, ih=window.innerHeight, vv=window.visualViewport,
+        docH=document.documentElement.clientHeight;
+    var saNav=(('standalone' in navigator)?navigator.standalone:null);
+    var saMM =(window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+    var mapR=rect('#map'), wrapR=rect('#mapWrap'), areaR=rect('#mapArea'), s2R=rect('#s2');
+    var bandPx=(mapR? (ih-mapR.bottom):null);
+
+    if(mapR){ mapLine.style.top=mapR.bottom+'px'; mapLine.style.display='block';
+      if(ih-mapR.bottom>0.5){ band.style.top=mapR.bottom+'px'; band.style.height=(ih-mapR.bottom)+'px'; band.style.display='block'; }
+      else band.style.display='none';
+    } else { mapLine.style.display='none'; band.style.display='none'; }
+
+    var L=[];
+    L.push('\u25BC DEBUG v4.3d');
+    L.push('url '+location.pathname+location.search);
+    L.push('STANDALONE nav='+saNav+'  mm='+saMM);
+    L.push('screen '+px(screen.width)+'x'+px(screen.height)+' dpr='+window.devicePixelRatio);
+    L.push('inner  '+px(iw)+'x'+px(ih));
+    if(vv) L.push('visualVP '+px(vv.width)+'x'+px(vv.height)+' offTop='+px(vv.offsetTop));
+    L.push('doc.clientH '+px(docH));
+    L.push('100vh='+px(vh)+'  100dvh='+px(dvh));
+    L.push('100svh='+px(svh)+' 100lvh='+px(lvh));
+    L.push('safe T/R/B/L = '+px(saT)+'/'+px(saR)+'/'+px(saB)+'/'+px(saL));
+    L.push('-- 要素 top\u2192bottom / h --');
+    if(s2R)   L.push('#s2      '+px(s2R.top)+'\u2192'+px(s2R.bottom)+' /'+px(s2R.height));
+    if(areaR) L.push('#mapArea '+px(areaR.top)+'\u2192'+px(areaR.bottom)+' /'+px(areaR.height));
+    if(wrapR) L.push('#mapWrap '+px(wrapR.top)+'\u2192'+px(wrapR.bottom)+' /'+px(wrapR.height));
+    if(mapR)  L.push('#map     '+px(mapR.top)+'\u2192'+px(mapR.bottom)+' /'+px(mapR.height));
+    L.push('bg html/body = '+bgc('html')+' / '+bgc('body'));
+    L.push('================================');
+    L.push('\u2605 \u4e0b\u306e\u767d\u5e2f = innerH - #map\u4e0b\u7aef');
+    L.push('\u2605 = '+px(ih)+' - '+(mapR?px(mapR.bottom):'?')+' = '+(bandPx==null?'?':px(bandPx))+' px');
+    panel.textContent=L.join('\n');
+  }
+
+  function tick(){ try{ update(); }catch(e){ panel.textContent='DBG err: '+e; } }
+  tick();
+  ['resize','orientationchange','load','scroll'].forEach(function(ev){ window.addEventListener(ev,tick,{passive:true}); });
+  if(window.visualViewport){ window.visualViewport.addEventListener('resize',tick); window.visualViewport.addEventListener('scroll',tick); }
+  [120,400,900,1800,3000].forEach(function(t){ setTimeout(tick,t); });
+  setInterval(tick,1000);
+})();
+</script>
+
 </body>
 </html>
