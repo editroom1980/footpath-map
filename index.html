@@ -3,11 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Footpath Mapmaker</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:13px;color:#2C1B0E;overflow:hidden}
+html,body{min-height:calc(100% + env(safe-area-inset-top));font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:13px;color:#2C1B0E;overflow:hidden;background:#E8D8B8}
 
 /* ====== SCREEN 1 ====== */
 #s1{height:100vh;height:100dvh;overflow-y:auto;background:linear-gradient(135deg,#F5EDD8,#E8D8B8);display:flex;flex-direction:column;align-items:center;padding:max(20px,env(safe-area-inset-top)) 12px max(40px,env(safe-area-inset-bottom))}
@@ -212,19 +215,19 @@ html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:
   #tbar{display:none!important}
   #sidebar{display:none!important}
   #elevDetailPanel{display:none!important}
-  #s2{height:100vh;height:100dvh}
+  #s2{height:100vh}
   #main{position:absolute;inset:0}
   #mapArea{position:absolute;inset:0;display:block}
   #mapWrap{position:absolute;inset:0}
   #map{width:100%;height:100%}
   /* 上部：戻る/保存を個別フロート（白帯なし） */
   #mobileTopBar{display:flex!important;justify-content:space-between;background:transparent!important;
-    padding:8px max(8px,env(safe-area-inset-right)) 0 max(8px,env(safe-area-inset-left))!important;pointer-events:none}
+    padding:max(8px,env(safe-area-inset-top)) max(8px,env(safe-area-inset-right)) 0 max(8px,env(safe-area-inset-left))!important;pointer-events:none}
   #mobileTopBar > *{pointer-events:auto}
   #mobileCourseTitle{display:none!important}
   .mob-back{background:rgba(255,255,255,0.95)!important;box-shadow:0 2px 8px rgba(0,0,0,0.18)}
   .mob-save{box-shadow:0 2px 8px rgba(0,0,0,0.22)}
-  #mobileRbtns{display:flex!important;top:50px;bottom:auto;right:max(8px,env(safe-area-inset-right))}
+  #mobileRbtns{display:flex!important;top:calc(50px + env(safe-area-inset-top));bottom:auto;right:max(8px,env(safe-area-inset-right))}
   /* 下部：モード行（下段）＋簡易高低差（上段）を1つのカードとしてフローティング */
   #mobileShelf{display:flex!important;position:absolute;left:max(8px,env(safe-area-inset-left));right:max(8px,env(safe-area-inset-right));
     bottom:max(8px,env(safe-area-inset-bottom));width:auto;height:48px!important;box-sizing:border-box;
@@ -255,7 +258,7 @@ html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:
   #tbar{display:none!important}
   #sidebar{display:none!important}
   #elevDetailPanel{display:none!important}
-  #s2{height:100vh;height:100dvh}
+  #s2{height:100vh}
   #main{position:absolute!important;inset:0!important;display:block!important}
   #mapArea{position:absolute!important;inset:0!important;display:block!important;order:0!important;max-height:none!important}
   #mapWrap{position:absolute!important;inset:0!important;flex:none!important;min-height:0!important}
@@ -263,12 +266,12 @@ html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:
 
   /* フロートUIを表示 */
   #mobileTopBar{display:flex!important;justify-content:space-between;background:transparent!important;
-    padding:8px max(8px,env(safe-area-inset-right)) 0 max(8px,env(safe-area-inset-left))!important;pointer-events:none}
+    padding:max(8px,env(safe-area-inset-top)) max(8px,env(safe-area-inset-right)) 0 max(8px,env(safe-area-inset-left))!important;pointer-events:none}
   #mobileTopBar > *{pointer-events:auto}
   #mobileCourseTitle{display:none!important}  /* タイトルは隠して地図を最大化 */
   .mob-back{background:rgba(255,255,255,0.95)!important;box-shadow:0 2px 8px rgba(0,0,0,0.18)}
   .mob-save{box-shadow:0 2px 8px rgba(0,0,0,0.22)}
-  #mobileRbtns{display:flex!important;top:50px;bottom:auto;right:max(8px,env(safe-area-inset-right))}
+  #mobileRbtns{display:flex!important;top:calc(50px + env(safe-area-inset-top));bottom:auto;right:max(8px,env(safe-area-inset-right))}
   #mobileShelf{display:flex!important}
   #mobileElevBand{display:block!important}
 
@@ -3639,6 +3642,53 @@ function showToast(msg) {
   document.body.appendChild(t);
   setTimeout(()=>{ t.style.opacity='0'; setTimeout(()=>t.remove(),500); }, 1800);
 }
+</script>
+
+<!-- ===== DEBUG (v4.5) : ?debug=1 のときだけ動作・既存非破壊 ===== -->
+<script>
+(function(){
+  if(new URLSearchParams(location.search).get('debug')!=='1') return;
+  function px(n){return (n==null||isNaN(n))?'-':Math.round(n*10)/10;}
+  function rect(s){var e=document.querySelector(s);if(!e)return null;var r=e.getBoundingClientRect();return{top:r.top,bottom:r.bottom,height:r.height};}
+  function probe(h){var d=document.createElement('div');d.style.cssText='position:fixed;top:0;left:0;width:0;visibility:hidden;pointer-events:none;height:'+h;document.body.appendChild(d);var v=d.getBoundingClientRect().height;d.remove();return v;}
+  var sa=document.createElement('div');
+  sa.style.cssText='position:fixed;top:0;left:0;width:0;height:0;visibility:hidden;pointer-events:none;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)';
+  document.body.appendChild(sa);
+  function layer(z,css){var d=document.createElement('div');d.style.cssText='position:fixed;pointer-events:none;z-index:'+z+';'+css;document.body.appendChild(d);return d;}
+  var band=layer(2147483000,'left:0;right:0;background:rgba(255,0,170,.25)');
+  var mapLine=layer(2147483002,'left:0;right:0;height:0;border-top:2px dashed #00E5FF');
+  var panel=layer(2147483004,'top:env(safe-area-inset-top);left:0;background:rgba(0,0,0,.85);color:#fff;font:11px/1.45 monospace;padding:8px 10px;white-space:pre;max-width:90vw;border-radius:0 0 8px 0');
+  function upd(){
+    var cs=getComputedStyle(sa);
+    var saT=parseFloat(cs.paddingTop)||0,saB=parseFloat(cs.paddingBottom)||0,saL=parseFloat(cs.paddingLeft)||0,saR=parseFloat(cs.paddingRight)||0;
+    var vh=probe('100vh'),dvh=probe('100dvh');
+    var m=rect('#map'),s2=rect('#s2'),s1=rect('#s1');
+    var bandPx=(m?(vh-m.bottom):null);
+    if(m){mapLine.style.top=m.bottom+'px';mapLine.style.display='block';
+      if(vh-m.bottom>0.5){band.style.top=m.bottom+'px';band.style.height=(vh-m.bottom)+'px';band.style.display='block';}else band.style.display='none';
+    }else{mapLine.style.display='none';band.style.display='none';}
+    var L=[];
+    L.push('\u25BC DEBUG v4.5');
+    L.push('standalone='+(('standalone'in navigator)?navigator.standalone:null));
+    L.push('screen '+px(screen.width)+'x'+px(screen.height)+' dpr='+window.devicePixelRatio);
+    L.push('inner '+px(window.innerWidth)+'x'+px(window.innerHeight)+' docH='+px(document.documentElement.clientHeight));
+    L.push('100vh='+px(vh)+'  100dvh='+px(dvh));
+    L.push('safe T/B/L/R = '+px(saT)+'/'+px(saB)+'/'+px(saL)+'/'+px(saR));
+    if(s1) L.push('#s1 '+px(s1.top)+'\u2192'+px(s1.bottom)+' /'+px(s1.height));
+    if(s2) L.push('#s2 '+px(s2.top)+'\u2192'+px(s2.bottom)+' /'+px(s2.height));
+    if(m)  L.push('#map '+px(m.top)+'\u2192'+px(m.bottom)+' /'+px(m.height));
+    L.push('=============================');
+    L.push('\u2605 \u4e0b\u306e\u767d\u5e2f = 100vh - #map\u4e0b\u7aef');
+    L.push('\u2605 = '+px(vh)+' - '+(m?px(m.bottom):'?')+' = '+(bandPx==null?'?':px(bandPx))+' px'+(bandPx!=null?(bandPx<=1?'  \u2713\u306a\u3057':'  \u26a0\u6b8b'):''));
+    panel.textContent=L.join('\n');
+  }
+  function tick(){try{upd();}catch(e){panel.textContent='DBG err: '+e;}}
+  tick();
+  ['resize','orientationchange','load','scroll'].forEach(function(e){window.addEventListener(e,tick,{passive:true});});
+  if(window.visualViewport){window.visualViewport.addEventListener('resize',tick);window.visualViewport.addEventListener('scroll',tick);}
+  [120,400,900,1800,3000].forEach(function(t){setTimeout(tick,t);});
+  setInterval(tick,1000);
+})();
 </script>
 
 </body>
