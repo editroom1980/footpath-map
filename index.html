@@ -3,16 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Footpath Mapmaker</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:13px;color:#2C1B0E;overflow:hidden}
-/* 最背面のベージュ下地: html/body外(レイアウト領域より下)の白を埋める。100vhは物理画面下端まで描画される */
-#bgFill{position:fixed;top:0;left:0;right:0;height:100vh;z-index:-2;background:linear-gradient(135deg,#F5EDD8,#E8D8B8);pointer-events:none}
 
 /* ====== SCREEN 1 ====== */
 #s1{height:100vh;height:100dvh;overflow-y:auto;background:linear-gradient(135deg,#F5EDD8,#E8D8B8);display:flex;flex-direction:column;align-items:center;padding:max(20px,env(safe-area-inset-top)) 12px max(40px,env(safe-area-inset-bottom))}
@@ -217,19 +212,19 @@ html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:
   #tbar{display:none!important}
   #sidebar{display:none!important}
   #elevDetailPanel{display:none!important}
-  #s2{position:fixed;top:0;left:0;right:0;height:100vh}
+  #s2{height:100vh;height:100dvh}
   #main{position:absolute;inset:0}
   #mapArea{position:absolute;inset:0;display:block}
   #mapWrap{position:absolute;inset:0}
   #map{width:100%;height:100%}
   /* 上部：戻る/保存を個別フロート（白帯なし） */
   #mobileTopBar{display:flex!important;justify-content:space-between;background:transparent!important;
-    padding:max(8px,env(safe-area-inset-top)) max(8px,env(safe-area-inset-right)) 0 max(8px,env(safe-area-inset-left))!important;pointer-events:none}
+    padding:8px max(8px,env(safe-area-inset-right)) 0 max(8px,env(safe-area-inset-left))!important;pointer-events:none}
   #mobileTopBar > *{pointer-events:auto}
   #mobileCourseTitle{display:none!important}
   .mob-back{background:rgba(255,255,255,0.95)!important;box-shadow:0 2px 8px rgba(0,0,0,0.18)}
   .mob-save{box-shadow:0 2px 8px rgba(0,0,0,0.22)}
-  #mobileRbtns{display:flex!important;top:calc(50px + env(safe-area-inset-top));bottom:auto;right:max(8px,env(safe-area-inset-right))}
+  #mobileRbtns{display:flex!important;top:50px;bottom:auto;right:max(8px,env(safe-area-inset-right))}
   /* 下部：モード行（下段）＋簡易高低差（上段）を1つのカードとしてフローティング */
   #mobileShelf{display:flex!important;position:absolute;left:max(8px,env(safe-area-inset-left));right:max(8px,env(safe-area-inset-right));
     bottom:max(8px,env(safe-area-inset-bottom));width:auto;height:48px!important;box-sizing:border-box;
@@ -260,7 +255,7 @@ html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:
   #tbar{display:none!important}
   #sidebar{display:none!important}
   #elevDetailPanel{display:none!important}
-  #s2{position:fixed;top:0;left:0;right:0;height:100vh}
+  #s2{height:100vh;height:100dvh}
   #main{position:absolute!important;inset:0!important;display:block!important}
   #mapArea{position:absolute!important;inset:0!important;display:block!important;order:0!important;max-height:none!important}
   #mapWrap{position:absolute!important;inset:0!important;flex:none!important;min-height:0!important}
@@ -268,12 +263,12 @@ html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:
 
   /* フロートUIを表示 */
   #mobileTopBar{display:flex!important;justify-content:space-between;background:transparent!important;
-    padding:max(8px,env(safe-area-inset-top)) max(8px,env(safe-area-inset-right)) 0 max(8px,env(safe-area-inset-left))!important;pointer-events:none}
+    padding:8px max(8px,env(safe-area-inset-right)) 0 max(8px,env(safe-area-inset-left))!important;pointer-events:none}
   #mobileTopBar > *{pointer-events:auto}
   #mobileCourseTitle{display:none!important}  /* タイトルは隠して地図を最大化 */
   .mob-back{background:rgba(255,255,255,0.95)!important;box-shadow:0 2px 8px rgba(0,0,0,0.18)}
   .mob-save{box-shadow:0 2px 8px rgba(0,0,0,0.22)}
-  #mobileRbtns{display:flex!important;top:calc(50px + env(safe-area-inset-top));bottom:auto;right:max(8px,env(safe-area-inset-right))}
+  #mobileRbtns{display:flex!important;top:50px;bottom:auto;right:max(8px,env(safe-area-inset-right))}
   #mobileShelf{display:flex!important}
   #mobileElevBand{display:block!important}
 
@@ -406,7 +401,6 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
 </style>
 </head>
 <body>
-<div id="bgFill"></div>
 
 <!-- SCREEN 1 -->
 <div id="s1">
@@ -3645,111 +3639,6 @@ function showToast(msg) {
   document.body.appendChild(t);
   setTimeout(()=>{ t.style.opacity='0'; setTimeout(()=>t.remove(),500); }, 1800);
 }
-</script>
-
-<!-- ============================================================
-     DEBUG OVERLAY (v4.3d) : ?debug=1 のときだけ動作。
-     既存レイアウト/JSには一切触れない非破壊の追加。
-     白帯の実測値を画面に表示するための診断専用。
-     ============================================================ -->
-<script>
-(function(){
-  var params = new URLSearchParams(location.search);
-  if (params.get('debug') !== '1') return;  // 通常時は何もしない
-
-  function px(n){ return (n==null || isNaN(n)) ? '-' : Math.round(n*10)/10; }
-  function rect(sel){ var el=document.querySelector(sel); if(!el) return null; var r=el.getBoundingClientRect(); return {top:r.top, bottom:r.bottom, height:r.height}; }
-  function bgc(sel){ var el=document.querySelector(sel); return el ? getComputedStyle(el).backgroundColor : '-'; }
-
-  // --- safe-area inset 計測プローブ ---
-  var saProbe=document.createElement('div');
-  saProbe.style.cssText='position:fixed;top:0;left:0;width:0;height:0;visibility:hidden;pointer-events:none;'
-    +'padding-top:env(safe-area-inset-top);padding-right:env(safe-area-inset-right);'
-    +'padding-bottom:env(safe-area-inset-bottom);padding-left:env(safe-area-inset-left);';
-  document.body.appendChild(saProbe);
-
-  // --- ビューポート単位プローブ (vh/dvh/svh/lvh) ---
-  function unitProbe(h){ var d=document.createElement('div');
-    d.style.cssText='position:fixed;top:0;left:0;width:0;visibility:hidden;pointer-events:none;height:'+h+';';
-    document.body.appendChild(d); return d; }
-  var pVh=unitProbe('100vh'), pDvh=unitProbe('100dvh'), pSvh=unitProbe('100svh'), pLvh=unitProbe('100lvh');
-
-  // --- 表示レイヤー（すべて pointer-events:none で操作を妨げない） ---
-  function layer(z,css){ var d=document.createElement('div'); d.style.cssText='position:fixed;pointer-events:none;z-index:'+z+';'+css; document.body.appendChild(d); return d; }
-
-  var safeBottom=layer(2147483001,'left:0;right:0;bottom:0;height:env(safe-area-inset-bottom);'
-    +'background:rgba(255,160,0,.30);border-top:1px solid #FFA000;');
-  var safeLbl=document.createElement('div');
-  safeLbl.style.cssText='position:absolute;left:4px;top:1px;font:bold 10px/1 monospace;color:#5a3500;background:rgba(255,200,120,.9);padding:1px 4px;';
-  safeLbl.textContent='safe-bottom (env)';
-  safeBottom.appendChild(safeLbl);
-
-  var band=layer(2147483000,'left:0;right:0;background:rgba(255,0,170,.22);');
-
-  var mapLine=layer(2147483002,'left:0;right:0;height:0;border-top:2px dashed #00E5FF;');
-  var mapLbl=document.createElement('div');
-  mapLbl.style.cssText='position:absolute;right:4px;top:-15px;font:bold 11px/1 monospace;color:#003;background:rgba(0,229,255,.9);padding:1px 4px;';
-  mapLbl.textContent='MAP END';
-  mapLine.appendChild(mapLbl);
-
-  var vpBottom=layer(2147483003,'left:0;right:0;bottom:0;height:3px;background:#39FF14;');
-  var vpLbl=document.createElement('div');
-  vpLbl.style.cssText='position:absolute;left:4px;bottom:3px;font:bold 10px/1 monospace;color:#063;background:rgba(120,255,120,.9);padding:1px 4px;';
-  vpLbl.textContent='innerHeight 下端';
-  vpBottom.appendChild(vpLbl);
-
-  var panel=layer(2147483004,'top:env(safe-area-inset-top);left:env(safe-area-inset-left);'
-    +'max-width:80vw;background:rgba(0,0,0,.84);color:#fff;font:11px/1.45 monospace;'
-    +'padding:8px 10px;white-space:pre;border-radius:0 0 8px 0;letter-spacing:.2px;');
-
-  function update(){
-    var cs=getComputedStyle(saProbe);
-    var saT=parseFloat(cs.paddingTop)||0, saR=parseFloat(cs.paddingRight)||0,
-        saB=parseFloat(cs.paddingBottom)||0, saL=parseFloat(cs.paddingLeft)||0;
-    var vh=pVh.getBoundingClientRect().height, dvh=pDvh.getBoundingClientRect().height,
-        svh=pSvh.getBoundingClientRect().height, lvh=pLvh.getBoundingClientRect().height;
-    var iw=window.innerWidth, ih=window.innerHeight, vv=window.visualViewport,
-        docH=document.documentElement.clientHeight;
-    var saNav=(('standalone' in navigator)?navigator.standalone:null);
-    var saMM =(window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
-    var mapR=rect('#map'), wrapR=rect('#mapWrap'), areaR=rect('#mapArea'), s2R=rect('#s2');
-    var bandPx=(mapR? (vh-mapR.bottom):null);
-
-    if(mapR){ mapLine.style.top=mapR.bottom+'px'; mapLine.style.display='block';
-      if(vh-mapR.bottom>0.5){ band.style.top=mapR.bottom+'px'; band.style.height=(vh-mapR.bottom)+'px'; band.style.display='block'; }
-      else band.style.display='none';
-    } else { mapLine.style.display='none'; band.style.display='none'; }
-
-    var L=[];
-    L.push('\u25BC DEBUG v4.3d');
-    L.push('url '+location.pathname+location.search);
-    L.push('STANDALONE nav='+saNav+'  mm='+saMM);
-    L.push('screen '+px(screen.width)+'x'+px(screen.height)+' dpr='+window.devicePixelRatio);
-    L.push('inner  '+px(iw)+'x'+px(ih));
-    if(vv) L.push('visualVP '+px(vv.width)+'x'+px(vv.height)+' offTop='+px(vv.offsetTop));
-    L.push('doc.clientH '+px(docH));
-    L.push('100vh='+px(vh)+'  100dvh='+px(dvh));
-    L.push('100svh='+px(svh)+' 100lvh='+px(lvh));
-    L.push('safe T/R/B/L = '+px(saT)+'/'+px(saR)+'/'+px(saB)+'/'+px(saL));
-    L.push('-- 要素 top\u2192bottom / h --');
-    if(s2R)   L.push('#s2      '+px(s2R.top)+'\u2192'+px(s2R.bottom)+' /'+px(s2R.height));
-    if(areaR) L.push('#mapArea '+px(areaR.top)+'\u2192'+px(areaR.bottom)+' /'+px(areaR.height));
-    if(wrapR) L.push('#mapWrap '+px(wrapR.top)+'\u2192'+px(wrapR.bottom)+' /'+px(wrapR.height));
-    if(mapR)  L.push('#map     '+px(mapR.top)+'\u2192'+px(mapR.bottom)+' /'+px(mapR.height));
-    L.push('bg html/body = '+bgc('html')+' / '+bgc('body'));
-    L.push('================================');
-    L.push('\u2605 \u4e0b\u306e\u767d\u5e2f = 100vh - #map\u4e0b\u7aef');
-    L.push('\u2605 = '+px(vh)+' - '+(mapR?px(mapR.bottom):'?')+' = '+(bandPx==null?'?':px(bandPx))+' px'+(bandPx!=null?(bandPx<=0.5?'  \u2713\u306a\u3057':'  \u26a0\u6b8b'):''));
-    panel.textContent=L.join('\n');
-  }
-
-  function tick(){ try{ update(); }catch(e){ panel.textContent='DBG err: '+e; } }
-  tick();
-  ['resize','orientationchange','load','scroll'].forEach(function(ev){ window.addEventListener(ev,tick,{passive:true}); });
-  if(window.visualViewport){ window.visualViewport.addEventListener('resize',tick); window.visualViewport.addEventListener('scroll',tick); }
-  [120,400,900,1800,3000].forEach(function(t){ setTimeout(tick,t); });
-  setInterval(tick,1000);
-})();
 </script>
 
 </body>
