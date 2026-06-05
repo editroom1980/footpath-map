@@ -215,7 +215,7 @@ html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:
   #tbar{display:none!important}
   #sidebar{display:none!important}
   #elevDetailPanel{display:none!important}
-  #s2{height:100vh;height:100dvh}
+  #s2{height:100vh}
   #main{position:absolute;inset:0}
   #mapArea{position:absolute;inset:0;display:block}
   #mapWrap{position:absolute;inset:0}
@@ -258,7 +258,7 @@ html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:
   #tbar{display:none!important}
   #sidebar{display:none!important}
   #elevDetailPanel{display:none!important}
-  #s2{height:100vh;height:100dvh}
+  #s2{height:100vh}
   #main{position:absolute!important;inset:0!important;display:block!important}
   #mapArea{position:absolute!important;inset:0!important;display:block!important;order:0!important;max-height:none!important}
   #mapWrap{position:absolute!important;inset:0!important;flex:none!important;min-height:0!important}
@@ -3710,10 +3710,10 @@ function showToast(msg) {
     var saNav=(('standalone' in navigator)?navigator.standalone:null);
     var saMM =(window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
     var mapR=rect('#map'), wrapR=rect('#mapWrap'), areaR=rect('#mapArea'), s2R=rect('#s2');
-    var bandPx=(mapR? (ih-mapR.bottom):null);
+    var bandPx=(mapR? (vh-mapR.bottom):null);
 
     if(mapR){ mapLine.style.top=mapR.bottom+'px'; mapLine.style.display='block';
-      if(ih-mapR.bottom>0.5){ band.style.top=mapR.bottom+'px'; band.style.height=(ih-mapR.bottom)+'px'; band.style.display='block'; }
+      if(vh-mapR.bottom>0.5){ band.style.top=mapR.bottom+'px'; band.style.height=(vh-mapR.bottom)+'px'; band.style.display='block'; }
       else band.style.display='none';
     } else { mapLine.style.display='none'; band.style.display='none'; }
 
@@ -3735,8 +3735,8 @@ function showToast(msg) {
     if(mapR)  L.push('#map     '+px(mapR.top)+'\u2192'+px(mapR.bottom)+' /'+px(mapR.height));
     L.push('bg html/body = '+bgc('html')+' / '+bgc('body'));
     L.push('================================');
-    L.push('\u2605 \u4e0b\u306e\u767d\u5e2f = innerH - #map\u4e0b\u7aef');
-    L.push('\u2605 = '+px(ih)+' - '+(mapR?px(mapR.bottom):'?')+' = '+(bandPx==null?'?':px(bandPx))+' px');
+    L.push('\u2605 \u4e0b\u306e\u767d\u5e2f = 100vh - #map\u4e0b\u7aef');
+    L.push('\u2605 = '+px(vh)+' - '+(mapR?px(mapR.bottom):'?')+' = '+(bandPx==null?'?':px(bandPx))+' px'+(bandPx!=null?(bandPx<=0.5?'  \u2713\u306a\u3057':'  \u26a0\u6b8b'):''));
     panel.textContent=L.join('\n');
   }
 
