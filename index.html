@@ -219,7 +219,7 @@ html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:
   #main{position:absolute;inset:0}
   #mapArea{position:absolute;inset:0;display:block}
   #mapWrap{position:absolute;inset:0}
-  #map{position:absolute;top:calc(0px - env(safe-area-inset-top));left:0;right:0;bottom:calc(0px - env(safe-area-inset-bottom));width:auto;height:auto}
+  #map{width:100%;height:calc(100% + env(safe-area-inset-top));margin-top:calc(0px - env(safe-area-inset-top))}
   /* 上部：戻る/保存を個別フロート（白帯なし） */
   #mobileTopBar{display:flex!important;justify-content:space-between;background:transparent!important;
     padding:max(8px,env(safe-area-inset-top)) max(8px,env(safe-area-inset-right)) 0 max(8px,env(safe-area-inset-left))!important;pointer-events:none}
@@ -227,7 +227,7 @@ html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:
   #mobileCourseTitle{display:none!important}
   .mob-back{background:rgba(255,255,255,0.95)!important;box-shadow:0 2px 8px rgba(0,0,0,0.18)}
   .mob-save{box-shadow:0 2px 8px rgba(0,0,0,0.22)}
-  #mobileRbtns{display:flex!important;top:calc(50px + env(safe-area-inset-top));bottom:auto;right:max(8px,env(safe-area-inset-right))}
+  #mobileRbtns{display:flex!important;top:calc(50px + env(safe-area-inset-top))!important;bottom:auto;right:max(8px,env(safe-area-inset-right))}
   /* 下部：モード行（下段）＋簡易高低差（上段）を1つのカードとしてフローティング */
   #mobileShelf{display:flex!important;position:absolute;left:max(8px,env(safe-area-inset-left));right:max(8px,env(safe-area-inset-right));
     bottom:max(8px,env(safe-area-inset-bottom));width:auto;height:48px!important;box-sizing:border-box;
@@ -271,7 +271,7 @@ html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:
   #mobileCourseTitle{display:none!important}  /* タイトルは隠して地図を最大化 */
   .mob-back{background:rgba(255,255,255,0.95)!important;box-shadow:0 2px 8px rgba(0,0,0,0.18)}
   .mob-save{box-shadow:0 2px 8px rgba(0,0,0,0.22)}
-  #mobileRbtns{display:flex!important;top:calc(50px + env(safe-area-inset-top));bottom:auto;right:max(8px,env(safe-area-inset-right))}
+  #mobileRbtns{display:flex!important;top:calc(50px + env(safe-area-inset-top))!important;bottom:auto;right:max(8px,env(safe-area-inset-right))}
   #mobileShelf{display:flex!important}
   #mobileElevBand{display:block!important}
 
