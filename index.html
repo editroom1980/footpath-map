@@ -842,6 +842,7 @@ async function newCourse() {
   // Reset state
   _clearAllMarkers();
   wps=[]; vps=[]; idW=0; idV=0; segCache={};
+  _resetBounds();  // 範囲制限を初期化（このあと地域中心を基準点に確定）
   if (document.getElementById('iDesc')) document.getElementById('iDesc').value='';
   redrawList();
   updateDistanceAndTime();  // 空コースなので高低差バンド・距離を非表示にする
@@ -854,7 +855,7 @@ async function newCourse() {
   setTimeout(async () => {
     if (!leafMap) initMap(); else leafMap.invalidateSize();
     const c = await geocode(area);
-    if (c && leafMap) leafMap.setView([c.lat, c.lng], 15);
+    if (c && leafMap) { leafMap.setView([c.lat, c.lng], 15); _setAnchor(c.lat, c.lng, false); }
     btn.disabled = false; btn.textContent = 'コース設定画面へ →';
   }, 60);
 }
@@ -889,7 +890,7 @@ async function geocode(address) {
    MAP INIT
    ============================================================ */
 function initMap() {
-  leafMap = L.map('map', {center:[35.165,134.542], zoom:14, scrollWheelZoom:true, wheelPxPerZoomLevel:240, touchZoom:true, doubleClickZoom:false, zoomControl:false});
+  leafMap = L.map('map', {center:[35.165,134.542], zoom:14, scrollWheelZoom:true, wheelPxPerZoomLevel:240, touchZoom:true, doubleClickZoom:false, zoomControl:false, maxBoundsViscosity:1.0});
   _initElevFlick();   // 高低差バンドのフリック検知を初期化
   const tiles = _baseTileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution:'© OpenStreetMap contributors', maxZoom:19
@@ -905,6 +906,7 @@ function initMap() {
   const _recalcMap = () => {
     if (!leafMap) return;
     leafMap.invalidateSize({animate:false});
+    _recomputeMinZoom();   // 範囲制限のminZoomを画面サイズに合わせて再計算
     if (typeof _drawElevBand === 'function') _drawElevBand();
   };
   const _scheduleRecalc = () => { clearTimeout(_rzTimer); _rzTimer = setTimeout(_recalcMap, 80); };
@@ -918,6 +920,73 @@ function initMap() {
   // 念のためのフォールバック（ResizeObserver非対応環境）
   window.addEventListener('resize', _scheduleRecalc);
   window.addEventListener('orientationchange', () => { setTimeout(_recalcMap, 120); setTimeout(_recalcMap, 350); setTimeout(_recalcMap, 650); });
+}
+
+/* ============================================================
+   表示範囲の制限（基準点から半径25km。コースが超える場合のみ拡張）
+   基準点は最初に一度だけ確定し、点の追加ごとに再計算はしない。
+   ============================================================ */
+const BOUND_RADIUS_KM = 25;
+let _boundsAnchor = null;   // 範囲の基準点 {lat,lng}（最初に一度だけ確定）
+let _maxBounds    = null;   // 現在適用中の最大範囲（LatLngBounds）
+
+function _box25(lat, lng) {
+  const dLat = BOUND_RADIUS_KM / 111.32;
+  const dLng = BOUND_RADIUS_KM / (111.32 * Math.cos(lat * Math.PI / 180));
+  return L.latLngBounds([lat - dLat, lng - dLng], [lat + dLat, lng + dLng]);
+}
+
+// 基準点の25kmボックス。includeCourse=trueなら全WP/VPを内包するよう超過分だけ拡張
+function _computeBounds(includeCourse) {
+  if (!_boundsAnchor) return null;
+  let b = _box25(_boundsAnchor.lat, _boundsAnchor.lng);
+  if (includeCourse) {
+    const pts = [];
+    wps.forEach(w => pts.push([w.lat, w.lng]));
+    vps.forEach(v => pts.push([v.lat, v.lng]));
+    if (pts.length) b = b.extend(L.latLngBounds(pts).pad(0.05));
+  }
+  return b;
+}
+
+// 範囲を地図へ適用（地図が表示・サイズ確定後に呼ぶこと）
+function _applyBounds(includeCourse) {
+  if (!leafMap || !_boundsAnchor) return;
+  const b = _computeBounds(includeCourse);
+  if (!b) return;
+  _maxBounds = b;
+  leafMap.setMaxBounds(b);
+  _recomputeMinZoom();
+}
+
+// 画面サイズに合わせて minZoom（これ以上引けない下限）を再計算
+function _recomputeMinZoom() {
+  if (!leafMap || !_maxBounds) return;
+  if (leafMap.getSize().x < 50) return; // 非表示/サイズ未確定時はスキップ（ResizeObserverで後追い）
+  const mz = leafMap.getBoundsZoom(_maxBounds, false);
+  if (isFinite(mz)) {
+    leafMap.setMinZoom(mz);
+    if (leafMap.getZoom() < mz) leafMap.setZoom(mz);
+  }
+}
+
+// 基準点を一度だけ確定し、範囲を適用（既に確定済みなら何もしない）
+function _setAnchor(lat, lng, includeCourse) {
+  if (_boundsAnchor) return;
+  _boundsAnchor = {lat, lng};
+  _applyBounds(!!includeCourse);
+}
+
+// 範囲をリセット（新規コース開始時）
+function _resetBounds() {
+  _boundsAnchor = null;
+  _maxBounds = null;
+  if (leafMap) { leafMap.setMaxBounds(null); leafMap.setMinZoom(0); }
+}
+
+// 指定座標が現在の表示範囲内か（範囲未設定なら true）
+function _inAllowedArea(lat, lng) {
+  return _maxBounds ? _maxBounds.contains(L.latLng(lat, lng)) : true;
 }
 
 function onMapClick(e) {
@@ -1106,6 +1175,7 @@ function addWpFromPicker(type) {
 
 function addWp(lat, lng, type) {
   type = type || 'course';
+  if (!_boundsAnchor) _setAnchor(lat, lng, false);  // 地域未指定時は最初のWPを基準点に
   saveSnapshot();
   idW++;
   const onRoute = true; // 全種別でデフォルトはルートに含める（モーダルで変更可）
@@ -1234,6 +1304,7 @@ function deleteWp(id) {
    ============================================================ */
 function addVp(lat, lng) {
   if (routeWps().length < 2) { alert('ルートに含めるウェイポイントを2点以上追加してから経路調整点を追加してください。'); return; }
+  if (!_boundsAnchor) _setAnchor(lat, lng, false);  // 基準点未設定時のフォールバック
   saveSnapshot();
   idV++;
   const _saId   = nearestSegWpId(lat, lng);
@@ -1604,14 +1675,27 @@ function gotoCurrentLocation() {
   showToast('現在地を取得中...');
   navigator.geolocation.getCurrentPosition(
     function(pos) {
-      const ll = [pos.coords.latitude, pos.coords.longitude];
+      const lat = pos.coords.latitude, lng = pos.coords.longitude;
+      if (!_inAllowedArea(lat, lng)) {   // ② 範囲外なら地図を動かさず・表示もしない
+        showToast('現在地はコース範囲外です（地図は移動しません）');
+        return;
+      }
+      const ll = [lat, lng];
       if (_gpsMarker) {
         _gpsMarker.setLatLng(ll);
       } else {
         _gpsMarker = L.circleMarker(ll, {
           radius:8, color:'#fff', weight:3,
-          fillColor:'#3B82F6', fillOpacity:1, interactive:false, pane:'markerPane'
+          fillColor:'#3B82F6', fillOpacity:1, interactive:true, bubblingMouseEvents:false, pane:'markerPane'
         }).addTo(leafMap);
+        // ③ 現在地マーカーをタップ → 種別ピッカーを開き、現在地をWPとして追加
+        _gpsMarker.on('click', function(ev){
+          L.DomEvent.stopPropagation(ev);
+          if (viewMode) return;
+          if (typeof _drawActive !== 'undefined' && _drawActive) return;
+          const g = _gpsMarker.getLatLng();
+          showWpTypePicker(g.lat, g.lng, ev);
+        });
       }
       leafMap.setView(ll, Math.max(leafMap.getZoom(), 16));
     },
@@ -3515,8 +3599,9 @@ function loadCourseData(data) {
 
     if (data.center && leafMap) {
       leafMap.setView([data.center.lat, data.center.lng], data.zoom||14);
+      _resetBounds(); _setAnchor(data.center.lat, data.center.lng, true);  // コース全体を内包
     } else if (data.area) {
-      geocode(data.area).then(c => { if(c&&leafMap)leafMap.setView([c.lat,c.lng],15); });
+      geocode(data.area).then(c => { if(c&&leafMap){ leafMap.setView([c.lat,c.lng],15); _resetBounds(); _setAnchor(c.lat,c.lng,true); } });
     }
 
     const descEl = document.getElementById('iDesc');
