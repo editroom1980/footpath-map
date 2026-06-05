@@ -11,6 +11,8 @@
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:13px;color:#2C1B0E;overflow:hidden}
+/* 最背面のベージュ下地: html/body外(レイアウト領域より下)の白を埋める。100vhは物理画面下端まで描画される */
+#bgFill{position:fixed;top:0;left:0;right:0;height:100vh;z-index:-2;background:linear-gradient(135deg,#F5EDD8,#E8D8B8);pointer-events:none}
 
 /* ====== SCREEN 1 ====== */
 #s1{height:100vh;height:100dvh;overflow-y:auto;background:linear-gradient(135deg,#F5EDD8,#E8D8B8);display:flex;flex-direction:column;align-items:center;padding:max(20px,env(safe-area-inset-top)) 12px max(40px,env(safe-area-inset-bottom))}
@@ -215,7 +217,7 @@ html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:
   #tbar{display:none!important}
   #sidebar{display:none!important}
   #elevDetailPanel{display:none!important}
-  #s2{height:100vh}
+  #s2{position:fixed;top:0;left:0;right:0;height:100vh}
   #main{position:absolute;inset:0}
   #mapArea{position:absolute;inset:0;display:block}
   #mapWrap{position:absolute;inset:0}
@@ -258,7 +260,7 @@ html,body{height:100%;font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:
   #tbar{display:none!important}
   #sidebar{display:none!important}
   #elevDetailPanel{display:none!important}
-  #s2{height:100vh}
+  #s2{position:fixed;top:0;left:0;right:0;height:100vh}
   #main{position:absolute!important;inset:0!important;display:block!important}
   #mapArea{position:absolute!important;inset:0!important;display:block!important;order:0!important;max-height:none!important}
   #mapWrap{position:absolute!important;inset:0!important;flex:none!important;min-height:0!important}
@@ -404,6 +406,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
 </style>
 </head>
 <body>
+<div id="bgFill"></div>
 
 <!-- SCREEN 1 -->
 <div id="s1">
