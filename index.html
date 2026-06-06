@@ -180,8 +180,9 @@ html,body{min-height:calc(100% + env(safe-area-inset-top));font-family:'Hiragino
 .photo-del{position:absolute;top:2px;right:2px;width:18px;height:18px;background:rgba(0,0,0,.55);color:#fff;border:none;border-radius:50%;font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;line-height:1}
 .photo-add-btn{width:72px;height:72px;border-radius:6px;border:1.5px dashed #C4B89A;background:#FAF6EE;color:#8B6C42;font-size:24px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 /* 閲覧モード */
-#viewInfoPanel{display:none;position:fixed;bottom:0;left:0;right:0;max-height:55vh;background:#fff;border-radius:14px 14px 0 0;box-shadow:0 -4px 20px rgba(0,0,0,.2);z-index:3000;overflow-y:auto;padding:16px 18px 28px}
+#viewInfoPanel{display:none;position:fixed;bottom:0;left:0;right:0;max-height:62vh;background:#fff;border-radius:14px 14px 0 0;box-shadow:0 -4px 20px rgba(0,0,0,.2);z-index:3000;overflow-y:auto;padding:10px 18px calc(28px + env(safe-area-inset-bottom))}
 #viewInfoPanel.show{display:block}
+.vip-handle{width:36px;height:4px;border-radius:2px;background:#D9C7B0;margin:2px auto 12px}
 .vip-hdr{display:flex;align-items:center;gap:10px;margin-bottom:10px}
 .vip-dot{width:34px;height:34px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:bold;font-size:14px}
 .vip-name{font-size:16px;font-weight:bold;color:#2C1B0E;flex:1;line-height:1.3}
@@ -190,6 +191,7 @@ html,body{min-height:calc(100% + env(safe-area-inset-top));font-family:'Hiragino
 .vip-tel a{font-size:13px;color:#1a6fc4;display:block;margin-bottom:10px}
 .vip-photos{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
 .vip-photos img{width:calc(50% - 4px);max-width:200px;height:140px;object-fit:cover;border-radius:8px;cursor:pointer}
+.vip-photos img:only-child{width:100%;max-width:100%;height:210px}
 #viewBadge{position:fixed;top:8px;left:50%;transform:translateX(-50%);background:rgba(196,112,58,.9);color:#fff;font-size:11px;padding:4px 14px;border-radius:14px;z-index:2500;pointer-events:none;display:none}
 .ctx-it.ctx-convert{color:#2E7D32}
 /* Context menu */
@@ -509,7 +511,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
         <button class="btn" id="btnElev" onclick="toggleElevPanel()" title="高低差グラフ"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M4 19l16 0" /> <path d="M4 15l4 -6l4 2l4 -5l4 4" /></svg></button>
         <button class="btn" onclick="saveMapAsImage()" title="マップを画像保存"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M5 7h1a2 2 0 0 0 2 -2a1 1 0 0 1 1 -1h6a1 1 0 0 1 1 1a2 2 0 0 0 2 2h1a2 2 0 0 1 2 2v9a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-9a2 2 0 0 1 2 -2" /> <path d="M9 13a3 3 0 1 0 6 0a3 3 0 0 0 -6 0" /></svg></button>
         <button class="btn" onclick="saveMapNoText()" title="ラベル非表示で保存&#10;WP名称と地図の文字を消して保存"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M15 8h.01" /> <path d="M7 3h11a3 3 0 0 1 3 3v11m-.856 3.099a2.991 2.991 0 0 1 -2.144 .901h-12a3 3 0 0 1 -3 -3v-12c0 -.845 .349 -1.608 .91 -2.153" /> <path d="M3 16l5 -5c.928 -.893 2.072 -.893 3 0l5 5" /> <path d="M16.33 12.338c.574 -.054 1.155 .166 1.67 .662l3 3" /> <path d="M3 3l18 18" /></svg><span>文字なし</span></button>
-        <button class="btn" onclick="openViewMode()" title="閲覧モード&#10;閲覧専用画面を新しいタブで開く"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" /> <path d="M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6" /></svg></button>
+        <button class="btn" id="btnView" onclick="toggleViewMode()" title="閲覧モード&#10;ONの間はウェイポイントをタップで写真・解説を表示"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" /> <path d="M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6" /></svg></button>
         <button class="btn" onclick="openHelp()" title="操作ガイド"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0" /> <path d="M12 16v.01" /> <path d="M12 13a2 2 0 0 0 .914 -3.782a1.98 1.98 0 0 0 -2.414 .483" /></svg></button>
         <span id="tbar-st">クリックでウェイポイント追加 / ルート線ドラッグで経路調整</span>
       </div>
@@ -566,6 +568,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
           <div class="mm-tog" onclick="toggleMapLabels();_syncMobileMenu()"><span class="mm-tog-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 7.5a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" /> <path d="M3 6v5.172a2 2 0 0 0 .586 1.414l7.71 7.71a2.41 2.41 0 0 0 3.408 0l5.592 -5.592a2.41 2.41 0 0 0 0 -3.408l-7.71 -7.71a2 2 0 0 0 -1.414 -.586h-5.172a3 3 0 0 0 -3 3" /></svg></span><span class="mm-tog-l">地名・WPを表示</span><div class="mm-sw" id="mmSwLabels"></div></div>
           <div class="mm-tog" onclick="toggleViaVisibility();_syncMobileMenu()"><span class="mm-tog-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 12a4 4 0 1 0 8 0a4 4 0 1 0 -8 0" /></svg></span><span class="mm-tog-l">調整点を表示</span><div class="mm-sw" id="mmSwVia"></div></div>
           <div class="mm-tog" onclick="toggleManualMode();_syncMobileMenu()"><span class="mm-tog-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 13v-7.5a1.5 1.5 0 0 1 3 0v6.5" /> <path d="M11 5.5v-2a1.5 1.5 0 1 1 3 0v8.5" /> <path d="M14 5.5a1.5 1.5 0 0 1 3 0v6.5" /> <path d="M17 7.5a1.5 1.5 0 0 1 3 0v8.5a6 6 0 0 1 -6 6h-2h.208a6 6 0 0 1 -5.012 -2.7a69.74 69.74 0 0 1 -.196 -.3c-.312 -.479 -1.407 -2.388 -3.286 -5.728a1.5 1.5 0 0 1 .536 -2.022a1.867 1.867 0 0 1 2.28 .28l1.47 1.47" /></svg></span><span class="mm-tog-l">手動モード</span><div class="mm-sw" id="mmSwManual"></div></div>
+          <div class="mm-tog" onclick="toggleViewMode();_syncMobileMenu()"><span class="mm-tog-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" /> <path d="M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6" /></svg></span><span class="mm-tog-l">閲覧モード</span><div class="mm-sw" id="mmSwView"></div></div>
         </div>
         <div class="mm-sec">保存・書き出し</div>
         <div class="mm-grid">
@@ -575,7 +578,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
         </div>
         <div class="mm-sec">その他</div>
         <div class="mm-grid">
-          <button class="mm-act" onclick="closeMobileMenu();openViewMode()"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" /> <path d="M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6" /></svg><span>閲覧モード</span></button>
+          <div class="mm-act-ph"></div>
           <button class="mm-act" onclick="closeMobileMenu();openHelp()"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0" /> <path d="M12 16v.01" /> <path d="M12 13a2 2 0 0 0 .914 -3.782a1.98 1.98 0 0 0 -2.414 .483" /></svg><span>ヘルプ</span></button>
           <div class="mm-act-ph"></div>
         </div>
@@ -1637,6 +1640,22 @@ function toggleManualMode() {
     : '手動モード OFF：以降の調整点は白い道にフィットします');
 }
 
+function toggleViewMode() {
+  viewMode = !viewMode;
+  const btn = document.getElementById('btnView');
+  if (btn) btn.classList.toggle('on', viewMode);
+  const vb = document.getElementById('viewBadge');
+  if (vb) vb.style.display = viewMode ? 'block' : 'none';
+  if (viewMode) {
+    _closeAllPopups('menu');   // 編集モーダル等を閉じる（メニューは保持）
+  } else {
+    closeViewInfo();           // 閲覧パネルを閉じて編集に復帰
+  }
+  showToast(viewMode
+    ? '👁 閲覧モード ON：ウェイポイントをタップで写真・解説を表示'
+    : '閲覧モード OFF：ウェイポイントをタップで編集できます');
+}
+
 /* ============================================================
    モバイル …メニューシート
    ============================================================ */
@@ -1654,6 +1673,7 @@ function _syncMobileMenu() {
   document.getElementById('mmSwLabels')?.classList.toggle('on', _showMapLabels !== false);
   document.getElementById('mmSwVia')?.classList.toggle('on', viaVisible !== false);
   document.getElementById('mmSwManual')?.classList.toggle('on', manualMode === true);
+  document.getElementById('mmSwView')?.classList.toggle('on', viewMode === true);
 }
 
 /* 新規コース作成シート */
@@ -3118,18 +3138,18 @@ function showViewInfo(wpId) {
   const t   = WT.find(x => x.v === wp.type) || WT[0];
   const sym = wp.type==='course' ? (courseNum(wp)||'?') : (SYM[wp.type]||'●');
 
-  let html2 = `<div class="vip-hdr">
+  let html2 = `<div class="vip-handle"></div><div class="vip-hdr">
     <div class="vip-dot" style="background:${t.c}">${escHtml(String(sym))}</div>
     <div class="vip-name">${escHtml(wp.name || t.l)}</div>
     <button class="vip-close" onclick="closeViewInfo()">✕</button>
   </div>`;
-  if (wp.desc) html2 += `<div class="vip-desc">${escHtml(wp.desc)}</div>`;
-  if (wp.tel)  html2 += `<div class="vip-tel"><a href="tel:${escHtml(wp.tel)}">${escHtml(wp.tel)}</a></div>`;
   if (wp.photos && wp.photos.length) {
     html2 += '<div class="vip-photos">';
     wp.photos.forEach(p => { html2 += `<img src="${p}" onclick="openFullPhoto(this.src)" loading="lazy">`; });
     html2 += '</div>';
   }
+  if (wp.desc) html2 += `<div class="vip-desc">${escHtml(wp.desc)}</div>`;
+  if (wp.tel)  html2 += `<div class="vip-tel"><a href="tel:${escHtml(wp.tel)}">${escHtml(wp.tel)}</a></div>`;
 
   const panel = document.getElementById('viewInfoPanel');
   panel.innerHTML = html2;
