@@ -584,7 +584,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
           <div class="mm-tog" onclick="toggleCustomEdit();_syncMobileMenu()"><span class="mm-tog-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7l16 0"/><path d="M10 11l0 6"/><path d="M14 11l0 6"/><path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12"/><path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3"/></svg></span><span class="mm-tog-l">削除モード</span><div class="mm-sw" id="mmSwCustomEdit"></div></div>
         </div>
         <div class="mm-maplist">
-          <div class="mm-map" onclick="closeMobileMenu();startDrawPath()"><span class="mm-map-l">＋ 細道を描く（タップで点を追加）</span><span class="mm-map-ck">›</span></div>
+          <div class="mm-map" onclick="closeMobileMenu();startDrawPath()"><span class="mm-map-l">＋ 細道をなぞって描く</span><span class="mm-map-ck">›</span></div>
         </div>
         <div class="mm-sec">背景地図</div>
         <div class="mm-maplist">
@@ -1075,12 +1075,12 @@ let _customLayer  = null;
 let _customOn_    = true;    // 機能ON/OFF（キルスイッチ）
 let _snapOn_      = true;    // スナップON/OFF
 let _customEdit_  = false;   // 削除モード（ONでタップ削除）
-let _drawingPath  = null;    // 描画中の点列 or null
-let _drawLayer    = null;
+let _customTraceMode = false; // 細道なぞり描きモード中か
+let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
 
 function _customOn(){ return _customOn_ === true; }
-function isDrawing(){ return _drawingPath !== null; }
+function isDrawing(){ return _customTraceMode === true; }
 
 function _loadCustom(){
   if (!lsAvail()) return;
@@ -1103,8 +1103,8 @@ function _renderCustom(){
     if(!_customOn()) return;
     customPaths.forEach(p=>{
       if(!p.pts || p.pts.length<2) return;
-      L.polyline(p.pts, {pane:'customPane', color:'#ffffff', weight:5, opacity:0.6, interactive:false}).addTo(_customLayer);
-      const top=L.polyline(p.pts, {pane:'customPane', color:'#b5663b', weight:2.6, opacity:0.95, dashArray:'1,6', lineCap:'round', interactive:_customEdit_===true});
+      L.polyline(p.pts, {pane:'customPane', color:'#b9b2a6', weight:4, opacity:0.95, lineCap:'round', lineJoin:'round', interactive:false}).addTo(_customLayer);
+      const top=L.polyline(p.pts, {pane:'customPane', color:'#ffffff', weight:2.2, opacity:1, lineCap:'round', lineJoin:'round', interactive:_customEdit_===true});
       if(_customEdit_) top.on('click', (e)=>{ try{ L.DomEvent.stop(e); }catch(_){}; _deleteCustom(p.id); });
       top.addTo(_customLayer);
     });
@@ -1145,29 +1145,52 @@ function _snapCustom(lat,lng){ try{ const s=_snapPoint(lat,lng); return s ? s : 
 function startDrawPath(){
   if(!_customOn()){ showToast('細道機能がOFFです（メニューでON）'); return; }
   if(typeof closeMobileMenu==='function') closeMobileMenu();
-  _drawingPath=[];
-  if(!_drawLayer) _drawLayer=L.layerGroup().addTo(leafMap);
-  _redrawDraw(); _showDrawBar(true);
-  showToast('細道を描く：地図をタップして点を追加 → 完了');
+  _customSession=[];
+  _customTraceMode=true;
+  enterDrawMode();           // 既存のなぞり捕捉を流用
+  _showDrawBar(true);
+  showToast('細道をなぞって描く：指でなぞる（何本でも）→ 終了');
 }
-function _drawAddVertex(lat,lng){ if(_drawingPath){ _drawingPath.push([lat,lng]); _redrawDraw(); } }
-function _redrawDraw(){
-  if(!_drawLayer) return; _drawLayer.clearLayers();
-  if(_drawingPath && _drawingPath.length){
-    if(_drawingPath.length>=2) L.polyline(_drawingPath,{color:'#b5663b',weight:2.6,dashArray:'1,6'}).addTo(_drawLayer);
-    _drawingPath.forEach(pt=>L.circleMarker(pt,{radius:4,color:'#b5663b',weight:2,fillColor:'#fff',fillOpacity:1}).addTo(_drawLayer));
+function finishCustomTrace(){
+  _customTraceMode=false;
+  exitDrawMode();
+  _showDrawBar(false);
+  showToast('細道を確定しました');
+}
+function undoLastCustom(){
+  const id=_customSession.pop();
+  if(id){ customPaths=customPaths.filter(p=>p.id!==id); _saveCustom(); _renderCustom(); showToast('直前の細道を取消しました'); }
+  else { showToast('取り消す細道がありません'); }
+}
+// なぞり軌跡 → 補正(画面座標で間引き＋角を丸める) → 細道として保存
+function _saveCustomFromTrace(rawPts){
+  try{
+    const ll=_simplifySmooth(rawPts);
+    if(ll.length<2) return;
+    const id='c'+Date.now();
+    customPaths.push({id, pts:ll}); _customSession.push(id);
+    _saveCustom(); _renderCustom();
+    showToast('細道を追加（つづけて描けます／終了で確定）');
+  }catch(_){ showToast('細道の追加に失敗しました'); }
+}
+function _simplifySmooth(rawPts){
+  const cpts=rawPts.map(p=>leafMap.latLngToContainerPoint(L.latLng(p[0],p[1])));
+  const simp=L.LineUtil.simplify(cpts, 8);                 // 画面座標で間引き補正
+  let ll=simp.map(pt=>{ const g=leafMap.containerPointToLatLng(pt); return [g.lat,g.lng]; });
+  if(ll.length>=3) ll=_chaikin(ll,1);                      // 角を丸めて滑らかに
+  return ll;
+}
+function _chaikin(pts,iter){
+  let p=pts;
+  for(let k=0;k<iter;k++){
+    const out=[p[0]];
+    for(let i=0;i<p.length-1;i++){ const a=p[i],b=p[i+1];
+      out.push([a[0]*0.75+b[0]*0.25, a[1]*0.75+b[1]*0.25]);
+      out.push([a[0]*0.25+b[0]*0.75, a[1]*0.25+b[1]*0.75]); }
+    out.push(p[p.length-1]); p=out;
   }
+  return p;
 }
-function undoDrawVertex(){ if(_drawingPath && _drawingPath.length){ _drawingPath.pop(); _redrawDraw(); } }
-function finishDrawPath(){
-  if(_drawingPath && _drawingPath.length>=2){
-    customPaths.push({id:'c'+Date.now(), pts:_drawingPath.slice()});
-    _saveCustom(); _renderCustom(); showToast('細道を追加しました');
-  } else { showToast('点が2つ以上必要です'); }
-  _endDraw();
-}
-function cancelDrawPath(){ _endDraw(); showToast('描画をキャンセルしました'); }
-function _endDraw(){ _drawingPath=null; if(_drawLayer){ try{leafMap.removeLayer(_drawLayer);}catch(_){}; _drawLayer=null; } _showDrawBar(false); }
 
 function _showDrawBar(show){
   let bar=document.getElementById('customDrawBar');
@@ -1175,9 +1198,8 @@ function _showDrawBar(show){
     bar=document.createElement('div'); bar.id='customDrawBar';
     bar.style.cssText='position:fixed;left:50%;transform:translateX(-50%);bottom:calc(22px + env(safe-area-inset-bottom));z-index:4000;display:none;gap:8px;background:#fff;padding:8px;border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,.25)';
     const bs='font-size:14px;padding:9px 14px;border:none;border-radius:9px;font-weight:700;';
-    bar.innerHTML='<button onclick="undoDrawVertex()" style="'+bs+'background:#EEE5D8;color:#4A2E0E">1つ戻る</button>'+
-                  '<button onclick="finishDrawPath()" style="'+bs+'background:#E8731C;color:#fff">完了</button>'+
-                  '<button onclick="cancelDrawPath()" style="'+bs+'background:#EEE5D8;color:#4A2E0E">キャンセル</button>';
+    bar.innerHTML='<button onclick="undoLastCustom()" style="'+bs+'background:#EEE5D8;color:#4A2E0E">直前を取消</button>'+
+                  '<button onclick="finishCustomTrace()" style="'+bs+'background:#E8731C;color:#fff">終了</button>';
     document.body.appendChild(bar);
   }
   bar.style.display = show ? 'flex' : 'none';
@@ -1186,7 +1208,7 @@ function _showDrawBar(show){
 /* ---- 設定トグル ---- */
 function toggleCustomFeature(){
   _customOn_=!_customOn_; _savePrefsCustom();
-  if(!_customOn_){ _endDraw(); }
+  if(!_customOn_){ if(_customTraceMode) finishCustomTrace(); }
   _renderCustom();
   showToast(_customOn_ ? '細道機能 ON' : '細道機能 OFF（従来動作）');
 }
@@ -1199,7 +1221,6 @@ function _syncCustomMenu(){
 }
 
 function onMapClick(e) {
-  if (isDrawing()) { _drawAddVertex(e.latlng.lat, e.latlng.lng); return; } // 細道描画中はタップで頂点追加
   if (lineDragging) return;
   if (mode === 'draw' || _drawActive) return; // なぞり描き中はタップでWP/VP追加しない
   // コンテキストメニューまたはWPモーダルが開いている場合は何もしない
@@ -2052,11 +2073,11 @@ function _drawStart(ev) {
   _drawing = true;
   _drawPts = [];
   _lockAllMarkers();           // なぞり開始の瞬間に全マーカーのドラッグを強制無効化（保険）
-  _drawStartWp = _drawNearbyWp(ll, 28);
+  _drawStartWp = _customTraceMode ? null : _drawNearbyWp(ll, 28);
   const sp = _drawStartWp ? [_drawStartWp.lat, _drawStartWp.lng] : [ll.lat, ll.lng];
   _drawPts.push(sp);
   if (_drawPreview) { try { leafMap.removeLayer(_drawPreview); } catch(_){} }
-  _drawPreview = L.polyline([sp], {color:'#F2670E', weight:4, opacity:0.85, dashArray:'2,7', lineCap:'round', interactive:false}).addTo(leafMap);
+  _drawPreview = L.polyline([sp], _customTraceMode ? {color:'#777', weight:3, opacity:0.9, dashArray:'4,6', lineCap:'round', interactive:false} : {color:'#F2670E', weight:4, opacity:0.85, dashArray:'2,7', lineCap:'round', interactive:false}).addTo(leafMap);
 }
 
 function _drawMove(ev) {
@@ -2089,6 +2110,7 @@ function _drawEnd(ev) {
   _drawPts = [];
   _drawStartWp = null;
   if (pts.length < 2) return;
+  if (_customTraceMode) { _saveCustomFromTrace(pts); return; }
   _finalizeTrace(pts, startWp);
 }
 
@@ -3110,7 +3132,7 @@ function setMode(m) {
   document.getElementById('mobileViaBtn')?.classList.toggle('on',  m==='via');
   document.getElementById('mobileDrawBtn')?.classList.toggle('on', m==='draw');
   // なぞり描きモードへの遷移時は開始処理
-  if (m === 'draw') enterDrawMode();
+  if (m === 'draw') { _customTraceMode=false; enterDrawMode(); }
   const msgs = {
     'wp':       'クリックでウェイポイント追加 / ルート線ドラッグで経路調整',
     'via':      '調整点モード：ルートライン上をクリックまたはドラッグ',
