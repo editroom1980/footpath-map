@@ -383,6 +383,13 @@ html,body{min-height:calc(100% + env(safe-area-inset-top));font-family:'Hiragino
 .mm-tog-wrap{background:#F9F7F4;border-radius:13px;padding:1px 14px;margin-bottom:12px}
 .mm-tog{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:0.5px solid rgba(0,0,0,0.05);cursor:pointer}
 .mm-tog:last-child{border-bottom:none}
+.mm-maplist{background:#F9F7F4;border-radius:13px;padding:2px 14px;margin-bottom:12px}
+.mm-map{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:0.5px solid rgba(0,0,0,0.05);cursor:pointer;font-size:13px;color:#4A2E0E}
+.mm-map:last-child{border-bottom:none}
+.mm-map-l{flex:1;line-height:1.3}
+.mm-map-ck{opacity:0;color:#C4703A;font-weight:700;font-size:15px}
+.mm-map.on .mm-map-ck{opacity:1}
+.mm-map.on .mm-map-l{color:#C4703A;font-weight:700}
 .mm-tog-ic{font-size:16px;color:#6A645E;display:flex}
 .mm-tog-l{flex:1;font-size:13px;color:#2C2620;font-weight:500}
 .mm-sw{width:42px;height:25px;border-radius:13px;background:#D8D2C8;position:relative;flex-shrink:0;transition:background .15s}
@@ -569,6 +576,13 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
           <div class="mm-tog" onclick="toggleViaVisibility();_syncMobileMenu()"><span class="mm-tog-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 12a4 4 0 1 0 8 0a4 4 0 1 0 -8 0" /></svg></span><span class="mm-tog-l">調整点を表示</span><div class="mm-sw" id="mmSwVia"></div></div>
           <div class="mm-tog" onclick="toggleManualMode();_syncMobileMenu()"><span class="mm-tog-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 13v-7.5a1.5 1.5 0 0 1 3 0v6.5" /> <path d="M11 5.5v-2a1.5 1.5 0 1 1 3 0v8.5" /> <path d="M14 5.5a1.5 1.5 0 0 1 3 0v6.5" /> <path d="M17 7.5a1.5 1.5 0 0 1 3 0v8.5a6 6 0 0 1 -6 6h-2h.208a6 6 0 0 1 -5.012 -2.7a69.74 69.74 0 0 1 -.196 -.3c-.312 -.479 -1.407 -2.388 -3.286 -5.728a1.5 1.5 0 0 1 .536 -2.022a1.867 1.867 0 0 1 2.28 .28l1.47 1.47" /></svg></span><span class="mm-tog-l">手動モード</span><div class="mm-sw" id="mmSwManual"></div></div>
           <div class="mm-tog" onclick="toggleViewMode();_syncMobileMenu()"><span class="mm-tog-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" /> <path d="M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6" /></svg></span><span class="mm-tog-l">閲覧モード</span><div class="mm-sw" id="mmSwView"></div></div>
+        </div>
+        <div class="mm-sec">背景地図</div>
+        <div class="mm-maplist">
+          <div class="mm-map" data-bm="gsi_std" onclick="setBaseMap('gsi_std')"><span class="mm-map-l">地理院 標準地図（細い道に強い）</span><span class="mm-map-ck">✓</span></div>
+          <div class="mm-map" data-bm="gsi_pale" onclick="setBaseMap('gsi_pale')"><span class="mm-map-l">地理院 淡色地図</span><span class="mm-map-ck">✓</span></div>
+          <div class="mm-map" data-bm="gsi_photo" onclick="setBaseMap('gsi_photo')"><span class="mm-map-l">地理院 航空写真</span><span class="mm-map-ck">✓</span></div>
+          <div class="mm-map" data-bm="osm" onclick="setBaseMap('osm')"><span class="mm-map-l">標準地図（OSM）</span><span class="mm-map-ck">✓</span></div>
         </div>
         <div class="mm-sec">保存・書き出し</div>
         <div class="mm-grid">
@@ -891,15 +905,63 @@ async function geocode(address) {
 }
 
 /* ============================================================
+   背景地図（切替式・設定で選択）
+   地理院タイルはWebアプリでのリアルタイム読込なら出典明示のみで申請不要
+   ============================================================ */
+const GSI_ATTR = '出典: <a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank" rel="noopener">国土地理院</a>';
+const BASEMAPS = {
+  gsi_std:  { label:'地理院 標準地図', url:'https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png',           attribution:GSI_ATTR, maxNativeZoom:18, maxZoom:19 },
+  gsi_pale: { label:'地理院 淡色地図', url:'https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png',          attribution:GSI_ATTR, maxNativeZoom:18, maxZoom:19 },
+  gsi_photo:{ label:'地理院 航空写真', url:'https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg', attribution:GSI_ATTR, maxNativeZoom:18, maxZoom:19 },
+  osm:      { label:'標準地図(OSM)',   url:'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',                 attribution:'© OpenStreetMap contributors', maxNativeZoom:19, maxZoom:19, subdomains:'abc' },
+};
+const BASEMAP_DEFAULT = 'gsi_std';
+let _baseMapId = BASEMAP_DEFAULT;
+
+function _hideMapMsg(){ const el=document.getElementById('mapMsg'); if(el)el.style.display='none'; }
+
+function _makeBaseLayer(id){
+  const c = BASEMAPS[id] || BASEMAPS[BASEMAP_DEFAULT];
+  const opt = { attribution:c.attribution, maxNativeZoom:c.maxNativeZoom, maxZoom:c.maxZoom };
+  if (c.subdomains) opt.subdomains = c.subdomains;
+  return L.tileLayer(c.url, opt);
+}
+function _loadBaseMapPref(){
+  if (lsAvail()) { try { const v=localStorage.getItem('fp_basemap'); if (v && BASEMAPS[v]) return v; } catch(_){} }
+  return BASEMAP_DEFAULT;
+}
+function _saveBaseMapPref(id){
+  if (lsAvail()) { try { localStorage.setItem('fp_basemap', id); } catch(_){} }
+}
+function _syncBaseMapMenu(){
+  document.querySelectorAll('.mm-map[data-bm]').forEach(el => {
+    el.classList.toggle('on', el.getAttribute('data-bm') === _baseMapId);
+  });
+}
+function setBaseMap(id){
+  if (!BASEMAPS[id]) return;
+  _baseMapId = id;
+  _saveBaseMapPref(id);
+  if (leafMap) {
+    if (_baseTileLayer) { try { leafMap.removeLayer(_baseTileLayer); } catch(_){} }
+    _baseTileLayer = _makeBaseLayer(id).addTo(leafMap);
+    _baseTileLayer.on('tileload', _hideMapMsg);
+    try { _baseTileLayer.bringToBack(); } catch(_){}
+  }
+  _syncBaseMapMenu();
+  showToast('背景地図: ' + BASEMAPS[id].label);
+}
+
+/* ============================================================
    MAP INIT
    ============================================================ */
 function initMap() {
   leafMap = L.map('map', {center:[35.165,134.542], zoom:14, scrollWheelZoom:true, wheelPxPerZoomLevel:240, touchZoom:true, doubleClickZoom:false, zoomControl:false, maxBoundsViscosity:1.0});
   _initElevFlick();   // 高低差バンドのフリック検知を初期化
-  const tiles = _baseTileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution:'© OpenStreetMap contributors', maxZoom:19
-  }).addTo(leafMap);
-  tiles.on('tileload', () => { const el=document.getElementById('mapMsg'); if(el)el.style.display='none'; });
+  _baseMapId = _loadBaseMapPref();
+  _baseTileLayer = _makeBaseLayer(_baseMapId).addTo(leafMap);
+  _baseTileLayer.on('tileload', _hideMapMsg);
+  _syncBaseMapMenu();
   leafMap.on('click', onMapClick);
   leafMap.on('movestart', hideCtxMenu);
   canvasRenderer = L.canvas({padding: 0.5}); // Canvas renderer for polylines
@@ -1674,6 +1736,7 @@ function _syncMobileMenu() {
   document.getElementById('mmSwVia')?.classList.toggle('on', viaVisible !== false);
   document.getElementById('mmSwManual')?.classList.toggle('on', manualMode === true);
   document.getElementById('mmSwView')?.classList.toggle('on', viewMode === true);
+  _syncBaseMapMenu();
 }
 
 /* 新規コース作成シート */
