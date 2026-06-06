@@ -776,7 +776,7 @@ const WT = [
   {v:'node',    l:'なぞり点（調整点）',            c:'#444444'},
 ];
 const SYM = {start:'S',goal:'G',view:'◎',shop:'★',shrine:'⛩',history:'碑',park:'🌿',toilet:'WC',parking:'P',other:'●',node:''};
-const LINE_STYLE = {color:'#E84040', weight:4, dashArray:'8,5', opacity:.9, lineJoin:'round', lineCap:'round'};
+const LINE_STYLE = {color:'#E84040', weight:4, dashArray:'8,5', opacity:.9, lineJoin:'round', lineCap:'round', smoothFactor:0};
 
 /* ============================================================
    STATE
@@ -1153,10 +1153,10 @@ function _renderCustom(){
       const ref={};
       if(_customMode_){
         // 作成/編集モード：オレンジの太いハイライト（視覚のみ・非対話）。削除は長押しで座標判定。
-        ref.hl=L.polyline(p.pts, {pane:'customPane', color:'#E8731C', weight:10, opacity:0.35, lineCap:'round', lineJoin:'round', interactive:false}).addTo(_customLayer);
+        ref.hl=L.polyline(p.pts, {pane:'customPane', color:'#E8731C', weight:10, opacity:0.35, lineCap:'round', lineJoin:'round', smoothFactor:0, interactive:false}).addTo(_customLayer);
       }
-      ref.casing=L.polyline(p.pts, {pane:'customPane', color:'#b9b2a6', weight:4, opacity:0.95, lineCap:'round', lineJoin:'round', interactive:false}).addTo(_customLayer);
-      ref.white =L.polyline(p.pts, {pane:'customPane', color:'#ffffff', weight:2.2, opacity:1, lineCap:'round', lineJoin:'round', interactive:false}).addTo(_customLayer);
+      ref.casing=L.polyline(p.pts, {pane:'customPane', color:'#c4beb2', weight:4, opacity:0.95, lineCap:'round', lineJoin:'round', smoothFactor:0, interactive:false}).addTo(_customLayer);
+      ref.white =L.polyline(p.pts, {pane:'customPane', color:'#ffffff', weight:2.2, opacity:1, lineCap:'round', lineJoin:'round', smoothFactor:0, interactive:false}).addTo(_customLayer);
       if(_customMode_){
         // 調整点ハンドル：見た目のみ（非対話）。ドラッグはなぞりハンドラ内で座標判定して処理。
         ref.handles=[];
@@ -1171,16 +1171,16 @@ function _renderCustom(){
   }catch(_){}
 }
 /* 細道の幅を実寸（メートル）基準にし、地図の拡大縮小に連動させる（白い道の約1/3が目安） */
-const CUST_WHITE_M = 3.0;   // 白線の実寸幅(m)（調整可）
-const CUST_CASE_M  = 5.0;   // 縁取りの実寸幅(m)
-const CUST_HL_M    = 12.0;  // 編集ハイライトの実寸幅(m)
+const CUST_WHITE_M   = 3.0;   // 白線の実寸幅(m)（白い道の約1/3・ズーム連動）
+const CUST_OUTLINE_PX= 1.2;   // 縁取りの太さ(px・片側)：OSMの道と同じ細い一定縁取り
+const CUST_HL_M      = 12.0;  // 編集ハイライトの実寸幅(m)
 function _custMPP(){ try{ const c=leafMap.getCenter(); return 156543.03392*Math.cos(c.lat*Math.PI/180)/Math.pow(2,leafMap.getZoom()); }catch(_){ return null; } }
 function _customScaleWeights(){
   try{
     if(!leafMap || !_customRefs) return;
     const mpp=_custMPP(); if(!mpp || !isFinite(mpp) || mpp<=0) return;
     const cw=Math.max(1.2, Math.min(9,  CUST_WHITE_M/mpp));
-    const cc=Math.max(2.0, Math.min(14, CUST_CASE_M /mpp));
+    const cc=cw + CUST_OUTLINE_PX*2;            // 縁取り＝白線＋一定px（OSMと同じ細い縁取り）
     const ch=Math.max(6.0, Math.min(26, CUST_HL_M  /mpp));
     Object.keys(_customRefs).forEach(id=>{ const r=_customRefs[id]; if(!r) return;
       try{ if(r.casing)r.casing.setStyle({weight:cc}); if(r.white)r.white.setStyle({weight:cw}); if(r.hl)r.hl.setStyle({weight:ch}); }catch(_){}
@@ -1320,19 +1320,21 @@ function toggleCustomSnap(){ _snapOn_=!_snapOn_; _savePrefsCustom(); showToast(_
 /* ===== 第2段階：細道に沿う経路（グラフ＋最短経路。失敗時は必ずnull＝従来動作） ===== */
 function _alongDist(aLat,aLng,bLat,bLng){ return haversine(aLat,aLng,bLat,bLng); }
 function _alongBuildGraph(){
-  const nodes=[], adj=[];
+  const nodes=[], adj=[], idx=[];
   (customPaths||[]).forEach(p=>{
-    if(!p.pts||p.pts.length<2) return;
     const ids=[];
-    p.pts.forEach(pt=>{ const i=nodes.length; nodes.push({lat:pt[0],lng:pt[1]}); adj.push([]); ids.push(i); });
-    for(let k=0;k<ids.length-1;k++){ const a=ids[k],b=ids[k+1]; const w=_alongDist(nodes[a].lat,nodes[a].lng,nodes[b].lat,nodes[b].lng); adj[a].push({to:b,w}); adj[b].push({to:a,w}); }
+    if(p.pts && p.pts.length>=2){
+      p.pts.forEach(pt=>{ const i=nodes.length; nodes.push({lat:pt[0],lng:pt[1]}); adj.push([]); ids.push(i); });
+      for(let k=0;k<ids.length-1;k++){ const a=ids[k],b=ids[k+1]; const w=_alongDist(nodes[a].lat,nodes[a].lng,nodes[b].lat,nodes[b].lng); adj[a].push({to:b,w}); adj[b].push({to:a,w}); }
+    }
+    idx.push(ids);
   });
   const J=12; // m：異なる細道が接する所を接続
   for(let i=0;i<nodes.length;i++){ for(let j=i+1;j<nodes.length;j++){
     const d=_alongDist(nodes[i].lat,nodes[i].lng,nodes[j].lat,nodes[j].lng);
     if(d<=J){ adj[i].push({to:j,w:d}); adj[j].push({to:i,w:d}); }
   }}
-  return {nodes,adj};
+  return {nodes,adj,idx};
 }
 function _alongGetGraph(){ if(!_alongGraph) _alongGraph=_alongBuildGraph(); return _alongGraph; }
 function _alongNearest(g,lat,lng,thr){ let best=-1,bd=thr; for(let i=0;i<g.nodes.length;i++){ const d=_alongDist(lat,lng,g.nodes[i].lat,g.nodes[i].lng); if(d<bd){bd=d;best=i;} } return best; }
@@ -1373,15 +1375,28 @@ function _alongSamePath(from,to,e,x){
   co.push([x.ll[0],x.ll[1]]); co.push([to.lat,to.lng]);
   return co;
 }
-function _alongVertexRoute(from,to,straight,ENTRY){
-  const g=_alongGetGraph(); if(!g.nodes.length) return null;
-  const sN=_alongNearest(g, from.lat, from.lng, ENTRY);
-  const tN=_alongNearest(g, to.lat,   to.lng,   ENTRY);
-  if(sN<0 || tN<0) return null;
-  if(sN===tN) return [[from.lat,from.lng],[g.nodes[sN].lat,g.nodes[sN].lng],[to.lat,to.lng]];
-  const r=_alongDijkstra(g,sN,tN); if(!r) return null;
+// 投影点を一時ノードとしてグラフに挿入し最短経路（複数細道でも端点が細道上に乗る）
+function _alongGraphRoute(from,to,e,x,straight){
+  const g=_alongGetGraph(); if(!g.nodes.length || !g.idx) return null;
+  const adj=g.adj.map(a=>a.slice());            // 浅複製（キャッシュを壊さない）
+  const nodes=g.nodes.slice();
+  const S=nodes.length; nodes.push({lat:e.ll[0],lng:e.ll[1]}); adj.push([]);
+  const T=nodes.length; nodes.push({lat:x.ll[0],lng:x.ll[1]}); adj.push([]);
+  function link(tempIdx, ll, pi, si){
+    const ids=g.idx[pi]; if(!ids || ids.length<2 || si+1>=ids.length) return false;
+    const a=ids[si], b=ids[si+1];
+    const wa=_alongDist(ll[0],ll[1], g.nodes[a].lat,g.nodes[a].lng);
+    const wb=_alongDist(ll[0],ll[1], g.nodes[b].lat,g.nodes[b].lng);
+    adj[tempIdx].push({to:a,w:wa}); adj[a].push({to:tempIdx,w:wa});
+    adj[tempIdx].push({to:b,w:wb}); adj[b].push({to:tempIdx,w:wb});
+    return true;
+  }
+  if(!link(S,e.ll,e.pi,e.si)) return null;
+  if(!link(T,x.ll,x.pi,x.si)) return null;
+  if(e.pi===x.pi && e.si===x.si){ const w=_alongDist(e.ll[0],e.ll[1],x.ll[0],x.ll[1]); adj[S].push({to:T,w}); adj[T].push({to:S,w}); }
+  const r=_alongDijkstra({nodes,adj}, S, T); if(!r) return null;
   const co=[[from.lat,from.lng]];
-  r.path.forEach(i=>co.push([g.nodes[i].lat,g.nodes[i].lng]));
+  r.path.forEach(i=>co.push([nodes[i].lat,nodes[i].lng]));
   co.push([to.lat,to.lng]);
   return _alongOk(co,straight) ? co : null;
 }
@@ -1397,8 +1412,8 @@ function _alongSegment(from,to){
       const co=_alongSamePath(from,to,e,x);
       if(co && _alongOk(co,straight)) return co;
     }
-    // 異なる細道（接続網）は頂点グラフ最短経路でフォールバック
-    return _alongVertexRoute(from,to,straight,ENTRY);
+    // 複数細道：投影点を一時ノードとしてグラフに挿入し最短経路（端点も細道上に乗る）
+    return _alongGraphRoute(from,to,e,x,straight);
   }catch(_){ return null; }
 }
 function toggleCustomMode(){
