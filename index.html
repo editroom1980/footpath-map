@@ -605,6 +605,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
           <div class="mm-tog" onclick="toggleViewMode();_syncMobileMenu()"><span class="mm-tog-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" /> <path d="M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6" /></svg></span><span class="mm-tog-l">閲覧モード</span><div class="mm-sw" id="mmSwView"></div></div>
           <div class="mm-tog" onclick="toggleCustomFeature();_syncMobileMenu()"><span class="mm-tog-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6 -6l4 4l8 -8"/><path d="M14 7l7 0l0 7"/></svg></span><span class="mm-tog-l">細道機能</span><div class="mm-sw" id="mmSwCustom"></div></div>
           <div class="mm-tog" onclick="toggleCustomSnap();_syncMobileMenu()"><span class="mm-tog-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5l10 -10"/></svg></span><span class="mm-tog-l">スナップ</span><div class="mm-sw" id="mmSwSnap"></div></div>
+          <div class="mm-tog" onclick="toggleAlong();_syncMobileMenu()"><span class="mm-tog-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l3 8l4 -16l3 8h4"/></svg></span><span class="mm-tog-l">細道に沿う</span><div class="mm-sw" id="mmSwAlong"></div></div>
         </div>
         <div class="mm-sec">コース</div>
         <div class="mm-maplist">
@@ -1113,6 +1114,8 @@ let customPaths   = [];      // [{id, pts:[[lat,lng],...]}]
 let _customLayer  = null;
 let _customOn_    = true;    // 機能ON/OFF（キルスイッチ）
 let _snapOn_      = true;    // スナップON/OFF
+let _alongOn_     = false;   // 細道に沿う経路（キルスイッチ・既定OFF）
+let _alongGraph   = null;    // 細道グラフのキャッシュ（非永続）
 let _customMode_ = false;    // 細い道 作成/編集モード
 let _customDelTimer = null;
 let _customDelId = null;
@@ -1133,10 +1136,11 @@ function _loadCustom(){
     const v=localStorage.getItem('fp_custompaths'); if(v){ const a=JSON.parse(v); if(Array.isArray(a)) customPaths=a; }
     const o=localStorage.getItem('fp_custom_on');   if(o!==null) _customOn_=(o==='1');
     const s=localStorage.getItem('fp_custom_snap'); if(s!==null) _snapOn_=(s==='1');
+    const al=localStorage.getItem('fp_along_on');    if(al!==null) _alongOn_=(al==='1');
   } catch(_){}
 }
-function _saveCustom(){ if(lsAvail()){ try{ localStorage.setItem('fp_custompaths', JSON.stringify(customPaths)); }catch(_){} } }
-function _savePrefsCustom(){ if(lsAvail()){ try{ localStorage.setItem('fp_custom_on',_customOn_?'1':'0'); localStorage.setItem('fp_custom_snap',_snapOn_?'1':'0'); }catch(_){} } }
+function _saveCustom(){ _alongGraph=null; if(lsAvail()){ try{ localStorage.setItem('fp_custompaths', JSON.stringify(customPaths)); }catch(_){} } }
+function _savePrefsCustom(){ if(lsAvail()){ try{ localStorage.setItem('fp_custom_on',_customOn_?'1':'0'); localStorage.setItem('fp_custom_snap',_snapOn_?'1':'0'); localStorage.setItem('fp_along_on',_alongOn_?'1':'0'); }catch(_){} } }
 
 // OSM標準の徒歩道に寄せた質感（白casing＋赤茶の点線）で描画
 function _renderCustom(){
@@ -1297,6 +1301,66 @@ function toggleCustomFeature(){
   showToast(_customOn_ ? '細道機能 ON' : '細道機能 OFF（従来動作）');
 }
 function toggleCustomSnap(){ _snapOn_=!_snapOn_; _savePrefsCustom(); showToast(_snapOn_?'スナップ ON':'スナップ OFF'); }
+function toggleAlong(){
+  _alongOn_=!_alongOn_; _savePrefsCustom(); _alongGraph=null;
+  if(typeof clearCache==='function') clearCache();
+  if(typeof scheduleRouting==='function') scheduleRouting();
+  showToast(_alongOn_?'細道に沿う ON（ルートが細道を通ります）':'細道に沿う OFF（従来の経路）');
+}
+/* ===== 第2段階：細道に沿う経路（グラフ＋最短経路。失敗時は必ずnull＝従来動作） ===== */
+function _alongDist(aLat,aLng,bLat,bLng){ return haversine(aLat,aLng,bLat,bLng); }
+function _alongBuildGraph(){
+  const nodes=[], adj=[];
+  (customPaths||[]).forEach(p=>{
+    if(!p.pts||p.pts.length<2) return;
+    const ids=[];
+    p.pts.forEach(pt=>{ const i=nodes.length; nodes.push({lat:pt[0],lng:pt[1]}); adj.push([]); ids.push(i); });
+    for(let k=0;k<ids.length-1;k++){ const a=ids[k],b=ids[k+1]; const w=_alongDist(nodes[a].lat,nodes[a].lng,nodes[b].lat,nodes[b].lng); adj[a].push({to:b,w}); adj[b].push({to:a,w}); }
+  });
+  const J=12; // m：異なる細道が接する所を接続
+  for(let i=0;i<nodes.length;i++){ for(let j=i+1;j<nodes.length;j++){
+    const d=_alongDist(nodes[i].lat,nodes[i].lng,nodes[j].lat,nodes[j].lng);
+    if(d<=J){ adj[i].push({to:j,w:d}); adj[j].push({to:i,w:d}); }
+  }}
+  return {nodes,adj};
+}
+function _alongGetGraph(){ if(!_alongGraph) _alongGraph=_alongBuildGraph(); return _alongGraph; }
+function _alongNearest(g,lat,lng,thr){ let best=-1,bd=thr; for(let i=0;i<g.nodes.length;i++){ const d=_alongDist(lat,lng,g.nodes[i].lat,g.nodes[i].lng); if(d<bd){bd=d;best=i;} } return best; }
+function _alongDijkstra(g,sN,tN){
+  const n=g.nodes.length, dist=new Array(n).fill(Infinity), prev=new Array(n).fill(-1), done=new Array(n).fill(false);
+  dist[sN]=0;
+  for(let it=0;it<n;it++){
+    let u=-1,ud=Infinity;
+    for(let i=0;i<n;i++){ if(!done[i]&&dist[i]<ud){ud=dist[i];u=i;} }
+    if(u<0) break; if(u===tN) break; done[u]=true;
+    for(const e of g.adj[u]){ if(dist[u]+e.w<dist[e.to]){ dist[e.to]=dist[u]+e.w; prev[e.to]=u; } }
+  }
+  if(dist[tN]===Infinity) return null;
+  const path=[]; let c=tN; while(c!==-1){ path.push(c); c=prev[c]; } path.reverse();
+  return {path, dist:dist[tN]};
+}
+// from/to(WP/VP) を細道に沿わせた座標配列を返す。沿わせられない/異常なら null（＝従来動作）
+function _alongSegment(from,to){
+  try{
+    if(!_customOn_ || !_alongOn_ || !customPaths || !customPaths.length) return null;
+    const g=_alongGetGraph(); if(!g.nodes.length) return null;
+    const ENTRY=35; // m：WPが細道に乗っているとみなす距離
+    const sN=_alongNearest(g, from.lat, from.lng, ENTRY);
+    const tN=_alongNearest(g, to.lat,   to.lng,   ENTRY);
+    if(sN<0 || tN<0) return null;
+    if(sN===tN) return [[from.lat,from.lng],[g.nodes[sN].lat,g.nodes[sN].lng],[to.lat,to.lng]];
+    const r=_alongDijkstra(g,sN,tN); if(!r) return null;
+    const straight=_alongDist(from.lat,from.lng,to.lat,to.lng);
+    const entryLink=_alongDist(from.lat,from.lng,g.nodes[sN].lat,g.nodes[sN].lng);
+    const exitLink =_alongDist(to.lat,  to.lng,  g.nodes[tN].lat,g.nodes[tN].lng);
+    const total=r.dist+entryLink+exitLink;
+    if(total > Math.max(straight*4, straight+800)) return null; // 極端な遠回りは不採用
+    const coords=[[from.lat,from.lng]];
+    r.path.forEach(i=>coords.push([g.nodes[i].lat,g.nodes[i].lng]));
+    coords.push([to.lat,to.lng]);
+    return coords;
+  }catch(_){ return null; }
+}
 function toggleCustomMode(){
   if(!_customOn()){ showToast('細道機能がOFFです（設定でON）'); return; }
   _customMode_=!_customMode_;
@@ -1327,6 +1391,7 @@ function _pathNearPx(ll, px){
 function _syncCustomMenu(){
   document.getElementById('mmSwCustom')?.classList.toggle('on', _customOn_===true);
   document.getElementById('mmSwSnap')?.classList.toggle('on', _snapOn_===true);
+  document.getElementById('mmSwAlong')?.classList.toggle('on', _alongOn_===true);
   document.getElementById('mobileCustomBtn')?.classList.toggle('on', _customMode_===true);
 }
 
@@ -2916,7 +2981,8 @@ async function buildRoutedCoords() {
       const from = pts[j], to = pts[j+1];
       const fitOut = (from.fitAfter  !== false);
       const fitIn  = (to.fitBefore   !== false);
-      const sub = await buildAnySegment(from.lat, from.lng, to.lat, to.lng, fitOut, fitIn);
+      let sub = (_alongOn_ && _customOn_ && (fitOut||fitIn)) ? _alongSegment(from, to) : null;
+      if (!sub) sub = await buildAnySegment(from.lat, from.lng, to.lat, to.lng, fitOut, fitIn);
       if (seg.length === 0) seg.push(...sub);
       else seg.push(...sub.slice(1));
     }
