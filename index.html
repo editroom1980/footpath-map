@@ -296,7 +296,8 @@ html,body{min-height:calc(100% + env(safe-area-inset-top));font-family:'Hiragino
     border-top:none!important;border-radius:14px;padding:0 8px!important;gap:4px;align-items:center;
     background:rgba(255,255,255,0.95);box-shadow:0 2px 10px rgba(0,0,0,0.2);z-index:1000}
   #mobileShelf .mob-sdiv{display:none}
-  #mobileShelf .mob-mode{height:34px;padding:0 7px}
+  #mobileShelf .mob-mode{height:34px;padding:0 6px}
+  #mobileShelf .mob-mode .svgi{font-size:19px}
   #mobileShelf .mob-stats{font-size:13px;gap:2px;padding:0 2px}
 
   /* 高低差バンドを左下にフローティング。折りたたみでも簡易グラフを広幅で表示し、縦幅は圧縮 */
@@ -558,10 +559,11 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
       </div>
       <!-- モバイル: コントロールシェルフ -->
       <div id="mobileShelf">
-        <div class="mob-modes">
-          <button id="mobileDrawBtn" class="mob-mode lbl" onclick="setMode('draw')"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 19a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" /> <path d="M19 7a2 2 0 1 0 0 -4a2 2 0 0 0 0 4" /> <path d="M11 19h5.5a3.5 3.5 0 0 0 0 -7h-8a3.5 3.5 0 0 1 0 -7h4.5" /></svg><span>なぞり</span></button>
-          <button id="mobileWpBtn"  class="mob-mode lbl on" onclick="setMode('wp')"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11a3 3 0 1 0 6 0a3 3 0 0 0 -6 0" /> <path d="M17.657 16.657l-4.243 4.243a2 2 0 0 1 -2.827 0l-4.244 -4.243a8 8 0 1 1 11.314 0" /></svg><span>WP</span></button>
-          <button id="mobileViaBtn" class="mob-mode lbl" onclick="setMode('via')"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /> <path d="M4 6l8 0" /> <path d="M16 6l4 0" /> <path d="M6 12a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /> <path d="M4 12l2 0" /> <path d="M10 12l10 0" /> <path d="M15 18a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /> <path d="M4 18l11 0" /> <path d="M19 18l1 0" /></svg><span>調整点</span></button>
+                <div class="mob-modes">
+          <button id="mobileDrawBtn" class="mob-mode" onclick="setMode('draw')" aria-label="なぞり"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 19a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" /> <path d="M19 7a2 2 0 1 0 0 -4a2 2 0 0 0 0 4" /> <path d="M11 19h5.5a3.5 3.5 0 0 0 0 -7h-8a3.5 3.5 0 0 1 0 -7h4.5" /></svg></button>
+          <button id="mobileWpBtn" class="mob-mode on" onclick="setMode('wp')" aria-label="WP"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11a3 3 0 1 0 6 0a3 3 0 0 0 -6 0" /> <path d="M17.657 16.657l-4.243 4.243a2 2 0 0 1 -2.827 0l-4.244 -4.243a8 8 0 1 1 11.314 0" /></svg></button>
+          <button id="mobileViaBtn" class="mob-mode" onclick="setMode('via')" aria-label="調整点"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /> <path d="M4 6l8 0" /> <path d="M16 6l4 0" /> <path d="M6 12a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /> <path d="M4 12l2 0" /> <path d="M10 12l10 0" /> <path d="M15 18a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /> <path d="M4 18l11 0" /> <path d="M19 18l1 0" /></svg></button>
+          <button id="mobileCustomBtn" class="mob-mode" onclick="toggleCustomMode()" aria-label="細道 作成・編集"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4"/><path d="M13.5 6.5l4 4"/></svg></button>
         </div>
         <div class="mob-sdiv"></div>
         <div class="mob-stats">
@@ -594,7 +596,6 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
           <div class="mm-tog" onclick="toggleViewMode();_syncMobileMenu()"><span class="mm-tog-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" /> <path d="M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6" /></svg></span><span class="mm-tog-l">閲覧モード</span><div class="mm-sw" id="mmSwView"></div></div>
           <div class="mm-tog" onclick="toggleCustomFeature();_syncMobileMenu()"><span class="mm-tog-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6 -6l4 4l8 -8"/><path d="M14 7l7 0l0 7"/></svg></span><span class="mm-tog-l">細道機能</span><div class="mm-sw" id="mmSwCustom"></div></div>
           <div class="mm-tog" onclick="toggleCustomSnap();_syncMobileMenu()"><span class="mm-tog-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5l10 -10"/></svg></span><span class="mm-tog-l">スナップ</span><div class="mm-sw" id="mmSwSnap"></div></div>
-          <div class="mm-tog" onclick="toggleCustomMode()"><span class="mm-tog-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4"/><path d="M13.5 6.5l4 4"/></svg></span><span class="mm-tog-l">作成・編集</span><div class="mm-sw" id="mmSwCustomMode"></div></div>
         </div>
         <div class="mm-sec">コース</div>
         <div class="mm-maplist">
@@ -895,7 +896,9 @@ async function newCourse() {
 }
 
 function backToS1() {
+  if (_customMode_) { showToast('作成・編集モードを終了してください'); return; }
   if (!confirm('一覧画面に戻りますか？（未保存の変更は失われます）')) return;
+  if (typeof _closeAllPopups === 'function') _closeAllPopups();
   document.getElementById('s2').style.display = 'none';
   document.getElementById('s1').style.display = 'flex';
   renderCourseList();
@@ -1082,6 +1085,7 @@ let _customMode_ = false;    // 細い道 作成/編集モード
 let _customDelTimer = null;
 let _customDelId = null;
 let _customRefs = {};        // {id:{casing,white,hl,handles[]}} 描画参照（非永続）
+let _activeHandle = null;    // 調整中のハンドル {id,idx}
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
@@ -1118,12 +1122,10 @@ function _renderCustom(){
       ref.casing=L.polyline(p.pts, {pane:'customPane', color:'#b9b2a6', weight:4, opacity:0.95, lineCap:'round', lineJoin:'round', interactive:false}).addTo(_customLayer);
       ref.white =L.polyline(p.pts, {pane:'customPane', color:'#ffffff', weight:2.2, opacity:1, lineCap:'round', lineJoin:'round', interactive:false}).addTo(_customLayer);
       if(_customMode_){
-        // 調整点ハンドル：ドラッグで微調整（マーカーペインz600＝キャンバスより上）
+        // 調整点ハンドル：見た目のみ（非対話）。ドラッグはなぞりハンドラ内で座標判定して処理。
         ref.handles=[];
         p.pts.forEach((pt,i)=>{
-          const h=L.marker(pt, {draggable:true, keyboard:false, icon:L.divIcon({className:'cust-handle', iconSize:[20,20], iconAnchor:[10,10], html:''})}).addTo(_customLayer);
-          h._pid=p.id; h._idx=i;
-          h.on('drag', _onHandleDrag); h.on('dragend', _onHandleDragEnd);
+          const h=L.marker(pt, {draggable:false, interactive:false, keyboard:false, icon:L.divIcon({className:'cust-handle', iconSize:[20,20], iconAnchor:[10,10], html:''})}).addTo(_customLayer);
           ref.handles.push(h);
         });
       }
@@ -1131,13 +1133,22 @@ function _renderCustom(){
     });
   }catch(_){}
 }
-function _onHandleDrag(e){
-  const h=e.target, id=h._pid, i=h._idx;
-  const p=customPaths.find(x=>x.id===id); if(!p||!p.pts[i]) return;
-  const ll=h.getLatLng(); p.pts[i]=[ll.lat, ll.lng];
-  const r=_customRefs[id]; if(r){ if(r.casing)r.casing.setLatLngs(p.pts); if(r.white)r.white.setLatLngs(p.pts); if(r.hl)r.hl.setLatLngs(p.pts); }
+function _handleNearPx(ll, px){
+  try{ const p0=leafMap.latLngToContainerPoint(ll); let best=null, bd=px;
+    for(const path of customPaths){ const pts=path.pts; if(!pts) continue;
+      for(let i=0;i<pts.length;i++){ const a=leafMap.latLngToContainerPoint(L.latLng(pts[i][0],pts[i][1]));
+        const d=Math.hypot(p0.x-a.x, p0.y-a.y); if(d<bd){ bd=d; best={id:path.id, idx:i}; } } }
+    return best;
+  }catch(_){ return null; }
 }
-function _onHandleDragEnd(e){ try{ _saveCustom(); showToast('細道を調整しました'); }catch(_){} }
+function _moveHandle(h, ll){
+  const p=customPaths.find(x=>x.id===h.id); if(!p||!p.pts[h.idx]) return;
+  p.pts[h.idx]=[ll.lat, ll.lng];
+  const r=_customRefs[h.id]; if(r){
+    if(r.casing)r.casing.setLatLngs(p.pts); if(r.white)r.white.setLatLngs(p.pts); if(r.hl)r.hl.setLatLngs(p.pts);
+    if(r.handles && r.handles[h.idx]) r.handles[h.idx].setLatLng(ll);
+  }
+}
 
 function _deleteCustom(id){
   if(!_customMode_) return;
@@ -1219,7 +1230,7 @@ function _showDrawBar(show){
   let bar=document.getElementById('customDrawBar');
   if(!bar){
     bar=document.createElement('div'); bar.id='customDrawBar';
-    bar.style.cssText='position:fixed;left:50%;transform:translateX(-50%);bottom:calc(22px + env(safe-area-inset-bottom));z-index:4000;display:none;gap:8px;background:#fff;padding:8px;border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,.25)';
+    bar.style.cssText='position:fixed;left:50%;transform:translateX(-50%);bottom:calc(82px + env(safe-area-inset-bottom));z-index:4000;display:none;gap:8px;background:#fff;padding:8px;border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,.25)';
     const bs='font-size:14px;padding:9px 14px;border:none;border-radius:9px;font-weight:700;';
     bar.innerHTML='<button onclick="undoLastCustom()" style="'+bs+'background:#EEE5D8;color:#4A2E0E">直前を取消</button>'+
                   '<button onclick="finishCustomTrace()" style="'+bs+'background:#E8731C;color:#fff">終了</button>';
@@ -1231,7 +1242,7 @@ function _showDrawBar(show){
 /* ---- 設定トグル ---- */
 function toggleCustomFeature(){
   _customOn_=!_customOn_; _savePrefsCustom();
-  if(!_customOn_){ if(_customMode_){ _customMode_=false; _customTraceMode=false; exitDrawMode(); _setMarkersClickable(true); _showDrawBar(false); } }
+  if(!_customOn_){ if(_customMode_){ _customMode_=false; _customTraceMode=false; _activeHandle=null; exitDrawMode(); _setMarkersClickable(true); _showDrawBar(false); } }
   _renderCustom();
   showToast(_customOn_ ? '細道機能 ON' : '細道機能 OFF（従来動作）');
 }
@@ -1239,12 +1250,12 @@ function toggleCustomSnap(){ _snapOn_=!_snapOn_; _savePrefsCustom(); showToast(_
 function toggleCustomMode(){
   if(!_customOn()){ showToast('細道機能がOFFです（設定でON）'); return; }
   _customMode_=!_customMode_;
-  if(typeof closeMobileMenu==='function') closeMobileMenu();
+  if(typeof _closeAllPopups==='function') _closeAllPopups();
   if(_customMode_){
     _customSession=[]; _customTraceMode=true; enterDrawMode(); _setMarkersClickable(false); _showDrawBar(true); _renderCustom();
     showToast('細い道 作成・編集：なぞって作成／長押しで削除');
   } else {
-    _customTraceMode=false; exitDrawMode(); _setMarkersClickable(true); _showDrawBar(false); _renderCustom();
+    _activeHandle=null; _customTraceMode=false; exitDrawMode(); _setMarkersClickable(true); _showDrawBar(false); _renderCustom();
     showToast('細い道 作成・編集を終了');
   }
   _syncCustomMenu();
@@ -1266,7 +1277,7 @@ function _pathNearPx(ll, px){
 function _syncCustomMenu(){
   document.getElementById('mmSwCustom')?.classList.toggle('on', _customOn_===true);
   document.getElementById('mmSwSnap')?.classList.toggle('on', _snapOn_===true);
-  document.getElementById('mmSwCustomMode')?.classList.toggle('on', _customMode_===true);
+  document.getElementById('mobileCustomBtn')?.classList.toggle('on', _customMode_===true);
 }
 
 /* ---- コースポイントの並べ替え（モバイル対応：上へ/下へ） ---- */
@@ -1976,6 +1987,7 @@ function toggleViewMode() {
    モバイル …メニューシート
    ============================================================ */
 function openMobileMenu() {
+  if (_customMode_) { showToast('作成・編集モード中はメニューを開けません（終了してください）'); return; }
   _closeAllPopups('menu');
   _syncMobileMenu();
   document.getElementById('mobileMenuScrim')?.classList.add('show');
@@ -2160,7 +2172,10 @@ function _drawStart(ev) {
   }
   const ll = _drawEvtLatLng(ev);
   if (!ll) return;
-  if (_customMode_ && ev.target && ev.target.closest && ev.target.closest('.cust-handle')) { _drawing=false; return; } // ハンドル操作はトレース/削除しない
+  if (_customMode_) {
+    const hh = _handleNearPx(ll, 22);
+    if (hh) { if (ev.cancelable) ev.preventDefault(); _activeHandle = hh; _drawing = false; return; } // 頂点近く→ハンドル調整
+  }
   if (ev.cancelable) ev.preventDefault();
   _drawing = true;
   _drawPts = [];
@@ -2186,6 +2201,7 @@ function _drawStart(ev) {
 }
 
 function _drawMove(ev) {
+  if (_activeHandle) { const ll=_drawEvtLatLng(ev); if(ll){ if(ev.cancelable)ev.preventDefault(); _moveHandle(_activeHandle, ll); } return; }
   if (!_drawActive || !_drawing) return;
   // なぞり中に2本目の指 → ピンチに切替。トレースを中断しズームに委ねる
   if (ev.touches && ev.touches.length > 1) {
@@ -2207,6 +2223,7 @@ function _drawMove(ev) {
 }
 
 function _drawEnd(ev) {
+  if (_activeHandle) { if(ev.cancelable)ev.preventDefault(); _activeHandle=null; try{_saveCustom();}catch(_){} showToast('細道を調整しました'); return; }
   if (_customDelTimer) { clearTimeout(_customDelTimer); _customDelTimer=null; _customDelId=null; }
   if (!_drawActive || !_drawing) return;
   if (ev.cancelable) ev.preventDefault();
@@ -3229,6 +3246,7 @@ async function saveMapAsImage() {
    MODE / UNDO / CLEAR
    ============================================================ */
 function setMode(m) {
+  if (_customMode_) { _customMode_=false; _customTraceMode=false; _activeHandle=null; exitDrawMode(); _setMarkersClickable(true); _showDrawBar(false); _renderCustom(); _syncCustomMenu(); }
   // なぞり描きモードからの離脱時は必ず終了処理
   if (mode === 'draw' && m !== 'draw') exitDrawMode();
   mode = m;
