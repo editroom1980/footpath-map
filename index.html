@@ -856,6 +856,7 @@ async function newCourse() {
     if (!leafMap) initMap(); else leafMap.invalidateSize();
     const c = await geocode(area);
     if (c && leafMap) { leafMap.setView([c.lat, c.lng], 15); _setAnchor(c.lat, c.lng, false); }
+    else if (leafMap) { const ctr = leafMap.getCenter(); _setAnchor(ctr.lat, ctr.lng, false); }  // 失敗時も範囲を必ず確定
     btn.disabled = false; btn.textContent = 'コース設定画面へ →';
   }, 60);
 }
@@ -1676,6 +1677,8 @@ function gotoCurrentLocation() {
   navigator.geolocation.getCurrentPosition(
     function(pos) {
       const lat = pos.coords.latitude, lng = pos.coords.longitude;
+      // 範囲が未確定なら現在の地図中心を基準に確定（GPSで範囲外へ飛ばさないための保証）
+      if (!_maxBounds && leafMap) { const ctr = leafMap.getCenter(); _setAnchor(ctr.lat, ctr.lng, true); }
       if (!_inAllowedArea(lat, lng)) {   // ② 範囲外なら地図を動かさず・表示もしない
         showToast('現在地はコース範囲外です（地図は移動しません）');
         return;
