@@ -356,6 +356,14 @@ html,body{min-height:calc(100% + env(safe-area-inset-top));font-family:'Hiragino
 .mob-stat-u{font-size:9px;color:#A8A29E}
 .mob-stat-s{font-size:10px;color:#E2DDD4}
 .cust-handle{width:20px;height:20px;border-radius:50%;background:#fff;border:2.5px solid #E8731C;box-shadow:0 1px 3px rgba(0,0,0,.35);box-sizing:border-box;cursor:grab}
+#reorderSheet .ro-head{display:flex;align-items:center;justify-content:space-between;font-size:14px;font-weight:700;color:#4A2E0E;padding:2px 0 6px}
+#reorderSheet .ro-close{border:none;background:#F2670E;color:#fff;border-radius:8px;font-size:13px;font-weight:700;padding:6px 14px}
+#reorderSheet .ro-hint{font-size:11px;color:#9b948c;padding-bottom:6px}
+#reorderSheet .ro-row{display:flex;align-items:center;gap:8px;padding:6px 4px;border-bottom:0.5px solid rgba(0,0,0,.06);background:#fff}
+#reorderSheet .ro-row.ro-dragging{background:#FFF3EC;box-shadow:0 2px 8px rgba(0,0,0,.18);border-radius:8px;border-bottom:none}
+#reorderSheet .ro-badge{width:22px;height:22px;border-radius:50%;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0}
+#reorderSheet .ro-label{flex:1;font-size:13px;color:#4A2E0E;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#reorderSheet .ro-handle{flex-shrink:0;color:#9b948c;padding:6px 6px;cursor:grab;touch-action:none;-webkit-user-select:none;user-select:none}
 #mobileElevBand{background:#fff;border-top:0.5px solid rgba(0,0,0,0.06);padding:5px 14px 7px;flex-shrink:0;touch-action:none;overflow:hidden;transition:height .34s cubic-bezier(.33,.0,.2,1)}
 #mobileElevGrip{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px}
 #mobileElevChev{color:#C4BEB8;font-size:15px;display:flex;transition:transform .2s}
@@ -1009,7 +1017,7 @@ function initMap() {
    表示範囲の制限（基準点から半径15km。コースが超える場合のみ拡張）
    基準点は最初に一度だけ確定し、点の追加ごとに再計算はしない。
    ============================================================ */
-const BOUND_RADIUS_KM = 15;
+const BOUND_RADIUS_KM = 10;
 let _boundsAnchor = null;   // 範囲の基準点 {lat,lng}（最初に一度だけ確定）
 let _maxBounds    = null;   // 現在適用中の最大範囲（LatLngBounds）
 
@@ -1019,16 +1027,16 @@ function _box25(lat, lng) {
   return L.latLngBounds([lat - dLat, lng - dLng], [lat + dLat, lng + dLng]);
 }
 
-// 基準点の15kmボックス。includeCourse=trueなら全WP/VPを内包するよう超過分だけ拡張
+// コース全体の中心から10kmボックス。includeCourse=trueなら全WP/VPを内包するよう超過分だけ拡張
 function _computeBounds(includeCourse) {
   if (!_boundsAnchor) return null;
-  let b = _box25(_boundsAnchor.lat, _boundsAnchor.lng);
-  if (includeCourse) {
-    const pts = [];
-    wps.forEach(w => pts.push([w.lat, w.lng]));
-    vps.forEach(v => pts.push([v.lat, v.lng]));
-    if (pts.length) b = b.extend(L.latLngBounds(pts).pad(0.05));
-  }
+  const pts = [];
+  wps.forEach(w => pts.push([w.lat, w.lng]));
+  vps.forEach(v => pts.push([v.lat, v.lng]));
+  let cLat = _boundsAnchor.lat, cLng = _boundsAnchor.lng;
+  if (pts.length) { const cc = L.latLngBounds(pts).getCenter(); cLat = cc.lat; cLng = cc.lng; } // コース全体の中心
+  let b = _box25(cLat, cLng); // 中心から半径BOUND_RADIUS_KM(=10km)
+  if (includeCourse && pts.length) b = b.extend(L.latLngBounds(pts).pad(0.05)); // コースが超える場合のみ拡張
   return b;
 }
 
@@ -1086,6 +1094,8 @@ let _customDelTimer = null;
 let _customDelId = null;
 let _customRefs = {};        // {id:{casing,white,hl,handles[]}} 描画参照（非永続）
 let _activeHandle = null;    // 調整中のハンドル {id,idx}
+let _handleSnapTaken = false; // ハンドル移動の履歴を取得済みか
+let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
@@ -1149,10 +1159,26 @@ function _moveHandle(h, ll){
     if(r.handles && r.handles[h.idx]) r.handles[h.idx].setLatLng(ll);
   }
 }
+// 線上のタップ位置に調整点(頂点)を挿入
+function _addVertexAt(pathId, ll){
+  const p=customPaths.find(x=>x.id===pathId); if(!p||!p.pts||p.pts.length<2) return;
+  const p0=leafMap.latLngToContainerPoint(ll);
+  let bestSeg=0, bd=Infinity;
+  for(let i=0;i<p.pts.length-1;i++){
+    const a=leafMap.latLngToContainerPoint(L.latLng(p.pts[i][0],p.pts[i][1]));
+    const b=leafMap.latLngToContainerPoint(L.latLng(p.pts[i+1][0],p.pts[i+1][1]));
+    const d=_distPtSeg(p0,a,b); if(d<bd){ bd=d; bestSeg=i; }
+  }
+  saveSnapshot();
+  p.pts.splice(bestSeg+1, 0, [ll.lat, ll.lng]);
+  _saveCustom(); _renderCustom();
+  showToast('調整点を追加しました');
+}
 
 function _deleteCustom(id){
   if(!_customMode_) return;
   if(!confirm('この細道を削除しますか？')) return;
+  saveSnapshot();
   customPaths = customPaths.filter(p=>p.id!==id);
   _saveCustom(); _renderCustom(); showToast('細道を削除しました');
 }
@@ -1202,6 +1228,7 @@ function _saveCustomFromTrace(rawPts){
     const ll=_simplifySmooth(rawPts);
     if(ll.length<2) return;
     const id='c'+Date.now();
+    saveSnapshot();
     customPaths.push({id, pts:ll}); _customSession.push(id);
     _saveCustom(); _renderCustom();
     showToast('細道を追加（つづけて描けます／終了で確定）');
@@ -1232,8 +1259,7 @@ function _showDrawBar(show){
     bar=document.createElement('div'); bar.id='customDrawBar';
     bar.style.cssText='position:fixed;left:50%;transform:translateX(-50%);bottom:calc(82px + env(safe-area-inset-bottom));z-index:4000;display:none;gap:8px;background:#fff;padding:8px;border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,.25)';
     const bs='font-size:14px;padding:9px 14px;border:none;border-radius:9px;font-weight:700;';
-    bar.innerHTML='<button onclick="undoLastCustom()" style="'+bs+'background:#EEE5D8;color:#4A2E0E">直前を取消</button>'+
-                  '<button onclick="finishCustomTrace()" style="'+bs+'background:#E8731C;color:#fff">終了</button>';
+    bar.innerHTML='<button onclick="finishCustomTrace()" style="'+bs+'background:#E8731C;color:#fff">終了</button>';
     document.body.appendChild(bar);
   }
   bar.style.display = show ? 'flex' : 'none';
@@ -1281,16 +1307,18 @@ function _syncCustomMenu(){
 }
 
 /* ---- コースポイントの並べ替え（モバイル対応：上へ/下へ） ---- */
+let _roOrder=null, _roDragId=null;
 function openReorderSheet(){
   let sh=document.getElementById('reorderSheet');
   if(!sh){
     sh=document.createElement('div'); sh.id='reorderSheet';
-    sh.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:3200;max-height:70vh;overflow-y:auto;background:#fff;border-radius:14px 14px 0 0;box-shadow:0 -4px 20px rgba(0,0,0,.2);padding:10px 16px calc(20px + env(safe-area-inset-bottom))';
+    sh.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:3200;max-height:50vh;overflow-y:auto;-webkit-overflow-scrolling:touch;background:#fff;border-radius:14px 14px 0 0;box-shadow:0 -4px 20px rgba(0,0,0,.2);padding:8px 14px calc(14px + env(safe-area-inset-bottom))';
     document.body.appendChild(sh);
   }
+  _roOrder=null; _roDragId=null;
   _renderReorder(); sh.style.display='block';
 }
-function closeReorderSheet(){ const sh=document.getElementById('reorderSheet'); if(sh) sh.style.display='none'; }
+function closeReorderSheet(){ const sh=document.getElementById('reorderSheet'); if(sh) sh.style.display='none'; _roOrder=null; _roDragId=null; }
 function _moveWp(id, dir){
   const i=wps.findIndex(w=>String(w.id)===String(id)); if(i<0) return;
   const j=i+dir; if(j<0||j>=wps.length) return;
@@ -1301,24 +1329,69 @@ function _moveWp(id, dir){
 }
 function _renderReorder(){
   const sh=document.getElementById('reorderSheet'); if(!sh) return;
+  const order = _roOrder || wps.map(w=>String(w.id));
   let cn=1;
-  const rows = wps.map((wp,idx)=>{
+  const rows = order.map(id=>{
+    const wp=wps.find(w=>String(w.id)===String(id)); if(!wp) return '';
     const t=WT.find(x=>x.v===wp.type)||WT[0];
-    const sym = wp.type==='course' ? (cn++) : (SYM[wp.type]||'●');
-    const lbl = wp.name || ('（'+t.l+'）');
-    const bs='width:38px;height:34px;border:none;border-radius:8px;font-size:16px;background:#EEE5D8;color:#4A2E0E;';
-    const dis='opacity:.35;';
-    return '<div style="display:flex;align-items:center;gap:8px;padding:8px 2px;border-bottom:0.5px solid rgba(0,0,0,.06)">'
-      +'<div style="width:22px;height:22px;border-radius:50%;background:'+t.c+';color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0">'+escHtml(String(sym))+'</div>'
-      +'<div style="flex:1;font-size:13px;color:#4A2E0E;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+escHtml(lbl)+'</div>'
-      +'<button onclick="_moveWp(\''+wp.id+'\',-1)" style="'+bs+(idx===0?dis:'')+'" '+(idx===0?'disabled':'')+'>▲</button>'
-      +'<button onclick="_moveWp(\''+wp.id+'\',1)" style="'+bs+(idx===wps.length-1?dis:'')+'" '+(idx===wps.length-1?'disabled':'')+'>▼</button>'
+    const sym = wp.type==='course' ? (cn++) : (SYM[wp.type]||'\u25CF');
+    const lbl = wp.name || ('\uFF08'+t.l+'\uFF09');
+    const dragging = String(id)===String(_roDragId);
+    return '<div class="ro-row'+(dragging?' ro-dragging':'')+'" data-id="'+escHtml(String(wp.id))+'">'
+      +'<div class="ro-badge" style="background:'+t.c+'">'+escHtml(String(sym))+'</div>'
+      +'<div class="ro-label">'+escHtml(lbl)+'</div>'
+      +'<div class="ro-handle" aria-label="\u30C9\u30E9\u30C3\u30B0\u3057\u3066\u4E26\u3079\u66FF\u3048"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 8h16"/><path d="M4 12h16"/><path d="M4 16h16"/></svg></div>'
       +'</div>';
   }).join('');
-  sh.innerHTML='<div class="vip-handle"></div>'
-    +'<div style="display:flex;align-items:center;margin-bottom:6px"><div style="flex:1;font-weight:700;color:#4A2E0E;font-size:15px">コースポイントの並べ替え</div>'
-    +'<button onclick="closeReorderSheet()" style="border:none;background:#EEE5D8;color:#4A2E0E;border-radius:8px;width:34px;height:34px;font-size:16px">✕</button></div>'
-    +(rows || '<div style="color:#999;padding:14px;text-align:center">ポイントがありません</div>');
+  sh.innerHTML='<div class="ro-head"><span>\u30B3\u30FC\u30B9\u30DD\u30A4\u30F3\u30C8\u306E\u4E26\u3079\u66FF\u3048</span><button onclick="closeReorderSheet()" class="ro-close">\u5B8C\u4E86</button></div>'
+    +'<div class="ro-hint">\u2261 \u3092\u62BC\u3057\u305F\u307E\u307E\u4E0A\u4E0B\u306B\u30C9\u30E9\u30C3\u30B0</div>'
+    +'<div id="roList">'+(rows || '<div style="color:#999;padding:14px;text-align:center">\u30DD\u30A4\u30F3\u30C8\u304C\u3042\u308A\u307E\u305B\u3093</div>')+'</div>';
+  sh.querySelectorAll('.ro-handle').forEach(h=>{
+    h.addEventListener('touchstart', _roStart, {passive:false});
+    h.addEventListener('mousedown', _roStart);
+  });
+}
+function _roRowId(t){ const r=(t&&t.closest)?t.closest('.ro-row'):null; return r?r.getAttribute('data-id'):null; }
+function _roClientY(e){ return (e.touches&&e.touches[0])?e.touches[0].clientY:((e.changedTouches&&e.changedTouches[0])?e.changedTouches[0].clientY:e.clientY); }
+function _roStart(e){
+  const id=_roRowId(e.target); if(!id) return;
+  if(e.cancelable) e.preventDefault();
+  _roDragId=id; _roOrder=wps.map(w=>String(w.id));
+  document.addEventListener('touchmove', _roMove, {passive:false});
+  document.addEventListener('touchend', _roEnd);
+  document.addEventListener('mousemove', _roMove);
+  document.addEventListener('mouseup', _roEnd);
+  _renderReorder();
+}
+function _roMove(e){
+  if(!_roDragId||!_roOrder) return;
+  if(e.cancelable) e.preventDefault();
+  const y=_roClientY(e); if(y==null) return;
+  const list=document.getElementById('roList'); if(!list) return;
+  const rows=Array.prototype.slice.call(list.querySelectorAll('.ro-row')); if(!rows.length) return;
+  let target=0;
+  for(let i=0;i<rows.length;i++){ const rc=rows[i].getBoundingClientRect(); if(y>rc.top+rc.height/2) target=i+1; }
+  const order=_roOrder.slice();
+  const from=order.indexOf(_roDragId); if(from<0) return;
+  let t=target; if(from<target) t=target-1; t=Math.max(0,Math.min(order.length-1,t));
+  if(t!==from){ order.splice(from,1); order.splice(t,0,_roDragId); _roOrder=order; _renderReorder(); }
+}
+function _roEnd(e){
+  document.removeEventListener('touchmove', _roMove);
+  document.removeEventListener('touchend', _roEnd);
+  document.removeEventListener('mousemove', _roMove);
+  document.removeEventListener('mouseup', _roEnd);
+  if(_roDragId && _roOrder){
+    const cur=wps.map(w=>String(w.id));
+    if(_roOrder.join(',')!==cur.join(',')){
+      saveSnapshot();
+      const map={}; wps.forEach(w=>{ map[String(w.id)]=w; });
+      wps = _roOrder.map(id=>map[id]).filter(Boolean);
+      clearCache(); redrawStraight(); scheduleRouting(); redrawList(); refreshIcons();
+    }
+  }
+  _roDragId=null; _roOrder=null;
+  _renderReorder();
 }
 
 function onMapClick(e) {
@@ -2174,7 +2247,7 @@ function _drawStart(ev) {
   if (!ll) return;
   if (_customMode_) {
     const hh = _handleNearPx(ll, 22);
-    if (hh) { if (ev.cancelable) ev.preventDefault(); _activeHandle = hh; _drawing = false; return; } // 頂点近く→ハンドル調整
+    if (hh) { if (ev.cancelable) ev.preventDefault(); _activeHandle = hh; _handleSnapTaken=false; _drawing = false; return; } // 頂点近く→ハンドル調整
   }
   if (ev.cancelable) ev.preventDefault();
   _drawing = true;
@@ -2187,6 +2260,7 @@ function _drawStart(ev) {
   _drawPreview = L.polyline([sp], _customTraceMode ? {color:'#777', weight:3, opacity:0.9, dashArray:'4,6', lineCap:'round', interactive:false} : {color:'#F2670E', weight:4, opacity:0.85, dashArray:'2,7', lineCap:'round', interactive:false}).addTo(leafMap);
   // 作成/編集モード：開始点が細道に近く、動かさず長押し→その細道を削除
   if (_customMode_) {
+    _pressStartT = Date.now();
     _customDelId = _pathNearPx(ll, 20);
     if (_customDelTimer) clearTimeout(_customDelTimer);
     _customDelTimer = setTimeout(function(){
@@ -2201,7 +2275,7 @@ function _drawStart(ev) {
 }
 
 function _drawMove(ev) {
-  if (_activeHandle) { const ll=_drawEvtLatLng(ev); if(ll){ if(ev.cancelable)ev.preventDefault(); _moveHandle(_activeHandle, ll); } return; }
+  if (_activeHandle) { const ll=_drawEvtLatLng(ev); if(ll){ if(ev.cancelable)ev.preventDefault(); if(!_handleSnapTaken){ saveSnapshot(); _handleSnapTaken=true; } _moveHandle(_activeHandle, ll); } return; }
   if (!_drawActive || !_drawing) return;
   // なぞり中に2本目の指 → ピンチに切替。トレースを中断しズームに委ねる
   if (ev.touches && ev.touches.length > 1) {
@@ -2223,7 +2297,9 @@ function _drawMove(ev) {
 }
 
 function _drawEnd(ev) {
-  if (_activeHandle) { if(ev.cancelable)ev.preventDefault(); _activeHandle=null; try{_saveCustom();}catch(_){} showToast('細道を調整しました'); return; }
+  if (_activeHandle) { if(ev.cancelable)ev.preventDefault(); _activeHandle=null; if(_handleSnapTaken){ try{_saveCustom();}catch(_){} showToast('細道を調整しました'); } _handleSnapTaken=false; return; }
+  const _tapNearId = _customDelId;                                  // タップ追加判定用に退避
+  const _tapQuick  = (_pressStartT && (Date.now()-_pressStartT) < 500);
   if (_customDelTimer) { clearTimeout(_customDelTimer); _customDelTimer=null; _customDelId=null; }
   if (!_drawActive || !_drawing) return;
   if (ev.cancelable) ev.preventDefault();
@@ -2233,6 +2309,8 @@ function _drawEnd(ev) {
   const startWp = _drawStartWp;
   _drawPts = [];
   _drawStartWp = null;
+  // 作成編集モード：線上を短くタップ（動かさない）→ 調整点を挿入
+  if (_customMode_ && pts.length <= 1 && _tapQuick && _tapNearId) { _addVertexAt(_tapNearId, L.latLng(pts[0][0], pts[0][1])); return; }
   if (pts.length < 2) return;
   if (_customTraceMode) { _saveCustomFromTrace(pts); return; }
   _finalizeTrace(pts, startWp);
@@ -3277,7 +3355,7 @@ function _makeSnapshot() {
     wps: wps.map(w=>({id:w.id,type:w.type,name:w.name,desc:w.desc,tel:w.tel,dwell:w.dwell||0,fitBefore:w.fitBefore!==false,fitAfter:w.fitAfter!==false,onRoute:w.onRoute!==undefined?w.onRoute!==false:(w.type==='course'),lat:w.lat,lng:w.lng,labelDir:w.labelDir||'top'})),
     vps: vps.map(v=>({id:v.id,segAfter:v.segAfter,fitBefore:v.fitBefore!==false,fitAfter:v.fitAfter!==false,lat:v.lat,lng:v.lng,order:v.order||0})),
     idW, idV,
-
+    customPaths: customPaths.map(p=>({id:p.id, pts:(p.pts||[]).map(pt=>pt.slice())})),
   };
 }
 
@@ -3300,6 +3378,9 @@ function restoreSnapshot(snapshot) {
   idV = snapshot.idV;
   wps = snapshot.wps.map(w=>{ const wp={...w, photos:savedPhotos[w.id]||[], marker:null}; buildWpMarker(wp); return wp; });
   vps = snapshot.vps.map(v=>{ const vp={...v,marker:null}; buildVpMarker(vp); return vp; });
+  if (snapshot.customPaths) { customPaths = snapshot.customPaths.map(p=>({id:p.id, pts:(p.pts||[]).map(pt=>pt.slice())})); try{_saveCustom();}catch(_){} }
+  try{ _renderCustom(); }catch(_){}
+  if (_customMode_) { try{ _setMarkersClickable(false); }catch(_){} }
 
   clearCache(); redrawStraight(); scheduleRouting(); redrawList(); refreshIcons();
 }
