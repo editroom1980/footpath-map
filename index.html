@@ -577,6 +577,10 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
           <div class="mm-tog" onclick="toggleManualMode();_syncMobileMenu()"><span class="mm-tog-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 13v-7.5a1.5 1.5 0 0 1 3 0v6.5" /> <path d="M11 5.5v-2a1.5 1.5 0 1 1 3 0v8.5" /> <path d="M14 5.5a1.5 1.5 0 0 1 3 0v6.5" /> <path d="M17 7.5a1.5 1.5 0 0 1 3 0v8.5a6 6 0 0 1 -6 6h-2h.208a6 6 0 0 1 -5.012 -2.7a69.74 69.74 0 0 1 -.196 -.3c-.312 -.479 -1.407 -2.388 -3.286 -5.728a1.5 1.5 0 0 1 .536 -2.022a1.867 1.867 0 0 1 2.28 .28l1.47 1.47" /></svg></span><span class="mm-tog-l">手動モード</span><div class="mm-sw" id="mmSwManual"></div></div>
           <div class="mm-tog" onclick="toggleViewMode();_syncMobileMenu()"><span class="mm-tog-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" /> <path d="M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6" /></svg></span><span class="mm-tog-l">閲覧モード</span><div class="mm-sw" id="mmSwView"></div></div>
         </div>
+        <div class="mm-sec">コース</div>
+        <div class="mm-maplist">
+          <div class="mm-map" onclick="closeMobileMenu();openReorderSheet()"><span class="mm-map-l">コースポイントの並べ替え</span><span class="mm-map-ck">›</span></div>
+        </div>
         <div class="mm-sec">細道（OSMに無い道）</div>
         <div class="mm-tog-wrap">
           <div class="mm-tog" onclick="toggleCustomFeature();_syncMobileMenu()"><span class="mm-tog-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6 -6l4 4l8 -8"/><path d="M14 7l7 0l0 7"/></svg></span><span class="mm-tog-l">細道機能</span><div class="mm-sw" id="mmSwCustom"></div></div>
@@ -588,9 +592,6 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
         </div>
         <div class="mm-sec">背景地図</div>
         <div class="mm-maplist">
-          <div class="mm-map" data-bm="gsi_std" onclick="setBaseMap('gsi_std')"><span class="mm-map-l">地理院 標準地図（細い道に強い）</span><span class="mm-map-ck">✓</span></div>
-          <div class="mm-map" data-bm="gsi_pale" onclick="setBaseMap('gsi_pale')"><span class="mm-map-l">地理院 淡色地図</span><span class="mm-map-ck">✓</span></div>
-          <div class="mm-map" data-bm="gsi_photo" onclick="setBaseMap('gsi_photo')"><span class="mm-map-l">地理院 航空写真</span><span class="mm-map-ck">✓</span></div>
           <div class="mm-map" data-bm="osm" onclick="setBaseMap('osm')"><span class="mm-map-l">標準地図（OSM）</span><span class="mm-map-ck">✓</span></div>
         </div>
         <div class="mm-sec">保存・書き出し</div>
@@ -915,16 +916,11 @@ async function geocode(address) {
 
 /* ============================================================
    背景地図（切替式・設定で選択）
-   地理院タイルはWebアプリでのリアルタイム読込なら出典明示のみで申請不要
    ============================================================ */
-const GSI_ATTR = '出典: <a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank" rel="noopener">国土地理院</a>';
 const BASEMAPS = {
-  gsi_std:  { label:'地理院 標準地図', url:'https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png',           attribution:GSI_ATTR, maxNativeZoom:18, maxZoom:19 },
-  gsi_pale: { label:'地理院 淡色地図', url:'https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png',          attribution:GSI_ATTR, maxNativeZoom:18, maxZoom:19 },
-  gsi_photo:{ label:'地理院 航空写真', url:'https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg', attribution:GSI_ATTR, maxNativeZoom:18, maxZoom:19 },
   osm:      { label:'標準地図(OSM)',   url:'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',                 attribution:'© OpenStreetMap contributors', maxNativeZoom:19, maxZoom:19, subdomains:'abc' },
 };
-const BASEMAP_DEFAULT = 'gsi_std';
+const BASEMAP_DEFAULT = 'osm';
 let _baseMapId = BASEMAP_DEFAULT;
 
 function _hideMapMsg(){ const el=document.getElementById('mapMsg'); if(el)el.style.display='none'; }
@@ -1104,9 +1100,13 @@ function _renderCustom(){
     customPaths.forEach(p=>{
       if(!p.pts || p.pts.length<2) return;
       L.polyline(p.pts, {pane:'customPane', color:'#b9b2a6', weight:4, opacity:0.95, lineCap:'round', lineJoin:'round', interactive:false}).addTo(_customLayer);
-      const top=L.polyline(p.pts, {pane:'customPane', color:'#ffffff', weight:2.2, opacity:1, lineCap:'round', lineJoin:'round', interactive:_customEdit_===true});
-      if(_customEdit_) top.on('click', (e)=>{ try{ L.DomEvent.stop(e); }catch(_){}; _deleteCustom(p.id); });
-      top.addTo(_customLayer);
+      L.polyline(p.pts, {pane:'customPane', color:'#ffffff', weight:2.2, opacity:1, lineCap:'round', lineJoin:'round', interactive:false}).addTo(_customLayer);
+      if(_customEdit_){
+        // 削除モード：太い半透明ハイライト＝指で当てやすい当たり判定（タップで削除）
+        const hit=L.polyline(p.pts, {pane:'customPane', color:'#E8731C', weight:16, opacity:0.30, lineCap:'round', lineJoin:'round', interactive:true});
+        hit.on('click', (e)=>{ try{ L.DomEvent.stop(e); }catch(_){}; _deleteCustom(p.id); });
+        hit.addTo(_customLayer);
+      }
     });
   }catch(_){}
 }
@@ -1208,7 +1208,7 @@ function _showDrawBar(show){
 /* ---- 設定トグル ---- */
 function toggleCustomFeature(){
   _customOn_=!_customOn_; _savePrefsCustom();
-  if(!_customOn_){ if(_customTraceMode) finishCustomTrace(); }
+  if(!_customOn_){ if(_customTraceMode) finishCustomTrace(); _customEdit_=false; }
   _renderCustom();
   showToast(_customOn_ ? '細道機能 ON' : '細道機能 OFF（従来動作）');
 }
@@ -1220,8 +1220,50 @@ function _syncCustomMenu(){
   document.getElementById('mmSwCustomEdit')?.classList.toggle('on', _customEdit_===true);
 }
 
+/* ---- コースポイントの並べ替え（モバイル対応：上へ/下へ） ---- */
+function openReorderSheet(){
+  let sh=document.getElementById('reorderSheet');
+  if(!sh){
+    sh=document.createElement('div'); sh.id='reorderSheet';
+    sh.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:3200;max-height:70vh;overflow-y:auto;background:#fff;border-radius:14px 14px 0 0;box-shadow:0 -4px 20px rgba(0,0,0,.2);padding:10px 16px calc(20px + env(safe-area-inset-bottom))';
+    document.body.appendChild(sh);
+  }
+  _renderReorder(); sh.style.display='block';
+}
+function closeReorderSheet(){ const sh=document.getElementById('reorderSheet'); if(sh) sh.style.display='none'; }
+function _moveWp(id, dir){
+  const i=wps.findIndex(w=>String(w.id)===String(id)); if(i<0) return;
+  const j=i+dir; if(j<0||j>=wps.length) return;
+  saveSnapshot();
+  const [mv]=wps.splice(i,1); wps.splice(j,0,mv);
+  clearCache(); redrawStraight(); scheduleRouting(); redrawList(); refreshIcons();
+  _renderReorder();
+}
+function _renderReorder(){
+  const sh=document.getElementById('reorderSheet'); if(!sh) return;
+  let cn=1;
+  const rows = wps.map((wp,idx)=>{
+    const t=WT.find(x=>x.v===wp.type)||WT[0];
+    const sym = wp.type==='course' ? (cn++) : (SYM[wp.type]||'●');
+    const lbl = wp.name || ('（'+t.l+'）');
+    const bs='width:38px;height:34px;border:none;border-radius:8px;font-size:16px;background:#EEE5D8;color:#4A2E0E;';
+    const dis='opacity:.35;';
+    return '<div style="display:flex;align-items:center;gap:8px;padding:8px 2px;border-bottom:0.5px solid rgba(0,0,0,.06)">'
+      +'<div style="width:22px;height:22px;border-radius:50%;background:'+t.c+';color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0">'+escHtml(String(sym))+'</div>'
+      +'<div style="flex:1;font-size:13px;color:#4A2E0E;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+escHtml(lbl)+'</div>'
+      +'<button onclick="_moveWp(\''+wp.id+'\',-1)" style="'+bs+(idx===0?dis:'')+'" '+(idx===0?'disabled':'')+'>▲</button>'
+      +'<button onclick="_moveWp(\''+wp.id+'\',1)" style="'+bs+(idx===wps.length-1?dis:'')+'" '+(idx===wps.length-1?'disabled':'')+'>▼</button>'
+      +'</div>';
+  }).join('');
+  sh.innerHTML='<div class="vip-handle"></div>'
+    +'<div style="display:flex;align-items:center;margin-bottom:6px"><div style="flex:1;font-weight:700;color:#4A2E0E;font-size:15px">コースポイントの並べ替え</div>'
+    +'<button onclick="closeReorderSheet()" style="border:none;background:#EEE5D8;color:#4A2E0E;border-radius:8px;width:34px;height:34px;font-size:16px">✕</button></div>'
+    +(rows || '<div style="color:#999;padding:14px;text-align:center">ポイントがありません</div>');
+}
+
 function onMapClick(e) {
   if (lineDragging) return;
+  if (_customOn() && _customEdit_) return; // 削除モード中はタップで点を追加しない
   if (mode === 'draw' || _drawActive) return; // なぞり描き中はタップでWP/VP追加しない
   // コンテキストメニューまたはWPモーダルが開いている場合は何もしない
   if (ctxVpId !== null) return;
@@ -1618,13 +1660,9 @@ function buildVpMarker(vp) {
     }, {passive: true});
 
     // 指が少しでも動いたら（=ドラッグ意図）ロングプレスを解除
-    const cancelPress = (e) => {
-      if (_vpPressTimer) {
-        const t = e && e.touches && e.touches[0];
-        if (t && (Math.abs(t.clientX - lpX) > 6 || Math.abs(t.clientY - lpY) > 6)) {
-          clearTimeout(_vpPressTimer); _vpPressTimer = null;
-        } else if (!t) { clearTimeout(_vpPressTimer); _vpPressTimer = null; }
-      }
+    const cancelPress = () => {
+      // 指が少しでも動いた/離れた＝ドラッグ意図 → 長押しメニューを即解除（ドラッグ中にメニューが出るのを防ぐ）
+      if (_vpPressTimer) { clearTimeout(_vpPressTimer); _vpPressTimer = null; }
     };
     el.addEventListener('touchmove',   cancelPress, {passive: true});
     el.addEventListener('touchend',    cancelPress, {passive: true});
