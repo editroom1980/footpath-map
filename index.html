@@ -350,10 +350,11 @@ html,body{min-height:calc(100% + env(safe-area-inset-top));font-family:'Hiragino
 .mob-mode.on{background:#FFF3EC;color:#F97316}
 .mob-mode.on span{color:#F97316}
 .mob-sdiv{width:0.5px;height:22px;background:rgba(0,0,0,0.08);flex-shrink:0}
-.mob-stats{flex:1;display:flex;align-items:center;justify-content:center;gap:5px;font-family:'Hiragino Sans','Meiryo',sans-serif}
-.mob-stat-v{font-size:15px;font-weight:bold;color:#1C1917}
+.mob-stats{flex:1;display:flex;align-items:center;justify-content:center;gap:4px;white-space:nowrap;flex-wrap:nowrap;font-family:'Hiragino Sans','Meiryo',sans-serif}
+.mob-stat-v{font-size:14px;font-weight:bold;color:#1C1917;white-space:nowrap}
 .mob-stat-u{font-size:9px;color:#A8A29E}
 .mob-stat-s{font-size:10px;color:#E2DDD4}
+.cust-handle{width:20px;height:20px;border-radius:50%;background:#fff;border:2.5px solid #E8731C;box-shadow:0 1px 3px rgba(0,0,0,.35);box-sizing:border-box;cursor:grab}
 #mobileElevBand{background:#fff;border-top:0.5px solid rgba(0,0,0,0.06);padding:5px 14px 7px;flex-shrink:0;touch-action:none;overflow:hidden;transition:height .34s cubic-bezier(.33,.0,.2,1)}
 #mobileElevGrip{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px}
 #mobileElevChev{color:#C4BEB8;font-size:15px;display:flex;transition:transform .2s}
@@ -1002,10 +1003,10 @@ function initMap() {
 }
 
 /* ============================================================
-   表示範囲の制限（基準点から半径25km。コースが超える場合のみ拡張）
+   表示範囲の制限（基準点から半径15km。コースが超える場合のみ拡張）
    基準点は最初に一度だけ確定し、点の追加ごとに再計算はしない。
    ============================================================ */
-const BOUND_RADIUS_KM = 25;
+const BOUND_RADIUS_KM = 15;
 let _boundsAnchor = null;   // 範囲の基準点 {lat,lng}（最初に一度だけ確定）
 let _maxBounds    = null;   // 現在適用中の最大範囲（LatLngBounds）
 
@@ -1015,7 +1016,7 @@ function _box25(lat, lng) {
   return L.latLngBounds([lat - dLat, lng - dLng], [lat + dLat, lng + dLng]);
 }
 
-// 基準点の25kmボックス。includeCourse=trueなら全WP/VPを内包するよう超過分だけ拡張
+// 基準点の15kmボックス。includeCourse=trueなら全WP/VPを内包するよう超過分だけ拡張
 function _computeBounds(includeCourse) {
   if (!_boundsAnchor) return null;
   let b = _box25(_boundsAnchor.lat, _boundsAnchor.lng);
@@ -1080,6 +1081,7 @@ let _snapOn_      = true;    // スナップON/OFF
 let _customMode_ = false;    // 細い道 作成/編集モード
 let _customDelTimer = null;
 let _customDelId = null;
+let _customRefs = {};        // {id:{casing,white,hl,handles[]}} 描画参照（非永続）
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
@@ -1104,19 +1106,38 @@ function _renderCustom(){
     if(!leafMap) return;
     if(!leafMap.getPane('customPane')){ leafMap.createPane('customPane'); leafMap.getPane('customPane').style.zIndex=350; }
     if(!_customLayer){ _customLayer = L.layerGroup().addTo(leafMap); }
-    _customLayer.clearLayers();
+    _customLayer.clearLayers(); _customRefs={};
     if(!_customOn()) return;
     customPaths.forEach(p=>{
       if(!p.pts || p.pts.length<2) return;
+      const ref={};
       if(_customMode_){
         // 作成/編集モード：オレンジの太いハイライト（視覚のみ・非対話）。削除は長押しで座標判定。
-        L.polyline(p.pts, {pane:'customPane', color:'#E8731C', weight:10, opacity:0.35, lineCap:'round', lineJoin:'round', interactive:false}).addTo(_customLayer);
+        ref.hl=L.polyline(p.pts, {pane:'customPane', color:'#E8731C', weight:10, opacity:0.35, lineCap:'round', lineJoin:'round', interactive:false}).addTo(_customLayer);
       }
-      L.polyline(p.pts, {pane:'customPane', color:'#b9b2a6', weight:4, opacity:0.95, lineCap:'round', lineJoin:'round', interactive:false}).addTo(_customLayer);
-      L.polyline(p.pts, {pane:'customPane', color:'#ffffff', weight:2.2, opacity:1, lineCap:'round', lineJoin:'round', interactive:false}).addTo(_customLayer);
+      ref.casing=L.polyline(p.pts, {pane:'customPane', color:'#b9b2a6', weight:4, opacity:0.95, lineCap:'round', lineJoin:'round', interactive:false}).addTo(_customLayer);
+      ref.white =L.polyline(p.pts, {pane:'customPane', color:'#ffffff', weight:2.2, opacity:1, lineCap:'round', lineJoin:'round', interactive:false}).addTo(_customLayer);
+      if(_customMode_){
+        // 調整点ハンドル：ドラッグで微調整（マーカーペインz600＝キャンバスより上）
+        ref.handles=[];
+        p.pts.forEach((pt,i)=>{
+          const h=L.marker(pt, {draggable:true, keyboard:false, icon:L.divIcon({className:'cust-handle', iconSize:[20,20], iconAnchor:[10,10], html:''})}).addTo(_customLayer);
+          h._pid=p.id; h._idx=i;
+          h.on('drag', _onHandleDrag); h.on('dragend', _onHandleDragEnd);
+          ref.handles.push(h);
+        });
+      }
+      _customRefs[p.id]=ref;
     });
   }catch(_){}
 }
+function _onHandleDrag(e){
+  const h=e.target, id=h._pid, i=h._idx;
+  const p=customPaths.find(x=>x.id===id); if(!p||!p.pts[i]) return;
+  const ll=h.getLatLng(); p.pts[i]=[ll.lat, ll.lng];
+  const r=_customRefs[id]; if(r){ if(r.casing)r.casing.setLatLngs(p.pts); if(r.white)r.white.setLatLngs(p.pts); if(r.hl)r.hl.setLatLngs(p.pts); }
+}
+function _onHandleDragEnd(e){ try{ _saveCustom(); showToast('細道を調整しました'); }catch(_){} }
 
 function _deleteCustom(id){
   if(!_customMode_) return;
@@ -2139,6 +2160,7 @@ function _drawStart(ev) {
   }
   const ll = _drawEvtLatLng(ev);
   if (!ll) return;
+  if (_customMode_ && ev.target && ev.target.closest && ev.target.closest('.cust-handle')) { _drawing=false; return; } // ハンドル操作はトレース/削除しない
   if (ev.cancelable) ev.preventDefault();
   _drawing = true;
   _drawPts = [];
