@@ -359,11 +359,12 @@ html,body{min-height:calc(100% + env(safe-area-inset-top));font-family:'Hiragino
 #reorderSheet .ro-head{display:flex;align-items:center;justify-content:space-between;font-size:14px;font-weight:700;color:#4A2E0E;padding:2px 0 6px}
 #reorderSheet .ro-close{border:none;background:#F2670E;color:#fff;border-radius:8px;font-size:13px;font-weight:700;padding:6px 14px}
 #reorderSheet .ro-hint{font-size:11px;color:#9b948c;padding-bottom:6px}
-#reorderSheet .ro-row{display:flex;align-items:center;gap:8px;padding:6px 4px;border-bottom:0.5px solid rgba(0,0,0,.06);background:#fff}
-#reorderSheet .ro-row.ro-dragging{background:#FFF3EC;box-shadow:0 2px 8px rgba(0,0,0,.18);border-radius:8px;border-bottom:none}
+#reorderSheet .ro-row{display:flex;align-items:center;gap:8px;padding:0 4px;height:48px;box-sizing:border-box;border-bottom:0.5px solid rgba(0,0,0,.06);background:#fff;will-change:transform}
+#reorderSheet .ro-row.ro-shift{transition:transform .16s ease}
+#reorderSheet .ro-row.ro-lift{background:#FFF3EC;box-shadow:0 6px 16px rgba(0,0,0,.24);border-radius:10px;border-bottom:none;position:relative;z-index:5;transition:none}
 #reorderSheet .ro-badge{width:22px;height:22px;border-radius:50%;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0}
 #reorderSheet .ro-label{flex:1;font-size:13px;color:#4A2E0E;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-#reorderSheet .ro-handle{flex-shrink:0;color:#9b948c;padding:6px 6px;cursor:grab;touch-action:none;-webkit-user-select:none;user-select:none}
+#reorderSheet .ro-handle{flex-shrink:0;color:#9b948c;padding:12px 8px;margin:-6px -2px -6px 0;cursor:grab;touch-action:none;-webkit-user-select:none;user-select:none}
 #mobileElevBand{background:#fff;border-top:0.5px solid rgba(0,0,0,0.06);padding:5px 14px 7px;flex-shrink:0;touch-action:none;overflow:hidden;transition:height .34s cubic-bezier(.33,.0,.2,1)}
 #mobileElevGrip{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px}
 #mobileElevChev{color:#C4BEB8;font-size:15px;display:flex;transition:transform .2s}
@@ -905,11 +906,34 @@ async function newCourse() {
 
 function backToS1() {
   if (_customMode_) { showToast('作成・編集モードを終了してください'); return; }
-  if (!confirm('一覧画面に戻りますか？（未保存の変更は失われます）')) return;
+  _askSaveBack();
+}
+function _doBackToS1() {
   if (typeof _closeAllPopups === 'function') _closeAllPopups();
   document.getElementById('s2').style.display = 'none';
   document.getElementById('s1').style.display = 'flex';
   renderCourseList();
+}
+function _askSaveBack() {
+  let ov=document.getElementById('saveBackDlg');
+  if(!ov){
+    ov=document.createElement('div'); ov.id='saveBackDlg';
+    ov.style.cssText='position:fixed;inset:0;z-index:6000;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.45);padding:24px';
+    ov.innerHTML='<div style="background:#fff;border-radius:16px;max-width:340px;width:100%;padding:20px 18px;box-shadow:0 10px 40px rgba(0,0,0,.3)">'
+      +'<div style="font-size:16px;font-weight:700;color:#4A2E0E;margin-bottom:6px">一覧に戻ります</div>'
+      +'<div style="font-size:13px;color:#6A645E;margin-bottom:16px;line-height:1.5">変更を保存しますか？</div>'
+      +'<div style="display:flex;flex-direction:column;gap:8px">'
+      +'<button id="sbSave" style="border:none;border-radius:10px;padding:12px;font-size:15px;font-weight:700;background:linear-gradient(135deg,#FB8B3E,#F2670E);color:#fff">保存して戻る</button>'
+      +'<button id="sbNoSave" style="border:none;border-radius:10px;padding:12px;font-size:15px;font-weight:700;background:#EEE5D8;color:#4A2E0E">保存せずに戻る</button>'
+      +'<button id="sbCancel" style="border:none;border-radius:10px;padding:12px;font-size:14px;font-weight:600;background:transparent;color:#9b948c">キャンセル</button>'
+      +'</div></div>';
+    document.body.appendChild(ov);
+    ov.addEventListener('click', function(e){ if(e.target===ov) ov.style.display='none'; });
+  }
+  ov.querySelector('#sbSave').onclick=function(){ ov.style.display='none'; if(courseInfo&&courseInfo.name){ saveCourse(); } else { showToast('コース名が未設定のため保存せずに戻ります'); } _doBackToS1(); };
+  ov.querySelector('#sbNoSave').onclick=function(){ ov.style.display='none'; _doBackToS1(); };
+  ov.querySelector('#sbCancel').onclick=function(){ ov.style.display='none'; };
+  ov.style.display='flex';
 }
 
 function _clearAllMarkers() {
@@ -1017,7 +1041,7 @@ function initMap() {
    表示範囲の制限（基準点から半径15km。コースが超える場合のみ拡張）
    基準点は最初に一度だけ確定し、点の追加ごとに再計算はしない。
    ============================================================ */
-const BOUND_RADIUS_KM = 10;
+const BOUND_RADIUS_KM = 5;
 let _boundsAnchor = null;   // 範囲の基準点 {lat,lng}（最初に一度だけ確定）
 let _maxBounds    = null;   // 現在適用中の最大範囲（LatLngBounds）
 
@@ -1027,7 +1051,7 @@ function _box25(lat, lng) {
   return L.latLngBounds([lat - dLat, lng - dLng], [lat + dLat, lng + dLng]);
 }
 
-// コース全体の中心から10kmボックス。includeCourse=trueなら全WP/VPを内包するよう超過分だけ拡張
+// コース全体の中心から5kmボックス。includeCourse=trueなら全WP/VPを内包するよう超過分だけ拡張
 function _computeBounds(includeCourse) {
   if (!_boundsAnchor) return null;
   const pts = [];
@@ -1307,7 +1331,7 @@ function _syncCustomMenu(){
 }
 
 /* ---- コースポイントの並べ替え（モバイル対応：上へ/下へ） ---- */
-let _roOrder=null, _roDragId=null;
+let _roDragId=null, _roFromIdx=-1, _roCurIdx=-1, _roStartY=0, _roRowH=48, _roRows=[];
 function openReorderSheet(){
   let sh=document.getElementById('reorderSheet');
   if(!sh){
@@ -1315,10 +1339,9 @@ function openReorderSheet(){
     sh.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:3200;max-height:50vh;overflow-y:auto;-webkit-overflow-scrolling:touch;background:#fff;border-radius:14px 14px 0 0;box-shadow:0 -4px 20px rgba(0,0,0,.2);padding:8px 14px calc(14px + env(safe-area-inset-bottom))';
     document.body.appendChild(sh);
   }
-  _roOrder=null; _roDragId=null;
   _renderReorder(); sh.style.display='block';
 }
-function closeReorderSheet(){ const sh=document.getElementById('reorderSheet'); if(sh) sh.style.display='none'; _roOrder=null; _roDragId=null; }
+function closeReorderSheet(){ const sh=document.getElementById('reorderSheet'); if(sh) sh.style.display='none'; _roDragId=null; _roFromIdx=-1; }
 function _moveWp(id, dir){
   const i=wps.findIndex(w=>String(w.id)===String(id)); if(i<0) return;
   const j=i+dir; if(j<0||j>=wps.length) return;
@@ -1329,18 +1352,15 @@ function _moveWp(id, dir){
 }
 function _renderReorder(){
   const sh=document.getElementById('reorderSheet'); if(!sh) return;
-  const order = _roOrder || wps.map(w=>String(w.id));
   let cn=1;
-  const rows = order.map(id=>{
-    const wp=wps.find(w=>String(w.id)===String(id)); if(!wp) return '';
+  const rows = wps.map((wp,idx)=>{
     const t=WT.find(x=>x.v===wp.type)||WT[0];
     const sym = wp.type==='course' ? (cn++) : (SYM[wp.type]||'\u25CF');
     const lbl = wp.name || ('\uFF08'+t.l+'\uFF09');
-    const dragging = String(id)===String(_roDragId);
-    return '<div class="ro-row'+(dragging?' ro-dragging':'')+'" data-id="'+escHtml(String(wp.id))+'">'
+    return '<div class="ro-row" data-id="'+escHtml(String(wp.id))+'" data-idx="'+idx+'">'
       +'<div class="ro-badge" style="background:'+t.c+'">'+escHtml(String(sym))+'</div>'
       +'<div class="ro-label">'+escHtml(lbl)+'</div>'
-      +'<div class="ro-handle" aria-label="\u30C9\u30E9\u30C3\u30B0\u3057\u3066\u4E26\u3079\u66FF\u3048"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 8h16"/><path d="M4 12h16"/><path d="M4 16h16"/></svg></div>'
+      +'<div class="ro-handle" aria-label="\u30C9\u30E9\u30C3\u30B0\u3057\u3066\u4E26\u3079\u66FF\u3048"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 8h16"/><path d="M4 12h16"/><path d="M4 16h16"/></svg></div>'
       +'</div>';
   }).join('');
   sh.innerHTML='<div class="ro-head"><span>\u30B3\u30FC\u30B9\u30DD\u30A4\u30F3\u30C8\u306E\u4E26\u3079\u66FF\u3048</span><button onclick="closeReorderSheet()" class="ro-close">\u5B8C\u4E86</button></div>'
@@ -1351,46 +1371,57 @@ function _renderReorder(){
     h.addEventListener('mousedown', _roStart);
   });
 }
-function _roRowId(t){ const r=(t&&t.closest)?t.closest('.ro-row'):null; return r?r.getAttribute('data-id'):null; }
 function _roClientY(e){ return (e.touches&&e.touches[0])?e.touches[0].clientY:((e.changedTouches&&e.changedTouches[0])?e.changedTouches[0].clientY:e.clientY); }
 function _roStart(e){
-  const id=_roRowId(e.target); if(!id) return;
+  const row=(e.target&&e.target.closest)?e.target.closest('.ro-row'):null; if(!row) return;
   if(e.cancelable) e.preventDefault();
-  _roDragId=id; _roOrder=wps.map(w=>String(w.id));
+  const list=document.getElementById('roList'); if(!list) return;
+  _roRows = Array.prototype.slice.call(list.querySelectorAll('.ro-row'));
+  _roFromIdx = _roRows.indexOf(row); if(_roFromIdx<0) return;
+  _roCurIdx = _roFromIdx;
+  _roDragId = row.getAttribute('data-id');
+  _roRowH = row.getBoundingClientRect().height || 48;
+  _roStartY = _roClientY(e);
+  _roRows.forEach((r,i)=>{ if(i!==_roFromIdx) r.classList.add('ro-shift'); });
+  row.classList.add('ro-lift');
   document.addEventListener('touchmove', _roMove, {passive:false});
   document.addEventListener('touchend', _roEnd);
   document.addEventListener('mousemove', _roMove);
   document.addEventListener('mouseup', _roEnd);
-  _renderReorder();
 }
 function _roMove(e){
-  if(!_roDragId||!_roOrder) return;
+  if(!_roDragId||_roFromIdx<0) return;
   if(e.cancelable) e.preventDefault();
   const y=_roClientY(e); if(y==null) return;
-  const list=document.getElementById('roList'); if(!list) return;
-  const rows=Array.prototype.slice.call(list.querySelectorAll('.ro-row')); if(!rows.length) return;
-  let target=0;
-  for(let i=0;i<rows.length;i++){ const rc=rows[i].getBoundingClientRect(); if(y>rc.top+rc.height/2) target=i+1; }
-  const order=_roOrder.slice();
-  const from=order.indexOf(_roDragId); if(from<0) return;
-  let t=target; if(from<target) t=target-1; t=Math.max(0,Math.min(order.length-1,t));
-  if(t!==from){ order.splice(from,1); order.splice(t,0,_roDragId); _roOrder=order; _renderReorder(); }
+  const dy=y-_roStartY;
+  const dragRow=_roRows[_roFromIdx]; if(dragRow) dragRow.style.transform='translateY('+dy+'px)';
+  let ni=_roFromIdx+Math.round(dy/_roRowH);
+  ni=Math.max(0, Math.min(_roRows.length-1, ni));
+  if(ni!==_roCurIdx){
+    _roCurIdx=ni;
+    _roRows.forEach((r,idx)=>{
+      if(idx===_roFromIdx) return;
+      let shift=0;
+      if(ni>_roFromIdx && idx>_roFromIdx && idx<=ni) shift=-_roRowH;
+      else if(ni<_roFromIdx && idx<_roFromIdx && idx>=ni) shift=_roRowH;
+      r.style.transform = shift ? 'translateY('+shift+'px)' : '';
+    });
+  }
 }
 function _roEnd(e){
   document.removeEventListener('touchmove', _roMove);
   document.removeEventListener('touchend', _roEnd);
   document.removeEventListener('mousemove', _roMove);
   document.removeEventListener('mouseup', _roEnd);
-  if(_roDragId && _roOrder){
-    const cur=wps.map(w=>String(w.id));
-    if(_roOrder.join(',')!==cur.join(',')){
-      saveSnapshot();
-      const map={}; wps.forEach(w=>{ map[String(w.id)]=w; });
-      wps = _roOrder.map(id=>map[id]).filter(Boolean);
-      clearCache(); redrawStraight(); scheduleRouting(); redrawList(); refreshIcons();
-    }
+  const from=_roFromIdx, to=_roCurIdx, id=_roDragId;
+  _roDragId=null; _roFromIdx=-1;
+  _roRows.forEach(r=>{ r.style.transform=''; r.classList.remove('ro-lift','ro-shift'); });
+  if(id!=null && from>=0 && to>=0 && to!==from){
+    saveSnapshot();
+    const [mv]=wps.splice(from,1); wps.splice(to,0,mv);
+    clearCache(); redrawStraight(); scheduleRouting(); redrawList(); refreshIcons();
   }
-  _roDragId=null; _roOrder=null;
+  _roRows=[];
   _renderReorder();
 }
 
