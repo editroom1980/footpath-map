@@ -4149,6 +4149,26 @@ function deleteCourse(id) {
   renderCourseList();
 }
 
+// コース全体を画面にフィット（保存状態に依存せず毎回・全体の中心を画面中央に）
+function _fitCourseToScreen(data){
+  if(!leafMap) return;
+  const pts=[];
+  wps.forEach(w=>{ if(typeof w.lat==='number' && typeof w.lng==='number') pts.push([w.lat,w.lng]); });
+  vps.forEach(v=>{ if(typeof v.lat==='number' && typeof v.lng==='number') pts.push([v.lat,v.lng]); });
+  if(pts.length>=2){
+    const b=L.latLngBounds(pts); const ctr=b.getCenter();
+    _resetBounds(); _setAnchor(ctr.lat, ctr.lng, true);                 // 5kmパン範囲はコース中心基準
+    leafMap.fitBounds(b, {padding:[40,40], maxZoom:17, animate:false}); // コース全体を画面に収める
+  } else if(pts.length===1){
+    _resetBounds(); _setAnchor(pts[0][0], pts[0][1], true);
+    leafMap.setView(pts[0], 16, {animate:false});
+  } else if(data && data.center){
+    _resetBounds(); _setAnchor(data.center.lat, data.center.lng, true);
+    leafMap.setView([data.center.lat, data.center.lng], (data.zoom||14), {animate:false});
+  } else if(data && data.area){
+    geocode(data.area).then(c=>{ if(c&&leafMap){ _resetBounds(); _setAnchor(c.lat,c.lng,true); leafMap.setView([c.lat,c.lng],15,{animate:false}); } });
+  }
+}
 function loadCourseData(data) {
   courseInfo = {name:data.name, area:data.area, start:data.start||'', goal:data.goal||''};
   currentCourseId = data.id;
@@ -4212,12 +4232,8 @@ function loadCourseData(data) {
       }
     }
 
-    if (data.center && leafMap) {
-      leafMap.setView([data.center.lat, data.center.lng], data.zoom||14);
-      _resetBounds(); _setAnchor(data.center.lat, data.center.lng, true);  // コース全体を内包
-    } else if (data.area) {
-      geocode(data.area).then(c => { if(c&&leafMap){ leafMap.setView([c.lat,c.lng],15); _resetBounds(); _setAnchor(c.lat,c.lng,true); } });
-    }
+    // 読込時は保存状態（中心・倍率）に依存せず、毎回コース全体を画面にフィット
+    _fitCourseToScreen(data);
 
     const descEl = document.getElementById('iDesc');
     if (descEl) descEl.value = data.desc||'';
