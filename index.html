@@ -1868,7 +1868,9 @@ function addVp(lat, lng) {
   saveSnapshot();
   { const _s=_snapCustom(lat,lng); lat=_s[0]; lng=_s[1]; }   // 細道スナップ(失敗時は元座標)
   idV++;
-  const _saId   = nearestSegWpId(lat, lng);
+  // P2: 区間判定を「実ルート座標(_routeCoordMap)」優先に。ルートが重なる場所でも正しい区間へ挿入。
+  // 未ルーティング時(_routeCoordMap空)は従来の直線近似にフォールバック。
+  const _saId   = (findNearestSegByCoordMap(L.latLng(lat, lng)) || nearestSegWpId(lat, lng));
   const _aiIdx  = wps.findIndex(w=>w.id===_saId);
   const _wpA    = wps[_aiIdx];
   const _vrw    = routeWps();
