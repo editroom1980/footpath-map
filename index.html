@@ -2731,11 +2731,21 @@ function nearestSegWpId(lat, lng) {
 // → ルートが重なる区間でも、先に処理したセグメントが正しく選ばれる
 function findNearestSegByCoordMap(latlng) {
   if (!_routeCoordMap.length) return null;
-  let bestId = null, bestD = Infinity;
   const lat = latlng.lat, lng = latlng.lng;
-  for (const c of _routeCoordMap) {
-    const d = (lat-c.lat)*(lat-c.lat) + (lng-c.lng)*(lng-c.lng);
-    if (d < bestD) { bestD = d; bestId = c.wpId; }
+  let bestId = null, bestD = Infinity;
+  // 実ルートの「辺」（同一wpIdの連続点間の線分）への距離で判定。
+  // 頂点だけでなく線分で見るので、ルートが近接・重複する区間でもタップした線の区間を正しく選ぶ。
+  for (let i = 0; i < _routeCoordMap.length - 1; i++) {
+    const a = _routeCoordMap[i], b = _routeCoordMap[i+1];
+    if (a.wpId !== b.wpId) continue;            // セグメント境界はまたがない
+    const d = ptSegDist([lat,lng], [a.lat,a.lng], [b.lat,b.lng]);
+    if (d < bestD) { bestD = d; bestId = a.wpId; }
+  }
+  if (bestId === null) {                         // フォールバック：最近傍頂点
+    for (const c of _routeCoordMap) {
+      const d = (lat-c.lat)*(lat-c.lat) + (lng-c.lng)*(lng-c.lng);
+      if (d < bestD) { bestD = d; bestId = c.wpId; }
+    }
   }
   return bestId;
 }
@@ -4128,6 +4138,7 @@ function buildCurrentSaveData() {
     wps:     wps.map(w=>({id:w.id,type:w.type,name:w.name,desc:w.desc,tel:w.tel,dwell:w.dwell||0,fitBefore:w.fitBefore!==false,fitAfter:w.fitAfter!==false,onRoute:w.onRoute!==undefined?w.onRoute!==false:(w.type==='course'),lat:w.lat,lng:w.lng,labelDir:w.labelDir||'top',photos:w.photos||[]})),
     vps:     vps.map(v=>({id:v.id,segAfter:v.segAfter,fitBefore:v.fitBefore!==false,fitAfter:v.fitAfter!==false,lat:v.lat,lng:v.lng,order:v.order||0})),
     customRoads: customRoads.map(r=>({id:r.id,name:r.name,coords:r.coords})),
+    customPaths: (customPaths||[]).map(p=>({id:p.id, pts:(p.pts||[]).map(pt=>pt.slice())})),
     maxWpId: idW,
     maxVpNum:idV,
     savedAt: new Date().toISOString(),
@@ -4233,6 +4244,13 @@ function loadCourseData(data) {
           .forEach((v,idx)=>{ if(v.order===undefined) v.order=idx; });
       }
     }
+
+    // 細道をコース保存データから復元（グローバル消失時の復旧。空/未保存なら現状維持＝消さない）
+    if (Array.isArray(data.customPaths) && data.customPaths.length) {
+      customPaths = data.customPaths.map(p=>({id:p.id, pts:(p.pts||[]).map(pt=>pt.slice())}));
+      try{ _saveCustom(); }catch(_){}
+    }
+    try{ _renderCustom(); }catch(_){}
 
     // 読込時は保存状態（中心・倍率）に依存せず、毎回コース全体を画面にフィット
     _fitCourseToScreen(data);
