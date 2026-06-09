@@ -1902,7 +1902,10 @@ function buildVpMarker(vp) {
   let _vpPressTimer = null;   // ロングプレス用タイマー（ドラッグ開始で確実に解除するため関数スコープに）
   m.on('dragstart', () => { _vpDragged = true; _vpLastDragEnd = Date.now(); if (_vpPressTimer){clearTimeout(_vpPressTimer);_vpPressTimer=null;} saveSnapshot(); });
   m.on('drag',    () => { _vpLastDragEnd = Date.now(); vp.lat=m.getLatLng().lat; vp.lng=m.getLatLng().lng; redrawStraight(); });
-  m.on('dragend', () => { _vpLastDragEnd = Date.now(); const _s=_snapCustom(m.getLatLng().lat, m.getLatLng().lng); vp.lat=_s[0]; vp.lng=_s[1]; m.setLatLng(_s); clearCache(); scheduleRouting(); });
+  m.on('dragend', () => { _vpLastDragEnd = Date.now(); const _s=_snapCustom(m.getLatLng().lat, m.getLatLng().lng); vp.lat=_s[0]; vp.lng=_s[1]; m.setLatLng(_s);
+    // ドラッグ後も順序を実ルートに沿って取り直す（前後が入れ替わらないように）
+    try { const _wa=wps.find(w=>w.id===vp.segAfter); const _rw=routeWps(); const _ri=_rw.findIndex(w=>w.id===vp.segAfter); const _wb=(_ri>=0&&_rw[_ri+1])?_rw[_ri+1]:_wa; const _seg=vps.filter(v=>v.segAfter===vp.segAfter&&v.id!==vp.id); if(_wa) vp.order=calcVpOrder(vp.lat,vp.lng,_seg,_wa,_wb); } catch(_){}
+    clearCache(); scheduleRouting(); });
 
   // PC: right-click → context menu (no immediate delete)
   m.on('contextmenu', e => {
@@ -2779,20 +2782,37 @@ function segVpsOf(wpId, wpA, wpB) {
 }
 
 // VP挿入時の安定order値を計算（既存VP間の位置に浮動小数点で挿入）
+// 区間の実ルート（折れ線）に沿った到達距離を返す。実ルート座標が無ければ直線射影にフォールバック。
+function _vpPosAlong(la, ln, wpA, wpB) {
+  const segCoords = _routeCoordMap.filter(c => c.wpId === wpA.id);
+  if (segCoords.length >= 2) {
+    let best = Infinity, bestPos = 0, cum = 0;
+    for (let i = 0; i < segCoords.length - 1; i++) {
+      const a = segCoords[i], b = segCoords[i+1];
+      const segLen = Math.hypot(b.lat - a.lat, b.lng - a.lng);
+      const d = ptSegDist([la, ln], [a.lat, a.lng], [b.lat, b.lng]);
+      if (d < best) {
+        best = d;
+        const dx = b.lat - a.lat, dy = b.lng - a.lng, l2 = dx*dx + dy*dy || 1e-12;
+        let t = ((la - a.lat)*dx + (ln - a.lng)*dy) / l2; t = Math.max(0, Math.min(1, t));
+        bestPos = cum + t * segLen;
+      }
+      cum += segLen;
+    }
+    return bestPos;
+  }
+  const dx = wpB.lat - wpA.lat, dy = wpB.lng - wpA.lng, len2 = dx*dx + dy*dy;
+  return len2 > 0 ? ((la - wpA.lat)*dx + (ln - wpA.lng)*dy) / len2 : 0;
+}
+// VP挿入時の安定order値を計算。順序は「直線射影」ではなく「実ルートに沿った到達距離」で決める
+// （曲がった道でも前後が入れ替わらない＝斜めのはみ出し/逆走スパイクを防ぐ）。
 function calcVpOrder(lat, lng, segVps, wpA, wpB) {
   if (!segVps || segVps.length === 0) return 0;
-  const dx=wpB.lat-wpA.lat, dy=wpB.lng-wpA.lng, len2=dx*dx+dy*dy;
-  const tNew = len2>0 ? ((lat-wpA.lat)*dx+(lng-wpA.lng)*dy)/len2 : 0;
-
-  // 既存VPを現在位置のtでソートして前後の隣人を探す
-  const sorted = segVps.slice().sort((a,b) => {
-    const ta=len2>0?((a.lat-wpA.lat)*dx+(a.lng-wpA.lng)*dy)/len2:0;
-    const tb=len2>0?((b.lat-wpA.lat)*dx+(b.lng-wpA.lng)*dy)/len2:0;
-    return ta-tb;
-  });
+  const tNew = _vpPosAlong(lat, lng, wpA, wpB);
+  const sorted = segVps.slice().sort((a,b) => _vpPosAlong(a.lat,a.lng,wpA,wpB) - _vpPosAlong(b.lat,b.lng,wpA,wpB));
   let before=null, after=null;
   for (const sv of sorted) {
-    const t=len2>0?((sv.lat-wpA.lat)*dx+(sv.lng-wpA.lng)*dy)/len2:0;
+    const t = _vpPosAlong(sv.lat, sv.lng, wpA, wpB);
     if (t <= tNew) before=sv; else if (after===null) after=sv;
   }
   const bOrd = before ? (before.order||0) : null;
