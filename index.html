@@ -20,6 +20,7 @@ html,body{min-height:calc(100% + env(safe-area-inset-top));font-family:'Hiragino
 .s1-header{padding:24px 4px 16px}
 .s1-wordmark{font-family:'Plus Jakarta Sans','Hiragino Sans',sans-serif;font-size:24px;font-weight:800;color:#1C1917;letter-spacing:-0.03em}
 .s1-wordmark em{font-style:normal;color:#F2670E}
+.s1-ver{font-size:12px;font-weight:600;color:#A8A29E;letter-spacing:0;vertical-align:middle;margin-left:4px}
 .s1-sec-h{display:flex;align-items:center;justify-content:space-between;margin:4px 4px 12px}
 .s1-sec-h>span:first-child{font-family:'Plus Jakarta Sans','Hiragino Sans',sans-serif;font-size:13px;font-weight:800;color:#1C1917}
 .s1-count{font-size:11px;color:#A39B8E;background:#fff;border:0.5px solid #ECE6DC;padding:2px 10px;border-radius:11px;font-weight:600}
@@ -445,7 +446,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
 <!-- SCREEN 1 -->
 <div id="s1">
 <div class="s1-inner">
-  <div class="s1-header"><div class="s1-wordmark">Footpath <em>Mapmaker</em></div></div>
+  <div class="s1-header"><div class="s1-wordmark">Footpath <em>Mapmaker</em> <span class="s1-ver" id="s1Ver"></span></div></div>
   <div style="flex:1;overflow-y:auto;min-height:0">
     <div class="s1-sec-h"><span>保存済みコース</span><span class="s1-count" id="s1Count">0件</span></div>
     <div id="courseList"><div class="no-courses">保存されたコースはありません</div></div>
@@ -1126,11 +1127,9 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v58';   // 画面左下に表示。?v=N と一致していれば反映済み
+const APP_VERSION = 'v60';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
-  var bd=document.createElement('div'); bd.textContent=APP_VERSION;
-  bd.style.cssText='position:fixed;left:6px;bottom:4px;z-index:99999;font:11px/1.2 sans-serif;color:rgba(0,0,0,.5);background:rgba(255,255,255,.65);padding:1px 6px;border-radius:7px;pointer-events:none;letter-spacing:.5px';
-  document.body.appendChild(bd);
+  var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
 }catch(_){} });
 
 function _customOn(){ return _customOn_ === true; }
@@ -3139,6 +3138,24 @@ async function buildAnySegment(fromLat, fromLng, toLat, toLng, fitOut, fitIn) {
   catch(_) { return [[fromLat,fromLng],[toLat,toLng]]; }
 }
 
+// 端点(調整点・WP)を固定したまま、脚の内側だけを滑らかにする（Chaikin）。
+// 手描き細道の小さな出っ張り(指のブレ)を丸めて消す。角は1回適用なら大きく崩れない。
+function _chaikinKeepEnds(co, iters){
+  if(!co || co.length<3) return co;
+  let cur=co;
+  for(let it=0; it<iters; it++){
+    if(cur.length<3) break;
+    const out=[cur[0]];
+    for(let i=0;i<cur.length-1;i++){
+      const a=cur[i], b=cur[i+1];
+      out.push([a[0]*0.75+b[0]*0.25, a[1]*0.75+b[1]*0.25]);
+      out.push([a[0]*0.25+b[0]*0.75, a[1]*0.25+b[1]*0.75]);
+    }
+    out.push(cur[cur.length-1]);
+    cur=out;
+  }
+  return cur;
+}
 // ほぼ180°の折返し＆極小の遠回り(=網目の再トレース等で出る「ひげ」)だけを除去する。
 // 細道の正規の曲がり角(より緩い角度)は残す＝角を削らない。順序・割当は一切変えない。
 function _despikeSeg(co){
@@ -3176,7 +3193,9 @@ async function buildRoutedCoords() {
       const fitOut = (from.fitAfter  !== false);
       const fitIn  = (to.fitBefore   !== false);
       let sub = (_customOn_ && (fitOut||fitIn)) ? _alongSegment(from, to) : null;
+      const _isCustomLeg = !!sub;                      // 細道に沿った脚か（OSRM/直線脚は対象外）
       if (!sub) sub = await buildAnySegment(from.lat, from.lng, to.lat, to.lng, fitOut, fitIn);
+      if (_isCustomLeg) sub = _chaikinKeepEnds(sub, 2); // 細道脚だけ平滑化（端点=調整点/WPは固定）
       if (seg.length === 0) seg.push(...sub);
       else seg.push(...sub.slice(1));
     }
