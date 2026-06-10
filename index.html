@@ -962,8 +962,8 @@ async function geocode(address) {
    ============================================================ */
 const GSI_ATTR = '出典: <a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank" rel="noopener">国土地理院</a>';
 const BASEMAPS = {
-  osm:      { label:'標準地図(OSM)', url:'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',                 attribution:'© OpenStreetMap contributors', maxNativeZoom:19, maxZoom:19, subdomains:'abc' },
-  gsi_photo:{ label:'航空写真',      url:'https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg', attribution:GSI_ATTR, maxNativeZoom:18, maxZoom:19 },
+  osm:      { label:'標準地図(OSM)', url:'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',                 attribution:'© OpenStreetMap contributors', maxNativeZoom:19, maxZoom:21, subdomains:'abc' },
+  gsi_photo:{ label:'航空写真',      url:'https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg', attribution:GSI_ATTR, maxNativeZoom:18, maxZoom:21 },
 };
 const BASEMAP_DEFAULT = 'osm';
 let _baseMapId = BASEMAP_DEFAULT;
@@ -1006,7 +1006,7 @@ function setBaseMap(id){
    MAP INIT
    ============================================================ */
 function initMap() {
-  leafMap = L.map('map', {center:[35.165,134.542], zoom:14, scrollWheelZoom:true, wheelPxPerZoomLevel:240, touchZoom:true, doubleClickZoom:false, zoomControl:false, maxBoundsViscosity:1.0});
+  leafMap = L.map('map', {center:[35.165,134.542], zoom:14, maxZoom:21, scrollWheelZoom:true, wheelPxPerZoomLevel:240, touchZoom:true, doubleClickZoom:false, zoomControl:false, maxBoundsViscosity:1.0});
   _initElevFlick();   // 高低差バンドのフリック検知を初期化
   _baseMapId = _loadBaseMapPref();
   _baseTileLayer = _makeBaseLayer(_baseMapId).addTo(leafMap);
@@ -1120,6 +1120,9 @@ let _alongGraph   = null;    // 細道グラフのキャッシュ（非永続）
 let _customMode_ = false;    // 細い道 作成/編集モード
 let _customDelTimer = null;
 let _customDelId = null;
+let _vtxDelTimer = null;   // 頂点(調整点)長押し削除のタイマー
+let _vtxDelTarget = null;  // 削除対象 {id,idx}
+let _vtxPressP = null;     // 押下開始の画面座標（デッドゾーン判定用）
 let _customRefs = {};        // {id:{casing,white,hl,handles[]}} 描画参照（非永続）
 let _activeHandle = null;    // 調整中のハンドル {id,idx}
 let _handleSnapTaken = false; // ハンドル移動の履歴を取得済みか
@@ -1127,7 +1130,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v61';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
+const APP_VERSION = 'v62';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
 }catch(_){} });
@@ -1223,6 +1226,19 @@ function _addVertexAt(pathId, ll){
   p.pts.splice(bestSeg+1, 0, [ll.lat, ll.lng]);
   _saveCustom(); _renderCustom();
   showToast('調整点を追加しました');
+}
+
+// 頂点(調整点)を1つだけ削除。残り2点未満になるなら確認の上で細道ごと削除。
+function _deleteVertex(id, idx){
+  if(!_customMode_) return;
+  const p=customPaths.find(x=>x.id===id); if(!p||!p.pts||!p.pts[idx]) return;
+  if(p.pts.length<=2){
+    if(!confirm('この点を消すと線にならないため、細道を削除します。よろしいですか？')) return;
+    saveSnapshot(); customPaths=customPaths.filter(x=>x.id!==id);
+    _saveCustom(); _renderCustom(); showToast('細道を削除しました'); return;
+  }
+  saveSnapshot(); p.pts.splice(idx,1);
+  _saveCustom(); _renderCustom(); showToast('調整点を1つ削除しました');
 }
 
 function _deleteCustom(id){
@@ -2434,7 +2450,13 @@ function _drawStart(ev) {
   if (!ll) return;
   if (_customMode_) {
     const hh = _handleNearPx(ll, 22);
-    if (hh) { if (ev.cancelable) ev.preventDefault(); _activeHandle = hh; _handleSnapTaken=false; _drawing = false; return; } // 頂点近く→ハンドル調整
+    if (hh) { if (ev.cancelable) ev.preventDefault(); _activeHandle = hh; _handleSnapTaken=false; _drawing = false; // 頂点近く→ハンドル調整
+      _vtxPressP = leafMap.latLngToContainerPoint(ll); _vtxDelTarget = {id:hh.id, idx:hh.idx};
+      if (_vtxDelTimer) clearTimeout(_vtxDelTimer);
+      _vtxDelTimer = setTimeout(function(){ _vtxDelTimer=null;
+        if (_activeHandle && !_handleSnapTaken && _vtxDelTarget) { var t=_vtxDelTarget; _vtxDelTarget=null; _activeHandle=null; _vtxPressP=null; _deleteVertex(t.id, t.idx); }
+      }, 600);
+      return; }
   }
   if (ev.cancelable) ev.preventDefault();
   _drawing = true;
@@ -2462,7 +2484,10 @@ function _drawStart(ev) {
 }
 
 function _drawMove(ev) {
-  if (_activeHandle) { const ll=_drawEvtLatLng(ev); if(ll){ if(ev.cancelable)ev.preventDefault(); if(!_handleSnapTaken){ saveSnapshot(); _handleSnapTaken=true; } _moveHandle(_activeHandle, ll); } return; }
+  if (_activeHandle) { const ll=_drawEvtLatLng(ev); if(ll){ if(ev.cancelable)ev.preventDefault();
+      if(!_handleSnapTaken && _vtxPressP){ const cp=leafMap.latLngToContainerPoint(ll); if(Math.hypot(cp.x-_vtxPressP.x, cp.y-_vtxPressP.y) < 6) return; } // 6px未満は微動として無視
+      if(_vtxDelTimer){ clearTimeout(_vtxDelTimer); _vtxDelTimer=null; _vtxDelTarget=null; } // ドラッグ確定→点削除中止
+      if(!_handleSnapTaken){ saveSnapshot(); _handleSnapTaken=true; } _moveHandle(_activeHandle, ll); } return; }
   if (!_drawActive || !_drawing) return;
   // なぞり中に2本目の指 → ピンチに切替。トレースを中断しズームに委ねる
   if (ev.touches && ev.touches.length > 1) {
@@ -2484,7 +2509,7 @@ function _drawMove(ev) {
 }
 
 function _drawEnd(ev) {
-  if (_activeHandle) { if(ev.cancelable)ev.preventDefault(); _activeHandle=null; if(_handleSnapTaken){ try{_saveCustom();}catch(_){} showToast('細道を調整しました'); } _handleSnapTaken=false; return; }
+  if (_activeHandle) { if(_vtxDelTimer){ clearTimeout(_vtxDelTimer); _vtxDelTimer=null; } _vtxDelTarget=null; _vtxPressP=null; if(ev.cancelable)ev.preventDefault(); _activeHandle=null; if(_handleSnapTaken){ try{_saveCustom();}catch(_){} showToast('細道を調整しました'); } _handleSnapTaken=false; return; }
   const _tapNearId = _customDelId;                                  // タップ追加判定用に退避
   const _tapQuick  = (_pressStartT && (Date.now()-_pressStartT) < 500);
   if (_customDelTimer) { clearTimeout(_customDelTimer); _customDelTimer=null; _customDelId=null; }
