@@ -1134,7 +1134,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v64';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
+const APP_VERSION = 'v65';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
 }catch(_){} });
@@ -2991,48 +2991,64 @@ function buildSegCoordsList() {
 // allCoords: 表示ルート座標; segList: [{wpId, coords}] 直線WP→WP（セグメント判定用）
 // ── 往復（同じ道の行き帰り）で重なる区間だけ、表示上だけ左右に振り分ける（表示専用） ──
 // データ(_lastRouteCoords)・当たり判定(allCoordsオーバーレイ)は一切変更しない。往復が無ければ素の座標をそのまま返す。
-// 規則：進行方向の決まった側へ寄せる→行きと帰りが自動で反対側になり線が交差しない（行き=左/帰り=右）。折返しは半円で丸める。
+// 規則：各往復ランごとに付け根の接続が交差するかを判定し、交差するなら寄せ側を反転して交差を回避。破線・間隔も線幅と同縮尺。折返しは半円で丸める。
 function _segKey(a,b){ const r=v=>Math.round(v*1e5); const ka=r(a[0])+','+r(a[1]), kb=r(b[0])+','+r(b[1]); return ka<kb?ka+'|'+kb:kb+'|'+ka; }
 function _ptKey(p){ const r=v=>Math.round(v*1e5); return r(p[0])+','+r(p[1]); }
 function _routeWeight(){ const z=leafMap?leafMap.getZoom():16; return Math.max(3, Math.min(14, 4 + (z-16)*1.8)); } // 拡大で線を太く
+function _routeK(){ return _routeWeight()/4; }                          // 基準ズーム16を1とする倍率（破線・間隔も同縮尺）
+function _routeDash(){ const k=_routeK(); return (8*k).toFixed(1)+','+(5*k).toFixed(1); }
+function _segHit(p1,p2,p3,p4){ const d=(a,b,c)=>(b[0]-a[0])*(c[1]-a[1])-(b[1]-a[1])*(c[0]-a[0]); const d1=d(p3,p4,p1),d2=d(p3,p4,p2),d3=d(p1,p2,p3),d4=d(p1,p2,p4); return ((d1>0&&d2<0)||(d1<0&&d2>0))&&((d3>0&&d4<0)||(d3<0&&d4>0)); }
 function _buildDisplayCoords(coords){
   if(!_dblOn || !coords || coords.length<3 || !leafMap) return coords;
-  const cnt={}; for(let i=0;i<coords.length-1;i++){ const k=_segKey(coords[i],coords[i+1]); cnt[k]=(cnt[k]||0)+1; }
+  const n=coords.length;
+  const cnt={}; for(let i=0;i<n-1;i++){ const k=_segKey(coords[i],coords[i+1]); cnt[k]=(cnt[k]||0)+1; }
   let any=false; for(const k in cnt){ if(cnt[k]>=2){ any=true; break; } }
   if(!any) return coords;                         // 往復が無ければ完全に従来どおり
-  const dbl=new Array(coords.length).fill(false);
-  for(let i=0;i<coords.length-1;i++){ if(cnt[_segKey(coords[i],coords[i+1])]>=2){ dbl[i]=true; dbl[i+1]=true; } }
-  const offPx=(_routeWeight() + DBL_GAP_PX)/2;     // (線幅+間隔)/2＝片側オフセット（線の太さに追従）
+  const dbl=new Array(n).fill(false);
+  for(let i=0;i<n-1;i++){ if(cnt[_segKey(coords[i],coords[i+1])]>=2){ dbl[i]=true; dbl[i+1]=true; } }
+  const offPx=(_routeWeight() + DBL_GAP_PX*_routeK())/2;  // (線幅+間隔)/2＝片側オフセット（線幅・間隔とも同縮尺）
   const LP=c=>leafMap.latLngToLayerPoint(L.latLng(c[0],c[1]));
   const toLL=q=>{ const ll=leafMap.layerPointToLatLng(q); return [ll.lat, ll.lng]; };
+  const perpAt=(i)=>{ const a=LP(coords[i-1]||coords[i]), b=LP(coords[i+1]||coords[i]); let dx=b.x-a.x,dy=b.y-a.y; const len=Math.hypot(dx,dy)||1e-9; dx/=len;dy/=len; return {nx:dy,ny:-dx,dx,dy,p:LP(coords[i])}; };
+  // 各重複点の寄せ方向(符号)。既定+1。各往復ランごとに付け根の接続が交差するなら反転して交差回避。
+  const sgn=new Array(n).fill(1);
+  let r=0;
+  while(r<n){
+    if(!dbl[r]){ r++; continue; }
+    let j=r; while(j+1<n && dbl[j+1]) j++;
+    const Ai=(r-1>=0 && !dbl[r-1])?r-1:-1, Bi=(j+1<n && !dbl[j+1])?j+1:-1;
+    if(Ai>=0 && Bi>=0){
+      const pa=perpAt(r), pb=perpAt(j);
+      const P=[pa.p.x+pa.nx*offPx, pa.p.y+pa.ny*offPx], Q=[pb.p.x+pb.nx*offPx, pb.p.y+pb.ny*offPx];
+      const A=LP(coords[Ai]), B=LP(coords[Bi]);
+      if(_segHit([A.x,A.y],P,Q,[B.x,B.y])){ for(let t=r;t<=j;t++) sgn[t]=-1; }  // 交差→ラン反転
+    }
+    r=j+1;
+  }
   const out=[];
-  for(let i=0;i<coords.length;i++){
+  for(let i=0;i<n;i++){
     if(!dbl[i]){ out.push(coords[i]); continue; }
-    const prev=coords[i-1], next=coords[i+1];
-    // 折返し先端（前後が同じ点）→ 半径offPxの半円で丸める（内側の間隔=DBL_GAP_PX、進行方向側へ膨らむ）
+    const prev=coords[i-1], next=coords[i+1], s=sgn[i];
+    // 折返し先端（前後が同じ点）→ 半径offPxの半円で丸める（内側の間隔=間隔分、進行方向側へ膨らむ）
     if(prev && next && _ptKey(prev)===_ptKey(next)){
       const pT=LP(coords[i]), pP=LP(prev);
       let dx=pT.x-pP.x, dy=pT.y-pP.y; const len=Math.hypot(dx,dy);
       if(len<1e-6){ out.push(coords[i]); continue; }
-      dx/=len; dy/=len; const nx=dy, ny=-dx;        // 進行方向の法線
-      const STEPS=8;
-      for(let s=0;s<=STEPS;s++){ const th=Math.PI*s/STEPS;
+      dx/=len; dy/=len; const nx=s*dy, ny=-s*dx; const STEPS=8;
+      for(let t=0;t<=STEPS;t++){ const th=Math.PI*t/STEPS;
         out.push(toLL(L.point(pT.x+offPx*(Math.cos(th)*nx+Math.sin(th)*dx), pT.y+offPx*(Math.cos(th)*ny+Math.sin(th)*dy))));
       }
       continue;
     }
-    const a=LP(prev||coords[i]), b=LP(next||coords[i]), p=LP(coords[i]);
-    let dx=b.x-a.x, dy=b.y-a.y; const len=Math.hypot(dx,dy);
-    if(len<1e-6){ out.push(coords[i]); continue; }
-    dx/=len; dy/=len; const nx=dy, ny=-dx;          // 進行方向の法線（行き=左／帰り=右に自動分離）
-    out.push(toLL(L.point(p.x+nx*offPx, p.y+ny*offPx)));
+    const pp=perpAt(i);
+    out.push(toLL(L.point(pp.p.x+s*pp.nx*offPx, pp.p.y+s*pp.ny*offPx)));
   }
   return out;
 }
 function _redrawRouteOffset(){
   if(!routeLine) return;
   try{
-    routeLine.setStyle({weight:_routeWeight()});                                        // 線太さをズームに追従
+    routeLine.setStyle({weight:_routeWeight(), dashArray:_routeDash()});                 // 線太さ・破線をズームに追従
     if(_dblOn && _routeLineBase) routeLine.setLatLngs(_buildDisplayCoords(_routeLineBase)); // 間隔をズームに追従
   }catch(_){ }
 }
@@ -3040,7 +3056,7 @@ function _redrawRouteOffset(){
 function drawLines(allCoords, segList) {
   if (!allCoords || allCoords.length < 2 || !leafMap) return;
   _routeLineBase = allCoords;                                    // 素の座標を保持（ズーム再計算・データ準拠）
-  routeLine = L.polyline(_buildDisplayCoords(allCoords), {...LINE_STYLE, weight:_routeWeight(), renderer: canvasRenderer}).addTo(leafMap);
+  routeLine = L.polyline(_buildDisplayCoords(allCoords), {...LINE_STYLE, weight:_routeWeight(), dashArray:_routeDash(), renderer: canvasRenderer}).addTo(leafMap);
 
   // 単一オーバーレイ + findNearestSegment方式:
   // per-segmentオーバーレイはWP境界付近でZ-order上位のものが優先され誤反応する
