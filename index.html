@@ -1366,13 +1366,38 @@ function _alongProj(lat,lng){
 }
 function _alongLen(co){ let d=0; for(let i=0;i<co.length-1;i++) d+=_alongDist(co[i][0],co[i][1],co[i+1][0],co[i+1][1]); return d; }
 function _alongOk(co,straight){ return _alongLen(co) <= Math.max(straight*4, straight+800); }
+// along出力から「鋭く折り返す短いひげ」だけ除去（細道のつなぎ目での行き過ぎ/戻りを解消。描いた細道の形は保つ）
+function _alongDespike(co){
+  if(!co || co.length<3) return co;
+  let cur=co.slice();
+  for(let pass=0; pass<3; pass++){
+    const out=[cur[0]]; let changed=false;
+    for(let i=1;i<cur.length-1;i++){
+      const a=out[out.length-1], b=cur[i], c=cur[i+1];
+      const dAB=_alongDist(a[0],a[1],b[0],b[1]);
+      const dBC=_alongDist(b[0],b[1],c[0],c[1]);
+      const dAC=_alongDist(a[0],a[1],c[0],c[1]);
+      const detour=dAB+dBC-dAC;                 // bを経由する遠回り量(m)
+      const m1=Math.hypot(b[0]-a[0],b[1]-a[1]), m2=Math.hypot(c[0]-b[0],c[1]-b[1]);
+      const cos=(m1*m2>0)?((b[0]-a[0])*(c[0]-b[0])+(b[1]-a[1])*(c[1]-b[1]))/(m1*m2):1;
+      if(cos<-0.2 && detour<15){ changed=true; continue; }  // 90°超の折返し&遠回り小=ひげ→除去
+      out.push(b);
+    }
+    out.push(cur[cur.length-1]); cur=out;
+    if(!changed) break;
+  }
+  return cur;
+}
 function _alongSamePath(from,to,e,x){
   const pts=customPaths[e.pi].pts;
-  const co=[[from.lat,from.lng], [e.ll[0],e.ll[1]]];
+  const co=[[from.lat,from.lng]];
+  // 端点が細道上(投影が極近)なら投影点は冗長→出さない（つなぎ目の折返しひげ防止）
+  if(_alongDist(from.lat,from.lng,e.ll[0],e.ll[1])>2) co.push([e.ll[0],e.ll[1]]);
   if(e.si===x.si){ /* 同一線分：直線で結ぶ */ }
   else if(e.si < x.si){ for(let k=e.si+1;k<=x.si;k++) co.push([pts[k][0],pts[k][1]]); }
   else { for(let k=e.si;k>=x.si+1;k--) co.push([pts[k][0],pts[k][1]]); }
-  co.push([x.ll[0],x.ll[1]]); co.push([to.lat,to.lng]);
+  if(_alongDist(to.lat,to.lng,x.ll[0],x.ll[1])>2) co.push([x.ll[0],x.ll[1]]);
+  co.push([to.lat,to.lng]);
   return co;
 }
 // 投影点を一時ノードとしてグラフに挿入し最短経路（複数細道でも端点が細道上に乗る）
@@ -1396,7 +1421,12 @@ function _alongGraphRoute(from,to,e,x,straight){
   if(e.pi===x.pi && e.si===x.si){ const w=_alongDist(e.ll[0],e.ll[1],x.ll[0],x.ll[1]); adj[S].push({to:T,w}); adj[T].push({to:S,w}); }
   const r=_alongDijkstra({nodes,adj}, S, T); if(!r) return null;
   const co=[[from.lat,from.lng]];
-  r.path.forEach(i=>co.push([nodes[i].lat,nodes[i].lng]));
+  r.path.forEach((i,k)=>{
+    const ll=[nodes[i].lat,nodes[i].lng];
+    if(k===0 && _alongDist(from.lat,from.lng,ll[0],ll[1])<=2) return;             // 端点直近の投影点は冗長
+    if(k===r.path.length-1 && _alongDist(to.lat,to.lng,ll[0],ll[1])<=2) return;
+    co.push(ll);
+  });
   co.push([to.lat,to.lng]);
   return _alongOk(co,straight) ? co : null;
 }
@@ -1410,10 +1440,11 @@ function _alongSegment(from,to){
     if(!e || !x || e.dist>ENTRY || x.dist>ENTRY) return null;
     if(e.pi===x.pi){
       const co=_alongSamePath(from,to,e,x);
-      if(co && _alongOk(co,straight)) return co;
+      if(co && _alongOk(co,straight)) return _alongDespike(co);
     }
     // 複数細道：投影点を一時ノードとしてグラフに挿入し最短経路（端点も細道上に乗る）
-    return _alongGraphRoute(from,to,e,x,straight);
+    const gco=_alongGraphRoute(from,to,e,x,straight);
+    return gco ? _alongDespike(gco) : null;
   }catch(_){ return null; }
 }
 function toggleCustomMode(){
