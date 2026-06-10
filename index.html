@@ -1366,28 +1366,6 @@ function _alongProj(lat,lng){
 }
 function _alongLen(co){ let d=0; for(let i=0;i<co.length-1;i++) d+=_alongDist(co[i][0],co[i][1],co[i+1][0],co[i+1][1]); return d; }
 function _alongOk(co,straight){ return _alongLen(co) <= Math.max(straight*4, straight+800); }
-// along出力から「鋭く折り返す短いひげ」だけ除去（細道のつなぎ目での行き過ぎ/戻りを解消。描いた細道の形は保つ）
-function _alongDespike(co){
-  if(!co || co.length<3) return co;
-  let cur=co.slice();
-  for(let pass=0; pass<3; pass++){
-    const out=[cur[0]]; let changed=false;
-    for(let i=1;i<cur.length-1;i++){
-      const a=out[out.length-1], b=cur[i], c=cur[i+1];
-      const dAB=_alongDist(a[0],a[1],b[0],b[1]);
-      const dBC=_alongDist(b[0],b[1],c[0],c[1]);
-      const dAC=_alongDist(a[0],a[1],c[0],c[1]);
-      const detour=dAB+dBC-dAC;                 // bを経由する遠回り量(m)
-      const m1=Math.hypot(b[0]-a[0],b[1]-a[1]), m2=Math.hypot(c[0]-b[0],c[1]-b[1]);
-      const cos=(m1*m2>0)?((b[0]-a[0])*(c[0]-b[0])+(b[1]-a[1])*(c[1]-b[1]))/(m1*m2):1;
-      if(cos<-0.2 && detour<15){ changed=true; continue; }  // 90°超の折返し&遠回り小=ひげ→除去
-      out.push(b);
-    }
-    out.push(cur[cur.length-1]); cur=out;
-    if(!changed) break;
-  }
-  return cur;
-}
 function _alongSamePath(from,to,e,x){
   const pts=customPaths[e.pi].pts;
   const co=[[from.lat,from.lng]];
@@ -1440,11 +1418,10 @@ function _alongSegment(from,to){
     if(!e || !x || e.dist>ENTRY || x.dist>ENTRY) return null;
     if(e.pi===x.pi){
       const co=_alongSamePath(from,to,e,x);
-      if(co && _alongOk(co,straight)) return _alongDespike(co);
+      if(co && _alongOk(co,straight)) return co;
     }
     // 複数細道：投影点を一時ノードとしてグラフに挿入し最短経路（端点も細道上に乗る）
-    const gco=_alongGraphRoute(from,to,e,x,straight);
-    return gco ? _alongDespike(gco) : null;
+    return _alongGraphRoute(from,to,e,x,straight);
   }catch(_){ return null; }
 }
 function toggleCustomMode(){
@@ -2813,6 +2790,60 @@ function segVpsOf(wpId, wpA, wpB) {
 }
 
 // VP挿入時の安定order値を計算（既存VP間の位置に浮動小数点で挿入）
+let _healPending=false;  // 読み込み済みデータの誤順序を一度だけ自動修復するフラグ
+// 読込時の自動順序修復：実ルート上で「Uターン（鋭い折返し）」になっているviaだけを、
+// 自分のスパイク区間を除いた実ルート沿い位置で測り直し、正しい順序に入れ直す。
+// 正常なvia・細道から離れたviaには触れない（誤検知ゼロ志向）。
+function _healVpOrders(){
+  let changed=false;
+  try{
+    const rw=routeWps();
+    for(let i=0;i<rw.length-1;i++){
+      const A=rw[i], B=rw[i+1];
+      const segCoords=_routeCoordMap.filter(c=>c.wpId===A.id);
+      if(segCoords.length<3) continue;
+      const segV=vps.filter(v=>v.segAfter===A.id);
+      if(segV.length<2) continue;
+      const sorted=segV.slice().sort((x,y)=>(x.order||0)-(y.order||0));
+      // 各viaの実ルート沿い位置（前後判定用。orderに依存しない）
+      const posMap={}; segV.forEach(v=>{ posMap[v.id]=_vpPosAlong(v.lat,v.lng,A,B); });
+      const updates=[];
+      sorted.forEach((v,idx)=>{
+        // 修復対象は「細道に乗っている点」だけ（意図的な寄り道＝細道外の点には触れない）
+        const _pj=_alongProj(v.lat,v.lng); if(!_pj || _pj.dist>5) return;
+        // 順序上の前後（端は区間WP）との向きでUターン（誤順序）判定
+        const u = idx>0 ? sorted[idx-1] : A;
+        const w = idx<sorted.length-1 ? sorted[idx+1] : B;
+        const v1x=v.lat-u.lat,v1y=v.lng-u.lng, v2x=w.lat-v.lat,v2y=w.lng-v.lng;
+        const m1=Math.hypot(v1x,v1y), m2=Math.hypot(v2x,v2y);
+        const cos=(m1*m2>0)?(v1x*v2x+v1y*v2y)/(m1*m2):1;
+        if(cos>=-0.5) return;                     // Uターンでなければ正規の点→放置
+        // 自分のスパイク区間(端点がv近傍<6m)を除外して実ルート沿い位置を測り直す
+        let best=Infinity,bestPos=0,cum=0;
+        for(let k=0;k<segCoords.length-1;k++){ const p=segCoords[k],q=segCoords[k+1]; const sl=Math.hypot(q.lat-p.lat,q.lng-p.lng);
+          const dp=_alongDist(v.lat,v.lng,p.lat,p.lng), dq=_alongDist(v.lat,v.lng,q.lat,q.lng);
+          if(!(dp<6||dq<6)){ const d=ptSegDist([v.lat,v.lng],[p.lat,p.lng],[q.lat,q.lng]);
+            if(d<best){ best=d; const dx=q.lat-p.lat,dy=q.lng-p.lng,l2=dx*dx+dy*dy||1e-12; let t=((v.lat-p.lat)*dx+(v.lng-p.lng)*dy)/l2; t=Math.max(0,Math.min(1,t)); bestPos=cum+t*sl; } }
+          cum+=sl;
+        }
+        if(best===Infinity || best>20) return;    // 除外後に近い実ルートが無ければ放置
+        const others=segV.filter(o=>o.id!==v.id).map(o=>({o,pos:posMap[o.id]})).sort((x,y)=>x.pos-y.pos);
+        let before=null,after=null;
+        others.forEach(e=>{ if(e.pos<=bestPos) before=e.o; else if(after===null) after=e.o; });
+        const bOrd=before?(before.order||0):null, aOrd=after?(after.order||0):null;
+        let no;
+        if(bOrd===null&&aOrd===null) return;
+        else if(bOrd===null) no=aOrd-1;
+        else if(aOrd===null) no=bOrd+1;
+        else no=(bOrd+aOrd)/2;
+        updates.push([v,no]);
+      });
+      updates.forEach(([v,no])=>{ if(Math.abs((v.order||0)-no)>1e-6){ v.order=no; changed=true; } });
+    }
+  }catch(_){}
+  return changed;
+}
+
 // 区間の実ルート（折れ線）に沿った到達距離を返す。実ルート座標が無ければ直線射影にフォールバック。
 function _vpPosAlong(la, ln, wpA, wpB) {
   const segCoords = _routeCoordMap.filter(c => c.wpId === wpA.id);
@@ -2954,7 +2985,8 @@ async function doRouting() {
   showRtMsg(true);
   try {
     await _prefetchOsrm();
-    const {allCoords, segCoordsList} = await buildRoutedCoords();
+    let {allCoords, segCoordsList} = await buildRoutedCoords();
+    if (_healPending) { _healPending=false; if (_healVpOrders()) { const _r2=await buildRoutedCoords(); allCoords=_r2.allCoords; segCoordsList=_r2.segCoordsList; } }
     if (allCoords && allCoords.length >= 2) {
 
       // ── start→① のルートを前に結合（startがrouteWpsに未含有の場合のみ）──
@@ -4315,6 +4347,7 @@ function loadCourseData(data) {
     refreshIcons();
     redrawStraight();
     redrawList();
+    _healPending=true;   // 読込データの誤順序を初回ルーティング時に自動修復
     scheduleRouting();
   }, 60);
 }
