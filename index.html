@@ -1126,6 +1126,12 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
+const APP_VERSION = 'v58';   // 画面左下に表示。?v=N と一致していれば反映済み
+window.addEventListener('load', function(){ try{
+  var bd=document.createElement('div'); bd.textContent=APP_VERSION;
+  bd.style.cssText='position:fixed;left:6px;bottom:4px;z-index:99999;font:11px/1.2 sans-serif;color:rgba(0,0,0,.5);background:rgba(255,255,255,.65);padding:1px 6px;border-radius:7px;pointer-events:none;letter-spacing:.5px';
+  document.body.appendChild(bd);
+}catch(_){} });
 
 function _customOn(){ return _customOn_ === true; }
 function isDrawing(){ return _customTraceMode === true; }
