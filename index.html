@@ -803,6 +803,7 @@ let undoStack   = [];      // 取り消し履歴 (最大30ステップ)
 let redoStack   = [];      // やり直し履歴
 let viewMode    = false;   // 閲覧専用モード
 let _routeCoordMap = [];   // OSRM座標→セグメントID対応表（クリック判定用）
+let _segCoordCache = {};   // wpId→区間座標 の事前グループ化（_vpPosAlong等の高速化）
 let customRoads = [];     // カスタム道路 [{id,name,coords,visible,_line}]
 let _wpPickerLatlng = null; // WPタイプピッカー表示中の座標
 let _showMapLabels  = true;  // 地図ラベル表示フラグ
@@ -1249,6 +1250,27 @@ function _snapPoint(lat,lng){
 }
 // 失敗しても必ず元の座標を返す（本体を壊さない）
 function _snapCustom(lat,lng){ try{ const s=_snapPoint(lat,lng); return s ? s : [lat,lng]; }catch(_){ return [lat,lng]; } }
+// ルート線（実経路）への画面距離スナップ。線の近く(約16px)に打った点を線上へ吸着させ、寄り道の斜めを防ぐ。
+function _snapToRoute(lat,lng){
+  try{
+    if(!_routeCoordMap.length || !leafMap) return null;
+    const tp=leafMap.latLngToContainerPoint(L.latLng(lat,lng));
+    let bx=0,by=0,bd=Infinity, prev=null, prevId=null;
+    for(const c of _routeCoordMap){
+      const pc=leafMap.latLngToContainerPoint(L.latLng(c.lat,c.lng));
+      if(prev && prevId===c.wpId){
+        const dx=pc.x-prev.x, dy=pc.y-prev.y, l2=dx*dx+dy*dy||1e-9;
+        let t=((tp.x-prev.x)*dx+(tp.y-prev.y)*dy)/l2; t=Math.max(0,Math.min(1,t));
+        const px=prev.x+t*dx, py=prev.y+t*dy, d=Math.hypot(tp.x-px,tp.y-py);
+        if(d<bd){ bd=d; bx=px; by=py; }
+      }
+      prev=pc; prevId=c.wpId;
+    }
+    if(bd<=16){ const g=leafMap.containerPointToLatLng(L.point(bx,by));
+      if(_alongDist(lat,lng,g.lat,g.lng)<=25) return [g.lat,g.lng]; }   // 画面16px かつ 実距離25m以内のみ（寄り道は吸わない）
+  }catch(_){}
+  return null;
+}
 
 /* ---- 描画モード ---- */
 function startDrawPath(){
@@ -1337,7 +1359,6 @@ function _alongBuildGraph(){
   return {nodes,adj,idx};
 }
 function _alongGetGraph(){ if(!_alongGraph) _alongGraph=_alongBuildGraph(); return _alongGraph; }
-function _alongNearest(g,lat,lng,thr){ let best=-1,bd=thr; for(let i=0;i<g.nodes.length;i++){ const d=_alongDist(lat,lng,g.nodes[i].lat,g.nodes[i].lng); if(d<bd){bd=d;best=i;} } return best; }
 function _alongDijkstra(g,sN,tN){
   const n=g.nodes.length, dist=new Array(n).fill(Infinity), prev=new Array(n).fill(-1), done=new Array(n).fill(false);
   dist[sN]=0;
@@ -1469,14 +1490,6 @@ function openReorderSheet(){
   _renderReorder(); sh.style.display='block';
 }
 function closeReorderSheet(){ const sh=document.getElementById('reorderSheet'); if(sh) sh.style.display='none'; _roDragId=null; _roFromIdx=-1; }
-function _moveWp(id, dir){
-  const i=wps.findIndex(w=>String(w.id)===String(id)); if(i<0) return;
-  const j=i+dir; if(j<0||j>=wps.length) return;
-  saveSnapshot();
-  const [mv]=wps.splice(i,1); wps.splice(j,0,mv);
-  clearCache(); redrawStraight(); scheduleRouting(); redrawList(); refreshIcons();
-  _renderReorder();
-}
 function _renderReorder(){
   const sh=document.getElementById('reorderSheet'); if(!sh) return;
   let cn=1;
@@ -1874,7 +1887,10 @@ function addVp(lat, lng) {
   if (routeWps().length < 2) { alert('ルートに含めるウェイポイントを2点以上追加してから経路調整点を追加してください。'); return; }
   if (!_boundsAnchor) _setAnchor(lat, lng, false);  // 基準点未設定時のフォールバック
   saveSnapshot();
-  { const _s=_snapCustom(lat,lng); lat=_s[0]; lng=_s[1]; }   // 細道スナップ(失敗時は元座標)
+  // スナップ：細道に当たればそこへ。当たらなければ実ルート線へ（線の近くに打てば線上に乗る＝寄り道斜めを防ぐ）
+  { const _o0=lat,_o1=lng; const _sc=_snapCustom(lat,lng);
+    if(_sc[0]!==_o0||_sc[1]!==_o1){ lat=_sc[0]; lng=_sc[1]; }
+    else { const _sr=_snapToRoute(lat,lng); if(_sr){ lat=_sr[0]; lng=_sr[1]; } } }
   idV++;
   // P2: 区間判定を「実ルート座標(_routeCoordMap)」優先に。ルートが重なる場所でも正しい区間へ挿入。
   // 未ルーティング時(_routeCoordMap空)は従来の直線近似にフォールバック。
@@ -2800,7 +2816,7 @@ function _healVpOrders(){
     const rw=routeWps();
     for(let i=0;i<rw.length-1;i++){
       const A=rw[i], B=rw[i+1];
-      const segCoords=_routeCoordMap.filter(c=>c.wpId===A.id);
+      const segCoords=_segCoordCache[A.id] || _routeCoordMap.filter(c=>c.wpId===A.id);
       if(segCoords.length<3) continue;
       const segV=vps.filter(v=>v.segAfter===A.id);
       if(segV.length<2) continue;
@@ -2846,7 +2862,7 @@ function _healVpOrders(){
 
 // 区間の実ルート（折れ線）に沿った到達距離を返す。実ルート座標が無ければ直線射影にフォールバック。
 function _vpPosAlong(la, ln, wpA, wpB) {
-  const segCoords = _routeCoordMap.filter(c => c.wpId === wpA.id);
+  const segCoords = _segCoordCache[wpA.id] || _routeCoordMap.filter(c => c.wpId === wpA.id);
   if (segCoords.length >= 2) {
     let best = Infinity, bestPos = 0, cum = 0;
     for (let i = 0; i < segCoords.length - 1; i++) {
@@ -3117,6 +3133,26 @@ async function buildAnySegment(fromLat, fromLng, toLat, toLng, fitOut, fitIn) {
   catch(_) { return [[fromLat,fromLng],[toLat,toLng]]; }
 }
 
+// ほぼ180°の折返し＆極小の遠回り(=網目の再トレース等で出る「ひげ」)だけを除去する。
+// 細道の正規の曲がり角(より緩い角度)は残す＝角を削らない。順序・割当は一切変えない。
+function _despikeSeg(co){
+  if(!co || co.length<3) return co;
+  let cur=co;
+  for(let pass=0; pass<2; pass++){
+    const out=[cur[0]]; let changed=false;
+    for(let i=1; i<cur.length-1; i++){
+      const a=out[out.length-1], bb=cur[i], cc=cur[i+1];
+      const m1=Math.hypot(bb[0]-a[0],bb[1]-a[1]), m2=Math.hypot(cc[0]-bb[0],cc[1]-bb[1]);
+      const cos=(m1*m2>0)?((bb[0]-a[0])*(cc[0]-bb[0])+(bb[1]-a[1])*(cc[1]-bb[1]))/(m1*m2):1;
+      const det=_alongDist(a[0],a[1],bb[0],bb[1])+_alongDist(bb[0],bb[1],cc[0],cc[1])-_alongDist(a[0],a[1],cc[0],cc[1]);
+      if(cos<-0.85 && det<15){ changed=true; continue; }  // ほぼ180°折返し&遠回り<15m=ひげのみ除去（角cos>-0.85や大きな寄り道は対象外）
+      out.push(bb);
+    }
+    out.push(cur[cur.length-1]); cur=out;
+    if(!changed) break;
+  }
+  return cur;
+}
 async function buildRoutedCoords() {
   const all = [];
   const segCoordsList = [];
@@ -3139,6 +3175,7 @@ async function buildRoutedCoords() {
       else seg.push(...sub.slice(1));
     }
 
+    seg = _despikeSeg(seg);                              // 極小ひげ除去（角は保持）
     seg.forEach(c => _newRouteMap.push({lat:c[0], lng:c[1], wpId:a.id}));
     segCoordsList.push({wpId: a.id, coords: seg.slice()});
     if (all.length === 0) all.push(...seg);
@@ -3146,6 +3183,8 @@ async function buildRoutedCoords() {
   }
 
   _routeCoordMap = _newRouteMap;
+  _segCoordCache = {};                                   // 区間ごとに座標をまとめておく（毎回filterしない）
+  for (const c of _newRouteMap) { (_segCoordCache[c.wpId] || (_segCoordCache[c.wpId] = [])).push(c); }
   return {allCoords: all, segCoordsList};
 }
 
