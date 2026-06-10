@@ -1134,7 +1134,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v66';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
+const APP_VERSION = 'v68';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
 }catch(_){} });
@@ -3000,11 +3000,22 @@ function _routeDash(){ const k=_routeK(); return (8*k).toFixed(1)+','+(5*k).toFi
 function _buildDisplayCoords(coords){
   if(!_dblOn || !coords || coords.length<3 || !leafMap) return coords;
   const n=coords.length;
-  const cnt={}; for(let i=0;i<n-1;i++){ const k=_segKey(coords[i],coords[i+1]); cnt[k]=(cnt[k]||0)+1; }
-  let any=false; for(const k in cnt){ if(cnt[k]>=2){ any=true; break; } }
+  // 往復検出：別区間が近接(≤DMm)かつ逆向きなら「行き帰り」とみなす（道路ルーティングの座標ズレに強い）。空間グリッドでO(n)化。
+  const mPerDeg=111320, DM=10;
+  const dir=[], mx=[], my=[];
+  for(let i=0;i<n-1;i++){ const la=(coords[i][0]+coords[i+1][0])/2, lo=(coords[i][1]+coords[i+1][1])/2;
+    mx.push(lo*Math.cos(la*Math.PI/180)*mPerDeg); my.push(la*mPerDeg);
+    let dy=coords[i+1][0]-coords[i][0], dx=(coords[i+1][1]-coords[i][1])*Math.cos(coords[i][0]*Math.PI/180); const ll=Math.hypot(dx,dy)||1e-9; dir.push([dx/ll,dy/ll]); }
+  const grid=new Map(), gkey=(a,b)=>a+','+b;
+  for(let i=0;i<n-1;i++){ const k=gkey(Math.floor(mx[i]/DM),Math.floor(my[i]/DM)); let a=grid.get(k); if(!a){a=[];grid.set(k,a);} a.push(i); }
+  const dbl=new Array(n).fill(false); let any=false;
+  for(let i=0;i<n-1;i++){ const cx=Math.floor(mx[i]/DM), cy=Math.floor(my[i]/DM); let found=false;
+    for(let gx=cx-1; gx<=cx+1 && !found; gx++) for(let gy=cy-1; gy<=cy+1 && !found; gy++){
+      const arr=grid.get(gkey(gx,gy)); if(!arr) continue;
+      for(const k of arr){ if(Math.abs(k-i)<2) continue;
+        const ex=mx[i]-mx[k], ey=my[i]-my[k];
+        if(ex*ex+ey*ey<=DM*DM && (dir[i][0]*dir[k][0]+dir[i][1]*dir[k][1])<-0.5){ dbl[i]=true; dbl[i+1]=true; any=true; found=true; break; } } } }
   if(!any) return coords;                         // 往復が無ければ完全に従来どおり
-  const dbl=new Array(n).fill(false);
-  for(let i=0;i<n-1;i++){ if(cnt[_segKey(coords[i],coords[i+1])]>=2){ dbl[i]=true; dbl[i+1]=true; } }
   const offPx=(_routeWeight() + DBL_GAP_PX*_routeK())/2;  // (線幅+間隔)/2＝片側オフセット（線幅・間隔とも同縮尺）
   const LP=c=>leafMap.latLngToLayerPoint(L.latLng(c[0],c[1]));
   const toLL=q=>{ const ll=leafMap.layerPointToLatLng(q); return [ll.lat, ll.lng]; };
