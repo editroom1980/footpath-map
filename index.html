@@ -778,6 +778,9 @@ const WT = [
 ];
 const SYM = {start:'S',goal:'G',view:'◎',shop:'★',shrine:'⛩',history:'碑',park:'🌿',toilet:'WC',parking:'P',other:'●',node:''};
 const LINE_STYLE = {color:'#E84040', weight:4, dashArray:'8,5', opacity:.9, lineJoin:'round', lineCap:'round', smoothFactor:0};
+const DBL_GAP_PX = 1;        // 往復で重なる区間：2本の線の間隔(px)
+let   _dblOn = true;         // 往復ずらし表示 ON/OFF（falseで完全に従来の見た目）
+let   _routeLineBase = null; // ルート線の素の座標（中央=データ準拠／ズーム再計算用）
 
 /* ============================================================
    STATE
@@ -1016,6 +1019,7 @@ function initMap() {
   leafMap.on('click', onMapClick);
   leafMap.on('movestart', hideCtxMenu);
   leafMap.on('zoomend', _customScaleWeights);
+  leafMap.on('zoomend', _redrawRouteOffset);   // 往復ずらし表示をズームに追従して再計算
   canvasRenderer = L.canvas({padding: 0.5}); // Canvas renderer for polylines
 
   // 画面回転・リサイズ時に地図サイズを再計算（横向きで地図がずれるのを防ぐ）
@@ -1130,7 +1134,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v62';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
+const APP_VERSION = 'v63';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
 }catch(_){} });
@@ -2942,6 +2946,7 @@ function haversine(lat1,lng1,lat2,lng2) {
    ============================================================ */
 function removeLines() {
   if (routeLine) { if(leafMap) leafMap.removeLayer(routeLine); routeLine=null; }
+  _routeLineBase = null;
   hitOverlays.forEach(o => { if(leafMap) leafMap.removeLayer(o); });
   hitOverlays = [];
 }
@@ -2984,9 +2989,38 @@ function buildSegCoordsList() {
 
 // drawLines(allCoords, segList)
 // allCoords: 表示ルート座標; segList: [{wpId, coords}] 直線WP→WP（セグメント判定用）
+// ── 往復（同じ道の行き帰り）で重なる区間だけ、表示上だけ左右に振り分ける（表示専用） ──
+// データ(_lastRouteCoords)・当たり判定(allCoordsオーバーレイ)は一切変更しない。往復が無ければ素の座標をそのまま返す。
+function _segKey(a,b){ const r=v=>Math.round(v*1e5); const ka=r(a[0])+','+r(a[1]), kb=r(b[0])+','+r(b[1]); return ka<kb?ka+'|'+kb:kb+'|'+ka; }
+function _buildDisplayCoords(coords){
+  if(!_dblOn || !coords || coords.length<3 || !leafMap) return coords;
+  const cnt={}; for(let i=0;i<coords.length-1;i++){ const k=_segKey(coords[i],coords[i+1]); cnt[k]=(cnt[k]||0)+1; }
+  let any=false; for(const k in cnt){ if(cnt[k]>=2){ any=true; break; } }
+  if(!any) return coords;                         // 往復が無ければ完全に従来どおり
+  const dbl=new Array(coords.length).fill(false);
+  for(let i=0;i<coords.length-1;i++){ if(cnt[_segKey(coords[i],coords[i+1])]>=2){ dbl[i]=true; dbl[i+1]=true; } }
+  const offPx=(LINE_STYLE.weight + DBL_GAP_PX)/2; // 線幅+間隔 の半分＝片側オフセット
+  const out=[];
+  for(let i=0;i<coords.length;i++){
+    if(!dbl[i]){ out.push(coords[i]); continue; }
+    const prev=coords[i-1]||coords[i], next=coords[i+1]||coords[i];
+    const a=leafMap.latLngToLayerPoint(L.latLng(prev[0],prev[1]));
+    const b=leafMap.latLngToLayerPoint(L.latLng(next[0],next[1]));
+    const p=leafMap.latLngToLayerPoint(L.latLng(coords[i][0],coords[i][1]));
+    let dx=b.x-a.x, dy=b.y-a.y; const len=Math.hypot(dx,dy);
+    if(len<1e-6){ out.push(coords[i]); continue; }  // 折返し頂点など方向不定→中央（キャップ形成）
+    dx/=len; dy/=len; const nx=dy, ny=-dx;          // 進行方向の右法線
+    const ll=leafMap.layerPointToLatLng(L.point(p.x+nx*offPx, p.y+ny*offPx));
+    out.push([ll.lat, ll.lng]);
+  }
+  return out;
+}
+function _redrawRouteOffset(){ if(!_dblOn || !routeLine || !_routeLineBase) return; try{ routeLine.setLatLngs(_buildDisplayCoords(_routeLineBase)); }catch(_){ } }
+
 function drawLines(allCoords, segList) {
   if (!allCoords || allCoords.length < 2 || !leafMap) return;
-  routeLine = L.polyline(allCoords, {...LINE_STYLE, renderer: canvasRenderer}).addTo(leafMap);
+  _routeLineBase = allCoords;                                    // 素の座標を保持（ズーム再計算・データ準拠）
+  routeLine = L.polyline(_buildDisplayCoords(allCoords), {...LINE_STYLE, renderer: canvasRenderer}).addTo(leafMap);
 
   // 単一オーバーレイ + findNearestSegment方式:
   // per-segmentオーバーレイはWP境界付近でZ-order上位のものが優先され誤反応する
