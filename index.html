@@ -1135,7 +1135,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v72';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
+const APP_VERSION = 'v73';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
 }catch(_){} });
@@ -3019,16 +3019,15 @@ function _buildDisplayCoords(coords){
   if(!any) return coords;                         // 往復が無ければ完全に従来どおり
   // 検出の小さな抜け（1点だけ未検出）を埋める＝オフセットON/OFFによる折れを防ぐ
   for(let pass=0; pass<2; pass++){ for(let i=1;i<n-1;i++){ if(!dbl[i] && dbl[i-1] && dbl[i+1]) dbl[i]=true; } }
-  // 端点スパーの中心線化：ルートの先頭/末尾が単線スタブ(道路脇のスタート/ゴール点への接続)で始まり、
-  // その直後/直前の往復ランが短い場合は、その往復ランをオフセットせず中心線で描く。
-  // 道路脇に置かれた端点の接続線がオフセット車線を横切る歪み(自己交差)を、データを変えずに自動回避する。
-  { const SPUR_MAX=24;
-    if(!dbl[0]){ let rs=0; while(rs<n && !dbl[rs]) rs++; if(rs<n){ let re=rs; while(re+1<n && dbl[re+1]) re++; if(re-rs<=SPUR_MAX){ for(let s=rs;s<=re;s++) dbl[s]=false; } } }
-    if(!dbl[n-1]){ let re=n-1; while(re>=0 && !dbl[re]) re--; if(re>=0){ let rs=re; while(rs-1>=0 && dbl[rs-1]) rs--; if(re-rs<=SPUR_MAX){ for(let s=rs;s<=re;s++) dbl[s]=false; } } }
-    any=false; for(let s=0;s<n;s++){ if(dbl[s]){ any=true; break; } }
-    if(!any) return coords;                         // 端点スパー除外後に往復が無ければ従来どおり
-  }
-  const offPx=(_routeWeight() + DBL_GAP_PX*_routeK())/2;  // (線幅+間隔)/2＝片側オフセット（線幅・間隔とも同縮尺）
+  // 片側オフセット量。px基準(線幅比例)を基本としつつ、地理基準(m)の下限を併用する。
+  // 線幅は高ズームで頭打ち(最大10px)になるため、拡大するほど地図(道路幅)に対し並走間隔が詰まって見える。
+  // そこで地理基準(m)を下限に入れ、拡大時は地図に追従して間隔を広げる。max演算なので従来より狭くは絶対にならない。
+  const _offPxBase=(_routeWeight() + DBL_GAP_PX*_routeK())/2;
+  const _zlat=coords[(n>>1)][0];
+  const _mppx=40075016.686*Math.cos(_zlat*Math.PI/180)/Math.pow(2, (leafMap.getZoom()+8)); // 現在ズームのm/px
+  const OFF_GEO_M=1.0;                                   // 片側オフセットの地理基準(m)。中ズームで従来同等・拡大で広がる
+  const OFF_MAX_PX=20;                                   // 広がりの上限(px)。窮屈な箇所での過剰拡大による交差を防ぐ保険
+  const offPx=Math.max(_offPxBase, Math.min(OFF_GEO_M/_mppx, OFF_MAX_PX));
   const LP=c=>leafMap.latLngToLayerPoint(L.latLng(c[0],c[1]));
   const toLL=q=>{ const ll=leafMap.layerPointToLatLng(q); return [ll.lat, ll.lng]; };
   // 寄せ方向を±2点で平滑化（道路ルーティングの座標ブレで線が波打つのを防ぐ）。折返し付近で打ち消す場合は直近向きにフォールバック。
