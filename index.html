@@ -780,6 +780,18 @@ const WT = [
 const SYM = {start:'S',goal:'G',view:'◎',shop:'★',shrine:'⛩',history:'碑',park:'🌿',toilet:'WC',parking:'P',other:'●',node:''};
 const LINE_STYLE = {color:'#E84040', weight:4, dashArray:'8,5', opacity:.9, lineJoin:'round', lineCap:'round', smoothFactor:0};
 const DBL_GAP_PX = 2;        // 往復で重なる区間：2本の線の間隔(px)
+// --- ルート表示チューニング（往復ずらし表示の間隔調整はここ1か所）---
+const OFF_GEO_M  = 1.0;      // 片側オフセットの地理基準(m)。中ズームで従来同等・拡大で広がる。広げたいなら上げる
+const OFF_MAX_PX = 20;       // 広がりの上限(px)。窮屈な箇所での過剰拡大による交差を防ぐ保険
+// --- localStorage 保存キー（増減・改名時はこの1か所だけ直す）---
+const LS = {
+  courses:     'fp_courses',      // 保存コース一覧
+  basemap:     'fp_basemap',      // 選択中の地図種別
+  custompaths: 'fp_custompaths',  // 細道(カスタムパス)
+  customOn:    'fp_custom_on',    // 細道の表示ON/OFF
+  customSnap:  'fp_custom_snap',  // 細道スナップON/OFF
+  probe:       '_fp_t',           // localStorage 可用性チェック用
+};
 let   _dblOn = true;         // 往復ずらし表示 ON/OFF（falseで完全に従来の見た目）
 let   _routeLineBase = null; // ルート線の素の座標（中央=データ準拠／ズーム再計算用）
 
@@ -838,17 +850,17 @@ let _lsAvail    = null;
 
 function lsAvail() {
   if (_lsAvail !== null) return _lsAvail;
-  try { localStorage.setItem('_fp_t','1'); localStorage.removeItem('_fp_t'); _lsAvail=true; }
+  try { localStorage.setItem(LS.probe,'1'); localStorage.removeItem(LS.probe); _lsAvail=true; }
   catch(_) { _lsAvail=false; }
   return _lsAvail;
 }
 function getCourses() {
-  if (lsAvail()) try { return JSON.parse(localStorage.getItem('fp_courses')||'[]'); } catch(_) {}
+  if (lsAvail()) try { return JSON.parse(localStorage.getItem(LS.courses)||'[]'); } catch(_) {}
   return _memCourses;
 }
 function setCourses(list) {
   _memCourses = list;
-  if (lsAvail()) try { localStorage.setItem('fp_courses', JSON.stringify(list)); } catch(_) {}
+  if (lsAvail()) try { localStorage.setItem(LS.courses, JSON.stringify(list)); } catch(_) {}
 }
 
 /* ============================================================
@@ -981,11 +993,11 @@ function _makeBaseLayer(id){
   return L.tileLayer(c.url, opt);
 }
 function _loadBaseMapPref(){
-  if (lsAvail()) { try { const v=localStorage.getItem('fp_basemap'); if (v && BASEMAPS[v]) return v; } catch(_){} }
+  if (lsAvail()) { try { const v=localStorage.getItem(LS.basemap); if (v && BASEMAPS[v]) return v; } catch(_){} }
   return BASEMAP_DEFAULT;
 }
 function _saveBaseMapPref(id){
-  if (lsAvail()) { try { localStorage.setItem('fp_basemap', id); } catch(_){} }
+  if (lsAvail()) { try { localStorage.setItem(LS.basemap, id); } catch(_){} }
 }
 function _syncBaseMapMenu(){
   document.querySelectorAll('.mm-map[data-bm]').forEach(el => {
@@ -1135,7 +1147,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v73';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
+const APP_VERSION = 'v74';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
 }catch(_){} });
@@ -1146,13 +1158,13 @@ function isDrawing(){ return _customTraceMode === true; }
 function _loadCustom(){
   if (!lsAvail()) return;
   try {
-    const v=localStorage.getItem('fp_custompaths'); if(v){ const a=JSON.parse(v); if(Array.isArray(a)) customPaths=a; }
-    const o=localStorage.getItem('fp_custom_on');   if(o!==null) _customOn_=(o==='1');
-    const s=localStorage.getItem('fp_custom_snap'); if(s!==null) _snapOn_=(s==='1');
+    const v=localStorage.getItem(LS.custompaths); if(v){ const a=JSON.parse(v); if(Array.isArray(a)) customPaths=a; }
+    const o=localStorage.getItem(LS.customOn);   if(o!==null) _customOn_=(o==='1');
+    const s=localStorage.getItem(LS.customSnap); if(s!==null) _snapOn_=(s==='1');
   } catch(_){}
 }
-function _saveCustom(){ _alongGraph=null; if(lsAvail()){ try{ localStorage.setItem('fp_custompaths', JSON.stringify(customPaths)); }catch(_){} } }
-function _savePrefsCustom(){ if(lsAvail()){ try{ localStorage.setItem('fp_custom_on',_customOn_?'1':'0'); localStorage.setItem('fp_custom_snap',_snapOn_?'1':'0'); }catch(_){} } }
+function _saveCustom(){ _alongGraph=null; if(lsAvail()){ try{ localStorage.setItem(LS.custompaths, JSON.stringify(customPaths)); }catch(_){} } }
+function _savePrefsCustom(){ if(lsAvail()){ try{ localStorage.setItem(LS.customOn,_customOn_?'1':'0'); localStorage.setItem(LS.customSnap,_snapOn_?'1':'0'); }catch(_){} } }
 
 // OSM標準の徒歩道に寄せた質感（白casing＋赤茶の点線）で描画
 function _renderCustom(){
@@ -3025,9 +3037,7 @@ function _buildDisplayCoords(coords){
   const _offPxBase=(_routeWeight() + DBL_GAP_PX*_routeK())/2;
   const _zlat=coords[(n>>1)][0];
   const _mppx=40075016.686*Math.cos(_zlat*Math.PI/180)/Math.pow(2, (leafMap.getZoom()+8)); // 現在ズームのm/px
-  const OFF_GEO_M=1.0;                                   // 片側オフセットの地理基準(m)。中ズームで従来同等・拡大で広がる
-  const OFF_MAX_PX=20;                                   // 広がりの上限(px)。窮屈な箇所での過剰拡大による交差を防ぐ保険
-  const offPx=Math.max(_offPxBase, Math.min(OFF_GEO_M/_mppx, OFF_MAX_PX));
+  const offPx=Math.max(_offPxBase, Math.min(OFF_GEO_M/_mppx, OFF_MAX_PX)); // 定数は先頭CONSTANTSで一元管理
   const LP=c=>leafMap.latLngToLayerPoint(L.latLng(c[0],c[1]));
   const toLL=q=>{ const ll=leafMap.layerPointToLatLng(q); return [ll.lat, ll.lng]; };
   // 寄せ方向を±2点で平滑化（道路ルーティングの座標ブレで線が波打つのを防ぐ）。折返し付近で打ち消す場合は直近向きにフォールバック。
@@ -4591,7 +4601,7 @@ function exportRouteCoords() {
       kind: 'footpath-route-coords',
       version: (typeof APP_VERSION !== 'undefined' ? APP_VERSION : ''),
       exportedAt: new Date().toISOString(),
-      basemap: (function(){ try { return localStorage.getItem('fp_basemap'); } catch(_) { return null; } })(),
+      basemap: (function(){ try { return localStorage.getItem(LS.basemap); } catch(_) { return null; } })(),
       center: center, zoom: zoom,
       routeLineBaseLen: base.length,
       routeLineBase: base.map(function(p){ return [ +(+p[0]).toFixed(6), +(+p[1]).toFixed(6) ]; }),
