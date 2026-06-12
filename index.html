@@ -1147,7 +1147,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v74';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
+const APP_VERSION = 'v75';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
 }catch(_){} });
@@ -3005,8 +3005,6 @@ function buildSegCoordsList() {
 // ── 往復（同じ道の行き帰り）で重なる区間だけ、表示上だけ左右に振り分ける（表示専用） ──
 // データ(_lastRouteCoords)・当たり判定(allCoordsオーバーレイ)は一切変更しない。往復が無ければ素の座標をそのまま返す。
 // 規則：道路と同じく「進行方向に対して常に右側」へ寄せる（右法線=(-dy,dx)）。行きと帰りが必ず反対側になり交差しない。破線・間隔も線幅と同縮尺、折返しは半円。
-function _segKey(a,b){ const r=v=>Math.round(v*1e5); const ka=r(a[0])+','+r(a[1]), kb=r(b[0])+','+r(b[1]); return ka<kb?ka+'|'+kb:kb+'|'+ka; }
-function _ptKey(p){ const r=v=>Math.round(v*1e5); return r(p[0])+','+r(p[1]); }
 function _routeWeight(){ const z=leafMap?leafMap.getZoom():16; return Math.max(2, Math.min(10, 3 + (z-16)*1.3)); } // 拡大で線を太く
 function _routeK(){ return _routeWeight()/3; }                          // 基準ズーム16を1とする倍率（破線・間隔も同縮尺）
 function _routeDash(){ const k=_routeK(); return (8*k).toFixed(1)+','+(5*k).toFixed(1); }
