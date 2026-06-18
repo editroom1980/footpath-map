@@ -783,6 +783,8 @@ const DBL_GAP_PX = 2;        // 往復で重なる区間：2本の線の間隔(p
 // --- ルート表示チューニング（往復ずらし表示の間隔調整はここ1か所）---
 const OFF_GEO_M  = 1.0;      // 片側オフセットの地理基準(m)。中ズームで従来同等・拡大で広がる。広げたいなら上げる
 const OFF_MAX_PX = 20;       // 広がりの上限(px)。窮屈な箇所での過剰拡大による交差を防ぐ保険
+// --- 画像保存の解像度（高画質化はここ1か所）---
+const IMG_SCALE  = 3;        // 画像保存の目標倍率(実機の高解像度相当)。下げれば軽く・上げれば高精細。実際はCanvas上限内に自動クランプ
 // --- localStorage 保存キー（増減・改名時はこの1か所だけ直す）---
 const LS = {
   courses:     'fp_courses',      // 保存コース一覧
@@ -1147,7 +1149,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v75';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
+const APP_VERSION = 'v76';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
 }catch(_){} });
@@ -1697,7 +1699,7 @@ async function saveMapNoText() {
     await new Promise(r => setTimeout(r, 1500)); // タイル読み込み待機
     const w = mapEl.offsetWidth, h = mapEl.offsetHeight;
     const canvas = await html2canvas(mapEl, {
-      useCORS:true, allowTaint:false, scale:1, logging:false,
+      useCORS:true, allowTaint:false, scale:_imgScale(w,h), logging:false,
       width:w, height:h, windowWidth:w, windowHeight:h, imageTimeout:20000,
       onclone: (clonedDoc) => {
         const cm = clonedDoc.getElementById('map');
@@ -3642,7 +3644,7 @@ async function saveMapAsImage() {
     const canvas = await html2canvas(mapEl, {
       useCORS:      true,   // OSMタイルのCORS許可
       allowTaint:   false,  // タイントされたキャンバスを避ける
-      scale:        1,      // 1固定（devicePixelRatioを使うと座標ズレが発生する）
+      scale:        _imgScale(w, h),  // 実機高解像度相当。Canvas上限内に自動クランプ・整数倍率で座標ズレ回避
       logging:      false,
       width:        w,
       height:       h,
@@ -4643,6 +4645,18 @@ function importCourseFromFile(input) {
    HELPERS
    ============================================================ */
 function isMobile() { return window.innerWidth <= 700; }
+
+// 画像保存の倍率。Canvas上限(総画素・一辺)を超えない整数倍率を返す。
+// ・整数に丸める＝旧版で座標ズレを招いた非整数(devicePixelRatio)を避ける
+// ・1未満にはしない＝従来(scale:1)より悪化しない
+// ・iOSのCanvas上限(総画素約16.7M)に対し安全枠16M・一辺8192でクランプ＝大きな地図でも保存が失敗しない
+function _imgScale(w, h){
+  const MAX_AREA = 16000000, MAX_DIM = 8192;
+  if(!(w>0) || !(h>0)) return 1;
+  let s = Math.min(IMG_SCALE, MAX_DIM/w, MAX_DIM/h, Math.sqrt(MAX_AREA/(w*h)));
+  return Math.max(1, Math.floor(s));
+}
+
 
 function escHtml(s) {
   return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
