@@ -537,6 +537,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
         <button class="btn" id="btnToggleVia" onclick="toggleViaVisibility()" title="調整点 表示/非表示"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M8 12a4 4 0 1 0 8 0a4 4 0 1 0 -8 0" /></svg><span>調整点</span></button>
         <button class="btn" id="btnMapLabels" onclick="toggleMapLabels()" title="地名/WP○ 表示切替&#10;OFFにすると地図の文字・WPマーカーが消え&#10;コースの点線だけ残ります"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M6.5 7.5a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" /> <path d="M3 6v5.172a2 2 0 0 0 .586 1.414l7.71 7.71a2.41 2.41 0 0 0 3.408 0l5.592 -5.592a2.41 2.41 0 0 0 0 -3.408l-7.71 -7.71a2 2 0 0 0 -1.414 -.586h-5.172a3 3 0 0 0 -3 3" /></svg><span>地名</span></button>
         <button class="btn" id="btnLabelSize" onclick="cycleLabelSize()" title="名称ラベルの文字サイズ&#10;標準→大→特大を切替（保存画像にも反映）"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M4 20l4 -10l4 10" /> <path d="M5 17l6 0" /> <path d="M14 20l3 -7l3 7" /> <path d="M14.8 18l4.4 0" /></svg><span id="lblSizeTxt">標準</span></button>
+        <button class="btn" id="btnBaseMap" onclick="cycleBaseMap()" title="背景地図を切替（標準/航空写真/地形図/淡色/色違い）&#10;保存画像の配色もこれで変わります"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M9 4l0 13" /> <path d="M15 7l0 13" /> <path d="M3.5 5.5l5.5 -1.5l6 2l5.5 -1.5v12l-5.5 1.5l-6 -2l-5.5 1.5z" /></svg><span>地図</span></button>
         <button class="btn" id="btnManual" onclick="toggleManualMode()" title="手動モード&#10;ONの間は調整点が白い道にフィットしない&#10;OSMにない山道・農道をルートにする際に使用"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M8 13v-7.5a1.5 1.5 0 0 1 3 0v6.5" /> <path d="M11 5.5v-2a1.5 1.5 0 1 1 3 0v8.5" /> <path d="M14 5.5a1.5 1.5 0 0 1 3 0v6.5" /> <path d="M17 7.5a1.5 1.5 0 0 1 3 0v8.5a6 6 0 0 1 -6 6h-2h.208a6 6 0 0 1 -5.012 -2.7a69.74 69.74 0 0 1 -.196 -.3c-.312 -.479 -1.407 -2.388 -3.286 -5.728a1.5 1.5 0 0 1 .536 -2.022a1.867 1.867 0 0 1 2.28 .28l1.47 1.47" /></svg><span>手動</span></button>
         <span class="tsep">|</span>
         <button class="btn" id="btnUndo" onclick="undoLast()" title="取り消し (⌘Z)" disabled><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M9 14l-4 -4l4 -4" /> <path d="M5 10h11a4 4 0 1 1 0 8h-1" /></svg></button>
@@ -616,6 +617,9 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
         <div class="mm-maplist">
           <div class="mm-map" data-bm="osm" onclick="setBaseMap('osm')"><span class="mm-map-l">標準地図（OSM）</span><span class="mm-map-ck">✓</span></div>
           <div class="mm-map" data-bm="gsi_photo" onclick="setBaseMap('gsi_photo')"><span class="mm-map-l">航空写真</span><span class="mm-map-ck">✓</span></div>
+          <div class="mm-map" data-bm="opentopo" onclick="setBaseMap('opentopo')"><span class="mm-map-l">地形図（OpenTopoMap）</span><span class="mm-map-ck">✓</span></div>
+          <div class="mm-map" data-bm="carto" onclick="setBaseMap('carto')"><span class="mm-map-l">淡色カラー地図</span><span class="mm-map-ck">✓</span></div>
+          <div class="mm-map" data-bm="osm_hot" onclick="setBaseMap('osm_hot')"><span class="mm-map-l">色違いOSM（HOT）</span><span class="mm-map-ck">✓</span></div>
         </div>
         <div class="mm-sec">書き出し・その他</div>
         <div class="mm-grid">
@@ -787,7 +791,7 @@ const OFF_MAX_PX = 20;       // 広がりの上限(px)。窮屈な箇所での�
 // --- 画像保存の解像度（高画質化はここ1か所）---
 const IMG_SCALE  = 3;        // 画像保存の目標倍率(実機の高解像度相当)。下げれば軽く・上げれば高精細。実際はCanvas上限内に自動クランプ
 // --- 名称ラベルの文字サイズ（PCツールバーの「文字」ボタンで切替）---
-const LABEL_SIZES = [11, 15, 19];  // 標準 / 大 / 特大 (px)。保存画像にも反映
+const LABEL_SIZES = [11, 14, 18, 22, 26];  // 標準/大/特大/極大/最大 (px)。保存画像にも反映
 // --- localStorage 保存キー（増減・改名時はこの1か所だけ直す）---
 const LS = {
   courses:     'fp_courses',      // 保存コース一覧
@@ -986,6 +990,9 @@ const GSI_ATTR = '出典: <a href="https://maps.gsi.go.jp/development/ichiran.ht
 const BASEMAPS = {
   osm:      { label:'標準地図(OSM)', url:'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',                 attribution:'© OpenStreetMap contributors', maxNativeZoom:19, maxZoom:21, subdomains:'abc' },
   gsi_photo:{ label:'航空写真',      url:'https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg', attribution:GSI_ATTR, maxNativeZoom:18, maxZoom:21 },
+  opentopo: { label:'地形図(OpenTopoMap)', url:'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',              attribution:'地図データ © OpenStreetMap contributors, SRTM | 表示 © OpenTopoMap (CC-BY-SA)', maxNativeZoom:17, maxZoom:21, subdomains:'abc' },
+  carto:    { label:'淡色カラー地図',  url:'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png', attribution:'© OpenStreetMap contributors © CARTO', maxNativeZoom:20, maxZoom:21, subdomains:'abcd' },
+  osm_hot:  { label:'色違いOSM(HOT)', url:'https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png',               attribution:'© OpenStreetMap contributors, Tiles © HOT', maxNativeZoom:19, maxZoom:21, subdomains:'abc' },
 };
 const BASEMAP_DEFAULT = 'osm';
 let _baseMapId = BASEMAP_DEFAULT;
@@ -1022,6 +1029,13 @@ function setBaseMap(id){
   }
   _syncBaseMapMenu();
   showToast('背景地図: ' + BASEMAPS[id].label);
+}
+
+// PCツールバーの「地図」ボタン：背景地図を順に切替（保存マップの配色変更用）
+function cycleBaseMap(){
+  const ids = Object.keys(BASEMAPS);
+  const i = ids.indexOf(_baseMapId);
+  setBaseMap(ids[(i + 1) % ids.length]);   // 適用・保存・トースト・メニュー同期は setBaseMap が担当
 }
 
 /* ============================================================
@@ -1153,7 +1167,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v77';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
+const APP_VERSION = 'v78';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
 }catch(_){} });
@@ -1858,7 +1872,7 @@ function wpIcon(wp, sz, anc) {
   const sym = wp.type==='course' ? (courseNum(wp)||'?') : (SYM[wp.type]||'●');
   return L.divIcon({
     className:'',
-    html:`<div data-wtype="${wp.type||'course'}" style="width:${sz[0]}px;height:${sz[1]}px;border-radius:50%;background:${t.c};color:#fff;display:flex;align-items:center;justify-content:center;font-size:${_wpFont(sz[0], sym)}px;line-height:1;font-weight:bold;border:2px solid rgba(255,255,255,.85);box-shadow:0 2px 6px rgba(0,0,0,.45);cursor:pointer">${sym}</div>`,
+    html:`<div data-wtype="${wp.type||'course'}" style="width:${sz[0]}px;height:${sz[1]}px;border-radius:50%;background:${t.c};color:#fff;text-align:center;line-height:${sz[1]-4}px;font-size:${_wpFont(sz[0], sym)}px;font-weight:bold;border:2px solid rgba(255,255,255,.85);box-shadow:0 2px 6px rgba(0,0,0,.45);cursor:pointer">${sym}</div>`,
     iconSize:sz, iconAnchor:anc
   });
 }
@@ -1911,6 +1925,10 @@ function updateTooltip(wp) {
       _ttEl.style.setProperty('white-space','nowrap','important');
       _ttEl.style.setProperty('box-shadow', '0 2px 6px rgba(0,0,0,.3)','important');
     }
+    // インラインでフォント等を変更した後、Leafletに位置を再計算させる
+    // （bind時の幅で算出された中心がズレるのを防ぐ＝○の中心に対し上下左右の中心を揃える）
+    const _ttObj = wp.marker.getTooltip();
+    if (_ttObj && typeof _ttObj.update === 'function') _ttObj.update();
   }
 }
 
@@ -4675,7 +4693,7 @@ function _labelSize(){ return LABEL_SIZES[_labelSizeIdx] || LABEL_SIZES[0]; }
 // PCツールバーの「文字」ボタン：標準→大→特大 を循環し、既存ラベルへ即反映（保存画像にも効く）
 function cycleLabelSize(){
   _labelSizeIdx = (_labelSizeIdx + 1) % LABEL_SIZES.length;
-  const lbl = ['標準','大','特大'][_labelSizeIdx] || '標準';
+  const lbl = ['標準','大','特大','極大','最大'][_labelSizeIdx] || '標準';
   const t = document.getElementById('lblSizeTxt'); if (t) t.textContent = lbl;
   wps.forEach(wp => updateTooltip(wp));          // 表示中のラベルへ即反映
   if (typeof showToast === 'function') showToast('🔠 名称ラベル: ' + lbl);
