@@ -800,7 +800,10 @@ const LS = {
   customOn:    'fp_custom_on',    // 細道の表示ON/OFF
   customSnap:  'fp_custom_snap',  // 細道スナップON/OFF
   probe:       '_fp_t',           // localStorage 可用性チェック用
+  sampleDone:  'fp_sample_done',  // サンプルコースを取り込み済み(または削除済み)かの記録
 };
+// --- サンプルコース（初回起動時に一度だけ取り込む。削除したら復活しない）---
+const SAMPLE_URL = 'sample.json';   // index.html と同じ場所に置く
 let   _dblOn = true;         // 往復ずらし表示 ON/OFF（falseで完全に従来の見た目）
 let   _labelSizeIdx = 0;     // 名称ラベルの文字サイズ段階（0=標準/1=大/2=特大）。LABEL_SIZES の添字
 let   _routeLineBase = null; // ルート線の素の座標（中央=データ準拠／ズーム再計算用）
@@ -873,11 +876,38 @@ function setCourses(list) {
   if (lsAvail()) try { localStorage.setItem(LS.courses, JSON.stringify(list)); } catch(_) {}
 }
 
+// サンプルコースを初回だけ取り込む。
+// ・取り込み済み(または一度でも削除した)なら何もしない ＝ 消したサンプルが復活しない
+// ・既に同じコースがあるなら何もしない ＝ 重複しない
+// ・読み込みに失敗してもアプリは通常どおり起動する（サンプルが出ないだけ）
+// ・既存の保存コースには一切手を触れない
+async function ensureSampleCourse() {
+  try {
+    if (!lsAvail()) return false;                                  // 保存できない環境では何もしない
+    if (localStorage.getItem(LS.sampleDone)) return false;         // 既に取り込み済み／削除済み
+    const list = getCourses();
+    if (!Array.isArray(list)) return false;
+
+    const res = await fetch(SAMPLE_URL, { cache: 'no-store' });
+    if (!res.ok) return false;                                     // 置いていない場合など → 何もしない
+    const data = await res.json();
+    if (!data || !data.id || !Array.isArray(data.wps)) return false;
+
+    localStorage.setItem(LS.sampleDone, '1');                      // 成否に関わらず二度は入れない
+    if (list.some(c => c && c.id === data.id)) return false;       // 既にある → 重複させない
+
+    setCourses(list.concat([data]));                               // 通常のコースとして追加（編集・削除は自由）
+    renderCourseList();
+    return true;
+  } catch (_) { return false; }                                    // 失敗しても起動は妨げない
+}
+
 /* ============================================================
    SCREEN 1
    ============================================================ */
 window.addEventListener('DOMContentLoaded', () => {
   renderCourseList();
+  ensureSampleCourse();   // 初回のみサンプルを取り込む（失敗しても起動に影響しない）
   // 写真ファイル入力リスナー
   document.getElementById('mPhotoFile')?.addEventListener('change', function(){ handlePhotoFile(this); });
   document.getElementById('mPhotoCamera')?.addEventListener('change', function(){ handlePhotoFile(this); });
@@ -1167,7 +1197,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v78';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
+const APP_VERSION = 'v79';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
 }catch(_){} });
