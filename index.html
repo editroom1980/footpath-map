@@ -218,6 +218,25 @@ body.viewonly #mobileUndoBtn, body.viewonly #mobileRedoBtn{display:none!importan
 /* 説明文（見どころ）が書いてあるコースは、配布リンクでも読めるように出す（編集は不可）*/
 body.viewonly #descSec.view-desc{display:block!important}
 body.viewonly #descSec.view-desc textarea{background:#F9F7F4;border-color:#E6DCCB;min-height:70px}
+/* ===== 動作確認（実機チェック）===== */
+#checkOver{position:fixed;inset:0;z-index:6800;display:none;overflow:auto;background:rgba(40,30,20,.55);padding:16px}
+#checkBox{max-width:520px;margin:0 auto;background:#fff;border-radius:16px;padding:18px 16px calc(16px + env(safe-area-inset-bottom));box-shadow:0 12px 40px rgba(0,0,0,.35)}
+#checkBox h3{font-size:16px;font-weight:700;color:#4A2E0E;margin-bottom:2px}
+#checkBox .ck-sub{font-size:11.5px;color:#7A6A55;line-height:1.6;margin-bottom:12px}
+.ck-row{display:flex;gap:9px;align-items:flex-start;padding:9px 0;border-bottom:1px solid #F0EBE2}
+.ck-row:last-of-type{border-bottom:none}
+.ck-ic{width:20px;height:20px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;margin-top:1px}
+.ck-ok{background:#2E7D32} .ck-warn{background:#B87503} .ck-ng{background:#C0392B} .ck-info{background:#9A8F80}
+.ck-l{font-size:13px;font-weight:700;color:#4A2E0E;line-height:1.5}
+.ck-d{font-size:11.5px;color:#7A6A55;line-height:1.6;word-break:break-all}
+.ck-sec{font-size:10.5px;font-weight:700;color:#9A8F80;letter-spacing:.05em;margin:12px 0 2px}
+.ck-acts{display:flex;flex-direction:column;gap:8px;margin-top:14px}
+.ck-btn{border:none;border-radius:10px;padding:12px;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer}
+.ck-primary{background:linear-gradient(135deg,#FB8B3E,#F2670E);color:#fff}
+.ck-sub-btn{background:#EEE5D8;color:#4A2E0E}
+.ck-guide{background:#F9F7F4;border-radius:10px;padding:11px 13px;margin-top:12px;font-size:11.5px;color:#5A4A35;line-height:1.85}
+.ck-guide b{color:#4A2E0E}
+#s1CheckLink{display:block;margin-top:6px;font-size:10.5px;color:#9A8F80;text-align:center;text-decoration:underline;cursor:pointer}
 /* ===== 配布シート（印刷・PDF・画像）===== */
 #sheetOver{position:fixed;inset:0;z-index:6500;display:none;overflow:auto;background:rgba(40,30,20,.55);padding:16px}
 #sheetOver .sheet-actions{display:flex;gap:8px;justify-content:center;margin:0 auto 12px;max-width:1040px;flex-wrap:wrap}
@@ -528,6 +547,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
       <label class="s1-tool" title="バックアップファイルからコースを戻します">バックアップ<br>から復元<input type="file" accept=".json" style="display:none" onchange="importBackupFile(this)"></label>
     </div>
     <div id="storageInfo"></div>
+    <a id="s1CheckLink" onclick="openSelfCheck()">動作確認（実機チェック）</a>
   </div>
   <div style="padding:14px 0 6px">
     <button class="s1-fab" onclick="openNewCourseSheet()"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5l0 14" /> <path d="M5 12l14 0" /></svg>新しいコースを作成</button>
@@ -732,6 +752,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
         <div class="mm-grid">
           <button class="mm-act" onclick="closeMobileMenu();saveMapAsImage()"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h1a2 2 0 0 0 2 -2a1 1 0 0 1 1 -1h6a1 1 0 0 1 1 1a2 2 0 0 0 2 2h1a2 2 0 0 1 2 2v9a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-9a2 2 0 0 1 2 -2" /> <path d="M9 13a3 3 0 1 0 6 0a3 3 0 0 0 -6 0" /></svg><span>画像保存</span></button>
           <button class="mm-act" onclick="closeMobileMenu();saveMapNoText()"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 8h.01" /> <path d="M7 3h11a3 3 0 0 1 3 3v11m-.856 3.099a2.991 2.991 0 0 1 -2.144 .901h-12a3 3 0 0 1 -3 -3v-12c0 -.845 .349 -1.608 .91 -2.153" /> <path d="M3 16l5 -5c.928 -.893 2.072 -.893 3 0l5 5" /> <path d="M16.33 12.338c.574 -.054 1.155 .166 1.67 .662l3 3" /> <path d="M3 3l18 18" /></svg><span>文字なし保存</span></button>
+          <button class="mm-act" onclick="closeMobileMenu();openSelfCheck()" title="この端末で正しく動いているかを調べます"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2l4 -4" /> <path d="M12 3a12 12 0 0 0 8.5 3a12 12 0 0 1 -8.5 15a12 12 0 0 1 -8.5 -15a12 12 0 0 0 8.5 -3" /></svg><span>動作確認</span></button>
           <button class="mm-act" onclick="closeMobileMenu();saveMapOffline()" title="このコースの範囲の地図を端末に保存します（圏外でも表示できます）"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12" /> <path d="M8 11l4 4l4 -4" /> <path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2" /> <path d="M3 3l18 18" opacity="0"/></svg><span>地図を持ち歩く</span></button>
           <button class="mm-act" onclick="closeMobileMenu();openPrintSheet()" title="配布シート（A4印刷・PDF・画像。凡例・縮尺・方位つき）"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 17h2a2 2 0 0 0 2 -2v-4a2 2 0 0 0 -2 -2h-14a2 2 0 0 0 -2 2v4a2 2 0 0 0 2 2h2" /> <path d="M17 9v-4a2 2 0 0 0 -2 -2h-6a2 2 0 0 0 -2 2v4" /> <path d="M7 13m0 2a2 2 0 0 1 2 -2h6a2 2 0 0 1 2 2v4a2 2 0 0 1 -2 2h-6a2 2 0 0 1 -2 -2z" /></svg><span>配布シート</span></button>
           <button class="mm-act" onclick="closeMobileMenu();exportGpx()" title="GPXで書き出し（YAMAP・ヤマレコ・Garmin・Google Earth などで開けます）"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l4 -8l5 6l3 -4l6 6" /> <path d="M3 21h18" /></svg><span>GPX書き出し</span></button>
@@ -1305,6 +1326,8 @@ window.addEventListener('DOMContentLoaded', () => {
   // 閲覧モード初期化
   initViewMode();
   setupOffline();     // オフライン対応（失敗してもアプリは通常どおり動く）
+  // 実機チェック用リンク（?check=1）を開いたときは、そのまま動作確認を出す
+  if (new URLSearchParams(location.search).get('check') === '1') setTimeout(openSelfCheck, 400);
   const syncOnline = () => document.body.classList.toggle('offline', navigator.onLine === false);
   window.addEventListener('online',  syncOnline);
   window.addEventListener('offline', syncOnline);
@@ -1604,7 +1627,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v90';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
+const APP_VERSION = 'v91';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
 }catch(_){} });
@@ -4204,6 +4227,167 @@ async function saveMapAsImage() {
   } catch(e) {
     showToast('❌ 画像保存に失敗: ' + e.message);
   }
+}
+
+/* ---- 動作確認（実機チェック）------------------------------------------
+   実機（iPhone/Android）で「本当に動いているか」を、開発者ツール無しで確かめる。
+   結果は実測のみ。分からないものは「分からない」と出す。
+   ----------------------------------------------------------------------- */
+function _ckRow(state, label, detail){ return {state: state, label: label, detail: detail || ''}; }
+
+// 1回だけ・短い制限時間で外部サービスの生死を確かめる（負荷をかけない）
+async function _ckFetch(url, ms){
+  const ctrl = new AbortController();
+  const tid = setTimeout(() => ctrl.abort(), ms || 6000);
+  const t0 = Date.now();
+  try {
+    const res = await fetch(url, {signal: ctrl.signal, cache: 'no-store'});
+    clearTimeout(tid);
+    return {ok: res.ok, status: res.status, ms: Date.now() - t0};
+  } catch (e) { clearTimeout(tid); return {ok: false, status: 0, ms: Date.now() - t0}; }
+}
+
+async function runSelfCheck(){
+  const rows = [];
+  const P = new URLSearchParams(location.search);
+
+  rows.push({sec: 'アプリ'});
+  const vParam = P.get('v');
+  rows.push(_ckRow(!vParam || vParam === APP_VERSION.replace(/^v/, '') ? 'ok' : 'warn',
+    'アプリの版', 'この端末で動いているのは ' + APP_VERSION
+    + (vParam ? '（URLの ?v=' + vParam + '）' + (vParam === APP_VERSION.replace(/^v/, '') ? ' 一致' : ' ← 数字を ' + APP_VERSION.replace(/^v/, '') + ' に直すと最新になります') : '')));
+  rows.push(_ckRow(navigator.onLine ? 'ok' : 'info', 'インターネット',
+    navigator.onLine ? 'つながっています' : '圏外・機内モードです（オフラインの確認中ならこれが正しい状態です）'));
+  rows.push(_ckRow(typeof L !== 'undefined' ? 'ok' : 'ng', '地図の部品(Leaflet)',
+    typeof L !== 'undefined' ? '読み込めています' : '読み込めていません（地図が表示できません）'));
+  rows.push(_ckRow(typeof html2canvas !== 'undefined' ? 'ok' : 'ng', '画像保存・配布シート',
+    typeof html2canvas !== 'undefined' ? '使えます' : '部品を読み込めていません'));
+  rows.push(_ckRow(typeof QRCode !== 'undefined' ? 'ok' : 'warn', 'QRコード',
+    typeof QRCode !== 'undefined' ? '作れます' : '部品を読み込めていません（QRだけ出ません）'));
+
+  rows.push({sec: '保存'});
+  const st = storageInfo();
+  rows.push(_ckRow(lsAvail() ? (st.mb < 3.5 ? 'ok' : 'warn') : 'ng', 'コースの保存',
+    lsAvail() ? ('使用 ' + st.mb.toFixed(2) + ' MB / 約5MB' + (st.mb >= 3.5 ? '（上限が近いです）' : ''))
+              : 'このブラウザでは保存できません（プライベートモードなど）'));
+  const idbOK = !!(await _idb());
+  const keys  = idbOK ? (await _photoKeys()) : null;
+  rows.push(_ckRow(idbOK ? 'ok' : 'warn', '写真の保存先',
+    idbOK ? ('別枠に保存できています（' + (keys ? keys.length : 0) + '枚）')
+          : '別枠が使えないため、写真はコース本体に入ります（容量に注意）'));
+
+  rows.push({sec: 'オフライン'});
+  if (!_swSupported()) {
+    rows.push(_ckRow('warn', 'オフライン機能', location.protocol === 'file:'
+      ? 'ファイルを直接開いています。公開URLから開くと使えます'
+      : 'この環境では使えません（https で開いてください）'));
+  } else {
+    let reg = null;
+    try { reg = await navigator.serviceWorker.getRegistration(); } catch(_){}
+    const ctrl = !!navigator.serviceWorker.controller;
+    rows.push(_ckRow(ctrl ? 'ok' : (reg ? 'warn' : 'ng'), 'オフラインの準備',
+      ctrl ? '有効です（一度見た地図は圏外でも表示できます）'
+           : (reg ? '登録済みですが、まだ有効になっていません。ページを再読込してください'
+                  : '未登録です。ページを再読込してください')));
+    const tiles = await offlineTileCount();
+    rows.push(_ckRow(tiles === null ? 'info' : (tiles > 0 ? 'ok' : 'warn'), '保存した地図',
+      tiles === null ? '数えられませんでした' :
+      tiles > 0 ? (tiles + '枚 保存済み') : 'まだありません（コースを開いて「地図を持ち歩く」を押してください）'));
+  }
+
+  rows.push({sec: 'この端末'});
+  rows.push(_ckRow('info', '画面', innerWidth + ' × ' + innerHeight + ' / '
+    + (isMobile() ? 'スマホ表示' : 'パソコン表示') + ' / 拡大率 ' + (window.devicePixelRatio || 1)));
+  rows.push(_ckRow(('ontouchstart' in window) ? 'ok' : 'info', 'タッチ操作',
+    ('ontouchstart' in window) ? '使えます' : 'この端末はマウス操作です'));
+  let geo = '未確認';
+  try {
+    if (navigator.permissions && navigator.permissions.query) {
+      const s = await navigator.permissions.query({name: 'geolocation'});
+      geo = s.state === 'granted' ? '許可されています' : (s.state === 'denied' ? '拒否されています（現在地が使えません）' : 'まだ聞かれていません');
+    } else if (!navigator.geolocation) { geo = 'この端末では使えません'; }
+  } catch(_){}
+  rows.push(_ckRow(geo.indexOf('拒否') >= 0 || geo.indexOf('使えません') >= 0 ? 'warn' : 'info', '現在地(GPS)', geo));
+
+  if (navigator.onLine) {
+    rows.push({sec: '外部サービス（今つながるか）'});
+    const conf = BASEMAPS[_baseMapId] || BASEMAPS[BASEMAP_DEFAULT];
+    const tileUrl = conf.url.replace('{s}', (conf.subdomains || 'a')[0]).replace('{z}', 14).replace('{x}', 14374).replace('{y}', 6455);
+    const [tile, osrm, elev] = await Promise.all([
+      _ckFetch(tileUrl, 6000),
+      _ckFetch('https://router.project-osrm.org/route/v1/foot/134.445,35.152;134.446,35.153?overview=false', 8000),
+      _ckFetch('https://cyberjapandata2.gsi.go.jp/general/dem/scripts/getelevation.php?lon=134.445&lat=35.152&outtype=JSON', 6000),
+    ]);
+    rows.push(_ckRow(tile.ok ? 'ok' : 'ng', '地図タイル（' + conf.label + '）',
+      tile.ok ? ('取得できました（' + tile.ms + 'ミリ秒）') : '取得できませんでした'));
+    rows.push(_ckRow(osrm.ok ? 'ok' : 'warn', '経路サーバ',
+      osrm.ok ? ('応答あり（' + osrm.ms + 'ミリ秒）') : '応答なし。いまは道なりのルートが引けません（区間は直線で表示されます）'));
+    rows.push(_ckRow(elev.ok ? 'ok' : 'warn', '標高（高低差グラフ）',
+      elev.ok ? ('取得できました（' + elev.ms + 'ミリ秒）') : '取得できませんでした'));
+  }
+  return rows;
+}
+
+function _renderSelfCheck(rows){
+  const ICON = {ok: '✓', warn: '!', ng: '✕', info: '・'};
+  let html = '';
+  rows.forEach(r => {
+    if (r.sec) { html += '<div class="ck-sec">' + escHtml(r.sec) + '</div>'; return; }
+    html += '<div class="ck-row"><span class="ck-ic ck-' + r.state + '">' + ICON[r.state] + '</span>'
+          + '<span><span class="ck-l">' + escHtml(r.label) + '</span>'
+          + (r.detail ? '<br><span class="ck-d">' + escHtml(r.detail) + '</span>' : '') + '</span></div>';
+  });
+  return html;
+}
+function _selfCheckText(rows){
+  const M = {ok: '[OK]', warn: '[注意]', ng: '[NG]', info: '[情報]'};
+  return '■ フットパスマップメーカー 動作確認 ' + new Date().toLocaleString('ja-JP') + '\n'
+    + rows.map(r => r.sec ? ('\n《' + r.sec + '》') : (M[r.state] + ' ' + r.label + ' … ' + r.detail)).join('\n');
+}
+
+async function openSelfCheck(){
+  let ov = document.getElementById('checkOver');
+  if (!ov) {
+    ov = document.createElement('div'); ov.id = 'checkOver';
+    ov.innerHTML = '<div id="checkBox">'
+      + '<h3>動作確認</h3>'
+      + '<div class="ck-sub">この端末で正しく動いているかを実際に調べます。</div>'
+      + '<div id="ckList"></div>'
+      + '<div class="ck-guide"><b>圏外での確認のしかた</b><br>'
+      +   '① コースを開いて、…メニューの「地図を持ち歩く」を押す<br>'
+      +   '② 機内モードを ON にする<br>'
+      +   '③ このページを再読込する<br>'
+      +   '④ 地図とコースが出れば成功です（画面上に「オフライン」と出ます）</div>'
+      + '<div class="ck-acts">'
+      +   '<button class="ck-btn ck-primary" onclick="openSelfCheck()">もう一度調べる</button>'
+      +   '<button class="ck-btn ck-sub-btn" onclick="copySelfCheck()">結果をコピー</button>'
+      +   '<button class="ck-btn ck-sub-btn" onclick="closeSelfCheck()">閉じる</button>'
+      + '</div></div>';
+    document.body.appendChild(ov);
+    ov.addEventListener('click', e => { if (e.target === ov) closeSelfCheck(); });
+  }
+  ov.style.display = 'block';
+  document.getElementById('ckList').innerHTML = '<div class="ck-d" style="padding:14px 0">調べています…</div>';
+  const rows = await runSelfCheck();
+  _selfCheckRows = rows;
+  document.getElementById('ckList').innerHTML = _renderSelfCheck(rows);
+  ov.scrollTop = 0;
+}
+let _selfCheckRows = [];
+function closeSelfCheck(){ const ov = document.getElementById('checkOver'); if (ov) ov.style.display = 'none'; }
+function copySelfCheck(){
+  const txt = _selfCheckText(_selfCheckRows || []);
+  if (navigator.clipboard) navigator.clipboard.writeText(txt).then(
+    () => showToast('📋 結果をコピーしました'), () => _fallbackCopy(txt));
+  else _fallbackCopy(txt);
+}
+function _fallbackCopy(txt){
+  const ta = document.createElement('textarea');
+  ta.value = txt; ta.style.cssText = 'position:fixed;left:0;top:0;opacity:0';
+  document.body.appendChild(ta); ta.select();
+  try { document.execCommand('copy'); showToast('📋 結果をコピーしました'); }
+  catch(_) { showToast('コピーできませんでした'); }
+  document.body.removeChild(ta);
 }
 
 /* ---- 配布シート ---------------------------------------------------------

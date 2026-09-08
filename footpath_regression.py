@@ -231,6 +231,15 @@ def static_checks(src):
     chk('静的', 'タイル計算 offlineTileUrls 存在', 'function offlineTileUrls' in src)
     chk('静的', '保存枚数の上限 OFFLINE_MAX_TILES 維持', 'const OFFLINE_MAX_TILES' in src)
     chk('静的', 'オフライン表示のバッジ', 'offlineBadge' in src and 'body.offline' in src)
+    # --- v91: 実機の動作確認（セルフチェック）---
+    chk('静的', '動作確認 runSelfCheck 存在', 'async function runSelfCheck' in src)
+    chk('静的', '動作確認を開く openSelfCheck 存在', 'async function openSelfCheck' in src)
+    chk('静的', '?check=1 で自動的に開く', "get('check') === '1'" in src)
+    chk('静的', '起動画面とメニューの両方に入口',
+        'id="s1CheckLink"' in src and src.count('openSelfCheck()') >= 3,
+        f"呼び出し={src.count('openSelfCheck()')}")
+    chk('静的', '結果をコピーできる', 'function copySelfCheck' in src and 'function _selfCheckText' in src)
+    chk('静的', '圏外での確認手順を載せている', '機内モード' in src)
     chk('静的', '背景地図に配色済みタイル追加', all(k in src for k in ['opentopo:', 'carto:', 'osm_hot:']))
     chk('静的', '背景地図切替 cycleBaseMap 存在', 'function cycleBaseMap' in src)
     chk('静的', 'PCツールバーに地図切替ボタン', 'id="btnBaseMap"' in src)
@@ -720,6 +729,22 @@ def functional_checks(index_path):
         chk('機能', 'オフライン保存のタイル計算が範囲と上限を守る',
             isinstance(tl, dict) and tl.get('few', 0) > 0 and tl.get('cap', 99) <= 4
             and tl.get('zero') == 0 and tl.get('wellFormed') is True, str(tl)[:170])
+
+        # INV-AD: 動作確認が実際に走り、各項目が判定を返す
+        sc = page.evaluate("""()=>{ return (async()=>{ try{
+            const rows = await runSelfCheck();
+            const items = rows.filter(r => !r.sec);
+            const secs  = rows.filter(r =>  r.sec).map(r => r.sec);
+            const bad = items.filter(r => ['ok','warn','ng','info'].indexOf(r.state) < 0).length;
+            const txt = _selfCheckText(rows);
+            return {items:items.length, secs:secs, bad:bad,
+                    hasVer: items.some(r => (r.detail||'').indexOf(APP_VERSION) >= 0),
+                    txtOK: txt.indexOf('動作確認') >= 0 && txt.length > 100};
+          }catch(e){ return 'ERR:'+e.message; } })(); }""")
+        chk('機能', '動作確認が各項目の判定を返す',
+            isinstance(sc, dict) and sc.get('items', 0) >= 8 and sc.get('bad') == 0
+            and sc.get('hasVer') is True and sc.get('txtOK') is True
+            and 'アプリ' in sc.get('secs', []) and '保存' in sc.get('secs', []), str(sc)[:190])
 
         b.close()
 
