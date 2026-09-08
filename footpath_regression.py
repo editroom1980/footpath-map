@@ -176,6 +176,20 @@ def static_checks(src):
     chk('静的', '色を印刷に反映（print-color-adjust）', 'print-color-adjust:exact' in src)
     chk('静的', 'PC・スマホ両方に配布シートボタン', src.count('openPrintSheet()') >= 3,
         f"呼び出し={src.count('openPrintSheet()')}")
+    # --- v86: 未保存のまま閉じる前の確認 ---
+    chk('静的', '未保存フラグ _dirty を持つ', 'let   _dirty' in src)
+    chk('静的', '編集で未保存フラグが立つ（saveSnapshot）', '_dirty = true;' in src)
+    chk('静的', '保存・読込で未保存フラグが下りる', src.count('_dirty = false;') >= 3)
+    chk('静的', '閉じる前の確認（閲覧モードでは出さない）',
+        "addEventListener('beforeunload'" in src and '!_dirty || viewMode' in src)
+    # --- v87: 歩く速さ／坂を考慮した所要時間 ---
+    chk('静的', '歩く速さ定数 WALK_SPEEDS 維持', 'const WALK_SPEEDS' in src)
+    chk('静的', '登りの加算係数 CLIMB_MIN_PER_100M 維持', 'const CLIMB_MIN_PER_100M' in src)
+    chk('静的', '速さ切替 setWalkSpeed 存在', 'function setWalkSpeed' in src)
+    chk('静的', '登り合計 _totalAscent 存在', 'function _totalAscent' in src)
+    chk('静的', '所要時間が固定4km/hでなくなった', '/ 4 * 60' not in src and '_walkSpeed()' in src)
+    chk('静的', '速さの保存キー(LS.walkSpeed)を使用', re.search(r"walkSpeed:\s*'fp_walkspeed'", src) is not None)
+    chk('静的', 'PC・スマホ両方に速さの選択', 'walkSpeedSel' in src and 'data-spd=' in src)
     chk('静的', '背景地図に配色済みタイル追加', all(k in src for k in ['opentopo:', 'carto:', 'osm_hot:']))
     chk('静的', '背景地図切替 cycleBaseMap 存在', 'function cycleBaseMap' in src)
     chk('静的', 'PCツールバーに地図切替ボタン', 'id="btnBaseMap"' in src)
@@ -548,6 +562,38 @@ def functional_checks(index_path):
         chk('機能', '印刷時は配布シートだけが出る',
             isinstance(pr, dict) and pr.get('sheet') == 'block' and pr.get('hdr') == 'none'
             and pr.get('s1') == 'none' and pr.get('actions') == 'none', str(pr))
+
+        # INV-W: 未保存フラグが「編集で立ち、保存で下りる」
+        dy = page.evaluate("""()=>{ try{
+            const start = _dirty;
+            saveSnapshot();                       // 編集操作の共通入口
+            const afterEdit = _dirty;
+            courseInfo = courseInfo || {}; if(!courseInfo.name) courseInfo.name = '未保存テスト';
+            const okSave = saveCourse();          // 保存できれば false に戻る
+            const afterSave = _dirty;
+            return {start:start, afterEdit:afterEdit, okSave:okSave, afterSave:afterSave};
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        chk('機能', '未保存フラグが編集で立ち保存で下りる',
+            isinstance(dy, dict) and dy.get('afterEdit') is True and dy.get('afterSave') is False, str(dy))
+
+        # INV-X: 歩く速さで所要時間が変わり、登りがあれば時間が増える
+        wk = page.evaluate("""()=>{ try{
+            const saveElev = _elevData, saveIdx = _walkSpeedIdx, saveWps = wps.slice();
+            wps = [];                                   // 滞在時間の影響を外す
+            _elevData = null;
+            setWalkSpeed(2); const t4 = calcTotalTime(4000), n4 = _timeNote();   // 4km/h・平坦 → 60分
+            setWalkSpeed(0); const t3 = calcTotalTime(4000);                     // 3km/h → 80分
+            setWalkSpeed(2);
+            _elevData = { pts:[], elevs:[100, 200, 150, 250] };                  // 登り合計 200m
+            const tUp = calcTotalTime(4000), nUp = _timeNote(), up = _totalAscent();
+            const saved = localStorage.getItem(LS.walkSpeed);
+            _elevData = saveElev; wps = saveWps; setWalkSpeed(saveIdx);
+            return {t4:t4, t3:t3, tUp:tUp, up:up, n4:n4, nUp:nUp, saved:saved};
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        ok_wk = (isinstance(wk, dict) and wk.get('t4') == '1時間' and wk.get('t3') == '1時間20分'
+                 and wk.get('up') == 200 and wk.get('tUp') == '1時間20分'      # 60分 + 登り200m→20分
+                 and '4km/h' in wk.get('n4', '') and '登り込み' in wk.get('nUp', ''))
+        chk('機能', '歩く速さと登りが所要時間に反映される', ok_wk, str(wk)[:190])
 
         b.close()
 

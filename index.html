@@ -101,6 +101,8 @@ html,body{min-height:calc(100% + env(safe-area-inset-top));font-family:'Hiragino
 #infoSec{padding:8px 10px;background:#F0EAE0;flex-shrink:0;border-top:1px solid #D4C4A8}
 #distDisp{font-size:12px;font-weight:bold;color:#4A2E0E}
 #timeDisp{font-size:11px;color:#5A3A1A;margin-top:2px}
+#walkSpeedRow{display:flex;align-items:center;gap:5px;margin-top:5px;font-size:10px;color:#7A6A55}
+#walkSpeedSel{flex:1;min-width:0;font-size:10px;font-family:inherit;padding:2px 4px;border:1px solid #D4C4A8;border-radius:3px;background:#fff;color:#5A3A1A}
 #descSec{padding:8px 10px;flex-shrink:0;border-top:1px solid #D4C4A8}
 #descSec label{display:block;font-size:10px;font-weight:bold;color:#666;margin-bottom:3px}
 #iDesc{width:100%;padding:5px 7px;border:1px solid #D4C4A8;border-radius:3px;font-size:11px;font-family:inherit;background:#fff;outline:none;resize:vertical;min-height:55px}
@@ -573,6 +575,15 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
       <div id="infoSec">
         <div id="distDisp">総距離: — km</div>
         <div id="timeDisp">所要時間: —</div>
+        <label id="walkSpeedRow">歩く速さ
+          <select id="walkSpeedSel" onchange="setWalkSpeed(Number(this.value))" title="所要時間の計算に使います。高低差を取得済みなら登りの時間も加算されます">
+            <option value="0">3.0 km/h（ゆっくり）</option>
+            <option value="1">3.5 km/h</option>
+            <option value="2" selected>4.0 km/h（標準）</option>
+            <option value="3">4.5 km/h</option>
+            <option value="4">5.0 km/h（速め）</option>
+          </select>
+        </label>
       </div>
       <div id="miniElevSec" onclick="toggleElevPanel()" title="クリックで詳細表示">
         <div id="miniElevHint" style="display:flex;align-items:center;gap:4px"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M4 19l16 0" /> <path d="M4 15l4 -6l4 2l4 -5l4 4" /></svg><span>クリックで高低差グラフを表示</span></div>
@@ -681,6 +692,14 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
           <div class="mm-map" data-lsz="2" onclick="setLabelSize(2)"><span class="mm-map-l">特大</span><span class="mm-map-ck">✓</span></div>
           <div class="mm-map" data-lsz="3" onclick="setLabelSize(3)"><span class="mm-map-l">極大</span><span class="mm-map-ck">✓</span></div>
           <div class="mm-map" data-lsz="4" onclick="setLabelSize(4)"><span class="mm-map-l">最大</span><span class="mm-map-ck">✓</span></div>
+        </div>
+        <div class="mm-sec">歩く速さ（所要時間の計算）</div>
+        <div class="mm-maplist">
+          <div class="mm-map" data-spd="0" onclick="setWalkSpeed(0)"><span class="mm-map-l">3.0 km/h（ゆっくり）</span><span class="mm-map-ck">✓</span></div>
+          <div class="mm-map" data-spd="1" onclick="setWalkSpeed(1)"><span class="mm-map-l">3.5 km/h</span><span class="mm-map-ck">✓</span></div>
+          <div class="mm-map" data-spd="2" onclick="setWalkSpeed(2)"><span class="mm-map-l">4.0 km/h（標準）</span><span class="mm-map-ck">✓</span></div>
+          <div class="mm-map" data-spd="3" onclick="setWalkSpeed(3)"><span class="mm-map-l">4.5 km/h</span><span class="mm-map-ck">✓</span></div>
+          <div class="mm-map" data-spd="4" onclick="setWalkSpeed(4)"><span class="mm-map-l">5.0 km/h（速め）</span><span class="mm-map-ck">✓</span></div>
         </div>
         <div class="mm-sec">スポット○の大きさ</div>
         <div class="mm-maplist">
@@ -836,7 +855,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
     <div class="help-section">
       <h3>⏱ 所要時間の計算</h3>
       <ul>
-        <li>歩行速度4km/h × 距離 + 各ウェイポイントの滞在時間の合計</li>
+        <li>距離÷歩く速さ（既定4km/h・変更可）＋ 各ウェイポイントの滞在時間。高低差を取得済みなら登り100mにつき10分を加算</li>
         <li>滞在時間はウェイポイント編集画面で分単位で設定できます</li>
       </ul>
     </div>
@@ -871,6 +890,11 @@ const OFF_GEO_M  = 1.0;      // 片側オフセットの地理基準(m)。中ズ
 const OFF_MAX_PX = 20;       // 広がりの上限(px)。窮屈な箇所での過剰拡大による交差を防ぐ保険
 // --- 画像保存の解像度（高画質化はここ1か所）---
 const IMG_SCALE  = 3;        // 画像保存の目標倍率(実機の高解像度相当)。下げれば軽く・上げれば高精細。実際はCanvas上限内に自動クランプ
+// --- 歩く速さ（所要時間の計算）---
+const WALK_SPEEDS = [3, 3.5, 4, 4.5, 5];   // km/h。3=ゆっくり / 4=標準 / 5=速め
+const WALK_SPEED_DEFAULT = 2;              // 既定は 4km/h（従来と同じ計算になる位置）
+// 登りの時間加算：標高100mにつき+10分（登り600mで1時間。ネイスミスの法則の一般的な係数）
+const CLIMB_MIN_PER_100M = 10;
 // --- 標高（高低差グラフ）の取得 ---
 const ELEV_BATCH = 6;        // 標高APIへの同時リクエスト数（ブラウザの同時接続上限に合わせ、待ち行列による誤タイムアウトを防ぐ）
 // --- 名称ラベルの文字サイズ（PCツールバーの「文字」ボタンで切替）---
@@ -890,12 +914,15 @@ const LS = {
   sampleDone:  'fp_sample_done',  // サンプルコースを取り込み済み(または削除済み)かの記録
   labelSize:   'fp_labelsize',    // 名称ラベルの文字サイズ段階（LABEL_SIZES の添字）
   wpSize:      'fp_wpsize',       // スポット○の大きさ段階（WP_SIZES の添字）
+  walkSpeed:   'fp_walkspeed',    // 歩く速さの段階（WALK_SPEEDS の添字）
 };
 // --- サンプルコース（初回起動時に一度だけ取り込む。削除したら復活しない）---
 const SAMPLE_URL = 'sample.json';   // index.html と同じ場所に置く
 let   _dblOn = true;         // 往復ずらし表示 ON/OFF（falseで完全に従来の見た目）
 let   _labelSizeIdx = 0;     // 名称ラベルの文字サイズ段階（0=標準/1=大/2=特大）。LABEL_SIZES の添字
 let   _wpSizeIdx    = 0;     // スポット○の大きさ段階（0=標準/1=大/2=特大）。WP_SIZES の添字
+let   _dirty        = false; // 保存していない変更があるか（タブを閉じる前の確認に使う）
+let   _walkSpeedIdx = WALK_SPEED_DEFAULT;  // 歩く速さの段階。WALK_SPEEDS の添字
 let   _routeLineBase = null; // ルート線の素の座標（中央=データ準拠／ズーム再計算用）
 
 /* ============================================================
@@ -1008,6 +1035,12 @@ window.addEventListener('DOMContentLoaded', () => {
   document.getElementById('mPhotoCamera')?.addEventListener('change', function(){ handlePhotoFile(this); });
   // 閲覧モード初期化
   initViewMode();
+  // 未保存のまま閉じようとしたときだけブラウザに確認させる（閲覧リンクでは出さない）
+  window.addEventListener('beforeunload', e => {
+    if (!_dirty || viewMode) return;
+    e.preventDefault();
+    e.returnValue = '';       // 旧ブラウザ向け（文言はブラウザ側が決める）
+  });
   // Context menu closes ONLY via Cancel button, Escape key, or map pan.
   // Close menu on Escape key; ⌘Z = undo; ⌘⇧Z = redo
   document.addEventListener('keydown', e => {
@@ -1062,6 +1095,7 @@ function backToS1() {
   _askSaveBack();
 }
 function _doBackToS1() {
+  _dirty = false;             // 保存/破棄をダイアログで選んだあと＝以降は確認不要
   if (typeof _closeAllPopups === 'function') _closeAllPopups();
   document.getElementById('s2').style.display = 'none';
   document.getElementById('s1').style.display = 'flex';
@@ -1296,7 +1330,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v85';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
+const APP_VERSION = 'v86';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
 }catch(_){} });
@@ -3505,14 +3539,43 @@ function showRtMsg(show) {
 /* ============================================================
    DISTANCE + TIME
    ============================================================ */
+// 現在の歩く速さ(km/h)
+function _walkSpeed(){ return WALK_SPEEDS[_walkSpeedIdx] || WALK_SPEEDS[WALK_SPEED_DEFAULT]; }
+
+// 高低差グラフを取得済みなら、登りの合計(m)を返す。未取得なら null（＝加算しない）
+function _totalAscent(){
+  const e = _elevData && _elevData.elevs;
+  if (!e || e.length < 2) return null;
+  let up = 0;
+  for (let i = 1; i < e.length; i++) { const d = e[i] - e[i-1]; if (d > 0) up += d; }
+  return up;
+}
+
+// 所要時間 = 距離÷速さ ＋ 登りの加算（標高データがあるときだけ）＋ 各スポットの滞在時間
 function calcTotalTime(distM) {
-  const walkMin  = Math.round((distM/1000) / 4 * 60);  // 4 km/h
+  const walkMin  = Math.round((distM/1000) / _walkSpeed() * 60);
+  const up       = _totalAscent();
+  const climbMin = up ? Math.round(up / 100 * CLIMB_MIN_PER_100M) : 0;
   const dwellMin = wps.reduce((s,wp)=>s+(parseInt(wp.dwell)||0), 0);
-  const total    = walkMin + dwellMin;
+  const total    = walkMin + climbMin + dwellMin;
   const h = Math.floor(total/60), m = total%60;
   if (h===0) return `${m}分`;
   if (m===0) return `${h}時間`;
   return `${h}時間${m}分`;
+}
+
+// 所要時間の注記（速さと、坂を見ているかどうか）
+function _timeNote(){
+  return '（' + _walkSpeed() + 'km/h' + (_totalAscent() ? '・登り込み' : '') + '）';
+}
+
+// 歩く速さを変える（PCの選択欄・スマホのメニューで共有。設定は保存される）
+function setWalkSpeed(i){
+  if (!(i >= 0 && i < WALK_SPEEDS.length)) return;
+  _walkSpeedIdx = i; _saveIdxPref(LS.walkSpeed, i);
+  _syncSizeMenu();
+  updateDistanceAndTime(_lastRouteCoords);   // 表示中の所要時間を即更新
+  if (typeof showToast === 'function') showToast('🚶 歩く速さ: ' + _walkSpeed() + 'km/h');
 }
 
 function updateDistanceAndTime(coords) {
@@ -3533,7 +3596,7 @@ function updateDistanceAndTime(coords) {
   const mobTime = document.getElementById('mobileTimeDisp');
   if (c.length >= 2) {
     if (distEl) distEl.textContent = `総距離: ${(dist/1000).toFixed(2)} km`;
-    if (timeEl) timeEl.textContent = `所要時間: 約${calcTotalTime(dist)}（歩行4km/h）`;
+    if (timeEl) timeEl.textContent = `所要時間: 約${calcTotalTime(dist)}${_timeNote()}`;
     if (mobDist) mobDist.textContent = (dist/1000).toFixed(1);
     if (mobTime) mobTime.textContent = calcTotalTime(dist);
   } else {
@@ -4032,6 +4095,7 @@ function _makeSnapshot() {
 }
 
 function saveSnapshot() {
+  _dirty = true;              // 編集操作は必ずここを通る＝未保存フラグの唯一の立て場所
   undoStack.push(_makeSnapshot());
   if (undoStack.length > 30) undoStack.shift();
   redoStack = [];          // 新操作でやり直し履歴をクリア
@@ -4362,6 +4426,7 @@ async function _refreshElevChart(openModal) {
     const pts = _sampleCoords(coords, 50);
     const elevs = await _fetchElevs(pts);
     _elevData = {pts, elevs};
+    updateDistanceAndTime(_lastRouteCoords);   // 登りの時間を所要時間へ反映
     _drawMiniChart(pts, elevs);   // サイドバーのミニチャートに描画
     if (openModal !== false) _drawElevChart(pts, elevs); // モーダル内描画（自動fetchはスキップ）
   } catch(e) {
@@ -4713,6 +4778,7 @@ function saveCourse() {
         + 'このままアプリを閉じると、今回の変更は失われます。');
     return false;
   }
+  _dirty = false;             // 保存できた＝未保存の変更なし
   showToast(lsAvail() ? '💾 保存しました（ブラウザ）' : '💾 保存しました（メモリ/JSONエクスポート推奨）');
   return true;
 }
@@ -4746,6 +4812,7 @@ function _fitCourseToScreen(data){
 function loadCourseData(data) {
   courseInfo = {name:data.name, area:data.area, start:data.start||'', goal:data.goal||''};
   currentCourseId = data.id;
+  _dirty = false;             // 読み込み直後は未保存の変更なし
 
   document.getElementById('s1').style.display = 'none';
   document.getElementById('s2').style.display = 'flex';
@@ -5175,24 +5242,26 @@ function _wpSize(){
   return [d, d];
 }
 
-// 大きさ設定(段階)の保存・復元。値が壊れていても既定(0)に落ちるだけで起動は妨げない
-function _loadSizePref(key, len){
+// 段階設定(添字)の保存・復元。値が壊れていても既定に落ちるだけで起動は妨げない
+function _loadIdxPref(key, len, dflt){
+  const d = dflt || 0;
   if (lsAvail()) { try { const v = parseInt(localStorage.getItem(key), 10); if (v >= 0 && v < len) return v; } catch(_){} }
-  return 0;
+  return d;
 }
-function _saveSizePref(key, i){
+function _saveIdxPref(key, i){
   if (lsAvail()) { try { localStorage.setItem(key, String(i)); } catch(_){} }
 }
 // 起動時に保存済みの大きさ設定を復元（PCボタンの表示とスマホメニューのチェックも合わせる）
 function restoreSizePrefs(){
-  _labelSizeIdx = _loadSizePref(LS.labelSize, LABEL_SIZES.length);
-  _wpSizeIdx    = _loadSizePref(LS.wpSize,    WP_SIZES.length);
+  _labelSizeIdx = _loadIdxPref(LS.labelSize, LABEL_SIZES.length);
+  _wpSizeIdx    = _loadIdxPref(LS.wpSize,    WP_SIZES.length);
+  _walkSpeedIdx = _loadIdxPref(LS.walkSpeed, WALK_SPEEDS.length, WALK_SPEED_DEFAULT);
   _syncSizeMenu();
 }
 // 名称ラベルの大きさを段階で設定（PCの「文字」ボタンとスマホメニューで状態を共有）
 function setLabelSize(i){
   if (!(i >= 0 && i < LABEL_SIZES.length)) return;
-  _labelSizeIdx = i; _saveSizePref(LS.labelSize, i);
+  _labelSizeIdx = i; _saveIdxPref(LS.labelSize, i);
   wps.forEach(wp => updateTooltip(wp));          // 表示中のラベルへ即反映
   _syncSizeMenu();
   if (typeof showToast === 'function') showToast('🔠 名称ラベル: ' + LABEL_SIZE_LABELS[i]);
@@ -5200,7 +5269,7 @@ function setLabelSize(i){
 // スポット○の大きさを段階で設定（表示のみ。座標・ルート・高低差のデータは変えない）
 function setWpSize(i){
   if (!(i >= 0 && i < WP_SIZES.length)) return;
-  _wpSizeIdx = i; _saveSizePref(LS.wpSize, i);
+  _wpSizeIdx = i; _saveIdxPref(LS.wpSize, i);
   refreshIcons();                                // ○を新しい大きさで作り直す
   wps.forEach(wp => updateTooltip(wp));          // ラベル位置を新しい○に合わせ直す
   _syncSizeMenu();
@@ -5216,6 +5285,10 @@ function _syncSizeMenu(){
     el.classList.toggle('on', Number(el.getAttribute('data-lsz')) === _labelSizeIdx));
   document.querySelectorAll('.mm-map[data-wsz]').forEach(el =>
     el.classList.toggle('on', Number(el.getAttribute('data-wsz')) === _wpSizeIdx));
+  document.querySelectorAll('.mm-map[data-spd]').forEach(el =>
+    el.classList.toggle('on', Number(el.getAttribute('data-spd')) === _walkSpeedIdx));
+  const sel = document.getElementById('walkSpeedSel');
+  if (sel && Number(sel.value) !== _walkSpeedIdx) sel.value = String(_walkSpeedIdx);
 }
 
 
