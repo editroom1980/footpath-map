@@ -40,6 +40,8 @@ html,body{min-height:calc(100% + env(safe-area-inset-top));font-family:'Hiragino
 .s1-tools{display:flex;gap:8px;margin-top:8px}
 .s1-tool{flex:1;display:flex;align-items:center;justify-content:center;gap:5px;padding:10px 6px;border-radius:11px;border:1px solid #E6DCCB;background:#FBF9F5;color:#6A645E;font-size:11.5px;font-family:inherit;cursor:pointer;text-align:center;line-height:1.35}
 .s1-tool:hover{background:#F4EFE7}
+#storageInfo{margin-top:8px;font-size:10.5px;color:#9A8F80;text-align:center;line-height:1.6}
+#storageInfo.warn{color:#C0562A;font-weight:700}
 .s1-fab{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:16px;border-radius:16px;background:linear-gradient(135deg,#FB8B3E,#F2670E);color:#fff;border:none;font-family:'Plus Jakarta Sans','Hiragino Sans',sans-serif;font-size:15px;font-weight:800;box-shadow:0 6px 16px rgba(242,103,14,0.32);cursor:pointer}
 .s1-fab .svgi{font-size:20px}
 /* コースカード */
@@ -523,6 +525,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
       <button class="s1-tool" onclick="exportAllCourses()" title="保存されている全コースを1つのファイルに書き出します">すべて書き出す<br>（バックアップ）</button>
       <label class="s1-tool" title="バックアップファイルからコースを戻します">バックアップ<br>から復元<input type="file" accept=".json" style="display:none" onchange="importBackupFile(this)"></label>
     </div>
+    <div id="storageInfo"></div>
   </div>
   <div style="padding:14px 0 6px">
     <button class="s1-fab" onclick="openNewCourseSheet()"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5l0 14" /> <path d="M5 12l14 0" /></svg>新しいコースを作成</button>
@@ -985,6 +988,163 @@ let courseInfo  = {name:'', area:'', start:'', goal:''};
 let _memCourses = [];
 let _lsAvail    = null;
 
+/* ============================================================
+   写真ストア（IndexedDB）
+   コース本体(localStorage 約5MB)に写真を直接埋めると、数本で上限に達する。
+   写真だけを容量の大きい IndexedDB へ移し、コースには参照 'idb:<id>' を持たせる。
+   ・書き出し(JSON/配布リンク)は実体を埋め込み直して「1ファイルで完結」を保つ
+   ・IndexedDB が使えない環境では従来どおり本体に埋め込む（動作は変わらない）
+   ============================================================ */
+const IDB_NAME = 'footpath', IDB_STORE = 'photos', PHOTO_REF = 'idb:';
+let _idbP     = null;   // open() の結果（1回だけ開く）
+let _photoMem = {};     // 取り出した写真の一時保持（同じ写真を何度も読み出さない）
+
+function _idb(){
+  if (_idbP) return _idbP;
+  _idbP = new Promise(res => {
+    try {
+      if (!window.indexedDB) return res(null);
+      const req = indexedDB.open(IDB_NAME, 1);
+      req.onupgradeneeded = () => {
+        const db = req.result;
+        if (!db.objectStoreNames.contains(IDB_STORE)) db.createObjectStore(IDB_STORE);
+      };
+      req.onsuccess = () => res(req.result);
+      req.onerror   = () => res(null);      // 使えない環境 → null（従来どおり本体に埋め込む）
+      req.onblocked = () => res(null);
+    } catch(_) { res(null); }
+  });
+  return _idbP;
+}
+function _idbDo(mode, fn){
+  return _idb().then(db => new Promise(res => {
+    if (!db) return res(null);
+    try {
+      const tx = db.transaction(IDB_STORE, mode), st = tx.objectStore(IDB_STORE);
+      const r = fn(st);
+      tx.oncomplete    = () => res(r && 'result' in r ? r.result : true);
+      tx.onerror       = () => res(null);
+      tx.onabort       = () => res(null);
+    } catch(_) { res(null); }
+  }));
+}
+function _photoPut(id, dataUri){ return _idbDo('readwrite', st => st.put(dataUri, id)); }
+function _photoGet(id){ return _idbDo('readonly',  st => st.get(id)); }
+function _photoDel(id){ return _idbDo('readwrite', st => st.delete(id)); }
+function _photoKeys(){ return _idbDo('readonly',   st => st.getAllKeys()); }
+
+function _isPhotoRef(p){ return typeof p === 'string' && p.indexOf(PHOTO_REF) === 0; }
+function _newPhotoId(){ return 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+
+// 参照なら実体(データURI)を取り出す。実体ならそのまま返す。
+async function _photoSrc(p){
+  if (!_isPhotoRef(p)) return p || '';
+  const id = p.slice(PHOTO_REF.length);
+  if (_photoMem[id]) return _photoMem[id];
+  const v = await _photoGet(id);
+  if (v) _photoMem[id] = v;
+  return v || '';
+}
+// <img data-photo="idb:..."> に実体を流し込む（取り出せなければ画像を消す）
+async function _fillPhotoImgs(root){
+  const els = (root || document).querySelectorAll('img[data-photo]');
+  for (const el of els) {
+    const src = await _photoSrc(el.getAttribute('data-photo'));
+    if (src) { el.src = src; el.removeAttribute('data-photo'); } else { el.remove(); }
+  }
+}
+// HTMLの img 属性（参照は data-photo、実体は src）
+function _photoAttr(p){
+  return _isPhotoRef(p) ? 'data-photo="' + escHtml(p) + '"' : 'src="' + p + '"';
+}
+
+// 写真の実体を IndexedDB へ移し、配列の中身を参照に置き換える（保存前に呼ぶ）
+async function _stashPhotoArray(arr){
+  if (!Array.isArray(arr)) return 0;
+  let moved = 0;
+  for (let i = 0; i < arr.length; i++) {
+    const p = arr[i];
+    if (_isPhotoRef(p) || typeof p !== 'string' || p.indexOf('data:') !== 0) continue;
+    const id = _newPhotoId();
+    const ok = await _photoPut(id, p);
+    if (ok) { _photoMem[id] = p; arr[i] = PHOTO_REF + id; moved++; }   // 失敗時は実体のまま＝従来動作
+  }
+  return moved;
+}
+async function _stashPhotos(courses){
+  let moved = 0;
+  for (const c of (courses || [])) {
+    if (!c || !Array.isArray(c.wps)) continue;
+    for (const w of c.wps) moved += await _stashPhotoArray(w.photos);
+  }
+  return moved;
+}
+// 編集中のコース（画面上のwps）の写真を退避する
+async function _stashLivePhotos(){
+  let moved = 0;
+  for (const w of wps) moved += await _stashPhotoArray(w.photos);
+  return moved;
+}
+// 参照を実体に戻したコピーを返す（書き出し・配布用は1ファイルで完結させる）
+async function _embedPhotos(course){
+  const c = JSON.parse(JSON.stringify(course || {}));
+  for (const w of (c.wps || [])) {
+    if (!Array.isArray(w.photos)) continue;
+    for (let i = 0; i < w.photos.length; i++) {
+      if (_isPhotoRef(w.photos[i])) w.photos[i] = await _photoSrc(w.photos[i]) || '';
+    }
+    w.photos = w.photos.filter(Boolean);
+  }
+  return c;
+}
+
+// 起動時：保存済みコースに直接埋め込まれた写真を IndexedDB へ移して本体を軽くする
+async function migratePhotosToIdb(){
+  if (!lsAvail()) return null;
+  const list = getCourses();
+  const before = JSON.stringify(list).length;
+  const moved = await _stashPhotos(list);
+  if (!moved) return {moved: 0, before: before, after: before};
+  const after = JSON.stringify(list).length;
+  setCourses(list);
+  return {moved: moved, before: before, after: after};
+}
+// どのコースからも参照されていない写真を片づける（削除したコースの写真が残らないように）
+async function gcPhotos(){
+  const keys = await _photoKeys();
+  if (!keys || !keys.length) return 0;
+  const used = new Set();
+  getCourses().forEach(c => (c && c.wps || []).forEach(w => (w.photos || []).forEach(p => {
+    if (_isPhotoRef(p)) used.add(p.slice(PHOTO_REF.length));
+  })));
+  let del = 0;
+  for (const k of keys) if (!used.has(k)) { await _photoDel(k); del++; }
+  return del;
+}
+// 一覧画面に保存領域の使用状況を出す（上限に近づいたら警告）
+function renderStorageInfo(){
+  const el = document.getElementById('storageInfo');
+  if (!el) return;
+  const s = storageInfo();
+  if (!lsAvail()) { el.textContent = 'このブラウザでは保存できません（JSON書き出しをお使いください）'; el.className = 'warn'; return; }
+  const near = s.mb >= 3.5;                                   // 上限(約5MB)の7割で注意喚起
+  el.className = near ? 'warn' : '';
+  el.innerHTML = 'コースの保存領域: ' + s.mb.toFixed(2) + ' MB / 約5MB'
+    + (s.photos ? '（写真' + s.photos + '枚は別の保存先）' : '')
+    + (near ? '<br>上限に近づいています。バックアップを取り、不要なコースを削除してください。' : '');
+}
+
+// 保存領域の使用状況（一覧画面の表示用）
+function storageInfo(){
+  let bytes = 0;
+  if (lsAvail()) {
+    try { for (const k in LS) { const v = localStorage.getItem(LS[k]); if (v) bytes += v.length; } } catch(_){}
+  }
+  let photos = 0;
+  getCourses().forEach(c => (c && c.wps || []).forEach(w => (w.photos || []).forEach(() => photos++)));
+  return { bytes: bytes, mb: bytes / 1048576, photos: photos };
+}
+
 function lsAvail() {
   if (_lsAvail !== null) return _lsAvail;
   try { localStorage.setItem(LS.probe,'1'); localStorage.removeItem(LS.probe); _lsAvail=true; }
@@ -1036,7 +1196,13 @@ async function ensureSampleCourse() {
 window.addEventListener('DOMContentLoaded', () => {
   renderCourseList();
   // 配布リンクで開いた人のブラウザにサンプルを入れない（見に来ただけの人の保存領域を汚さない）
-  if (!_viewParams().on) ensureSampleCourse();   // 初回のみサンプルを取り込む（失敗しても起動に影響しない）
+  if (!_viewParams().on) {
+    ensureSampleCourse()                       // 初回のみサンプルを取り込む（失敗しても起動に影響しない）
+      .then(() => migratePhotosToIdb())        // 本体に埋まっている写真を IndexedDB へ移す
+      .then(() => gcPhotos())                  // 使われていない写真を片づける
+      .then(() => renderStorageInfo())
+      .catch(() => {});
+  }
   // 写真ファイル入力リスナー
   document.getElementById('mPhotoFile')?.addEventListener('change', function(){ handlePhotoFile(this); });
   document.getElementById('mPhotoCamera')?.addEventListener('change', function(){ handlePhotoFile(this); });
@@ -1124,8 +1290,8 @@ function _askSaveBack() {
     document.body.appendChild(ov);
     ov.addEventListener('click', function(e){ if(e.target===ov) ov.style.display='none'; });
   }
-  ov.querySelector('#sbSave').onclick=function(){ ov.style.display='none';
-    if(courseInfo&&courseInfo.name){ if(saveCourse()===false) return; }   // 保存に失敗したら戻らない（JSON書き出しの機会を残す）
+  ov.querySelector('#sbSave').onclick=async function(){ ov.style.display='none';
+    if(courseInfo&&courseInfo.name){ if(await saveCourse()===false) return; }  // 保存に失敗したら戻らない（JSON書き出しの機会を残す）
     else { showToast('コース名が未設定のため保存せずに戻ります'); }
     _doBackToS1(); };
   ov.querySelector('#sbNoSave').onclick=function(){ ov.style.display='none'; _doBackToS1(); };
@@ -1337,7 +1503,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v88';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
+const APP_VERSION = 'v89';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
 }catch(_){} });
@@ -4275,10 +4441,11 @@ function renderModalPhotos() {
   _modalPhotos.forEach((src, i) => {
     const thumb = document.createElement('div');
     thumb.className = 'photo-thumb';
-    thumb.innerHTML = `<img src="${src}" alt="写真${i+1}">
+    thumb.innerHTML = `<img ${_photoAttr(src)} alt="写真${i+1}">
       <button class="photo-del" onclick="removeModalPhoto(${i})" title="削除">✕</button>`;
     strip.appendChild(thumb);
   });
+  _fillPhotoImgs(strip);     // 参照(idb:)の写真を取り出して表示
 }
 
 function removeModalPhoto(idx) {
@@ -4289,9 +4456,9 @@ function removeModalPhoto(idx) {
 /* ============================================================
    閲覧モード
    ============================================================ */
-function openViewMode() {
+async function openViewMode() {
   if (!courseInfo.name) { showToast('コースを選択・保存してから開いてください'); return; }
-  saveCourse();
+  await saveCourse();
   const data = buildCurrentSaveData();
   if (!data) return;
   const url = location.origin + location.pathname + '?view=' + encodeURIComponent(data.id);
@@ -4383,14 +4550,15 @@ function showViewInfo(wpId) {
   </div>`;
   if (wp.photos && wp.photos.length) {
     html2 += '<div class="vip-photos">';
-    wp.photos.forEach(p => { html2 += `<img src="${p}" onclick="openFullPhoto(this.src)" loading="lazy">`; });
+    wp.photos.forEach(p => { html2 += `<img ${_photoAttr(p)} onclick="openFullPhoto(this.src)" loading="lazy">`; });
     html2 += '</div>';
   }
   if (wp.desc) html2 += `<div class="vip-desc">${escHtml(wp.desc)}</div>`;
   if (wp.tel)  html2 += `<div class="vip-tel"><a href="tel:${escHtml(wp.tel)}">${escHtml(wp.tel)}</a></div>`;
 
-  const panel = document.getElementById('viewInfoPanel');
+  const panel = document.getElementById('viewInfoPanel');   // 表示後に参照写真を流し込む（_fillPhotoImgs）
   panel.innerHTML = html2;
+  _fillPhotoImgs(panel);        // 参照(idb:)の写真を取り出して表示
   panel.classList.add('show');
 }
 
@@ -4786,8 +4954,10 @@ function buildCurrentSaveData() {
 }
 
 // 保存できたら true、保存できなかったら false（呼び出し側で画面遷移を止められるように）
-function saveCourse() {
+// 写真の退避(IndexedDB)を待つため非同期。呼び出し側は await すること。
+async function saveCourse() {
   if (!courseInfo.name) { alert('コース名が設定されていません。一覧に戻って設定してください。'); return false; }
+  await _stashLivePhotos();       // 写真は IndexedDB へ。本体には参照だけを残す（容量対策）
   const data    = buildCurrentSaveData();
   const courses = getCourses();
   const idx     = courses.findIndex(c=>c.id===data.id);
@@ -4923,6 +5093,7 @@ function loadCourseData(data) {
 function renderCourseList() {
   const cont    = document.getElementById('courseList');
   const courses = getCourses();
+  if (typeof renderStorageInfo === 'function') renderStorageInfo();
 
   // Storage notice
   let notice = document.getElementById('storageNotice');
@@ -4976,13 +5147,13 @@ function renderCourseList() {
   });
 }
 
-function exportCourse() {
+async function exportCourse() {
   const data = buildCurrentSaveData();
   if (!data) { alert('エクスポートするコースがありません'); return; }
-  downloadJson(data, data.name);
+  downloadJson(await _embedPhotos(data), data.name);   // 写真の実体を入れて1ファイルで完結させる
 }
 
-function exportCourseData(data) { downloadJson(data, data.name); }
+async function exportCourseData(data) { downloadJson(await _embedPhotos(data), data.name); }
 
 /* ---- GPX 書き出し（GPX 1.1）--------------------------------------------
    ・<wpt> = スポット（なぞり端点 node は除く）／<trk> = 実際に描いているルート
@@ -5045,10 +5216,11 @@ function buildBackupData() {
            savedAt: new Date().toISOString(), count: list.length, courses: list };
 }
 // 復元を適用する。戻り値 {added, replaced, saved} ／ 形式が違えば null
-function applyBackupData(data) {
+async function applyBackupData(data) {
   if (!data || data.type !== 'backup' || !Array.isArray(data.courses)) return null;
   const valid = data.courses.filter(c => c && c.id != null && c.name && Array.isArray(c.wps));
   if (!valid.length) return null;
+  await _stashPhotos(valid);        // 写真は IndexedDB へ（本体を軽くしてから保存する）
   const list = getCourses();
   let added = 0, replaced = 0;
   valid.forEach(c => {
@@ -5058,9 +5230,11 @@ function applyBackupData(data) {
   const saved = setCourses(list);
   return { added: added, replaced: replaced, saved: saved };
 }
-function exportAllCourses() {
+async function exportAllCourses() {
   const data = buildBackupData();
   if (!data.count) { alert('保存されているコースがありません。'); return; }
+  data.courses = [];
+  for (const c of getCourses()) data.courses.push(await _embedPhotos(c));   // バックアップにも写真の実体を入れる
   const d = new Date(), p = n => String(n).padStart(2, '0');
   _downloadJsonAs(data, 'footpath_backup_' + d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()) + '.json');
 }
@@ -5069,7 +5243,7 @@ function importBackupFile(input) {
   input.value = '';
   if (!file) return;
   const reader = new FileReader();
-  reader.onload = e => {
+  reader.onload = async e => {
     let data = null;
     try { data = JSON.parse(e.target.result); }
     catch (err) { alert('ファイルを読み込めませんでした（JSONではありません）。'); return; }
@@ -5078,7 +5252,7 @@ function importBackupFile(input) {
       return;
     }
     if (!confirm('バックアップから ' + data.courses.length + ' 件を復元します。\n同じコースは上書きされます。よろしいですか？')) return;
-    const r = applyBackupData(data);
+    const r = await applyBackupData(data);
     if (!r) { alert('復元できるコースがありませんでした。'); return; }
     renderCourseList();
     if (!r.saved && lsAvail()) {
@@ -5128,7 +5302,10 @@ function openShareDialog(course) {
   ov.querySelector('#shName').textContent = course.name || '(名称未設定)';
   fileEl.value = _shareFileName('course-' + (course.id || Date.now()));
   fileEl.oninput = sync; sync();
-  ov.querySelector('#shExport').onclick = () => { _downloadJsonAs(course, _shareFileName(fileEl.value)); sync(); };
+  ov.querySelector('#shExport').onclick = async () => {
+    _downloadJsonAs(await _embedPhotos(course), _shareFileName(fileEl.value));   // 配布ファイルは写真も入れる
+    sync();
+  };
   ov.querySelector('#shCopy').onclick = () => {
     urlEl.select(); urlEl.setSelectionRange(0, 99999);
     if (navigator.clipboard) navigator.clipboard.writeText(urlEl.value).then(()=>showToast('🔗 リンクをコピーしました'), ()=>showToast('コピーできませんでした（長押しで選択してください）'));
@@ -5226,12 +5403,13 @@ function importCourseFromFile(input) {
   const file = input.files[0];
   if (!file) return;
   const reader = new FileReader();
-  reader.onload = e => {
+  reader.onload = async e => {
     try {
       const data = JSON.parse(e.target.result);
       if (!data.name || !Array.isArray(data.wps)) { alert('無効なコースファイルです'); return; }
       data.id = Date.now();
       data.savedAt = new Date().toISOString();
+      await _stashPhotos([data]);      // 取り込んだ写真も IndexedDB へ
       const courses = getCourses();
       courses.push(data);
       const ok = setCourses(courses);

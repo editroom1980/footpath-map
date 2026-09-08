@@ -150,7 +150,8 @@ def static_checks(src):
     chk('静的', '閲覧専用CSS（編集UIを隠す）', 'body.viewonly' in src)
     chk('静的', '配布リンクでは保存ボタンを隠す', 'body.viewonly .hbtn-save' in src)
     chk('静的', '配布リンクで説明文を読み取り専用表示', 'function _applyViewDesc' in src and 'view-desc' in src)
-    chk('静的', '配布リンクではサンプルを取り込まない', '!_viewParams().on) ensureSampleCourse' in src)
+    chk('静的', '配布リンクではサンプルを取り込まない',
+        re.search(r'if \(!_viewParams\(\)\.on\)', src) is not None)
     chk('静的', 'ファイル名指定の書き出し _downloadJsonAs 存在', 'function _downloadJsonAs' in src)
     # --- v83: GPX書き出し／全コース一括バックアップ ---
     chk('静的', 'GPX生成 buildGpx 存在', 'function buildGpx' in src)
@@ -202,13 +203,25 @@ def static_checks(src):
     chk('静的', '見本の大きさは定数から設定する',
         'LABEL_SIZES[Number(el.getAttribute(' in src and 'WP_SIZES[Number(el.getAttribute(' in src)
     chk('静的', 'コース0件の案内がある', '下の「＋ 新しいコースを作成」から始められます' in src)
+    # --- v89: 写真の保存先を IndexedDB へ ---
+    for fn in ['_idb', '_photoPut', '_photoGet', '_stashPhotos', '_embedPhotos',
+               'migratePhotosToIdb', 'gcPhotos', 'renderStorageInfo']:
+        chk('静的', f'写真ストア {fn} 存在', f'function {fn}' in src)
+    chk('静的', '保存は写真の退避を待つ（saveCourse は非同期）', 'async function saveCourse' in src)
+    chk('静的', '「保存して戻る」も待つ', 'await saveCourse()===false' in src.replace(' ===', '==='))
+    chk('静的', '書き出しは写真の実体を埋め込む', src.count('await _embedPhotos(') >= 4,
+        f"件数={src.count('await _embedPhotos(')}")
+    chk('静的', '表示は参照に対応（_photoAttr/_fillPhotoImgs）',
+        'function _photoAttr' in src and 'function _fillPhotoImgs' in src)
+    chk('静的', '取り込んだ写真も退避する', 'await _stashPhotos([data])' in src)
     chk('静的', '背景地図に配色済みタイル追加', all(k in src for k in ['opentopo:', 'carto:', 'osm_hot:']))
     chk('静的', '背景地図切替 cycleBaseMap 存在', 'function cycleBaseMap' in src)
     chk('静的', 'PCツールバーに地図切替ボタン', 'id="btnBaseMap"' in src)
     chk('静的', 'サンプル取り込み ensureSampleCourse 存在', 'async function ensureSampleCourse' in src)
     chk('静的', 'サンプルURL定数 SAMPLE_URL 維持', 'const SAMPLE_URL' in src)
     chk('静的', 'サンプル済みフラグ(LS.sampleDone)を使用', 'sampleDone' in src)
-    chk('静的', '起動時にサンプル取り込みを呼ぶ', 'ensureSampleCourse();' in src)
+    chk('静的', '起動時にサンプル取り込みを呼ぶ',
+        re.search(r'if \(!_viewParams\(\)\.on\)\s*\{\s*\n\s*ensureSampleCourse\(\)', src) is not None)
 
 # ----------------------------------------------------------------------
 # 2) 機能チェック（Playwright ヘッドレス）
@@ -501,21 +514,21 @@ def functional_checks(index_path):
         chk('機能', 'GPXが妥当（GPX1.1・地点数一致・特殊文字も壊れない）', ok_gp, str(gp)[:190])
 
         # INV-S: 一括バックアップは往復でき、同じコースを二重に増やさない
-        bk = page.evaluate("""()=>{ try{
+        bk = page.evaluate("""()=>{ return (async()=>{ try{
             const before = getCourses();
             setCourses([{id:'bk1',name:'A',wps:[{id:1,lat:35,lng:134}]},
                         {id:'bk2',name:'B',wps:[{id:1,lat:35,lng:134}]}]);
             const backup = buildBackupData();
             setCourses([{id:'bk1',name:'A-古い',wps:[{id:1,lat:35,lng:134}]}]);   // 1件だけ・内容も古い状態
-            const r1 = applyBackupData(backup);                                   // 復元
+            const r1 = await applyBackupData(backup);                             // 復元
             const after = getCourses();
-            const r2 = applyBackupData(backup);                                   // 二度目＝増えない
+            const r2 = await applyBackupData(backup);                             // 二度目＝増えない
             const after2 = getCourses();
-            const bad = applyBackupData({type:'course'});                         // 形式違いは受け付けない
+            const bad = await applyBackupData({type:'course'});                   // 形式違いは受け付けない
             setCourses(before);
             return {r1:r1, n:after.length, names:after.map(c=>c.name).sort(),
                     r2:r2, n2:after2.length, bad:bad, cnt:backup.count, type:backup.type};
-          }catch(e){ return 'ERR:'+e.message; } }""")
+          }catch(e){ return 'ERR:'+e.message; } })(); }""")
         ok_bk = (isinstance(bk, dict) and bk.get('cnt') == 2 and bk.get('type') == 'backup'
                  and bk['r1']['added'] == 1 and bk['r1']['replaced'] == 1 and bk.get('n') == 2
                  and bk.get('names') == ['A', 'B'] and bk.get('n2') == 2
@@ -576,15 +589,15 @@ def functional_checks(index_path):
             and pr.get('s1') == 'none' and pr.get('actions') == 'none', str(pr))
 
         # INV-W: 未保存フラグが「編集で立ち、保存で下りる」
-        dy = page.evaluate("""()=>{ try{
+        dy = page.evaluate("""()=>{ return (async()=>{ try{
             const start = _dirty;
             saveSnapshot();                       // 編集操作の共通入口
             const afterEdit = _dirty;
             courseInfo = courseInfo || {}; if(!courseInfo.name) courseInfo.name = '未保存テスト';
-            const okSave = saveCourse();          // 保存できれば false に戻る
+            const okSave = await saveCourse();    // 保存できれば false に戻る
             const afterSave = _dirty;
             return {start:start, afterEdit:afterEdit, okSave:okSave, afterSave:afterSave};
-          }catch(e){ return 'ERR:'+e.message; } }""")
+          }catch(e){ return 'ERR:'+e.message; } })(); }""")
         chk('機能', '未保存フラグが編集で立ち保存で下りる',
             isinstance(dy, dict) and dy.get('afterEdit') is True and dy.get('afterSave') is False, str(dy))
 
@@ -637,6 +650,46 @@ def functional_checks(index_path):
                  and len(pv.get('dots', [])) == 3
                  and pv['dots'][0] < pv['dots'][1] < pv['dots'][2])
         chk('機能', '設定メニューが実際の大きさで見本を出す', ok_pv, str(pv)[:170])
+
+        # INV-AA: 写真が IndexedDB に退避され、参照から元に戻せる（使えない環境では実体のまま）
+        ph = page.evaluate("""()=>{ return (async()=>{ try{
+            const DATA = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUg==';
+            const arr = [DATA];
+            const moved = await _stashPhotoArray(arr);
+            const ref   = arr[0];
+            const back  = await _photoSrc(ref);
+            const emb   = await _embedPhotos({wps:[{photos:[ref]}]});
+            // IndexedDB が使えない環境では実体のまま（従来動作）になることを確認する
+            const savedIdb = _idbP; _idbP = Promise.resolve(null);
+            const arr2 = [DATA]; const moved2 = await _stashPhotoArray(arr2);
+            _idbP = savedIdb;
+            return {moved:moved, isRef:_isPhotoRef(ref), back:back===DATA,
+                    embed:emb.wps[0].photos[0]===DATA, fallbackMoved:moved2, fallbackKept:arr2[0]===DATA};
+          }catch(e){ return 'ERR:'+e.message; } })(); }""")
+        idb_ok = (isinstance(ph, dict) and ph.get('moved') == 1 and ph.get('isRef') is True
+                  and ph.get('back') is True and ph.get('embed') is True)
+        fb_ok  = (isinstance(ph, dict) and ph.get('moved') == 0 and ph.get('back') is True)
+        chk('機能', '写真をIndexedDBへ退避し参照から復元できる（不可なら実体のまま）',
+            (idb_ok or fb_ok) and isinstance(ph, dict)
+            and ph.get('fallbackMoved') == 0 and ph.get('fallbackKept') is True,
+            ('IndexedDB利用: ' if idb_ok else '実体のまま(フォールバック): ') + str(ph)[:150])
+
+        # INV-AB: 保存後の localStorage に写真の実体が残っていない（IndexedDBが使えるとき）
+        lite = page.evaluate("""()=>{ return (async()=>{ try{
+            const DATA = 'data:image/png;base64,QUJDREVGR0hJSktMTU5PUFFSU1RVVldYWVo=';
+            const idbOK = !!(await _idb());
+            const wp = addWp(35.1520, 134.4451, 'course'); wp.name='写真テスト'; wp.photos=[DATA];
+            courseInfo.name = courseInfo.name || '写真テストコース';
+            await saveCourse();
+            const raw = (localStorage.getItem(LS.courses) || '');
+            const inLs = raw.indexOf(DATA) >= 0;
+            const kind = wp.photos[0].slice(0, 4);
+            return {idbOK:idbOK, inLs:inLs, kind:kind};
+          }catch(e){ return 'ERR:'+e.message; } })(); }""")
+        ok_lite = (isinstance(lite, dict) and
+                   ((lite.get('idbOK') and lite.get('inLs') is False and lite.get('kind') == 'idb:')
+                    or (not lite.get('idbOK') and lite.get('kind') == 'data')))
+        chk('機能', '保存後の本体に写真の実体が残らない', ok_lite, str(lite)[:170])
 
         b.close()
 
