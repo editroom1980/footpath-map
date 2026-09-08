@@ -11,3 +11,5 @@ __pycache__/
 # バックアップHTML（履歴は git で管理するため不要。必要なら手動で残す）
 index_v*_backup.html
 index_ROLLBACK_*.html
+# Claude Code のローカル設定（配信物ではない）
+.claude/
