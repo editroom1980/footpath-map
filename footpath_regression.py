@@ -112,6 +112,22 @@ def static_checks(src):
     chk('静的', 'ツールチップが _labelSize() を使用', "_labelSize()+'px'" in src)
     chk('静的', 'PCツールバーに文字サイズボタン', 'id="btnLabelSize"' in src)
     chk('静的', 'ラベル位置再計算 tooltip.update を呼ぶ', "_ttObj.update === 'function'" in src)
+    # --- v80: 文字・○の大きさ設定（スマホメニュー＋設定の保存）---
+    chk('静的', 'ラベル表示名 LABEL_SIZE_LABELS 維持', 'const LABEL_SIZE_LABELS' in src)
+    chk('静的', 'スポット○サイズ定数 WP_SIZES 維持', 'const WP_SIZES' in src)
+    chk('静的', '○サイズヘルパ _wpSize 存在', 'function _wpSize' in src)
+    chk('静的', 'WPマーカーが _wpSize を使用（36/30の直書きが無い）',
+        src.count('_wpSize()') >= 3 and 'isMobile() ? [36,36] : [30,30]' not in src)
+    chk('静的', 'サイズ設定 setLabelSize/setWpSize 存在',
+        'function setLabelSize' in src and 'function setWpSize' in src)
+    chk('静的', 'サイズ設定の保存キーが LS に集約',
+        re.search(r"labelSize:\s*'fp_labelsize'", src) is not None and
+        re.search(r"wpSize:\s*'fp_wpsize'", src) is not None)
+    chk('静的', '起動時にサイズ設定を復元 restoreSizePrefs', 'restoreSizePrefs();' in src)
+    chk('静的', 'ラベル位置が○の大きさに追従', '_wpSize()[1] / 2 + 4' in src)
+    chk('静的', 'スマホメニューに文字サイズ5段階', len(re.findall(r'data-lsz="\d"', src)) == 5)
+    chk('静的', 'スマホメニューに○サイズ3段階', len(re.findall(r'data-wsz="\d"', src)) == 3)
+    chk('静的', 'メニュー同期に _syncSizeMenu を含む', '_syncSizeMenu();' in src)
     chk('静的', '背景地図に配色済みタイル追加', all(k in src for k in ['opentopo:', 'carto:', 'osm_hot:']))
     chk('静的', '背景地図切替 cycleBaseMap 存在', 'function cycleBaseMap' in src)
     chk('静的', 'PCツールバーに地図切替ボタン', 'id="btnBaseMap"' in src)
@@ -286,6 +302,42 @@ def functional_checks(index_path):
           }catch(e){ return 'ERR:'+e.message; } }""")
         chk('機能', '名称ラベルサイズが全段階循環して標準に戻る',
             isinstance(lc, dict) and lc.get('back') is True and lc.get('n') >= 5, str(lc))
+
+        # INV-L: 文字・○の大きさ設定が保存され、再読込しても復元される（PC/スマホで状態共有）
+        sp = page.evaluate("""()=>{ try{
+            setLabelSize(2); setWpSize(2);
+            const sl = localStorage.getItem(LS.labelSize), sw = localStorage.getItem(LS.wpSize);
+            _labelSizeIdx = 0; _wpSizeIdx = 0;          // 再読込を模して既定へ戻す
+            restoreSizePrefs();                          // 保存値から復元
+            const r = {l:_labelSizeIdx, w:_wpSizeIdx};
+            setLabelSize(0); setWpSize(0);               // 後続テストのため標準へ戻す
+            return {sl:sl, sw:sw, r:r, stdLbl:_labelSize()===LABEL_SIZES[0], stdWp:_wpSizeIdx===0,
+                    btn:(document.getElementById('lblSizeTxt')||{}).textContent};
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        ok_sp = (isinstance(sp, dict) and sp.get('sl') == '2' and sp.get('sw') == '2'
+                 and sp.get('r') == {'l': 2, 'w': 2} and sp.get('stdLbl') and sp.get('stdWp')
+                 and sp.get('btn') == '標準')
+        chk('機能', '文字・○の大きさ設定が保存され復元される', ok_sp, str(sp)[:170])
+
+        # INV-M: ○の大きさ変更は見た目だけ（座標データ不変）＋ラベル位置と文字が追従。標準は従来値のまま
+        wsz = page.evaluate("""()=>{ try{
+            const wp = addWp(35.15257, 134.44501, 'course'); wp.name='テスト'; updateTooltip(wp);
+            const snap = ()=>{ const el = wp.marker.getElement().firstElementChild, tt = wp.marker.getTooltip();
+              return { d: Math.round(el.getBoundingClientRect().width),
+                       off: tt.options.offset[1],
+                       fs: Math.round(parseFloat(getComputedStyle(tt.getElement()).fontSize)),
+                       lat: wp.lat, lng: wp.lng }; };
+            setWpSize(0); setLabelSize(0); const std = snap();
+            setWpSize(2); setLabelSize(4); const big = snap();
+            setWpSize(0); setLabelSize(0);
+            return {std:std, big:big, dataSame: std.lat===big.lat && std.lng===big.lng};
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        ok_wsz = (isinstance(wsz, dict) and wsz.get('dataSame')
+                  and wsz['std']['d'] == 36 and wsz['std']['off'] == -22 and wsz['std']['fs'] == 11
+                  and wsz['big']['d'] > wsz['std']['d']
+                  and abs(wsz['big']['off']) > abs(wsz['std']['off'])
+                  and wsz['big']['fs'] > wsz['std']['fs'])
+        chk('機能', '○の大きさ変更は見た目だけ（標準は従来と同値）', ok_wsz, str(wsz)[:190])
 
         b.close()
 

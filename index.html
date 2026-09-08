@@ -609,6 +609,20 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
           <div class="mm-tog" onclick="toggleCustomFeature();_syncMobileMenu()"><span class="mm-tog-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6 -6l4 4l8 -8"/><path d="M14 7l7 0l0 7"/></svg></span><span class="mm-tog-l">細道機能</span><div class="mm-sw" id="mmSwCustom"></div></div>
           <div class="mm-tog" onclick="toggleCustomSnap();_syncMobileMenu()"><span class="mm-tog-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5l10 -10"/></svg></span><span class="mm-tog-l">スナップ</span><div class="mm-sw" id="mmSwSnap"></div></div>
         </div>
+        <div class="mm-sec">文字の大きさ（地名ラベル）</div>
+        <div class="mm-maplist">
+          <div class="mm-map" data-lsz="0" onclick="setLabelSize(0)"><span class="mm-map-l">標準</span><span class="mm-map-ck">✓</span></div>
+          <div class="mm-map" data-lsz="1" onclick="setLabelSize(1)"><span class="mm-map-l">大</span><span class="mm-map-ck">✓</span></div>
+          <div class="mm-map" data-lsz="2" onclick="setLabelSize(2)"><span class="mm-map-l">特大</span><span class="mm-map-ck">✓</span></div>
+          <div class="mm-map" data-lsz="3" onclick="setLabelSize(3)"><span class="mm-map-l">極大</span><span class="mm-map-ck">✓</span></div>
+          <div class="mm-map" data-lsz="4" onclick="setLabelSize(4)"><span class="mm-map-l">最大</span><span class="mm-map-ck">✓</span></div>
+        </div>
+        <div class="mm-sec">スポット○の大きさ</div>
+        <div class="mm-maplist">
+          <div class="mm-map" data-wsz="0" onclick="setWpSize(0)"><span class="mm-map-l">標準</span><span class="mm-map-ck">✓</span></div>
+          <div class="mm-map" data-wsz="1" onclick="setWpSize(1)"><span class="mm-map-l">大</span><span class="mm-map-ck">✓</span></div>
+          <div class="mm-map" data-wsz="2" onclick="setWpSize(2)"><span class="mm-map-l">特大</span><span class="mm-map-ck">✓</span></div>
+        </div>
         <div class="mm-sec">コース</div>
         <div class="mm-maplist">
           <div class="mm-map" onclick="closeMobileMenu();openReorderSheet()"><span class="mm-map-l">コースポイントの並べ替え</span><span class="mm-map-ck">›</span></div>
@@ -792,6 +806,10 @@ const OFF_MAX_PX = 20;       // 広がりの上限(px)。窮屈な箇所での�
 const IMG_SCALE  = 3;        // 画像保存の目標倍率(実機の高解像度相当)。下げれば軽く・上げれば高精細。実際はCanvas上限内に自動クランプ
 // --- 名称ラベルの文字サイズ（PCツールバーの「文字」ボタンで切替）---
 const LABEL_SIZES = [11, 14, 18, 22, 26];  // 標準/大/特大/極大/最大 (px)。保存画像にも反映
+const LABEL_SIZE_LABELS = ['標準','大','特大','極大','最大'];  // 表示名（PCの「文字」ボタンとスマホメニューで共用）
+// --- スポット○の大きさ（スマホメニューで切替。保存画像にも反映）---
+const WP_SIZES = [1, 1.25, 1.5];           // 基準(スマホ36px/PC30px)に対する倍率。○内の文字とラベル位置も この値に追従
+const WP_SIZE_LABELS = ['標準','大','特大'];
 // --- localStorage 保存キー（増減・改名時はこの1か所だけ直す）---
 const LS = {
   courses:     'fp_courses',      // 保存コース一覧
@@ -801,11 +819,14 @@ const LS = {
   customSnap:  'fp_custom_snap',  // 細道スナップON/OFF
   probe:       '_fp_t',           // localStorage 可用性チェック用
   sampleDone:  'fp_sample_done',  // サンプルコースを取り込み済み(または削除済み)かの記録
+  labelSize:   'fp_labelsize',    // 名称ラベルの文字サイズ段階（LABEL_SIZES の添字）
+  wpSize:      'fp_wpsize',       // スポット○の大きさ段階（WP_SIZES の添字）
 };
 // --- サンプルコース（初回起動時に一度だけ取り込む。削除したら復活しない）---
 const SAMPLE_URL = 'sample.json';   // index.html と同じ場所に置く
 let   _dblOn = true;         // 往復ずらし表示 ON/OFF（falseで完全に従来の見た目）
 let   _labelSizeIdx = 0;     // 名称ラベルの文字サイズ段階（0=標準/1=大/2=特大）。LABEL_SIZES の添字
+let   _wpSizeIdx    = 0;     // スポット○の大きさ段階（0=標準/1=大/2=特大）。WP_SIZES の添字
 let   _routeLineBase = null; // ルート線の素の座標（中央=データ準拠／ズーム再計算用）
 
 /* ============================================================
@@ -1078,6 +1099,7 @@ function initMap() {
   _baseTileLayer = _makeBaseLayer(_baseMapId).addTo(leafMap);
   _baseTileLayer.on('tileload', _hideMapMsg);
   _syncBaseMapMenu();
+  restoreSizePrefs();               // 文字・○の大きさ設定を復元（前回の設定を保持）
   _loadCustom(); _renderCustom();   // 細道（手描きの道）を読込・描画
   leafMap.on('click', onMapClick);
   leafMap.on('movestart', hideCtxMenu);
@@ -1197,7 +1219,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v79';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
+const APP_VERSION = 'v80';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
 }catch(_){} });
@@ -1857,7 +1879,7 @@ function addWp(lat, lng, type) {
 }
 
 function buildWpMarker(wp) {
-  const sz  = isMobile() ? [36,36] : [30,30];
+  const sz  = _wpSize();
   const anc = [sz[0]/2, sz[1]/2];
   const m = L.marker([wp.lat, wp.lng], {draggable:true, icon:wpIcon(wp,sz,anc), zIndexOffset:1000}).addTo(leafMap);
 
@@ -1889,7 +1911,7 @@ function buildWpMarker(wp) {
 }
 
 function wpIcon(wp, sz, anc) {
-  if (!sz)  sz  = isMobile() ? [36,36] : [30,30];
+  if (!sz)  sz  = _wpSize();
   if (!anc) anc = [sz[0]/2, sz[1]/2];
   // なぞりの端点(node)：調整点と同じ灰色の点（番号・S/Gなし）
   if (wp.type === 'node') {
@@ -1930,8 +1952,7 @@ function updateTooltip(wp) {
   wp.marker.unbindTooltip();
   if (wp.name && wp.name.trim()) {
     const dir  = wp.labelDir || 'top';
-    const mob  = isMobile();
-    const offV = mob ? 22 : 19;
+    const offV = Math.round(_wpSize()[1] / 2 + 4);   // ○の半径+4px。標準サイズでは従来と同じ(スマホ22/PC19)
     const off  = dir==='top'    ? [0,-offV] :
                  dir==='bottom' ? [0, offV] :
                  dir==='left'   ? [-offV, 0] : [offV, 0];
@@ -2351,6 +2372,7 @@ function _syncMobileMenu() {
   document.getElementById('mmSwView')?.classList.toggle('on', viewMode === true);
   _syncBaseMapMenu();
   _syncCustomMenu();
+  _syncSizeMenu();
 }
 
 /* 新規コース作成シート */
@@ -4720,13 +4742,54 @@ function _wpFont(sz, sym){
 // 名称ラベルの現在の文字サイズ(px)
 function _labelSize(){ return LABEL_SIZES[_labelSizeIdx] || LABEL_SIZES[0]; }
 
-// PCツールバーの「文字」ボタン：標準→大→特大 を循環し、既存ラベルへ即反映（保存画像にも効く）
-function cycleLabelSize(){
-  _labelSizeIdx = (_labelSizeIdx + 1) % LABEL_SIZES.length;
-  const lbl = ['標準','大','特大','極大','最大'][_labelSizeIdx] || '標準';
-  const t = document.getElementById('lblSizeTxt'); if (t) t.textContent = lbl;
+// スポット○の現在の直径(px)。基準(スマホ36/PC30)×段階倍率。○内文字とラベル位置もこの値から算出
+function _wpSize(){
+  const base = isMobile() ? 36 : 30;
+  const d = Math.round(base * (WP_SIZES[_wpSizeIdx] || WP_SIZES[0]));
+  return [d, d];
+}
+
+// 大きさ設定(段階)の保存・復元。値が壊れていても既定(0)に落ちるだけで起動は妨げない
+function _loadSizePref(key, len){
+  if (lsAvail()) { try { const v = parseInt(localStorage.getItem(key), 10); if (v >= 0 && v < len) return v; } catch(_){} }
+  return 0;
+}
+function _saveSizePref(key, i){
+  if (lsAvail()) { try { localStorage.setItem(key, String(i)); } catch(_){} }
+}
+// 起動時に保存済みの大きさ設定を復元（PCボタンの表示とスマホメニューのチェックも合わせる）
+function restoreSizePrefs(){
+  _labelSizeIdx = _loadSizePref(LS.labelSize, LABEL_SIZES.length);
+  _wpSizeIdx    = _loadSizePref(LS.wpSize,    WP_SIZES.length);
+  _syncSizeMenu();
+}
+// 名称ラベルの大きさを段階で設定（PCの「文字」ボタンとスマホメニューで状態を共有）
+function setLabelSize(i){
+  if (!(i >= 0 && i < LABEL_SIZES.length)) return;
+  _labelSizeIdx = i; _saveSizePref(LS.labelSize, i);
   wps.forEach(wp => updateTooltip(wp));          // 表示中のラベルへ即反映
-  if (typeof showToast === 'function') showToast('🔠 名称ラベル: ' + lbl);
+  _syncSizeMenu();
+  if (typeof showToast === 'function') showToast('🔠 名称ラベル: ' + LABEL_SIZE_LABELS[i]);
+}
+// スポット○の大きさを段階で設定（表示のみ。座標・ルート・高低差のデータは変えない）
+function setWpSize(i){
+  if (!(i >= 0 && i < WP_SIZES.length)) return;
+  _wpSizeIdx = i; _saveSizePref(LS.wpSize, i);
+  refreshIcons();                                // ○を新しい大きさで作り直す
+  wps.forEach(wp => updateTooltip(wp));          // ラベル位置を新しい○に合わせ直す
+  _syncSizeMenu();
+  if (typeof showToast === 'function') showToast('⭕ スポットの○: ' + WP_SIZE_LABELS[i]);
+}
+// PCツールバーの「文字」ボタン：標準→大→特大→極大→最大 を循環
+function cycleLabelSize(){ setLabelSize((_labelSizeIdx + 1) % LABEL_SIZES.length); }
+// PCボタンの文言とスマホメニューのチェックを現在値に合わせる
+function _syncSizeMenu(){
+  const t = document.getElementById('lblSizeTxt');
+  if (t) t.textContent = LABEL_SIZE_LABELS[_labelSizeIdx] || LABEL_SIZE_LABELS[0];
+  document.querySelectorAll('.mm-map[data-lsz]').forEach(el =>
+    el.classList.toggle('on', Number(el.getAttribute('data-lsz')) === _labelSizeIdx));
+  document.querySelectorAll('.mm-map[data-wsz]').forEach(el =>
+    el.classList.toggle('on', Number(el.getAttribute('data-wsz')) === _wpSizeIdx));
 }
 
 
