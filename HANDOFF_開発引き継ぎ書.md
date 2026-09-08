@@ -1,0 +1,179 @@
+# フットパスマップメーカー 開発引き継ぎ書
+
+最終更新時点の版：**v79** ／ 対象：`index.html`（単一ファイル）
+
+この文書は、コードで開発を継続する人（または Claude Code）が、
+現状を正確に把握し、**不具合を出さず・いつでも元に戻せる**やり方で作業を続けるためのものです。
+設計の詳細は同梱の **`ARCHITECTURE.md`**、回帰テストの内訳は **`footpath_regression_README.md`** を併読してください。
+
+---
+
+## 0. まず読む順番
+1. 本書 3章「開発ルール（絶対厳守）」
+2. `ARCHITECTURE.md`（描画パイプライン・不変条件・セクション地図）
+3. 本書 7〜8章（回帰テストとローカル検証環境）
+
+---
+
+## 1. プロダクト概要
+- **何**：フットパス（歩くコース）を地図上で設計する Web アプリ。スポットを置き、歩く順にルートを引き、距離・所要時間・高低差を出し、配布用画像や再編集用 JSON を書き出す。市町を問わず使える（宍粟市専用ではない）。
+- **技術構成**：**単一 HTML**（HTML+CSS+インライン JS）。外部依存は CDN の **Leaflet 1.9.4** と **html2canvas 1.4.1** のみ。地図タイルは外部提供元（OSM/GSI/OpenTopoMap 等）。
+- **配信**：GitHub Pages。リポジトリ `editroom1980/footpath-map`、公開 URL `https://editroom1980.github.io/footpath-map/`。**手動アップロード**運用（後述）。
+- **保存**：ブラウザの localStorage（不可時は memory フォールバック）。キーは `LS` オブジェクトに集約。
+- **PWA**：ホーム画面追加で全画面起動可（icon-192/512、apple-touch-icon 同梱）。
+
+---
+
+## 2. 現在の状態（v79 実装済み）
+- スポット（WP）12種、自動番号、編集（名称・種別・滞在時間・写真・電話・解説）。
+- 経路：OSRM 自動ルート＋**調整点(VP)**による手動優先、ルート線ドラッグで調整点追加、手動モード（道に吸着させない）。
+- 細道（手描き）＋スナップ、なぞり描き（スマホ）。
+- **往復ずらし表示**（表示専用オフセット。最も反復した繊細な処理）。
+- 背景地図5種：標準(OSM)/航空写真(GSI)/地形図(OpenTopoMap)/淡色(CARTO Voyager)/色違い(HOT)。PCは「地図」ボタン、スマホはメニュー。
+- 地名ラベル ON/OFF、**文字サイズ5段階**（標準/大/特大/極大/最大、保存画像に反映）。○内文字は円いっぱいに中央表示。
+- 画像保存（高画質・Canvas上限内で自動クランプ）／文字なし保存。
+- 高低差グラフ（PC）、閲覧モード、Undo/Redo、全消去、GPS現在地。
+- コース保存（ブラウザ）／JSON書き出し・読み込み／一覧。
+- **サンプルコース**：初回起動時に `sample.json` を一度だけ取り込む（写真7枚込み。削除したら復活しない）。
+
+---
+
+## 3. 開発ルール（絶対厳守）
+このプロジェクトの最優先は「**不具合を出さない・常に元に戻せる**」。以下は例外なく守る。
+
+1. **直接コミット/デプロイしない。** 成果物は手元に用意し、オーナーが手動で GitHub にアップロードする。アップロード後、オーナーが `?v=N` の N を1つ上げてキャッシュ更新する（`APP_VERSION` と一致していれば反映確認できる）。
+2. **毎回、直前版のバックアップを併せて渡す**（`index_vNN_backup.html`）。1手で戻せる状態を常に保つ。
+3. **出荷前に回帰テスト全PASSを確認**（`footpath_regression.py`）。1項目でも FAIL なら出荷しない。
+4. **出力は必ず CDN 版**：`grep -c cdnjs` == 3、`grep -c 'file:///'` == 0、`leaflet-rotate` 不使用。ローカル検証用の差し替えを本番に混ぜない。
+5. **静的チェックを毎回**：波括弧/丸括弧/角括弧の増減が各0、インライン JS を抽出して `node --check` が通る、`APP_VERSION` を更新。
+6. **検証できない変更はしない/正直に申告**。特に html2canvas の保存画像・実機タッチ感は最終的に実機確認が必要（8章）。データ・スコア・URL を捏造しない。
+7. 変更は**差分最小**。1機能=1リリースを基本に、各段階でバックアップ＋テスト。
+8. （Claude が継続する場合）応答は**日本語・簡潔**。オーナーは非プログラマなので、専門用語は避け結論から。
+
+---
+
+## 4. 開発〜出荷の手順（毎回のフロー）
+```
+1. 作業前：/mnt/user-data/outputs/index.html を作業コピーへ複製（sandboxはターン間でリセットされ得る）
+2. 変更を実装（差分最小・定数は先頭のCONSTANTSに集約）
+3. 静的チェック：括弧均衡 / インラインJSを node --check / cdnjs==3・local==0 / APP_VERSION 更新
+4. 回帰テスト：PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers python3 footpath_regression.py <file>  → 全PASS
+5. 新機能があれば回帰テストに検査を追加（7章）
+6. v78→v79 のように版数を上げ、直前版を index_vNN_backup.html として退避
+7. present_files で index.html＋バックアップ＋（更新した）harness を渡す
+8. 差分を全表示して意図した変更のみか最終確認
+```
+
+---
+
+## 5. コード地図（`index.html`・約4800行）
+上部から概ね：CONSTANTS → STATE → STORAGE → SCREEN 1（起動画面）→ GEOCODING → 背景地図 → MAP INIT → 細道 → WAYPOINTS → WPタイプピッカー → VIA POINTS → VPコンテキストメニュー → モバイルメニュー → GPS → なぞり描き → LONG PRESS → LINE DRAG → GEOMETRY → **POLYLINE（往復ずらし表示）** → OSRM ROUTING → DISTANCE+TIME → WAYPOINT LIST → MODAL → HELP MODAL → IMAGE SAVE → MODE/UNDO/CLEAR → UNDO/REDO → VP→WP変換 → 写真圧縮 → 閲覧モード → 高低差 → カスタム道路点編集/`buildCurrentSaveData` → HELPERS。
+
+**チューニング定数（先頭 CONSTANTS に集約）**
+- `DBL_GAP_PX=2` … 往復2本線の基本間隔(px)
+- `OFF_GEO_M=1.0` / `OFF_MAX_PX=20` … 往復オフセットの地理基準(m)と上限(px)。**間隔調整はここ1か所**
+- `IMG_SCALE=3` … 画像保存の目標倍率（`_imgScale(w,h)` が Canvas 上限内に整数クランプ）
+- `LABEL_SIZES=[11,14,18,22,26]` … 地名ラベルの5段階
+- `SAMPLE_URL='sample.json'` … サンプルの取得先（同じ場所に置く）
+- `LS={…}` … localStorage キーの集約（増減・改名はここだけ）
+- `WT`（種別定義）/ `SYM`（記号）/ `BASEMAPS`（背景地図定義）
+
+**知っておくと良い主要関数**
+- `getCourses()/setCourses()` … コース保存の読み書き（LS.courses）
+- `ensureSampleCourse()` … 初回のみサンプル取り込み（削除で復活しない／既存に触れない／失敗しても起動を妨げない）
+- `loadCourseData()/renderCourseList()/buildCurrentSaveData()` … 読み込み・一覧描画・保存データ生成
+- `wpIcon()/buildWpMarker()/updateTooltip()/refreshIcons()` … WPマーカーと地名ラベル
+- `_wpFont(sz,sym)` … ○内文字サイズ（1文字=内側×0.72 / 2文字=×0.54。はみ出し防止）
+- `_labelSize()/cycleLabelSize()` … 地名ラベルサイズ
+- `setBaseMap()/cycleBaseMap()` … 背景地図切替
+- `_buildDisplayCoords()` … 往復ずらしの表示座標生成（**最重要・6章**）
+- `saveMapAsImage()/saveMapNoText()` … 画像保存（`scale:_imgScale(w,h)`）
+
+---
+
+## 6. 描画パイプライン（最重要・壊れやすい）
+ルート線は「素の座標」と「表示用座標」を分けている。
+```
+経路データ → _routeLineBase（素の座標・データ準拠）
+           → _buildDisplayCoords()（往復区間だけ右へずらす“表示専用”）
+           → routeLine.setLatLngs(...)（画面表示のみ）
+```
+**絶対の前提**
+- `_buildDisplayCoords` は**表示だけ**を変える。`_lastRouteCoords`・当たり判定(`hitOverlays`)・高低差・実データは**一切変更しない**。
+- 往復が無ければ素の座標をそのまま返す（単線に余計なオフセットを掛けない）。
+- オフセットは進行方向の**常に右法線**。行きと帰りが必ず反対側になり交差しない。折返しは半円キャップ。
+- ズーム変更時は `_redrawRouteOffset`（zoomend）で再計算。
+- 間隔調整は `OFF_GEO_M`（広げたいなら上げる）／上限 `OFF_MAX_PX`。
+
+**「同じバグを再発させない」**：過去に直した自己交差・区間取り違え・間隔詰まりは、回帰テストの該当項目に対応している。緑を保つこと。詳細は `ARCHITECTURE.md`。
+
+---
+
+## 7. 回帰テスト（`footpath_regression.py`）
+- 実行：`PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers python3 footpath_regression.py /path/to/index.html`（終了コード0＝全PASS。項目数は実行時に表示、現在**54項目**）。
+- 実コース（千種町千草〜岩野辺・249点）を**ハーネスに埋め込み済み**で自己完結（別 JSON 不要）。
+- 検査の柱：
+  - 静的：CDN参照ちょうど3・ローカルパス0・leaflet-rotate不使用・括弧均衡・JS構文・`APP_VERSION`・LSキー集約・重要関数の存在・`maxZoom:21`・各チューニング定数の維持。
+  - 描画：実コースで自己交差≤1（z18-21）・往復なしは無変更・往復はオフセット・間隔が従来より狭くならない・高ズームで地理基準が効く。
+  - 実行時：ロード〜描画でJSエラー無し・保存/設定のLS往復・`buildCurrentSaveData`・画像倍率が安全枠内でiPhone高画質・○内文字がはみ出さない・ラベルサイズ循環・`tooltip.update()`/新背景地図/`cycleBaseMap`/`ensureSampleCourse` の存在。
+- **機能を足したら検査も足す**。`chk('区分','説明', 条件, 詳細)` を静的or機能ブロックに追記する。
+
+---
+
+## 8. ローカル検証環境（重要な制約と回避策）
+- **Playwright**：`PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers`、Chromium は `/opt/pw-browsers/chromium-1194/chrome-linux/chrome`。file:// で使う時は `--allow-file-access-from-files`。
+- **Leaflet の CDN が file:// で403**：テスト時は CDNの2行（css/js）を `node_modules/leaflet/dist/…` に sed 差し替えた版で動かす（ハーネスは自動でやる）。本番出力には**絶対に混ぜない**。事前に `npm install leaflet@1.9.4`。
+- **OSRM(router.project-osrm.org) が403**：実経路が要る検証は、ハーネス埋め込みの実コース座標に対して `_buildDisplayCoords` を直接当てる。ライブ・ルーティングはサンドボックスで不可。
+- **地図タイルはプレビューで白くなる**：保存画像の見た目は**公開URL**で確認。html2canvas の最終レンダは実機確認が前提。
+- **html2canvas は導入して部分検証できる**：`npm install html2canvas@1.4.1` し、円やツールチップを html2canvas で描画→出力Canvasの画素を解析すれば、○内文字の縦中心やラベル位置ずれを**数値で**確認できる（v78 でこの手法を使用）。
+- **ヘッドレスでズーム変更**：`setMaxZoom(24)` してから**1ズームずつ別呼び出し**で `setView`（連続ループは clamp される）。
+- **サンプル取り込みのテスト**：`python3 -m http.server` で配信し、`getCourses()` を評価して「初回取り込み／重複なし／既存保持／削除後に復活しない」を確認（v79 で実施）。
+
+---
+
+## 9. 変更履歴（v73→v79：何を・なぜ）
+- **v73** 往復間隔の地理基準化（`OFF_GEO_M`/`OFF_MAX_PX`）。高ズームで線幅が頭打ちになり間隔が詰まる不満を解消。狭くならない（max演算）・交差を増やさない。
+- **v74** 設定の一元化（LSキーを `LS` に集約、オフセット定数を先頭へ）。挙動不変。
+- **v75** ドキュメント（`ARCHITECTURE.md`）＋未使用ヘルパ `_segKey/_ptKey` 除去＋ハーネスに実行時検査を追加。
+- **v76** 画像保存の高画質化（`scale:1`→`_imgScale(w,h)`）。iPhoneの低解像度を解消、Canvas上限に整数クランプ、座標ズレ回避。
+- **v77** ○内文字を円いっぱいに（`_wpFont`、2文字は縮小してはみ出し防止）＋PCに地名ラベルサイズ設定（`LABEL_SIZES`・`cycleLabelSize`、保存画像に反映）。
+- **v78** ○内文字の中心ずれ修正（html2canvasがflex中央寄せを下げて描画→`text-align:center; line-height:内側`へ）＋地名ラベルの右ずれ修正（bind後のインライン変更で位置が古くなる→`tooltip.update()`）＋ラベル5段階化＋背景地図に3種追加（地形図/淡色/色違い）＋PCツールバーに「地図」切替。
+- **v79** サンプルコース自動取り込み（`sample.json`・`ensureSampleCourse`）。初回のみ・削除で復活せず・既存に非干渉・失敗しても起動継続。
+
+---
+
+## 10. 未対応・計画中の作業
+オーナーと方針合意済み/検討中のもの（着手前に必ずオーナー確認）。
+- **D. iPhoneの○をズーム連動で拡縮**：現状 WP円は固定px（`isMobile()?[36,36]:[30,30]`、Leaflet標準で退行ではない）。zoomend で円サイズ・文字・ラベル位置を再計算し、**クランプ付き**で「ある程度」拡縮する新機能。中リスク（全マーカー再描画・オフセット再計算と併存）。
+- **E. iPhone にサイズ設定**：PCの「文字」相当（○・地名ラベル・文字の大きさ）をモバイルメニューにも追加。状態はグローバル共有。
+- **G. PC高低差パネルの移動・リサイズ**：`#elevDetailPanel` は `position:fixed` の DOM。ヘッダードラッグ＋リサイズハンドルで実現可能。高さ可変はチャート再描画対応が必要。
+- **H. 地図の色**：要素別（森だけ/道路だけ）の色変更はラスタタイルでは不可。**(b)=別タイル追加は v78 で実施済み**。残る選択肢は (a) タイル全体に CSS フィルタで一括色味替え、(c) ベクトルタイル＋独自スタイル（大改修・ライブラリ＋APIキー要）。
+- **その他**：地名ラベルサイズは現状**セッション内保持**（再読込で標準に戻る）。恒久化するなら LS へ保存＋起動時にボタン表示同期。○内文字の縦中心は html2canvas で約+1%（ほぼ中央、必要なら微調整）。
+
+---
+
+## 11. ファイル一覧（`/mnt/user-data/outputs/`）
+- `index.html` … 現行 = **v79**（配信物）
+- `sample.json` … サンプルコース（**index.html と同じ場所に置く**。1.7MB、写真7枚込み）
+- `footpath_regression.py` … 回帰テスト（54項目・実コース埋め込み）
+- `ARCHITECTURE.md` … 設計・不変条件・描画パイプライン
+- `footpath_regression_README.md` … 回帰テストの内訳
+- `HANDOFF_開発引き継ぎ書.md` … 本書
+- `フットパスマップメーカー_使い方マニュアル.html` / `.docx` … エンドユーザー向け使い方
+- `apple-touch-icon.png` / `icon-192.png` / `icon-512.png` / `icon-1024.png` … PWA アイコン
+- `index_vNN_backup.html`（v62〜v78）/ `index_ROLLBACK_v4.12.html` … 各版バックアップ
+- `preview_label_circle.png` 他 … 検証用スクリーンショット
+
+---
+
+## 12. 既知の制約・注意点
+- **単一ファイル・グローバル状態**：状態は全てグローバル。新状態は STATE 区画にまとめ用途コメントを付ける。
+- **マーカーは画面固定サイズ**（Leaflet標準）。ズーム連動は未実装（D項）。
+- **背景地図3〜5は外部サーバー依存**：日本からの速度・稼働は環境次第。OpenTopoMap 等は低負荷利用が前提で、attribution を各レイヤに設定済み。読めない地図は該当1種だけ外せる。
+- **保存画像の最終見え・実機タッチ感はサンドボックスで完全再現不可** → 実機/公開URLで確認。
+- **localStorage 依存**：ブラウザデータ消去でコースも消える。JSON 書き出しがバックアップ手段（ユーザーにも案内済み）。
+- **写真は data URI で JSON に埋め込まれる**：コースに写真が多いと JSON が MB 級になる（sample は約1.6MBが写真）。HTML本体に埋め込まず別ファイル配信にしているのはこのため。
+
+---
+
+*本書は v79 時点の内容です。以降の変更は本書と `ARCHITECTURE.md`・`APP_VERSION` を更新してください。*

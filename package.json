@@ -1,0 +1,14 @@
+{
+  "name": "footpath-map",
+  "version": "0.79.0",
+  "description": "フットパスマップメーカー — 歩くコース設計 Web アプリ（単一 index.html）",
+  "private": true,
+  "scripts": {
+    "test": "python3 footpath_regression.py index.html",
+    "serve": "python3 -m http.server 8080"
+  },
+  "devDependencies": {
+    "html2canvas": "^1.4.1",
+    "leaflet": "^1.9.4"
+  }
+}

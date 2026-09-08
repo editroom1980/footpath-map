@@ -1,0 +1,13 @@
+# 依存（テスト時に npm install で再取得）
+node_modules/
+# テスト生成物・一時ファイル
+*.pdf
+_*.png
+_*.html
+_chk.js
+serve/
+__pycache__/
+.DS_Store
+# バックアップHTML（履歴は git で管理するため不要。必要なら手動で残す）
+index_v*_backup.html
+index_ROLLBACK_*.html
