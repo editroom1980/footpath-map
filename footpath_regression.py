@@ -160,6 +160,11 @@ def static_checks(src):
     chk('静的', '一括バックアップ buildBackupData/applyBackupData 存在',
         'function buildBackupData' in src and 'function applyBackupData' in src)
     chk('静的', 'バックアップUI（書き出し・復元）', 'exportAllCourses()' in src and 'importBackupFile(this)' in src)
+    # --- v84: 画像保存の後片付け（try内constをfinallyで参照していた不具合の再発防止）---
+    chk('静的', '画像保存の復元がスコープ外変数に依存しない',
+        '_savedVpOpacity' not in src and '_savedTtStyles' not in src and '_savedIconStyles' not in src)
+    chk('静的', '画像保存後にラベルと○を作り直す',
+        'wps.forEach(wp => updateTooltip(wp));   // ラベルの色・位置・サイズを作り直す' in src)
     chk('静的', '背景地図に配色済みタイル追加', all(k in src for k in ['opentopo:', 'carto:', 'osm_hot:']))
     chk('静的', '背景地図切替 cycleBaseMap 存在', 'function cycleBaseMap' in src)
     chk('静的', 'PCツールバーに地図切替ボタン', 'id="btnBaseMap"' in src)
@@ -479,6 +484,29 @@ def functional_checks(index_path):
                  and bk.get('names') == ['A', 'B'] and bk.get('n2') == 2
                  and bk['r2']['added'] == 0 and bk['r2']['replaced'] == 2 and bk.get('bad') is None)
         chk('機能', 'バックアップの往復で二重に増えない', ok_bk, str(bk)[:190])
+
+        # INV-T: 画像保存の後片付けが実際に走る（v84で修正した不具合の再発防止）
+        #  以前は try 内の const を finally で参照していたため復元コードが動かず、
+        #  撮影用に消したラベルの影・調整点の非表示が戻らなかった。
+        rs = page.evaluate("""()=>{ return (async()=>{ try{
+            const wp = addWp(35.15250, 134.44550, 'course');   // 検査用に必ずラベル付きWPを用意する
+            wp.name = 'ラベル確認'; updateTooltip(wp);
+            if (!(wp.marker && wp.marker.getTooltip && wp.marker.getTooltip())) return {no_wp:true};
+            const origH2C = window.html2canvas, origClick = HTMLAnchorElement.prototype.click;
+            window.html2canvas = () => Promise.resolve({ toDataURL: () => 'data:image/png;base64,AA' });
+            HTMLAnchorElement.prototype.click = function(){};        // 実ダウンロードはしない
+            let err = null;
+            try { await saveMapAsImage(); } catch(e){ err = String(e); }
+            window.html2canvas = origH2C; HTMLAnchorElement.prototype.click = origClick;
+            // 撮影用に付けた box-shadow:none が現役のラベルに残っていないこと（＝後片付けが走った証拠）
+            const live = wps.map(w => w.marker && w.marker.getTooltip && w.marker.getTooltip()
+                                      && w.marker.getTooltip().getElement()).filter(Boolean);
+            const left = live.filter(e => e.style.boxShadow === 'none').length;
+            return { err: err, left: left, tips: live.length };
+          }catch(e){ return 'ERR:'+e.message; } })(); }""")
+        ok_rs = (isinstance(rs, dict) and rs.get('err') is None and not rs.get('no_wp')
+                 and rs.get('tips', 0) >= 1 and rs.get('left') == 0)
+        chk('機能', '画像保存の後片付けが実行される（撮影用の見た目が残らない）', ok_rs, str(rs)[:170])
 
         b.close()
 

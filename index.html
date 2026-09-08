@@ -1256,7 +1256,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v83';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
+const APP_VERSION = 'v84';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
 }catch(_){} });
@@ -3700,17 +3700,11 @@ async function saveMapAsImage() {
   const mapEl = document.getElementById('map');
   try {
     // ── 編集要素を一時非表示（調整点・カスタム道路はマップ画像に映さない）──
-    const _savedVpOpacity = vps.map(vp => {
-      const el = vp.marker?.getElement();
-      const op = el?.style.opacity || '';
-      if (el) el.style.opacity = '0';
-      return op;
-    });
-    const _savedCrLines = customRoads.map(r => {
+    // 撮影後の復元は finally で「正しい状態を作り直す」方式（保存値の巻き戻しはしない）
+    vps.forEach(vp => { const el = vp.marker?.getElement(); if (el) el.style.opacity = '0'; });
+    customRoads.forEach(r => {
       const el = r._line?.getElement ? r._line.getElement() : null;
-      const op = el?.style.opacity || '';
       if (el) el.style.opacity = '0';
-      return op;
     });
     hitOverlays.forEach(ov => {
       const el = ov.getElement ? ov.getElement() : null;
@@ -3725,15 +3719,7 @@ async function saveMapAsImage() {
     //         → 撮影前に除去して復元
 
     // ツールチップの修正（opacityと背景色）
-    const _savedTtStyles = [];
     document.querySelectorAll('.leaflet-tooltip.wp-tt').forEach(function(el) {
-      _savedTtStyles.push({
-        el: el,
-        opacity:    el.style.opacity,
-        background: el.style.background,
-        boxShadow:  el.style.boxShadow,
-        border:     el.style.border
-      });
       el.style.opacity = '1';                                    // Leafletのopacity:0.9を上書き
       el.style.setProperty('box-shadow', 'none', 'important'); // box-shadowによる暗化を除去
       el.style.setProperty('border',     'none', 'important'); // border描画のずれを除去
@@ -3745,12 +3731,7 @@ async function saveMapAsImage() {
     });
 
     // WPマーカーの修正（box-shadowを除去して色を確定）
-    const _savedIconStyles = [];
     document.querySelectorAll('.leaflet-marker-icon div[data-wtype]').forEach(function(el) {
-      _savedIconStyles.push({
-        el: el,
-        boxShadow: el.style.boxShadow
-      });
       el.style.setProperty('box-shadow', 'none', 'important');
       var t = WT.find(function(x){ return x.v === el.getAttribute('data-wtype'); });
       if (t) el.style.setProperty('background', t.c, 'important');
@@ -3819,30 +3800,19 @@ async function saveMapAsImage() {
   } catch(e) {
     showToast('❌ 画像保存に失敗: ' + e.message);
   } finally {
-    // ── 編集要素を元の表示状態に復元 ──
-    // ツールチップのopacityと背景色を復元
-    if (typeof _savedTtStyles !== 'undefined') {
-      _savedTtStyles.forEach(function(s) {
-        s.el.style.opacity = s.opacity;
-        if (s.boxShadow) s.el.style.boxShadow  = s.boxShadow;  else s.el.style.removeProperty('box-shadow');
-        if (s.border)    s.el.style.border      = s.border;     else s.el.style.removeProperty('border');
-        if (s.background) s.el.style.background = s.background; else s.el.style.removeProperty('background');
-      });
-    }
-    // WPアイコンのbox-shadowを復元
-    if (typeof _savedIconStyles !== 'undefined') {
-      _savedIconStyles.forEach(function(s) {
-        if (s.boxShadow) s.el.style.boxShadow = s.boxShadow;
-        else s.el.style.removeProperty('box-shadow');
-      });
-    }
-    vps.forEach((vp, i) => {
+    // ── 撮影用の一時変更を元に戻す ──
+    // （v84修正）以前はここで try ブロック内の const を参照していたため、
+    //   復元が一切実行されず「画像保存すると調整点が消えたままになる」不具合があった。
+    //   保存値の巻き戻しではなく、正しい状態を作り直す関数を呼ぶ（!important の欠落も避けられる）。
+    wps.forEach(wp => updateTooltip(wp));   // ラベルの色・位置・サイズを作り直す
+    refreshIcons();                          // WPの○を作り直す（box-shadow も戻る）
+    vps.forEach(vp => {
       const el = vp.marker?.getElement();
-      if (el) el.style.opacity = _savedVpOpacity[i] ?? (viaVisible ? '1' : '0');
+      if (el) el.style.opacity = viaVisible ? '1' : '0';
     });
-    customRoads.forEach((r, i) => {
+    customRoads.forEach(r => {
       const el = r._line?.getElement ? r._line.getElement() : null;
-      if (el) el.style.opacity = _savedCrLines[i] || '';
+      if (el) el.style.opacity = '';
     });
     hitOverlays.forEach(ov => {
       const el = ov.getElement ? ov.getElement() : null;
