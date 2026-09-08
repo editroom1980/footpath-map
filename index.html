@@ -478,6 +478,7 @@ body.viewonly #descSec.view-desc textarea{background:#F9F7F4;border-color:#E6DCC
 .mm-map{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:0.5px solid rgba(0,0,0,0.05);cursor:pointer;font-size:13px;color:#4A2E0E}
 .mm-map:last-child{border-bottom:none}
 .mm-map-l{flex:1;line-height:1.3}
+.mm-dot{border-radius:50%;background:#C4703A;border:2px solid rgba(255,255,255,.9);box-shadow:0 1px 3px rgba(0,0,0,.3);flex:none}
 .mm-map-ck{opacity:0;color:#C4703A;font-weight:700;font-size:15px}
 .mm-map.on .mm-map-ck{opacity:1}
 .mm-map.on .mm-map-l{color:#C4703A;font-weight:700}
@@ -706,9 +707,9 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
         </div>
         <div class="mm-sec">スポット○の大きさ</div>
         <div class="mm-maplist">
-          <div class="mm-map" data-wsz="0" onclick="setWpSize(0)"><span class="mm-map-l">標準</span><span class="mm-map-ck">✓</span></div>
-          <div class="mm-map" data-wsz="1" onclick="setWpSize(1)"><span class="mm-map-l">大</span><span class="mm-map-ck">✓</span></div>
-          <div class="mm-map" data-wsz="2" onclick="setWpSize(2)"><span class="mm-map-l">特大</span><span class="mm-map-ck">✓</span></div>
+          <div class="mm-map" data-wsz="0" onclick="setWpSize(0)"><span class="mm-dot"></span><span class="mm-map-l">標準</span><span class="mm-map-ck">✓</span></div>
+          <div class="mm-map" data-wsz="1" onclick="setWpSize(1)"><span class="mm-dot"></span><span class="mm-map-l">大</span><span class="mm-map-ck">✓</span></div>
+          <div class="mm-map" data-wsz="2" onclick="setWpSize(2)"><span class="mm-dot"></span><span class="mm-map-l">特大</span><span class="mm-map-ck">✓</span></div>
         </div>
         <div class="mm-sec">コース</div>
         <div class="mm-maplist">
@@ -1336,7 +1337,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v87';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
+const APP_VERSION = 'v88';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
 }catch(_){} });
@@ -4939,7 +4940,10 @@ function renderCourseList() {
   if (cntEl) cntEl.textContent = courses.length + '件';
 
   if (courses.length===0) {
-    cont.innerHTML = '<div class="no-courses">保存されたコースはありません</div>';
+    cont.innerHTML = '<div class="no-courses">まだコースがありません<br>'
+                   + '<span style="font-size:11px;color:#8A7A63;line-height:1.7;display:block;margin-top:6px">'
+                   + '下の「＋ 新しいコースを作成」から始められます。<br>'
+                   + '作ったコースは、この画面に並びます。</span></div>';
     return;
   }
   cont.innerHTML = '';
@@ -5323,6 +5327,18 @@ function _syncSizeMenu(){
     el.classList.toggle('on', Number(el.getAttribute('data-wsz')) === _wpSizeIdx));
   document.querySelectorAll('.mm-map[data-spd]').forEach(el =>
     el.classList.toggle('on', Number(el.getAttribute('data-spd')) === _walkSpeedIdx));
+  // 選ぶ前に大きさが分かるよう、項目自体を「その大きさ」で見せる（定数が唯一の出どころ）
+  document.querySelectorAll('.mm-map[data-lsz]').forEach(el => {
+    const l = el.querySelector('.mm-map-l');
+    if (l) l.style.fontSize = (LABEL_SIZES[Number(el.getAttribute('data-lsz'))] || LABEL_SIZES[0]) + 'px';
+  });
+  document.querySelectorAll('.mm-map[data-wsz]').forEach(el => {
+    const d = el.querySelector('.mm-dot');
+    if (!d) return;
+    const base = isMobile() ? 36 : 30;
+    const px = Math.round(base * (WP_SIZES[Number(el.getAttribute('data-wsz'))] || WP_SIZES[0]) / 2);
+    d.style.width = px + 'px'; d.style.height = px + 'px';
+  });
   const sel = document.getElementById('walkSpeedSel');
   if (sel && Number(sel.value) !== _walkSpeedIdx) sel.value = String(_walkSpeedIdx);
 }

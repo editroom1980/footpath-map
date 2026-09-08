@@ -197,6 +197,11 @@ def static_checks(src):
     chk('静的', 'QR描画 _renderSheetQr 存在', 'function _renderSheetQr' in src)
     chk('静的', 'QRが無くてもシートは使える（未読込を許容）', "typeof QRCode === 'undefined'" in src)
     chk('静的', '配布リンクを覚える（LS.shareLinks）', re.search(r"shareLinks:\s*'fp_sharelinks'", src) is not None)
+    # --- v88: 設定の見本表示・はじめての人への案内 ---
+    chk('静的', '○の大きさに見本の丸がある', src.count('class="mm-dot"') >= 3)
+    chk('静的', '見本の大きさは定数から設定する',
+        'LABEL_SIZES[Number(el.getAttribute(' in src and 'WP_SIZES[Number(el.getAttribute(' in src)
+    chk('静的', 'コース0件の案内がある', '下の「＋ 新しいコースを作成」から始められます' in src)
     chk('静的', '背景地図に配色済みタイル追加', all(k in src for k in ['opentopo:', 'carto:', 'osm_hot:']))
     chk('静的', '背景地図切替 cycleBaseMap 存在', 'function cycleBaseMap' in src)
     chk('静的', 'PCツールバーに地図切替ボタン', 'id="btnBaseMap"' in src)
@@ -620,6 +625,18 @@ def functional_checks(index_path):
         chk('機能', '配布リンクがあるときだけシートにQR欄が出る',
             isinstance(qr, dict) and qr.get('withLink') is True and qr.get('noLink') is False
             and 'abc.json' in str(qr.get('stored')), str(qr)[:170])
+
+        # INV-Z: 設定メニューの見本が実際の大きさで表示される
+        pv = page.evaluate("""()=>{ try{
+            _syncSizeMenu();
+            const f = [...document.querySelectorAll('.mm-map[data-lsz] .mm-map-l')].map(e=>parseFloat(e.style.fontSize));
+            const d = [...document.querySelectorAll('.mm-map[data-wsz] .mm-dot')].map(e=>parseFloat(e.style.width));
+            return {fonts:f, dots:d, sizes:LABEL_SIZES.slice(), mobile:isMobile()};
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        ok_pv = (isinstance(pv, dict) and pv.get('fonts') == pv.get('sizes')
+                 and len(pv.get('dots', [])) == 3
+                 and pv['dots'][0] < pv['dots'][1] < pv['dots'][2])
+        chk('機能', '設定メニューが実際の大きさで見本を出す', ok_pv, str(pv)[:170])
 
         b.close()
 
