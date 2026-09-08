@@ -204,6 +204,13 @@ html,body{min-height:calc(100% + env(safe-area-inset-top));font-family:'Hiragino
 .vip-photos{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
 .vip-photos img{width:calc(50% - 4px);max-width:200px;height:140px;object-fit:cover;border-radius:8px;cursor:pointer}
 .vip-photos img:only-child{width:100%;max-width:100%;height:210px}
+/* 配布リンク(?course= / ?view=)で開いたときは編集UIを隠す（見る人が触って壊さないように）*/
+body.viewonly #tbar, body.viewonly #descSec, body.viewonly .hbtn-save, body.viewonly .drag-hint,
+body.viewonly .mob-modes, body.viewonly .mob-save,
+body.viewonly #mobileUndoBtn, body.viewonly #mobileRedoBtn{display:none!important}
+/* 説明文（見どころ）が書いてあるコースは、配布リンクでも読めるように出す（編集は不可）*/
+body.viewonly #descSec.view-desc{display:block!important}
+body.viewonly #descSec.view-desc textarea{background:#F9F7F4;border-color:#E6DCCB;min-height:70px}
 #viewBadge{position:fixed;top:8px;left:50%;transform:translateX(-50%);background:rgba(196,112,58,.9);color:#fff;font-size:11px;padding:4px 14px;border-radius:14px;z-index:2500;pointer-events:none;display:none}
 .ctx-it.ctx-convert{color:#2E7D32}
 /* Context menu */
@@ -511,7 +518,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
       <div id="wpSec">
         <div class="sec-hdr-wp">
           <span style="display:inline-flex;align-items:center;gap:4px"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M9 11a3 3 0 1 0 6 0a3 3 0 0 0 -6 0" /> <path d="M17.657 16.657l-4.243 4.243a2 2 0 0 1 -2.827 0l-4.244 -4.243a8 8 0 1 1 11.314 0" /></svg>ウェイポイント</span>
-          <span style="font-size:10px;color:#8A6A4A;font-weight:normal">ドラッグで並替</span>
+          <span class="drag-hint" style="font-size:10px;color:#8A6A4A;font-weight:normal">ドラッグで並替</span>
         </div>
         <div id="wpList">
           <div id="wpEmpty" style="font-size:10px;color:#aaa;text-align:center;padding:14px">地図をクリックして追加</div>
@@ -945,7 +952,8 @@ async function ensureSampleCourse() {
    ============================================================ */
 window.addEventListener('DOMContentLoaded', () => {
   renderCourseList();
-  ensureSampleCourse();   // 初回のみサンプルを取り込む（失敗しても起動に影響しない）
+  // 配布リンクで開いた人のブラウザにサンプルを入れない（見に来ただけの人の保存領域を汚さない）
+  if (!_viewParams().on) ensureSampleCourse();   // 初回のみサンプルを取り込む（失敗しても起動に影響しない）
   // 写真ファイル入力リスナー
   document.getElementById('mPhotoFile')?.addEventListener('change', function(){ handlePhotoFile(this); });
   document.getElementById('mPhotoCamera')?.addEventListener('change', function(){ handlePhotoFile(this); });
@@ -1239,7 +1247,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v81';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
+const APP_VERSION = 'v82';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
 }catch(_){} });
@@ -4054,33 +4062,75 @@ function openViewMode() {
   window.open(url, '_blank');
 }
 
+// URLの閲覧パラメータ。file=配布リンク(誰でも開ける) / id=同じ端末での確認用
+function _viewParams() {
+  const p = new URLSearchParams(location.search);
+  const file = _safeCourseFile(p.get('course'));
+  const id   = p.get('view');
+  return { file: file, id: id, on: !!(file || id) };
+}
+
+// 配布リンクで読めるのは「同じ場所に置いた .json」だけに限定する。
+// 外部URLや上位フォルダ(../)は受け付けない＝知らないサイトのデータを読み込まされない。
+function _safeCourseFile(v) {
+  if (!v) return null;
+  const s = String(v).trim();
+  if (s.includes('..') || s.includes('/') || s.includes('\\') || s.includes(':')) return null;
+  return /^[A-Za-z0-9_.-]+\.json$/i.test(s) ? s : null;   // 拡張子の大小は問わない（サーバ上の実名に合わせる）
+}
+
+// 配布用JSONを読み込む。成功したら true。（?course= の実処理。テストからも呼べるように分離）
+async function loadCourseFromFile(file) {
+  const safe = _safeCourseFile(file);
+  if (!safe) return false;
+  try {
+    const res = await fetch(safe, { cache: 'no-store' });
+    if (!res.ok) return false;
+    const data = await res.json();
+    if (!data || !data.name || !Array.isArray(data.wps)) return false;
+    loadCourseData(data);          // 表示するだけ。見る人のブラウザには保存しない
+    return true;
+  } catch (_) { return false; }
+}
+
+// 配布リンクで開いているとき、コース説明があれば読み取り専用で見せる（無ければ出さない）
+function _applyViewDesc() {
+  if (!document.body.classList.contains('viewonly')) return;
+  const sec = document.getElementById('descSec'), ta = document.getElementById('iDesc');
+  if (!sec || !ta) return;
+  const has = !!(ta.value || '').trim();
+  sec.classList.toggle('view-desc', has);
+  ta.readOnly = true;
+}
+
+function _showViewError(msg) {
+  const mapArea = document.getElementById('mapArea');
+  if (mapArea) mapArea.innerHTML = '<div style="padding:40px;text-align:center;color:#888;line-height:1.8">' + escHtml(msg) + '</div>';
+}
+
 function initViewMode() {
-  const params = new URLSearchParams(location.search);
-  const viewId = params.get('view');
-  if (!viewId) return;
+  const v = _viewParams();
+  if (!v.on) return;
   viewMode = true;
 
   // Hide editing UI
   document.getElementById('s1').style.display = 'none';
   document.getElementById('s2').style.display = 'flex';
+  document.body.classList.add('viewonly');
   const vb = document.getElementById('viewBadge');
   if (vb) vb.style.display = 'block';
 
   // Hide editing controls after s2 becomes visible
-  setTimeout(() => {
-    ['tbar','wpPane','descSec'].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.style.display = 'none';
-    });
+  setTimeout(async () => {
     if (!leafMap) initMap(); else leafMap.invalidateSize();
-    const courses = getCourses();
-    const course = courses.find(c => String(c.id) === String(viewId));
-    if (course) {
-      loadCourseData(course);
-    } else {
-      const mapArea = document.getElementById('mapArea');
-      if (mapArea) mapArea.innerHTML = '<div style="padding:40px;text-align:center;color:#888">コースが見つかりません。<br>編集デバイスからエクスポートしてインポートしてください。</div>';
+    if (v.file) {                                   // ① 配布リンク：同じ場所のJSONを読む（誰の端末でも開ける）
+      const ok = await loadCourseFromFile(v.file);
+      if (!ok) _showViewError('コースのファイルを読み込めませんでした。\nリンクが正しいか、ファイルが公開されているかご確認ください。');
+      return;
     }
+    const course = getCourses().find(c => String(c.id) === String(v.id));   // ② 同じ端末での確認用
+    if (course) loadCourseData(course);
+    else _showViewError('このコースはこの端末に保存されていません。\n配布用リンク（?course=ファイル名.json）をご利用ください。');
   }, 60);
 }
 
@@ -4618,6 +4668,7 @@ function loadCourseData(data) {
 
     const descEl = document.getElementById('iDesc');
     if (descEl) descEl.value = data.desc||'';
+    _applyViewDesc();   // 配布リンクで開いているときだけ、説明文を読み取り専用で表示する
 
     // カスタム道路: 機能廃止につき読み込まない
     customRoads = [];
@@ -4670,12 +4721,14 @@ function renderCourseList() {
       </div>
       <div class="cc-acts">
         <button class="cc-act" title="JSONで書き出し"><svg class=\"svgi\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d="M14 3v4a1 1 0 0 0 1 1h4" /> <path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2" /> <path d="M12 17v-6" /> <path d="M9.5 14.5l2.5 2.5l2.5 -2.5" /></svg></button>
+        <button class="cc-act" title="配布用リンクを作る"><svg class=\"svgi\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d="M9 15l6 -6" /> <path d="M11 6l.463 -.536a5 5 0 0 1 7.071 7.072l-.534 .464" /> <path d="M13 18l-.397 .534a5.068 5.068 0 0 1 -7.127 0a4.972 4.972 0 0 1 0 -7.071l.524 -.463" /></svg></button>
         <button class="cc-act rd" title="削除"><svg class=\"svgi\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d="M4 7l16 0" /> <path d="M10 11l0 6" /> <path d="M14 11l0 6" /> <path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12" /> <path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3" /></svg></button>
       </div>`;
-    const [expBtn,delBtn] = card.querySelectorAll('.cc-act');
+    const [expBtn,shareBtn,delBtn] = card.querySelectorAll('.cc-act');
     card.querySelector('.cc-info').addEventListener('click', ()=>loadCourseData(c));
     card.querySelector('.cc-thumb').addEventListener('click', ()=>loadCourseData(c));
     expBtn.addEventListener('click', e=>{e.stopPropagation();exportCourseData(c);});
+    shareBtn.addEventListener('click', e=>{e.stopPropagation();openShareDialog(c);});
     delBtn.addEventListener('click', e=>{e.stopPropagation();deleteCourse(c.id);});
     cont.appendChild(card);
   });
@@ -4689,15 +4742,76 @@ function exportCourse() {
 
 function exportCourseData(data) { downloadJson(data, data.name); }
 
+// 「配布用リンクを作る」ダイアログ。
+// ①ファイル名を決める → ②その名前でJSONを書き出す → ③同じ場所に置く → ④リンクを配る
+function openShareDialog(course) {
+  let ov = document.getElementById('shareDlg');
+  if (!ov) {
+    ov = document.createElement('div'); ov.id = 'shareDlg';
+    ov.style.cssText = 'position:fixed;inset:0;z-index:6000;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.45);padding:20px';
+    ov.innerHTML =
+      '<div style="background:#fff;border-radius:16px;max-width:420px;width:100%;padding:20px 18px;box-shadow:0 10px 40px rgba(0,0,0,.3);max-height:86vh;overflow-y:auto">'
+      + '<div style="font-size:16px;font-weight:700;color:#4A2E0E;margin-bottom:3px">配布用リンクを作る</div>'
+      + '<div id="shName" style="font-size:12px;color:#6A645E;margin-bottom:14px"></div>'
+      + '<div style="font-size:12px;font-weight:700;color:#4A2E0E;margin-bottom:5px">① ファイル名を決める（英数字）</div>'
+      + '<div style="display:flex;align-items:center;gap:6px;margin-bottom:12px">'
+      +   '<input id="shFile" style="flex:1;min-width:0;border:1px solid #DED5C8;border-radius:8px;padding:9px 10px;font-size:14px" placeholder="course-01">'
+      +   '<span style="font-size:13px;color:#6A645E">.json</span>'
+      + '</div>'
+      + '<div style="font-size:12px;font-weight:700;color:#4A2E0E;margin-bottom:5px">② この名前で書き出す</div>'
+      + '<button id="shExport" style="width:100%;border:none;border-radius:10px;padding:11px;font-size:14px;font-weight:700;background:linear-gradient(135deg,#FB8B3E,#F2670E);color:#fff;margin-bottom:12px">JSONを書き出す</button>'
+      + '<div style="font-size:12px;color:#6A645E;line-height:1.7;margin-bottom:12px">③ 書き出したファイルを、アプリ（index.html）と同じ場所に置いて公開します。</div>'
+      + '<div style="font-size:12px;font-weight:700;color:#4A2E0E;margin-bottom:5px">④ このリンクを配る</div>'
+      + '<input id="shUrl" readonly style="width:100%;border:1px solid #DED5C8;border-radius:8px;padding:9px 10px;font-size:12px;background:#F9F7F4;margin-bottom:8px">'
+      + '<div style="display:flex;flex-direction:column;gap:8px">'
+      +   '<button id="shCopy" style="border:none;border-radius:10px;padding:11px;font-size:14px;font-weight:700;background:#EEE5D8;color:#4A2E0E">リンクをコピー</button>'
+      +   '<button id="shPreview" style="border:none;border-radius:10px;padding:11px;font-size:14px;font-weight:700;background:#EEE5D8;color:#4A2E0E">この端末で見え方を確認</button>'
+      +   '<button id="shClose" style="border:none;border-radius:10px;padding:11px;font-size:14px;font-weight:700;background:#F5F1EA;color:#6A645E">閉じる</button>'
+      + '</div></div>';
+    document.body.appendChild(ov);
+    ov.addEventListener('click', e => { if (e.target === ov) ov.style.display = 'none'; });
+  }
+  const fileEl = ov.querySelector('#shFile'), urlEl = ov.querySelector('#shUrl');
+  const sync = () => { urlEl.value = _shareBaseUrl() + '?course=' + _shareFileName(fileEl.value); };
+  ov.querySelector('#shName').textContent = course.name || '(名称未設定)';
+  fileEl.value = _shareFileName('course-' + (course.id || Date.now()));
+  fileEl.oninput = sync; sync();
+  ov.querySelector('#shExport').onclick = () => { _downloadJsonAs(course, _shareFileName(fileEl.value)); sync(); };
+  ov.querySelector('#shCopy').onclick = () => {
+    urlEl.select(); urlEl.setSelectionRange(0, 99999);
+    if (navigator.clipboard) navigator.clipboard.writeText(urlEl.value).then(()=>showToast('🔗 リンクをコピーしました'), ()=>showToast('コピーできませんでした（長押しで選択してください）'));
+    else showToast('リンクを長押しでコピーしてください');
+  };
+  ov.querySelector('#shPreview').onclick = () => {
+    window.open(location.origin + location.pathname + '?view=' + encodeURIComponent(course.id), '_blank');
+  };
+  ov.querySelector('#shClose').onclick = () => { ov.style.display = 'none'; };
+  ov.style.display = 'flex';
+}
+
 function downloadJson(data, name) {
+  _downloadJsonAs(data, 'footpath_'+(name||'course').replace(/[^\w\u3040-\u9FFF]/g,'_')+'.json');
+}
+// ファイル名をそのまま指定して書き出す（配布用リンクでは名前がURLの一部になるため）
+function _downloadJsonAs(data, filename) {
   const blob = new Blob([JSON.stringify(data,null,2)], {type:'application/json'});
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement('a');
   a.href = url;
-  a.download = 'footpath_'+(name||'course').replace(/[^\w\u3040-\u9FFF]/g,'_')+'.json';
+  a.download = filename;
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   URL.revokeObjectURL(url);
-  showToast('📥 JSONをダウンロードしました');
+  showToast('📥 ' + filename + ' を書き出しました');
+}
+
+// 配布リンクの土台URL（index.html と同じ場所）。末尾のファイル名だけ落とす。
+function _shareBaseUrl() {
+  return location.origin + location.pathname.replace(/[^/]*$/, '');
+}
+// 配布用リンクのファイル名を安全な形に整える（URLに入るので英数字・-・_ だけ）
+function _shareFileName(v) {
+  const s = String(v || '').trim().replace(/\.json$/i, '').replace(/[^A-Za-z0-9_-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+  return (s || 'course') + '.json';
 }
 
 // 【調査用・読み取り専用】実際に描画しているルート座標(_routeLineBase)を書き出す。

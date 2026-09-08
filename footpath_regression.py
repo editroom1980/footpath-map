@@ -140,6 +140,16 @@ def static_checks(src):
         'i += ELEV_BATCH' in src and 'await Promise.all(pts.map(' not in src)
     chk('静的', 'ホーム画面追加用 manifest を参照', 'rel="manifest"' in src)
     chk('静的', '共有カード(OGP)とテーマ色', 'og:title' in src and 'theme-color' in src)
+    # --- v82: 配布用リンク（?course=xxx.json）---
+    chk('静的', '配布リンクの安全確認 _safeCourseFile 存在', 'function _safeCourseFile' in src)
+    chk('静的', '配布リンクの読込 loadCourseFromFile 存在', 'async function loadCourseFromFile' in src)
+    chk('静的', '配布リンクのダイアログ openShareDialog 存在', 'function openShareDialog' in src)
+    chk('静的', 'URLの course パラメータを読む', "p.get('course')" in src)
+    chk('静的', '閲覧専用CSS（編集UIを隠す）', 'body.viewonly' in src)
+    chk('静的', '配布リンクでは保存ボタンを隠す', 'body.viewonly .hbtn-save' in src)
+    chk('静的', '配布リンクで説明文を読み取り専用表示', 'function _applyViewDesc' in src and 'view-desc' in src)
+    chk('静的', '配布リンクではサンプルを取り込まない', '!_viewParams().on) ensureSampleCourse' in src)
+    chk('静的', 'ファイル名指定の書き出し _downloadJsonAs 存在', 'function _downloadJsonAs' in src)
     chk('静的', '背景地図に配色済みタイル追加', all(k in src for k in ['opentopo:', 'carto:', 'osm_hot:']))
     chk('静的', '背景地図切替 cycleBaseMap 存在', 'function cycleBaseMap' in src)
     chk('静的', 'PCツールバーに地図切替ボタン', 'id="btnBaseMap"' in src)
@@ -377,6 +387,42 @@ def functional_checks(index_path):
         chk('機能', '標高取得の同時リクエストが上限内',
             isinstance(eb, dict) and eb.get('peak') <= eb.get('batch', 0) and eb.get('calls') == 25
             and eb.get('n') == 25, str(eb))
+
+        # INV-P: 配布リンクは「同じ場所の.json」だけ受け付ける（外部URLや上位フォルダを弾く）
+        sf = page.evaluate("""()=>{ try{
+            const ok  = ['course-1.json','a_b-c.json','x.JSON'].map(v=>_safeCourseFile(v));
+            const bad = ['../secret.json','https://evil.example/x.json','/etc/passwd.json','sub/dir.json',
+                         'x.txt','','javascript:alert(1)', null].map(v=>_safeCourseFile(v));
+            return {ok:ok, bad:bad,
+                    name1:_shareFileName('Course 01!!'), name2:_shareFileName('a.json'),
+                    name3:_shareFileName('波賀町 コース'), base:/\\/$/.test(_shareBaseUrl())};
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        ok_sf = (isinstance(sf, dict)
+                 and sf['ok'][0] == 'course-1.json' and sf['ok'][1] == 'a_b-c.json' and sf['ok'][2] == 'x.JSON'
+                 and all(v is None for v in sf['bad'])
+                 and sf['name1'] == 'Course-01.json' and sf['name2'] == 'a.json' and sf['name3'] == 'course.json'
+                 and sf['base'] is True)
+        chk('機能', '配布リンクは同じ場所の.jsonだけ受け付ける', ok_sf, str(sf)[:190])
+
+        # INV-Q: 配布用JSONを読み込むと表示される／壊れた内容や404は読み込まない
+        lf = page.evaluate("""()=>{ return (async()=>{ try{
+            const orig = window.fetch;
+            const stub = (body, ok) => { window.fetch = () => Promise.resolve({ok:ok!==false, json:()=>Promise.resolve(body)}); };
+            const good = {id:987654321, name:'配布テスト', area:'テスト', wps:[
+              {id:1,type:'course',name:'A',lat:35.152,lng:134.445,onRoute:true,photos:[]},
+              {id:2,type:'course',name:'B',lat:35.153,lng:134.446,onRoute:true,photos:[]}], vps:[], maxWpId:2, maxVpNum:0};
+            stub(good);           const r1 = await loadCourseFromFile('dist.json');
+            stub({nope:1});       const r2 = await loadCourseFromFile('dist.json');
+            stub(good, false);    const r3 = await loadCourseFromFile('dist.json');
+            const r4 = await loadCourseFromFile('../evil.json');       // 危険な名前は fetch すらしない
+            window.fetch = orig;
+            const saved = getCourses().some(c => c && c.id === 987654321);   // 見る人の端末に保存しない
+            return {r1:r1, r2:r2, r3:r3, r4:r4, saved:saved, name:(courseInfo||{}).name};
+          }catch(e){ return 'ERR:'+e.message; } })(); }""")
+        ok_lf = (isinstance(lf, dict) and lf.get('r1') is True and lf.get('r2') is False
+                 and lf.get('r3') is False and lf.get('r4') is False and lf.get('saved') is False
+                 and lf.get('name') == '配布テスト')
+        chk('機能', '配布用JSONを表示でき、端末には保存しない', ok_lf, str(lf)[:190])
 
         b.close()
 
