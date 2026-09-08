@@ -7,6 +7,17 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Footpath Mapmaker</title>
+<meta name="description" content="歩くコース（フットパス）を地図で設計し、配布用の地図画像やJSONを書き出せるWebアプリ。">
+<meta name="theme-color" content="#F2670E">
+<!-- SNS・LINEでURLを共有したときのカード表示（画像は公開URL基準の絶対パスが必要）-->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="フットパスマップメーカー">
+<meta property="og:title" content="フットパスマップメーカー">
+<meta property="og:description" content="歩くコースを地図で設計して、配布用の地図画像を作れます。">
+<meta property="og:url" content="https://editroom1980.github.io/footpath-map/">
+<meta property="og:image" content="https://editroom1980.github.io/footpath-map/icon-512.png">
+<meta name="twitter:card" content="summary">
+<link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" href="icon-192.png">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
@@ -804,6 +815,8 @@ const OFF_GEO_M  = 1.0;      // 片側オフセットの地理基準(m)。中ズ
 const OFF_MAX_PX = 20;       // 広がりの上限(px)。窮屈な箇所での過剰拡大による交差を防ぐ保険
 // --- 画像保存の解像度（高画質化はここ1か所）---
 const IMG_SCALE  = 3;        // 画像保存の目標倍率(実機の高解像度相当)。下げれば軽く・上げれば高精細。実際はCanvas上限内に自動クランプ
+// --- 標高（高低差グラフ）の取得 ---
+const ELEV_BATCH = 6;        // 標高APIへの同時リクエスト数（ブラウザの同時接続上限に合わせ、待ち行列による誤タイムアウトを防ぐ）
 // --- 名称ラベルの文字サイズ（PCツールバーの「文字」ボタンで切替）---
 const LABEL_SIZES = [11, 14, 18, 22, 26];  // 標準/大/特大/極大/最大 (px)。保存画像にも反映
 const LABEL_SIZE_LABELS = ['標準','大','特大','極大','最大'];  // 表示名（PCの「文字」ボタンとスマホメニューで共用）
@@ -892,9 +905,13 @@ function getCourses() {
   if (lsAvail()) try { return JSON.parse(localStorage.getItem(LS.courses)||'[]'); } catch(_) {}
   return _memCourses;
 }
+// 保存できたら true。容量超過などで書き込めなかったら false を返す。
+// （呼び出し側が「保存したつもりで消えていた」を防げるようにするため）
 function setCourses(list) {
   _memCourses = list;
-  if (lsAvail()) try { localStorage.setItem(LS.courses, JSON.stringify(list)); } catch(_) {}
+  if (!lsAvail()) return false;                       // 保存できない環境＝このセッション内のみ保持
+  try { localStorage.setItem(LS.courses, JSON.stringify(list)); return true; }
+  catch(_) { return false; }                          // 容量超過など＝実際には保存できていない
 }
 
 // サンプルコースを初回だけ取り込む。
@@ -1009,7 +1026,10 @@ function _askSaveBack() {
     document.body.appendChild(ov);
     ov.addEventListener('click', function(e){ if(e.target===ov) ov.style.display='none'; });
   }
-  ov.querySelector('#sbSave').onclick=function(){ ov.style.display='none'; if(courseInfo&&courseInfo.name){ saveCourse(); } else { showToast('コース名が未設定のため保存せずに戻ります'); } _doBackToS1(); };
+  ov.querySelector('#sbSave').onclick=function(){ ov.style.display='none';
+    if(courseInfo&&courseInfo.name){ if(saveCourse()===false) return; }   // 保存に失敗したら戻らない（JSON書き出しの機会を残す）
+    else { showToast('コース名が未設定のため保存せずに戻ります'); }
+    _doBackToS1(); };
   ov.querySelector('#sbNoSave').onclick=function(){ ov.style.display='none'; _doBackToS1(); };
   ov.querySelector('#sbCancel').onclick=function(){ ov.style.display='none'; };
   ov.style.display='flex';
@@ -1219,7 +1239,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v80';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
+const APP_VERSION = 'v81';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
 }catch(_){} });
@@ -3394,6 +3414,15 @@ async function getCachedRoute(key, pts) {
   return coords;
 }
 
+let _routeWarnAt = 0;   // 経路サーバの不通を知らせた時刻（連続通知を抑えるため）
+// 経路が引けず直線で表示していることを知らせる。編集のたびに出さないよう30秒に1回まで。
+function _warnRouteFallback(){
+  const now = Date.now();
+  if (now - _routeWarnAt < 30000) return;
+  _routeWarnAt = now;
+  if (typeof showToast === 'function') showToast('⚠️ 経路サーバに接続できません（区間を直線で表示中）');
+}
+
 async function fetchOSRM(coordStr, pts) {
   const url = `https://router.project-osrm.org/route/v1/foot/${coordStr}?overview=full&geometries=geojson`;
   const ctrl = new AbortController();
@@ -3407,6 +3436,7 @@ async function fetchOSRM(coordStr, pts) {
       return data.routes[0].geometry.coordinates.map(c=>[c[1],c[0]]);
     }
   } catch(_) { clearTimeout(tid); }
+  _warnRouteFallback();              // 直線になったことをユーザーに伝える（黙って直線にしない）
   return pts.map(p=>[p.lat,p.lng]);  // fallback: straight line
 }
 
@@ -4158,13 +4188,18 @@ function _sampleCoords(coords, max) {
 
 async function _fetchElevs(pts) {
   const GSI = 'https://cyberjapandata2.gsi.go.jp/general/dem/scripts/getelevation.php';
-  const elevs = await Promise.all(pts.map(p =>
+  const one = p =>
     fetch(`${GSI}?lon=${p[1].toFixed(6)}&lat=${p[0].toFixed(6)}&outtype=JSON`,
           {signal: AbortSignal.timeout(8000)})
       .then(r => r.json())
       .then(d => typeof d.elevation === 'number' ? d.elevation : null)
-      .catch(() => null)
-  ));
+      .catch(() => null);
+  // 50件を一度に投げるとブラウザの同時接続上限で待たされ、順番待ちのまま8秒に達して
+  // 「取得失敗」になることがあった。ELEV_BATCH 件ずつ順番に取得する（提供元サーバへの配慮も兼ねる）。
+  const elevs = [];
+  for (let i = 0; i < pts.length; i += ELEV_BATCH) {
+    elevs.push(...await Promise.all(pts.slice(i, i + ELEV_BATCH).map(one)));
+  }
   const valid = elevs.filter(e => e !== null).length;
   if (valid < pts.length * 0.8) throw new Error('標高データ取得失敗');
   return elevs.map((e, i) => {
@@ -4463,15 +4498,23 @@ function buildCurrentSaveData() {
   };
 }
 
+// 保存できたら true、保存できなかったら false（呼び出し側で画面遷移を止められるように）
 function saveCourse() {
-  if (!courseInfo.name) { alert('コース名が設定されていません。一覧に戻って設定してください。'); return; }
+  if (!courseInfo.name) { alert('コース名が設定されていません。一覧に戻って設定してください。'); return false; }
   const data    = buildCurrentSaveData();
   const courses = getCourses();
   const idx     = courses.findIndex(c=>c.id===data.id);
   if (idx>=0) courses[idx]=data; else courses.push(data);
-  setCourses(courses);
+  const ok = setCourses(courses);
   currentCourseId = data.id;
+  if (!ok && lsAvail()) {                             // 書き込めなかった＝ブラウザの保存容量がいっぱい
+    alert('⚠️ 保存できませんでした（ブラウザの保存容量がいっぱいです）\n\n'
+        + '写真を減らすか、「JSON書き出し」でファイルに保存してください。\n'
+        + 'このままアプリを閉じると、今回の変更は失われます。');
+    return false;
+  }
   showToast(lsAvail() ? '💾 保存しました（ブラウザ）' : '💾 保存しました（メモリ/JSONエクスポート推奨）');
+  return true;
 }
 
 function deleteCourse(id) {
@@ -4706,9 +4749,14 @@ function importCourseFromFile(input) {
       data.savedAt = new Date().toISOString();
       const courses = getCourses();
       courses.push(data);
-      setCourses(courses);
+      const ok = setCourses(courses);
       renderCourseList();
-      showToast('📂 コースを読み込みました: ' + data.name);
+      if (!ok && lsAvail()) {                         // 容量超過＝一覧に出ても次回起動時には残らない
+        alert('⚠️ 読み込みましたが保存できませんでした（ブラウザの保存容量がいっぱいです）\n\n'
+            + '不要なコースを削除してから、もう一度読み込んでください。');
+      } else {
+        showToast('📂 コースを読み込みました: ' + data.name);
+      }
     } catch(err) { alert('ファイルの読み込みに失敗しました: '+err.message); }
   };
   reader.readAsText(file);

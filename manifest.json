@@ -1,0 +1,17 @@
+{
+  "name": "フットパスマップメーカー",
+  "short_name": "フットパス",
+  "description": "歩くコース（フットパス）を地図で設計し、配布用の地図画像やJSONを書き出せるWebアプリ。",
+  "lang": "ja",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#F5EDD8",
+  "theme_color": "#F2670E",
+  "icons": [
+    { "src": "icon-192.png",  "sizes": "192x192",   "type": "image/png" },
+    { "src": "icon-512.png",  "sizes": "512x512",   "type": "image/png" },
+    { "src": "icon-512.png",  "sizes": "512x512",   "type": "image/png", "purpose": "maskable" },
+    { "src": "icon-1024.png", "sizes": "1024x1024", "type": "image/png" }
+  ]
+}

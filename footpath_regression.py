@@ -128,6 +128,18 @@ def static_checks(src):
     chk('静的', 'スマホメニューに文字サイズ5段階', len(re.findall(r'data-lsz="\d"', src)) == 5)
     chk('静的', 'スマホメニューに○サイズ3段階', len(re.findall(r'data-wsz="\d"', src)) == 3)
     chk('静的', 'メニュー同期に _syncSizeMenu を含む', '_syncSizeMenu();' in src)
+    # --- v81: 保存失敗の通知・経路フォールバック通知・標高取得の分割・共有情報 ---
+    chk('静的', '保存関数が成否を返す (setCourses)',
+        'return true;' in src and re.search(r"catch\(_\)\s*\{ return false; \}", src) is not None)
+    chk('静的', '保存失敗をユーザーに知らせる', '保存できませんでした' in src)
+    chk('静的', '保存に失敗したら一覧へ戻らない', 'saveCourse()===false' in src.replace(' ', ''))
+    chk('静的', '経路フォールバック通知 _warnRouteFallback 存在', 'function _warnRouteFallback' in src)
+    chk('静的', 'OSRM失敗時に通知を呼ぶ', '_warnRouteFallback();' in src)
+    chk('静的', '標高取得の同時数 ELEV_BATCH 維持', 'const ELEV_BATCH' in src)
+    chk('静的', '標高取得を分割している（一括Promise.allでない）',
+        'i += ELEV_BATCH' in src and 'await Promise.all(pts.map(' not in src)
+    chk('静的', 'ホーム画面追加用 manifest を参照', 'rel="manifest"' in src)
+    chk('静的', '共有カード(OGP)とテーマ色', 'og:title' in src and 'theme-color' in src)
     chk('静的', '背景地図に配色済みタイル追加', all(k in src for k in ['opentopo:', 'carto:', 'osm_hot:']))
     chk('静的', '背景地図切替 cycleBaseMap 存在', 'function cycleBaseMap' in src)
     chk('静的', 'PCツールバーに地図切替ボタン', 'id="btnBaseMap"' in src)
@@ -338,6 +350,33 @@ def functional_checks(index_path):
                   and abs(wsz['big']['off']) > abs(wsz['std']['off'])
                   and wsz['big']['fs'] > wsz['std']['fs'])
         chk('機能', '○の大きさ変更は見た目だけ（標準は従来と同値）', ok_wsz, str(wsz)[:190])
+
+        # INV-N: 保存できなかったとき setCourses が false を返す（容量超過を検知できる）
+        qs = page.evaluate("""()=>{ try{
+            const orig = localStorage.setItem.bind(localStorage);
+            const okBefore = setCourses(getCourses());                 // 通常時は true
+            localStorage.setItem = ()=>{ const e=new Error('QuotaExceededError'); e.name='QuotaExceededError'; throw e; };
+            const okFull = setCourses(getCourses());                   // 容量超過を模擬 → false
+            localStorage.setItem = orig;
+            const okAfter = setCourses(getCourses());
+            return {okBefore:okBefore, okFull:okFull, okAfter:okAfter};
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        chk('機能', '保存容量オーバーを検知できる (setCourses=false)',
+            isinstance(qs, dict) and qs.get('okBefore') is True and qs.get('okFull') is False
+            and qs.get('okAfter') is True, str(qs))
+
+        # INV-O: 標高取得は ELEV_BATCH 件ずつ（同時接続を出しすぎない＝待ち行列による誤タイムアウトを防ぐ）
+        eb = page.evaluate("""()=>{ return new Promise(res=>{ try{
+            const orig = window.fetch; let live = 0, peak = 0, calls = 0;
+            window.fetch = () => { live++; calls++; peak = Math.max(peak, live);
+              return new Promise(r => setTimeout(() => { live--; r({json: () => Promise.resolve({elevation: 100})}); }, 5)); };
+            const pts = []; for (let i=0;i<25;i++) pts.push([35+i*0.001, 134+i*0.001]);
+            _fetchElevs(pts).then(v => { window.fetch = orig; res({peak:peak, calls:calls, n:v.length, batch:ELEV_BATCH}); })
+                            .catch(e => { window.fetch = orig; res('ERR:'+e.message); });
+          }catch(e){ res('ERR:'+e.message); } }); }""")
+        chk('機能', '標高取得の同時リクエストが上限内',
+            isinstance(eb, dict) and eb.get('peak') <= eb.get('batch', 0) and eb.get('calls') == 25
+            and eb.get('n') == 25, str(eb))
 
         b.close()
 
