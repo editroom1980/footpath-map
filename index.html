@@ -214,6 +214,44 @@ body.viewonly #mobileUndoBtn, body.viewonly #mobileRedoBtn{display:none!importan
 /* 説明文（見どころ）が書いてあるコースは、配布リンクでも読めるように出す（編集は不可）*/
 body.viewonly #descSec.view-desc{display:block!important}
 body.viewonly #descSec.view-desc textarea{background:#F9F7F4;border-color:#E6DCCB;min-height:70px}
+/* ===== 配布シート（印刷・PDF・画像）===== */
+#sheetOver{position:fixed;inset:0;z-index:6500;display:none;overflow:auto;background:rgba(40,30,20,.55);padding:16px}
+#sheetOver .sheet-actions{display:flex;gap:8px;justify-content:center;margin:0 auto 12px;max-width:1040px;flex-wrap:wrap}
+.sh-btn{border:none;border-radius:10px;padding:11px 18px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit}
+.sh-primary{background:linear-gradient(135deg,#FB8B3E,#F2670E);color:#fff}
+.sh-sub{background:#fff;color:#4A2E0E}
+#printSheet{max-width:1040px;margin:0 auto;background:#fff;border-radius:6px;padding:16px 18px;box-shadow:0 12px 40px rgba(0,0,0,.35);color:#3E2A0E;font-size:12px}
+.sh-head{display:flex;align-items:flex-end;gap:12px;border-bottom:2px solid #F2670E;padding-bottom:8px;margin-bottom:10px;flex-wrap:wrap}
+.sh-title{font-size:20px;font-weight:800;line-height:1.25}
+.sh-area{font-size:12px;color:#7A6A55;margin-top:2px}
+.sh-stats{margin-left:auto;display:flex;gap:16px;font-size:11px;color:#7A6A55;white-space:nowrap}
+.sh-stats b{display:block;font-size:17px;color:#3E2A0E;line-height:1.2}
+.sh-body{display:grid;grid-template-columns:1fr 262px;gap:14px;align-items:start}
+.sh-mapbox{position:relative;border:1px solid #E0D6C6;border-radius:4px;overflow:hidden}
+.sh-mapbox img{display:block;width:100%;height:auto}
+.sh-scale{position:absolute;left:9px;bottom:9px;background:rgba(255,255,255,.9);border-radius:3px;padding:3px 6px 2px;font-size:10px;line-height:1.25;color:#3E2A0E}
+.sh-scale i{display:block;height:5px;border:1.4px solid #3E2A0E;border-top:none;margin-bottom:2px}
+.sh-north{position:absolute;right:9px;top:9px;background:rgba(255,255,255,.9);border-radius:3px;padding:3px 8px;font-size:11px;font-weight:700;text-align:center;line-height:1.15;color:#3E2A0E}
+.sh-sec{font-size:10.5px;font-weight:700;color:#8A7A63;letter-spacing:.05em;margin:0 0 5px}
+.sh-legend{display:flex;flex-direction:column;gap:5px;margin-bottom:12px}
+.sh-lg{display:flex;align-items:center;gap:7px;font-size:11.5px}
+.sh-lgm{width:19px;height:19px;border-radius:50%;color:#fff;font-size:9.5px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:none}
+.sh-lgline{width:19px;border-top:3px dashed #E84040;flex:none}
+.sh-desc{font-size:11.5px;line-height:1.7;white-space:pre-wrap;margin-bottom:12px}
+.sh-spots{columns:2;column-gap:12px;font-size:11px;line-height:1.6}
+.sh-spot{break-inside:avoid;display:flex;gap:5px;margin-bottom:1px}
+.sh-spot b{flex:none;color:#C4703A}
+.sh-foot{margin-top:10px;padding-top:6px;border-top:1px solid #EFE7DA;font-size:9.5px;color:#8A7A63;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+@media (max-width:760px){#sheetOver{padding:10px}.sh-body{grid-template-columns:1fr}#printSheet{padding:12px}}
+@media print{
+  body > *:not(#sheetOver){display:none!important}
+  #sheetOver{position:static!important;display:block!important;background:#fff!important;padding:0!important;overflow:visible!important}
+  #sheetOver .sheet-actions{display:none!important}
+  #printSheet{max-width:none!important;box-shadow:none!important;border-radius:0!important;padding:0!important}
+  .sh-body{grid-template-columns:1fr 240px!important}
+  *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+  @page{size:A4 landscape;margin:8mm}
+}
 #viewBadge{position:fixed;top:8px;left:50%;transform:translateX(-50%);background:rgba(196,112,58,.9);color:#fff;font-size:11px;padding:4px 14px;border-radius:14px;z-index:2500;pointer-events:none;display:none}
 .ctx-it.ctx-convert{color:#2E7D32}
 /* Context menu */
@@ -573,6 +611,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
         <button class="btn" id="btnElev" onclick="toggleElevPanel()" title="高低差グラフ"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M4 19l16 0" /> <path d="M4 15l4 -6l4 2l4 -5l4 4" /></svg></button>
         <button class="btn" onclick="saveMapAsImage()" title="マップを画像保存"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M5 7h1a2 2 0 0 0 2 -2a1 1 0 0 1 1 -1h6a1 1 0 0 1 1 1a2 2 0 0 0 2 2h1a2 2 0 0 1 2 2v9a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-9a2 2 0 0 1 2 -2" /> <path d="M9 13a3 3 0 1 0 6 0a3 3 0 0 0 -6 0" /></svg></button>
         <button class="btn" onclick="saveMapNoText()" title="ラベル非表示で保存&#10;WP名称と地図の文字を消して保存"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M15 8h.01" /> <path d="M7 3h11a3 3 0 0 1 3 3v11m-.856 3.099a2.991 2.991 0 0 1 -2.144 .901h-12a3 3 0 0 1 -3 -3v-12c0 -.845 .349 -1.608 .91 -2.153" /> <path d="M3 16l5 -5c.928 -.893 2.072 -.893 3 0l5 5" /> <path d="M16.33 12.338c.574 -.054 1.155 .166 1.67 .662l3 3" /> <path d="M3 3l18 18" /></svg><span>文字なし</span></button>
+        <button class="btn" onclick="openPrintSheet()" title="配布シート&#10;A4印刷・PDF・画像用のレイアウト（凡例・縮尺・方位つき）"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M17 17h2a2 2 0 0 0 2 -2v-4a2 2 0 0 0 -2 -2h-14a2 2 0 0 0 -2 2v4a2 2 0 0 0 2 2h2" /> <path d="M17 9v-4a2 2 0 0 0 -2 -2h-6a2 2 0 0 0 -2 2v4" /> <path d="M7 13m0 2a2 2 0 0 1 2 -2h6a2 2 0 0 1 2 2v4a2 2 0 0 1 -2 2h-6a2 2 0 0 1 -2 -2z" /></svg><span>配布シート</span></button>
         <button class="btn" id="btnView" onclick="toggleViewMode()" title="閲覧モード&#10;ONの間はウェイポイントをタップで写真・解説を表示"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" /> <path d="M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6" /></svg></button>
         <button class="btn" onclick="openHelp()" title="操作ガイド"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0" /> <path d="M12 16v.01" /> <path d="M12 13a2 2 0 0 0 .914 -3.782a1.98 1.98 0 0 0 -2.414 .483" /></svg></button>
         <span id="tbar-st">クリックでウェイポイント追加 / ルート線ドラッグで経路調整</span>
@@ -665,6 +704,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
         <div class="mm-grid">
           <button class="mm-act" onclick="closeMobileMenu();saveMapAsImage()"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h1a2 2 0 0 0 2 -2a1 1 0 0 1 1 -1h6a1 1 0 0 1 1 1a2 2 0 0 0 2 2h1a2 2 0 0 1 2 2v9a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-9a2 2 0 0 1 2 -2" /> <path d="M9 13a3 3 0 1 0 6 0a3 3 0 0 0 -6 0" /></svg><span>画像保存</span></button>
           <button class="mm-act" onclick="closeMobileMenu();saveMapNoText()"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 8h.01" /> <path d="M7 3h11a3 3 0 0 1 3 3v11m-.856 3.099a2.991 2.991 0 0 1 -2.144 .901h-12a3 3 0 0 1 -3 -3v-12c0 -.845 .349 -1.608 .91 -2.153" /> <path d="M3 16l5 -5c.928 -.893 2.072 -.893 3 0l5 5" /> <path d="M16.33 12.338c.574 -.054 1.155 .166 1.67 .662l3 3" /> <path d="M3 3l18 18" /></svg><span>文字なし保存</span></button>
+          <button class="mm-act" onclick="closeMobileMenu();openPrintSheet()" title="配布シート（A4印刷・PDF・画像。凡例・縮尺・方位つき）"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 17h2a2 2 0 0 0 2 -2v-4a2 2 0 0 0 -2 -2h-14a2 2 0 0 0 -2 2v4a2 2 0 0 0 2 2h2" /> <path d="M17 9v-4a2 2 0 0 0 -2 -2h-6a2 2 0 0 0 -2 2v4" /> <path d="M7 13m0 2a2 2 0 0 1 2 -2h6a2 2 0 0 1 2 2v4a2 2 0 0 1 -2 2h-6a2 2 0 0 1 -2 -2z" /></svg><span>配布シート</span></button>
           <button class="mm-act" onclick="closeMobileMenu();exportGpx()" title="GPXで書き出し（YAMAP・ヤマレコ・Garmin・Google Earth などで開けます）"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l4 -8l5 6l3 -4l6 6" /> <path d="M3 21h18" /></svg><span>GPX書き出し</span></button>
           <button class="mm-act" onclick="closeMobileMenu();exportCourse()"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v4a1 1 0 0 0 1 1h4" /> <path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2" /> <path d="M12 17v-6" /> <path d="M9.5 14.5l2.5 2.5l2.5 -2.5" /></svg><span>JSON書き出し</span></button>
           <button class="mm-act" onclick="closeMobileMenu();exportRouteCoords()" title="実際のルート座標を書き出して開発者に送る調査用。地図・ルートには影響しません"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12" /><path d="M8 11l4 4l4 -4" /><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2" /></svg><span>ルート座標(調査)</span></button>
@@ -1256,7 +1296,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v84';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
+const APP_VERSION = 'v85';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
 }catch(_){} });
@@ -3691,12 +3731,9 @@ function closeHelp() { document.getElementById('helpModal').classList.remove('sh
 /* ============================================================
    IMAGE SAVE (html2canvas)
    ============================================================ */
-async function saveMapAsImage() {
-  if (typeof html2canvas === 'undefined') {
-    showToast('⚠️ 画像保存ライブラリが未読み込みです');
-    return;
-  }
-  showToast('⏳ マップ画像を生成中...');
+// 地図をそのまま画像(canvas)にする。撮影用の一時変更と後片付けはここに集約し、
+// 「画像保存」と「配布シート」の両方から使う（html2canvas 対策を1か所に保つため）。
+async function _captureMapCanvas() {
   const mapEl = document.getElementById('map');
   try {
     // ── 編集要素を一時非表示（調整点・カスタム道路はマップ画像に映さない）──
@@ -3791,14 +3828,7 @@ async function saveMapAsImage() {
         });
       },
     });
-    const url = canvas.toDataURL('image/png');
-    const a   = document.createElement('a');
-    a.href     = url;
-    a.download = `${(courseInfo.name||'footpath').replace(/[^\w\u3040-\u9FFF]/g,'_')}_map.png`;
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    showToast('📷 マップを画像で保存しました');
-  } catch(e) {
-    showToast('❌ 画像保存に失敗: ' + e.message);
+    return canvas;
   } finally {
     // ── 撮影用の一時変更を元に戻す ──
     // （v84修正）以前はここで try ブロック内の const を参照していたため、
@@ -3819,6 +3849,147 @@ async function saveMapAsImage() {
       if (el) el.style.opacity = '';
     });
   }
+}
+
+async function saveMapAsImage() {
+  if (typeof html2canvas === 'undefined') {
+    showToast('⚠️ 画像保存ライブラリが未読み込みです');
+    return;
+  }
+  showToast('⏳ マップ画像を生成中...');
+  try {
+    const canvas = await _captureMapCanvas();
+    const a = document.createElement('a');
+    a.href     = canvas.toDataURL('image/png');
+    a.download = `${(courseInfo.name||'footpath').replace(/[^\w\u3040-\u9FFF]/g,'_')}_map.png`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    showToast('📷 マップを画像で保存しました');
+  } catch(e) {
+    showToast('❌ 画像保存に失敗: ' + e.message);
+  }
+}
+
+/* ---- 配布シート ---------------------------------------------------------
+   地図画像＋タイトル・距離・所要時間・凡例・縮尺・方位・説明・スポット一覧を
+   A4横1枚にまとめる。印刷(PDF)にも画像保存にも同じ1枚を使う。
+   ----------------------------------------------------------------------- */
+
+// 縮尺バー。画面中央の緯度で 1px が何mかを測り、キリのよい距離を選ぶ。
+// 戻り値の ratio は「画像の横幅に対するバーの割合」＝印刷で縮んでも比率が保たれる。
+function _sheetScale(cssWidth) {
+  const NICE = [10, 20, 50, 100, 200, 300, 500, 1000, 2000, 5000];
+  try {
+    const c = leafMap.getCenter();
+    const p = leafMap.latLngToContainerPoint(c);
+    const a = leafMap.containerPointToLatLng([p.x - 50, p.y]);
+    const b = leafMap.containerPointToLatLng([p.x + 50, p.y]);
+    const mpp = leafMap.distance(a, b) / 100;                 // 1pxあたりのメートル
+    if (!(mpp > 0) || !(cssWidth > 0)) return null;
+    const target = cssWidth * 0.22 * mpp;                     // 画像幅の約2割を目安に
+    let m = NICE[0];
+    for (const n of NICE) if (n <= target) m = n;
+    return { meters: m, ratio: Math.min(0.6, (m / mpp) / cssWidth) };
+  } catch (_) { return null; }
+}
+
+// 凡例：このコースで実際に使っている種別だけを、地図と同じ○で並べる
+function _sheetLegend() {
+  const used = [];
+  wps.forEach(w => { const t = w.type || 'course'; if (t !== 'node' && used.indexOf(t) < 0) used.push(t); });
+  const rows = used.map(v => {
+    const t = WT.find(x => x.v === v) || WT[0];
+    const sym = v === 'course' ? '1' : (SYM[v] || '●');
+    return '<div class="sh-lg"><span class="sh-lgm" style="background:' + t.c + '">' + escHtml(sym) + '</span>'
+         + '<span>' + escHtml(t.l) + '</span></div>';
+  });
+  rows.push('<div class="sh-lg"><span class="sh-lgline"></span><span>歩くコース</span></div>');
+  return rows.join('');
+}
+
+function _sheetHtml(imgUrl, cssWidth) {
+  const sc   = _sheetScale(cssWidth);
+  const dist = (document.getElementById('distDisp') || {}).textContent || '';
+  const time = (document.getElementById('timeDisp') || {}).textContent || '';
+  const desc = ((document.getElementById('iDesc') || {}).value || '').trim();
+  const spots = wps.filter(w => w.type !== 'node' && w.name && w.name.trim()).map(w => {
+    const n = w.type === 'course' ? courseNum(w) : null;
+    const mark = n ? n : (SYM[w.type] || '・');
+    return '<div class="sh-spot"><b>' + escHtml(mark) + '</b><span>' + escHtml(w.name.replace(/\n/g, ' ')) + '</span></div>';
+  }).join('');
+  const attr = (BASEMAPS[_baseMapId] || {}).attribution || '';
+  const d = new Date(), p = n => String(n).padStart(2, '0');
+  return ''
+    + '<div class="sh-head">'
+    +   '<div><div class="sh-title">' + escHtml(courseInfo.name || 'フットパスコース') + '</div>'
+    +     (courseInfo.area ? '<div class="sh-area">' + escHtml(courseInfo.area) + '</div>' : '') + '</div>'
+    +   '<div class="sh-stats">'
+    +     '<div>総距離<b>' + escHtml(dist.replace(/^総距離:\s*/, '')) + '</b></div>'
+    +     '<div>所要時間<b>' + escHtml(time.replace(/^所要時間:\s*/, '').replace(/（.*?）/, '')) + '</b></div>'
+    +   '</div>'
+    + '</div>'
+    + '<div class="sh-body">'
+    +   '<div class="sh-mapbox">'
+    +     '<img src="' + imgUrl + '" alt="コースの地図">'
+    +     '<div class="sh-north">↑<br>北</div>'
+    +     (sc ? '<div class="sh-scale"><i style="width:' + (sc.ratio * 100).toFixed(2) + '%"></i>'
+    +           (sc.meters >= 1000 ? (sc.meters / 1000) + ' km' : sc.meters + ' m') + '</div>' : '')
+    +   '</div>'
+    +   '<div>'
+    +     '<div class="sh-sec">凡例</div><div class="sh-legend">' + _sheetLegend() + '</div>'
+    +     (desc ? '<div class="sh-sec">コースの見どころ</div><div class="sh-desc">' + escHtml(desc) + '</div>' : '')
+    +     (spots ? '<div class="sh-sec">スポット</div><div class="sh-spots">' + spots + '</div>' : '')
+    +   '</div>'
+    + '</div>'
+    + '<div class="sh-foot"><span>' + attr + '</span>'
+    +   '<span>' + d.getFullYear() + '/' + p(d.getMonth() + 1) + '/' + p(d.getDate()) + ' 作成 ／ Footpath Mapmaker</span></div>';
+}
+
+function _ensureSheetOverlay() {
+  let ov = document.getElementById('sheetOver');
+  if (ov) return ov;
+  ov = document.createElement('div'); ov.id = 'sheetOver';
+  ov.innerHTML =
+      '<div class="sheet-actions">'
+    +   '<button class="sh-btn sh-primary" onclick="window.print()">印刷 / PDFで保存</button>'
+    +   '<button class="sh-btn sh-sub" onclick="saveSheetAsImage()">画像で保存</button>'
+    +   '<button class="sh-btn sh-sub" onclick="closePrintSheet()">閉じる</button>'
+    + '</div><div id="printSheet"></div>';
+  document.body.appendChild(ov);
+  return ov;
+}
+function closePrintSheet() {
+  const ov = document.getElementById('sheetOver');
+  if (ov) ov.style.display = 'none';
+}
+async function openPrintSheet() {
+  if (!wps.length) { showToast('コースにスポットがありません'); return; }
+  if (typeof html2canvas === 'undefined') { showToast('⚠️ 画像保存ライブラリが未読み込みです'); return; }
+  showToast('⏳ 配布シートを作成中...');
+  try {
+    const mapEl  = document.getElementById('map');
+    const width  = mapEl ? mapEl.offsetWidth : 0;
+    const canvas = await _captureMapCanvas();
+    const ov = _ensureSheetOverlay();
+    document.getElementById('printSheet').innerHTML = _sheetHtml(canvas.toDataURL('image/png'), width);
+    ov.style.display = 'block';
+    ov.scrollTop = 0;
+  } catch (e) {
+    showToast('❌ 配布シートの作成に失敗: ' + e.message);
+  }
+}
+// シートそのものを画像として保存（印刷せずに配りたいとき）
+async function saveSheetAsImage() {
+  const sheet = document.getElementById('printSheet');
+  if (!sheet || typeof html2canvas === 'undefined') return;
+  showToast('⏳ 画像を作成中...');
+  try {
+    const canvas = await html2canvas(sheet, { scale: 2, backgroundColor: '#ffffff', useCORS: true, logging: false });
+    const a = document.createElement('a');
+    a.href = canvas.toDataURL('image/png');
+    a.download = 'footpath_' + _safeFileBase(courseInfo.name) + '_sheet.png';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    showToast('📷 配布シートを画像で保存しました');
+  } catch (e) { showToast('❌ 画像保存に失敗: ' + e.message); }
 }
 
 /* ============================================================

@@ -165,6 +165,17 @@ def static_checks(src):
         '_savedVpOpacity' not in src and '_savedTtStyles' not in src and '_savedIconStyles' not in src)
     chk('静的', '画像保存後にラベルと○を作り直す',
         'wps.forEach(wp => updateTooltip(wp));   // ラベルの色・位置・サイズを作り直す' in src)
+    # --- v85: 配布シート（A4印刷・PDF・画像／凡例・縮尺・方位）---
+    chk('静的', '地図の画像化を共通化 _captureMapCanvas', 'async function _captureMapCanvas' in src)
+    chk('静的', '画像保存が共通関数を使う', 'await _captureMapCanvas()' in src)
+    chk('静的', '配布シート openPrintSheet 存在', 'async function openPrintSheet' in src)
+    chk('静的', '縮尺バー _sheetScale 存在', 'function _sheetScale' in src)
+    chk('静的', '凡例 _sheetLegend 存在', 'function _sheetLegend' in src)
+    chk('静的', '印刷レイアウト（A4横）', '@media print' in src and 'size:A4landscape' in src.replace(' ', ''))
+    chk('静的', '印刷時は配布シートだけを出す', 'body > *:not(#sheetOver){display:none!important}' in src)
+    chk('静的', '色を印刷に反映（print-color-adjust）', 'print-color-adjust:exact' in src)
+    chk('静的', 'PC・スマホ両方に配布シートボタン', src.count('openPrintSheet()') >= 3,
+        f"呼び出し={src.count('openPrintSheet()')}")
     chk('静的', '背景地図に配色済みタイル追加', all(k in src for k in ['opentopo:', 'carto:', 'osm_hot:']))
     chk('静的', '背景地図切替 cycleBaseMap 存在', 'function cycleBaseMap' in src)
     chk('静的', 'PCツールバーに地図切替ボタン', 'id="btnBaseMap"' in src)
@@ -507,6 +518,36 @@ def functional_checks(index_path):
         ok_rs = (isinstance(rs, dict) and rs.get('err') is None and not rs.get('no_wp')
                  and rs.get('tips', 0) >= 1 and rs.get('left') == 0)
         chk('機能', '画像保存の後片付けが実行される（撮影用の見た目が残らない）', ok_rs, str(rs)[:170])
+
+        # INV-U: 配布シートが作られ、凡例・縮尺・方位が入る
+        sh = page.evaluate("""()=>{ return (async()=>{ try{
+            const orig = window.html2canvas;
+            window.html2canvas = () => Promise.resolve({ toDataURL: () => 'data:image/png;base64,AA' });
+            await openPrintSheet();
+            window.html2canvas = orig;
+            const s  = document.getElementById('printSheet');
+            const sc = _sheetScale(1000);
+            const used = new Set(wps.filter(w=>w.type!=='node').map(w=>w.type||'course'));
+            return { shown:getComputedStyle(document.getElementById('sheetOver')).display,
+                     img:!!s.querySelector('img'), north:!!s.querySelector('.sh-north'),
+                     legend:s.querySelectorAll('.sh-lg').length, used:used.size,
+                     meters:sc && sc.meters, ratio:sc && sc.ratio,
+                     title:(s.querySelector('.sh-title')||{}).textContent||'' };
+          }catch(e){ return 'ERR:'+e.message; } })(); }""")
+        ok_sh = (isinstance(sh, dict) and sh.get('shown') == 'block' and sh.get('img') and sh.get('north')
+                 and sh.get('legend') == sh.get('used', 0) + 1          # 種別ぶん＋「歩くコース」
+                 and sh.get('meters', 0) > 0 and 0 < sh.get('ratio', 0) <= 0.6)
+        chk('機能', '配布シートに凡例・縮尺・方位が入る', ok_sh, str(sh)[:180])
+
+        # INV-V: 印刷では配布シートだけが出る（操作ボタン・アプリ画面は出ない）
+        page.emulate_media(media='print')
+        pr = page.evaluate("""()=>{ const g=id=>{const e=document.getElementById(id); return e?getComputedStyle(e).display:'なし';};
+            return { sheet:g('sheetOver'), hdr:g('hdr'), s1:g('s1'),
+                     actions:getComputedStyle(document.querySelector('#sheetOver .sheet-actions')).display }; }""")
+        page.emulate_media(media='screen')
+        chk('機能', '印刷時は配布シートだけが出る',
+            isinstance(pr, dict) and pr.get('sheet') == 'block' and pr.get('hdr') == 'none'
+            and pr.get('s1') == 'none' and pr.get('actions') == 'none', str(pr))
 
         b.close()
 
