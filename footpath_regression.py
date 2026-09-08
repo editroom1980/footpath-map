@@ -214,6 +214,23 @@ def static_checks(src):
     chk('静的', '表示は参照に対応（_photoAttr/_fillPhotoImgs）',
         'function _photoAttr' in src and 'function _fillPhotoImgs' in src)
     chk('静的', '取り込んだ写真も退避する', 'await _stashPhotos([data])' in src)
+    # --- v90: オフライン対応（サービスワーカー）---
+    sw_path = os.path.join(os.path.dirname(os.path.abspath(INDEX)), 'sw.js')
+    sw = open(sw_path, encoding='utf-8').read() if os.path.exists(sw_path) else ''
+    chk('静的', 'sw.js がある', bool(sw), sw_path)
+    chk('静的', 'アプリ本体はネット優先（古い版で固まらない）',
+        'async function networkFirst' in sw and 'networkFirst(req)' in sw)
+    chk('静的', '地図タイルはキャッシュ優先＋上限あり',
+        'cacheFirst(req, TILE_CACHE' in sw and 'TILE_MAX' in sw and 'trimTiles' in sw)
+    chk('静的', '新しい版をすぐ有効にする（skipWaiting/claim）',
+        'skipWaiting()' in sw and 'clients.claim()' in sw)
+    chk('静的', '旧版のアプリキャッシュを片づける', "startsWith('fp-app-')" in sw)
+    chk('静的', 'オフライン解除スイッチ ?nosw=1',
+        "get('nosw')" in src and 'function _swUnregisterAll' in src)
+    chk('静的', 'オフライン保存 saveMapOffline 存在', 'async function saveMapOffline' in src)
+    chk('静的', 'タイル計算 offlineTileUrls 存在', 'function offlineTileUrls' in src)
+    chk('静的', '保存枚数の上限 OFFLINE_MAX_TILES 維持', 'const OFFLINE_MAX_TILES' in src)
+    chk('静的', 'オフライン表示のバッジ', 'offlineBadge' in src and 'body.offline' in src)
     chk('静的', '背景地図に配色済みタイル追加', all(k in src for k in ['opentopo:', 'carto:', 'osm_hot:']))
     chk('静的', '背景地図切替 cycleBaseMap 存在', 'function cycleBaseMap' in src)
     chk('静的', 'PCツールバーに地図切替ボタン', 'id="btnBaseMap"' in src)
@@ -691,7 +708,105 @@ def functional_checks(index_path):
                     or (not lite.get('idbOK') and lite.get('kind') == 'data')))
         chk('機能', '保存後の本体に写真の実体が残らない', ok_lite, str(lite)[:170])
 
+        # INV-AC: オフライン保存のタイル計算（範囲・上限・提供元の最大縮尺を守る）
+        tl = page.evaluate("""()=>{ try{
+            const b = L.latLngBounds([[35.150,134.440],[35.160,134.450]]);
+            const few  = offlineTileUrls(b, 15, 16, 600);
+            const cap  = offlineTileUrls(b, 15, 19, 4);     // 上限4枚 → 細かい縮尺は落とす
+            const zero = offlineTileUrls(b, 25, 26, 600);   // 提供元にない縮尺 → 0枚
+            const ok = few.every(u => /\/\d+\/\d+\/\d+\.(png|jpg)/.test(u) && u.indexOf('{') < 0);
+            return {few:few.length, cap:cap.length, zero:zero.length, wellFormed:ok, sample:few[0]||''};
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        chk('機能', 'オフライン保存のタイル計算が範囲と上限を守る',
+            isinstance(tl, dict) and tl.get('few', 0) > 0 and tl.get('cap', 99) <= 4
+            and tl.get('zero') == 0 and tl.get('wellFormed') is True, str(tl)[:170])
+
         b.close()
+
+
+# ----------------------------------------------------------------------
+# 3) オフライン検査（ローカルHTTPで配信し、実際に圏外にして確かめる）
+#    file:// では Service Worker を登録できないため、この検査だけHTTPで行う。
+# ----------------------------------------------------------------------
+def offline_checks(index_path):
+    try:
+        from playwright.sync_api import sync_playwright
+    except Exception:
+        return                                   # Playwright 未導入は機能チェック側で報告済み
+    import threading, functools, http.server, socketserver
+    here = os.path.dirname(os.path.abspath(index_path))
+    handler = functools.partial(http.server.SimpleHTTPRequestHandler, directory=here)
+    socketserver.TCPServer.allow_reuse_address = True
+    try:
+        httpd = socketserver.TCPServer(('127.0.0.1', 0), handler)
+    except Exception as e:
+        chk('オフライン', 'ローカル配信を起動できる', False, str(e)); return
+    port = httpd.server_address[1]
+    threading.Thread(target=httpd.serve_forever, daemon=True).start()
+
+    sandbox_chrome = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome'
+    launch_kwargs = {}
+    if os.path.exists(sandbox_chrome):
+        launch_kwargs['executable_path'] = sandbox_chrome
+    url = f'http://127.0.0.1:{port}/index.html'
+    try:
+        with sync_playwright() as pw:
+            b = pw.chromium.launch(**launch_kwargs)
+            ctx = b.new_context(viewport={'width': 390, 'height': 812})
+            page = ctx.new_page()
+            page.goto(url, wait_until='domcontentloaded')
+            # サービスワーカーが有効になるまで待つ
+            try:
+                page.wait_for_function("() => !!(navigator.serviceWorker && navigator.serviceWorker.controller)", timeout=12000)
+                controlled = True
+            except Exception:
+                controlled = False
+            chk('オフライン', 'サービスワーカーが有効になる', controlled)
+
+            if controlled:
+                page.wait_for_timeout(400)
+                cached = page.evaluate("""async () => {
+                    const keys = await caches.keys();
+                    const app  = keys.find(k => k.indexOf('fp-app-') === 0);
+                    if (!app) return {keys:keys, hit:false};
+                    const c = await caches.open(app);
+                    const hit = await c.match(location.origin + '/index.html', {ignoreSearch:true});
+                    return {keys:keys, hit:!!hit};
+                }""")
+                chk('オフライン', 'アプリ本体がキャッシュされる',
+                    isinstance(cached, dict) and cached.get('hit') is True, str(cached)[:120])
+
+                # ── 実際に圏外にして再読込 ──
+                ctx.set_offline(True)
+                try:
+                    page.reload(wait_until='domcontentloaded')
+                    page.wait_for_timeout(400)
+                    boot = page.evaluate("() => ({ver: (typeof APP_VERSION!=='undefined') ? APP_VERSION : null,"
+                                         " list: !!document.getElementById('courseList'),"
+                                         " online: navigator.onLine,"
+                                         " badge: document.body.classList.contains('offline')})")
+                except Exception as e:
+                    boot = 'ERR:' + str(e)
+                chk('オフライン', '圏外でもアプリが起動する',
+                    isinstance(boot, dict) and boot.get('ver') and boot.get('list') is True, str(boot)[:150])
+                # ブラウザが圏外と認識している時だけバッジを要求する（エミュレーションが onLine を変えない場合がある）
+                badge_ok = isinstance(boot, dict) and (boot.get('badge') is True if boot.get('online') is False else True)
+                chk('オフライン', '圏外の表示（バッジ）が出る', badge_ok, str(boot)[:150])
+                ctx.set_offline(False)
+
+                # ── 解除スイッチ（?nosw=1）──
+                page.goto(url + '?nosw=1', wait_until='domcontentloaded')
+                page.wait_for_timeout(900)
+                left = page.evaluate("async () => { const r = await navigator.serviceWorker.getRegistrations();"
+                                     " const k = await caches.keys(); return {regs:r.length, caches:k.filter(x=>x.indexOf('fp-')===0).length}; }")
+                chk('オフライン', '?nosw=1 でオフライン機能を解除できる',
+                    isinstance(left, dict) and left.get('regs') == 0 and left.get('caches') == 0, str(left))
+            b.close()
+    except Exception as e:
+        chk('オフライン', 'オフライン検査を実行できる', False, str(e)[:160])
+    finally:
+        try: httpd.shutdown()
+        except Exception: pass
 
 # ----------------------------------------------------------------------
 def main():
@@ -701,6 +816,7 @@ def main():
     src = open(INDEX, encoding='utf-8').read()
     static_checks(src)
     functional_checks(INDEX)
+    offline_checks(INDEX)
 
     # 結果出力
     cats = {}

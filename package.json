@@ -1,6 +1,6 @@
 {
   "name": "footpath-map",
-  "version": "0.89.0",
+  "version": "0.90.0",
   "description": "フットパスマップメーカー — 歩くコース設計 Web アプリ（単一 index.html）",
   "private": true,
   "scripts": {
