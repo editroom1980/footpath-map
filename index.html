@@ -37,6 +37,9 @@ html,body{min-height:calc(100% + env(safe-area-inset-top));font-family:'Hiragino
 .s1-count{font-size:11px;color:#A39B8E;background:#fff;border:0.5px solid #ECE6DC;padding:2px 10px;border-radius:11px;font-weight:600}
 .s1-import{width:100%;display:flex;align-items:center;justify-content:center;gap:7px;padding:13px;border-radius:14px;border:1.5px dashed #D8CEBE;background:transparent;color:#8A7A60;font-size:12px;font-weight:600;cursor:pointer;margin-top:3px}
 .s1-import .svgi{font-size:16px}
+.s1-tools{display:flex;gap:8px;margin-top:8px}
+.s1-tool{flex:1;display:flex;align-items:center;justify-content:center;gap:5px;padding:10px 6px;border-radius:11px;border:1px solid #E6DCCB;background:#FBF9F5;color:#6A645E;font-size:11.5px;font-family:inherit;cursor:pointer;text-align:center;line-height:1.35}
+.s1-tool:hover{background:#F4EFE7}
 .s1-fab{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:16px;border-radius:16px;background:linear-gradient(135deg,#FB8B3E,#F2670E);color:#fff;border:none;font-family:'Plus Jakarta Sans','Hiragino Sans',sans-serif;font-size:15px;font-weight:800;box-shadow:0 6px 16px rgba(242,103,14,0.32);cursor:pointer}
 .s1-fab .svgi{font-size:20px}
 /* コースカード */
@@ -472,6 +475,10 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
       <svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v4a1 1 0 0 0 1 1h4" /> <path d="M5 13v-8a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2h-5.5m-9.5 -2h7m-3 -3l3 3l-3 3" /></svg>JSONファイルから読み込む
       <input type="file" accept=".json" style="display:none" onchange="importCourseFromFile(this)">
     </label>
+    <div class="s1-tools">
+      <button class="s1-tool" onclick="exportAllCourses()" title="保存されている全コースを1つのファイルに書き出します">すべて書き出す<br>（バックアップ）</button>
+      <label class="s1-tool" title="バックアップファイルからコースを戻します">バックアップ<br>から復元<input type="file" accept=".json" style="display:none" onchange="importBackupFile(this)"></label>
+    </div>
   </div>
   <div style="padding:14px 0 6px">
     <button class="s1-fab" onclick="openNewCourseSheet()"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5l0 14" /> <path d="M5 12l14 0" /></svg>新しいコースを作成</button>
@@ -510,6 +517,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
     <h1 style="flex-shrink:0">Footpath Mapmaker</h1>
     <div id="cnDisp"></div>
     <button class="hbtn hbtn-save" onclick="saveCourse()" title="保存"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M6 4h10l4 4v10a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2" /> <path d="M10 14a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /> <path d="M14 4l0 4l-6 0l0 -4" /></svg></button>
+    <button class="hbtn" onclick="exportGpx()" title="GPXでダウンロード&#10;YAMAP・ヤマレコ・Garmin・Google Earth などで開けます"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M3 17l4 -8l5 6l3 -4l6 6" /> <path d="M3 21h18" /></svg></button>
     <button class="hbtn" onclick="exportCourse()" title="JSONでダウンロード"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M14 3v4a1 1 0 0 0 1 1h4" /> <path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2" /> <path d="M12 17v-6" /> <path d="M9.5 14.5l2.5 2.5l2.5 -2.5" /></svg></button>
     <button class="hbtn" onclick="backToS1()"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M5 12l14 0" /> <path d="M5 12l6 6" /> <path d="M5 12l6 -6" /></svg><span>一覧</span></button>
   </div>
@@ -657,6 +665,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
         <div class="mm-grid">
           <button class="mm-act" onclick="closeMobileMenu();saveMapAsImage()"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h1a2 2 0 0 0 2 -2a1 1 0 0 1 1 -1h6a1 1 0 0 1 1 1a2 2 0 0 0 2 2h1a2 2 0 0 1 2 2v9a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-9a2 2 0 0 1 2 -2" /> <path d="M9 13a3 3 0 1 0 6 0a3 3 0 0 0 -6 0" /></svg><span>画像保存</span></button>
           <button class="mm-act" onclick="closeMobileMenu();saveMapNoText()"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 8h.01" /> <path d="M7 3h11a3 3 0 0 1 3 3v11m-.856 3.099a2.991 2.991 0 0 1 -2.144 .901h-12a3 3 0 0 1 -3 -3v-12c0 -.845 .349 -1.608 .91 -2.153" /> <path d="M3 16l5 -5c.928 -.893 2.072 -.893 3 0l5 5" /> <path d="M16.33 12.338c.574 -.054 1.155 .166 1.67 .662l3 3" /> <path d="M3 3l18 18" /></svg><span>文字なし保存</span></button>
+          <button class="mm-act" onclick="closeMobileMenu();exportGpx()" title="GPXで書き出し（YAMAP・ヤマレコ・Garmin・Google Earth などで開けます）"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l4 -8l5 6l3 -4l6 6" /> <path d="M3 21h18" /></svg><span>GPX書き出し</span></button>
           <button class="mm-act" onclick="closeMobileMenu();exportCourse()"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v4a1 1 0 0 0 1 1h4" /> <path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2" /> <path d="M12 17v-6" /> <path d="M9.5 14.5l2.5 2.5l2.5 -2.5" /></svg><span>JSON書き出し</span></button>
           <button class="mm-act" onclick="closeMobileMenu();exportRouteCoords()" title="実際のルート座標を書き出して開発者に送る調査用。地図・ルートには影響しません"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12" /><path d="M8 11l4 4l4 -4" /><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2" /></svg><span>ルート座標(調査)</span></button>
           <button class="mm-act" onclick="closeMobileMenu();openHelp()"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0" /> <path d="M12 16v.01" /> <path d="M12 13a2 2 0 0 0 .914 -3.782a1.98 1.98 0 0 0 -2.414 .483" /></svg><span>ヘルプ</span></button>
@@ -1247,7 +1256,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v82';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
+const APP_VERSION = 'v83';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
 }catch(_){} });
@@ -4742,6 +4751,112 @@ function exportCourse() {
 
 function exportCourseData(data) { downloadJson(data, data.name); }
 
+/* ---- GPX 書き出し（GPX 1.1）--------------------------------------------
+   ・<wpt> = スポット（なぞり端点 node は除く）／<trk> = 実際に描いているルート
+   ・要素の順番は GPX 1.1 の規定どおり（metadata → wpt → trk、wpt内は name→desc→type）
+   ・データは表示用ではなく実データ(_lastRouteCoords)を使う（往復ずらしは表示専用のため）
+   --------------------------------------------------------------------- */
+function _escXml(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+}
+function _gpxWptName(w) {
+  if (w.name && w.name.trim()) return w.name.trim().replace(/\n/g, ' ');
+  if (w.type === 'course') { const n = courseNum(w); return n ? ('地点' + n) : '地点'; }
+  const t = WT.find(x => x.v === w.type);
+  return (t && t.l) || '地点';
+}
+function buildGpx() {
+  const name   = courseInfo.name || 'フットパスコース';
+  const desc   = (document.getElementById('iDesc') || {}).value || '';
+  const coords = (typeof _lastRouteCoords !== 'undefined' && _lastRouteCoords && _lastRouteCoords.length > 1)
+                 ? _lastRouteCoords : buildStraightCoords();
+  const wpts = wps.filter(w => w.type !== 'node').map(w =>
+      '  <wpt lat="' + Number(w.lat).toFixed(6) + '" lon="' + Number(w.lng).toFixed(6) + '">\n'
+    + '    <name>' + _escXml(_gpxWptName(w)) + '</name>\n'
+    + (w.desc ? '    <desc>' + _escXml(w.desc) + '</desc>\n' : '')
+    + '    <type>' + _escXml(w.type || 'course') + '</type>\n'
+    + '  </wpt>').join('\n');
+  const trkpts = (coords || []).map(c =>
+      '      <trkpt lat="' + Number(c[0]).toFixed(6) + '" lon="' + Number(c[1]).toFixed(6) + '"></trkpt>').join('\n');
+  return '<?xml version="1.0" encoding="UTF-8"?>\n'
+    + '<gpx version="1.1" creator="Footpath Mapmaker ' + APP_VERSION + '"\n'
+    + '     xmlns="http://www.topografix.com/GPX/1/1"\n'
+    + '     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"\n'
+    + '     xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">\n'
+    + '  <metadata>\n'
+    + '    <name>' + _escXml(name) + '</name>\n'
+    + (desc ? '    <desc>' + _escXml(desc) + '</desc>\n' : '')
+    + '    <time>' + new Date().toISOString() + '</time>\n'
+    + '  </metadata>\n'
+    + (wpts ? wpts + '\n' : '')
+    + '  <trk>\n'
+    + '    <name>' + _escXml(name) + '</name>\n'
+    + '    <trkseg>\n' + trkpts + '\n    </trkseg>\n'
+    + '  </trk>\n'
+    + '</gpx>\n';
+}
+function exportGpx() {
+  if (!wps.length) { showToast('コースにスポットがありません'); return; }
+  _downloadText(buildGpx(), 'footpath_' + _safeFileBase(courseInfo.name) + '.gpx', 'application/gpx+xml');
+}
+
+/* ---- 全コースの一括バックアップ／復元 ----------------------------------
+   ブラウザのデータを消すとコースも消えるため、まとめて1ファイルに退避できるようにする。
+   復元は「同じIDは上書き・無いものは追加」（＝二重に増えない）。
+   --------------------------------------------------------------------- */
+function buildBackupData() {
+  const list = getCourses();
+  return { app: 'footpath-map', type: 'backup', version: APP_VERSION,
+           savedAt: new Date().toISOString(), count: list.length, courses: list };
+}
+// 復元を適用する。戻り値 {added, replaced, saved} ／ 形式が違えば null
+function applyBackupData(data) {
+  if (!data || data.type !== 'backup' || !Array.isArray(data.courses)) return null;
+  const valid = data.courses.filter(c => c && c.id != null && c.name && Array.isArray(c.wps));
+  if (!valid.length) return null;
+  const list = getCourses();
+  let added = 0, replaced = 0;
+  valid.forEach(c => {
+    const i = list.findIndex(x => x && String(x.id) === String(c.id));
+    if (i >= 0) { list[i] = c; replaced++; } else { list.push(c); added++; }
+  });
+  const saved = setCourses(list);
+  return { added: added, replaced: replaced, saved: saved };
+}
+function exportAllCourses() {
+  const data = buildBackupData();
+  if (!data.count) { alert('保存されているコースがありません。'); return; }
+  const d = new Date(), p = n => String(n).padStart(2, '0');
+  _downloadJsonAs(data, 'footpath_backup_' + d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()) + '.json');
+}
+function importBackupFile(input) {
+  const file = input.files && input.files[0];
+  input.value = '';
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    let data = null;
+    try { data = JSON.parse(e.target.result); }
+    catch (err) { alert('ファイルを読み込めませんでした（JSONではありません）。'); return; }
+    if (!data || data.type !== 'backup' || !Array.isArray(data.courses)) {
+      alert('バックアップファイルではないようです。\n1コースだけの読み込みは「JSONファイルから読み込む」をお使いください。');
+      return;
+    }
+    if (!confirm('バックアップから ' + data.courses.length + ' 件を復元します。\n同じコースは上書きされます。よろしいですか？')) return;
+    const r = applyBackupData(data);
+    if (!r) { alert('復元できるコースがありませんでした。'); return; }
+    renderCourseList();
+    if (!r.saved && lsAvail()) {
+      alert('⚠️ 復元しましたが保存できませんでした（ブラウザの保存容量がいっぱいです）\n\n不要なコースを削除してから、もう一度お試しください。');
+    } else {
+      showToast('♻️ 復元しました（追加 ' + r.added + ' / 上書き ' + r.replaced + '）');
+    }
+  };
+  reader.readAsText(file);
+}
+
 // 「配布用リンクを作る」ダイアログ。
 // ①ファイル名を決める → ②その名前でJSONを書き出す → ③同じ場所に置く → ④リンクを配る
 function openShareDialog(course) {
@@ -4794,7 +4909,11 @@ function downloadJson(data, name) {
 }
 // ファイル名をそのまま指定して書き出す（配布用リンクでは名前がURLの一部になるため）
 function _downloadJsonAs(data, filename) {
-  const blob = new Blob([JSON.stringify(data,null,2)], {type:'application/json'});
+  _downloadText(JSON.stringify(data, null, 2), filename, 'application/json');
+}
+// 文字列をファイルとして保存する共通処理（JSON・GPX 共用）
+function _downloadText(text, filename, mime) {
+  const blob = new Blob([text], {type: mime || 'text/plain'});
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement('a');
   a.href = url;
@@ -4802,6 +4921,10 @@ function _downloadJsonAs(data, filename) {
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   URL.revokeObjectURL(url);
   showToast('📥 ' + filename + ' を書き出しました');
+}
+// ファイル名に使えない文字を落とす（日本語はそのまま残す）
+function _safeFileBase(name) {
+  return String(name || 'course').replace(/[^\w\u3040-\u9FFF]/g, '_').slice(0, 60) || 'course';
 }
 
 // 配布リンクの土台URL（index.html と同じ場所）。末尾のファイル名だけ落とす。

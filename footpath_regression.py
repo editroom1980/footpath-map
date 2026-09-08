@@ -150,6 +150,16 @@ def static_checks(src):
     chk('静的', '配布リンクで説明文を読み取り専用表示', 'function _applyViewDesc' in src and 'view-desc' in src)
     chk('静的', '配布リンクではサンプルを取り込まない', '!_viewParams().on) ensureSampleCourse' in src)
     chk('静的', 'ファイル名指定の書き出し _downloadJsonAs 存在', 'function _downloadJsonAs' in src)
+    # --- v83: GPX書き出し／全コース一括バックアップ ---
+    chk('静的', 'GPX生成 buildGpx 存在', 'function buildGpx' in src)
+    chk('静的', 'GPX書き出し exportGpx 存在', 'function exportGpx' in src)
+    chk('静的', 'GPXのXMLエスケープ _escXml 存在', 'function _escXml' in src)
+    chk('静的', 'GPXは表示用でなく実データを使う', '_lastRouteCoords' in src and 'buildDisplayCoords()' not in src.split('function buildGpx')[1][:900])
+    chk('静的', 'PC・スマホ両方にGPXボタン',
+        src.count('exportGpx()') >= 3, f"呼び出し={src.count('exportGpx()')}")
+    chk('静的', '一括バックアップ buildBackupData/applyBackupData 存在',
+        'function buildBackupData' in src and 'function applyBackupData' in src)
+    chk('静的', 'バックアップUI（書き出し・復元）', 'exportAllCourses()' in src and 'importBackupFile(this)' in src)
     chk('静的', '背景地図に配色済みタイル追加', all(k in src for k in ['opentopo:', 'carto:', 'osm_hot:']))
     chk('静的', '背景地図切替 cycleBaseMap 存在', 'function cycleBaseMap' in src)
     chk('静的', 'PCツールバーに地図切替ボタン', 'id="btnBaseMap"' in src)
@@ -423,6 +433,52 @@ def functional_checks(index_path):
                  and lf.get('r3') is False and lf.get('r4') is False and lf.get('saved') is False
                  and lf.get('name') == '配布テスト')
         chk('機能', '配布用JSONを表示でき、端末には保存しない', ok_lf, str(lf)[:190])
+
+        # INV-R: GPXが妥当なXMLで、スポット数・ルート点数が一致し、特殊文字が壊れない
+        gp = page.evaluate("""()=>{ try{
+            const a = addWp(35.15200,134.44500,'course'); a.name = 'テスト<&>"みち"';
+            const b2 = addWp(35.15300,134.44600,'course'); b2.name = 'ゴール';
+            const xml = buildGpx();
+            const doc = new DOMParser().parseFromString(xml, 'application/xml');
+            const err = doc.getElementsByTagName('parsererror').length;
+            const wpt = doc.getElementsByTagName('wpt').length;
+            const trkpt = doc.getElementsByTagName('trkpt').length;
+            const root = doc.documentElement;
+            const names = [...doc.getElementsByTagName('wpt')].map(w=>w.getElementsByTagName('name')[0].textContent);
+            const order = [...root.children].map(c=>c.nodeName);
+            return {err:err, wpt:wpt, trkpt:trkpt, ver:root.getAttribute('version'),
+                    ns:root.namespaceURI, esc:names.indexOf('テスト<&>"みち"')>=0,
+                    order:order.join(','), spots:wps.filter(w=>w.type!=='node').length,
+                    raw:xml.indexOf('<?xml')===0};
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        ok_gp = (isinstance(gp, dict) and gp.get('err') == 0 and gp.get('ver') == '1.1'
+                 and gp.get('ns') == 'http://www.topografix.com/GPX/1/1'
+                 and gp.get('wpt') == gp.get('spots') and gp.get('wpt') >= 2
+                 and gp.get('trkpt') >= 2 and gp.get('esc') is True and gp.get('raw') is True
+                 and gp.get('order','').startswith('metadata,wpt'))
+        chk('機能', 'GPXが妥当（GPX1.1・地点数一致・特殊文字も壊れない）', ok_gp, str(gp)[:190])
+
+        # INV-S: 一括バックアップは往復でき、同じコースを二重に増やさない
+        bk = page.evaluate("""()=>{ try{
+            const before = getCourses();
+            setCourses([{id:'bk1',name:'A',wps:[{id:1,lat:35,lng:134}]},
+                        {id:'bk2',name:'B',wps:[{id:1,lat:35,lng:134}]}]);
+            const backup = buildBackupData();
+            setCourses([{id:'bk1',name:'A-古い',wps:[{id:1,lat:35,lng:134}]}]);   // 1件だけ・内容も古い状態
+            const r1 = applyBackupData(backup);                                   // 復元
+            const after = getCourses();
+            const r2 = applyBackupData(backup);                                   // 二度目＝増えない
+            const after2 = getCourses();
+            const bad = applyBackupData({type:'course'});                         // 形式違いは受け付けない
+            setCourses(before);
+            return {r1:r1, n:after.length, names:after.map(c=>c.name).sort(),
+                    r2:r2, n2:after2.length, bad:bad, cnt:backup.count, type:backup.type};
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        ok_bk = (isinstance(bk, dict) and bk.get('cnt') == 2 and bk.get('type') == 'backup'
+                 and bk['r1']['added'] == 1 and bk['r1']['replaced'] == 1 and bk.get('n') == 2
+                 and bk.get('names') == ['A', 'B'] and bk.get('n2') == 2
+                 and bk['r2']['added'] == 0 and bk['r2']['replaced'] == 2 and bk.get('bad') is None)
+        chk('機能', 'バックアップの往復で二重に増えない', ok_bk, str(bk)[:190])
 
         b.close()
 
