@@ -243,6 +243,9 @@ body.viewonly #descSec.view-desc textarea{background:#F9F7F4;border-color:#E6DCC
 .sh-spots{columns:2;column-gap:12px;font-size:11px;line-height:1.6}
 .sh-spot{break-inside:avoid;display:flex;gap:5px;margin-bottom:1px}
 .sh-spot b{flex:none;color:#C4703A}
+.sh-qr{display:flex;gap:9px;align-items:center}
+.sh-qr img,.sh-qr canvas{display:block;width:104px;height:104px}
+.sh-qr-t{font-size:10px;line-height:1.5;color:#7A6A55}
 .sh-foot{margin-top:10px;padding-top:6px;border-top:1px solid #EFE7DA;font-size:9.5px;color:#8A7A63;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
 @media (max-width:760px){#sheetOver{padding:10px}.sh-body{grid-template-columns:1fr}#printSheet{padding:12px}}
 @media print{
@@ -864,6 +867,8 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<!-- QRコード生成（配布シート用）。読み込めなかった場合はQRを出さないだけで動作に影響しない -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script>
 /* ============================================================
    CONSTANTS
@@ -915,6 +920,7 @@ const LS = {
   labelSize:   'fp_labelsize',    // 名称ラベルの文字サイズ段階（LABEL_SIZES の添字）
   wpSize:      'fp_wpsize',       // スポット○の大きさ段階（WP_SIZES の添字）
   walkSpeed:   'fp_walkspeed',    // 歩く速さの段階（WALK_SPEEDS の添字）
+  shareLinks:  'fp_sharelinks',   // コースIDごとの配布リンク（配布シートのQRに使う）
 };
 // --- サンプルコース（初回起動時に一度だけ取り込む。削除したら復活しない）---
 const SAMPLE_URL = 'sample.json';   // index.html と同じ場所に置く
@@ -1330,7 +1336,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v86';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
+const APP_VERSION = 'v87';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
 }catch(_){} });
@@ -3980,6 +3986,7 @@ function _sheetHtml(imgUrl, cssWidth) {
     return '<div class="sh-spot"><b>' + escHtml(mark) + '</b><span>' + escHtml(w.name.replace(/\n/g, ' ')) + '</span></div>';
   }).join('');
   const attr = (BASEMAPS[_baseMapId] || {}).attribution || '';
+  const link = _shareLinkOf(currentCourseId);      // 配布リンクを作ってあればQRを載せる
   const d = new Date(), p = n => String(n).padStart(2, '0');
   return ''
     + '<div class="sh-head">'
@@ -4001,10 +4008,23 @@ function _sheetHtml(imgUrl, cssWidth) {
     +     '<div class="sh-sec">凡例</div><div class="sh-legend">' + _sheetLegend() + '</div>'
     +     (desc ? '<div class="sh-sec">コースの見どころ</div><div class="sh-desc">' + escHtml(desc) + '</div>' : '')
     +     (spots ? '<div class="sh-sec">スポット</div><div class="sh-spots">' + spots + '</div>' : '')
+    +     (link ? '<div class="sh-sec" style="margin-top:10px">スマホで見る</div>'
+    +             '<div class="sh-qr"><div id="sheetQr"></div>'
+    +             '<div class="sh-qr-t">カメラでQRコードを読み取ると、<br>この地図をスマホで開けます</div></div>' : '')
     +   '</div>'
     + '</div>'
     + '<div class="sh-foot"><span>' + attr + '</span>'
     +   '<span>' + d.getFullYear() + '/' + p(d.getMonth() + 1) + '/' + p(d.getDate()) + ' 作成 ／ Footpath Mapmaker</span></div>';
+}
+
+// QRコードを描く。ライブラリが読み込めていなければ何もしない（シートは通常どおり使える）
+function _renderSheetQr() {
+  const box = document.getElementById('sheetQr');
+  if (!box) return;
+  const link = _shareLinkOf(currentCourseId);
+  if (!link || typeof QRCode === 'undefined') { box.parentNode.style.display = 'none'; return; }
+  try { new QRCode(box, { text: link, width: 104, height: 104, correctLevel: QRCode.CorrectLevel.M }); }
+  catch (_) { box.parentNode.style.display = 'none'; }
 }
 
 function _ensureSheetOverlay() {
@@ -4034,6 +4054,7 @@ async function openPrintSheet() {
     const canvas = await _captureMapCanvas();
     const ov = _ensureSheetOverlay();
     document.getElementById('printSheet').innerHTML = _sheetHtml(canvas.toDataURL('image/png'), width);
+    _renderSheetQr();
     ov.style.display = 'block';
     ov.scrollTop = 0;
   } catch (e) {
@@ -5085,6 +5106,7 @@ function openShareDialog(course) {
       + '<button id="shExport" style="width:100%;border:none;border-radius:10px;padding:11px;font-size:14px;font-weight:700;background:linear-gradient(135deg,#FB8B3E,#F2670E);color:#fff;margin-bottom:12px">JSONを書き出す</button>'
       + '<div style="font-size:12px;color:#6A645E;line-height:1.7;margin-bottom:12px">③ 書き出したファイルを、アプリ（index.html）と同じ場所に置いて公開します。</div>'
       + '<div style="font-size:12px;font-weight:700;color:#4A2E0E;margin-bottom:5px">④ このリンクを配る</div>'
+      + '<div style="font-size:11px;color:#6A645E;line-height:1.6;margin-bottom:6px">このリンクは「配布シート」のQRコードにも使われます（紙の地図から、スマホの地図へ）。</div>'
       + '<input id="shUrl" readonly style="width:100%;border:1px solid #DED5C8;border-radius:8px;padding:9px 10px;font-size:12px;background:#F9F7F4;margin-bottom:8px">'
       + '<div style="display:flex;flex-direction:column;gap:8px">'
       +   '<button id="shCopy" style="border:none;border-radius:10px;padding:11px;font-size:14px;font-weight:700;background:#EEE5D8;color:#4A2E0E">リンクをコピー</button>'
@@ -5095,7 +5117,10 @@ function openShareDialog(course) {
     ov.addEventListener('click', e => { if (e.target === ov) ov.style.display = 'none'; });
   }
   const fileEl = ov.querySelector('#shFile'), urlEl = ov.querySelector('#shUrl');
-  const sync = () => { urlEl.value = _shareBaseUrl() + '?course=' + _shareFileName(fileEl.value); };
+  const sync = () => {
+    urlEl.value = _shareBaseUrl() + '?course=' + _shareFileName(fileEl.value);
+    _setShareLink(course.id, urlEl.value);      // 配布シートのQRコードにも使う
+  };
   ov.querySelector('#shName').textContent = course.name || '(名称未設定)';
   fileEl.value = _shareFileName('course-' + (course.id || Date.now()));
   fileEl.oninput = sync; sync();
@@ -5134,6 +5159,17 @@ function _downloadText(text, filename, mime) {
 function _safeFileBase(name) {
   return String(name || 'course').replace(/[^\w\u3040-\u9FFF]/g, '_').slice(0, 60) || 'course';
 }
+
+// コースごとの配布リンクを覚えておく（配布シートのQRコードに使う）
+function _getShareLinks(){
+  if (!lsAvail()) return {};
+  try { return JSON.parse(localStorage.getItem(LS.shareLinks) || '{}') || {}; } catch(_) { return {}; }
+}
+function _setShareLink(courseId, url){
+  if (!lsAvail() || courseId == null) return;
+  try { const m = _getShareLinks(); m[String(courseId)] = url; localStorage.setItem(LS.shareLinks, JSON.stringify(m)); } catch(_){}
+}
+function _shareLinkOf(courseId){ return _getShareLinks()[String(courseId)] || ''; }
 
 // 配布リンクの土台URL（index.html と同じ場所）。末尾のファイル名だけ落とす。
 function _shareBaseUrl() {

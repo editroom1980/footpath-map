@@ -69,7 +69,9 @@ def chk(cat, name, ok, detail=''):
 # ----------------------------------------------------------------------
 def static_checks(src):
     c = src.count('cdnjs')
-    chk('静的', 'CDN参照は3つ', c == 3, f'count={c}')
+    chk('静的', 'CDN参照は4つ（leaflet css/js・html2canvas・QR）', c == 4, f'count={c}')
+    chk('静的', 'CDNはすべて版を固定',
+        len(re.findall(r'cdnjs\.cloudflare\.com/ajax/libs/[^/]+/\d+\.\d+(?:\.\d+)?/', src)) == 4)
     chk('静的', 'leaflet-rotate を使っていない', 'leaflet-rotate' not in src)
     chk('静的', 'ローカルfile://パスが残っていない', 'file:///home/claude' not in src)
     chk('静的', '波括弧 {} の均衡', src.count('{') == src.count('}'), f"{src.count('{')-src.count('}')}")
@@ -190,6 +192,11 @@ def static_checks(src):
     chk('静的', '所要時間が固定4km/hでなくなった', '/ 4 * 60' not in src and '_walkSpeed()' in src)
     chk('静的', '速さの保存キー(LS.walkSpeed)を使用', re.search(r"walkSpeed:\s*'fp_walkspeed'", src) is not None)
     chk('静的', 'PC・スマホ両方に速さの選択', 'walkSpeedSel' in src and 'data-spd=' in src)
+    # --- v87: 配布シートのQRコード ---
+    chk('静的', 'QRライブラリを読み込む', 'qrcodejs/1.0.0/qrcode.min.js' in src)
+    chk('静的', 'QR描画 _renderSheetQr 存在', 'function _renderSheetQr' in src)
+    chk('静的', 'QRが無くてもシートは使える（未読込を許容）', "typeof QRCode === 'undefined'" in src)
+    chk('静的', '配布リンクを覚える（LS.shareLinks）', re.search(r"shareLinks:\s*'fp_sharelinks'", src) is not None)
     chk('静的', '背景地図に配色済みタイル追加', all(k in src for k in ['opentopo:', 'carto:', 'osm_hot:']))
     chk('静的', '背景地図切替 cycleBaseMap 存在', 'function cycleBaseMap' in src)
     chk('静的', 'PCツールバーに地図切替ボタン', 'id="btnBaseMap"' in src)
@@ -594,6 +601,25 @@ def functional_checks(index_path):
                  and wk.get('up') == 200 and wk.get('tUp') == '1時間20分'      # 60分 + 登り200m→20分
                  and '4km/h' in wk.get('n4', '') and '登り込み' in wk.get('nUp', ''))
         chk('機能', '歩く速さと登りが所要時間に反映される', ok_wk, str(wk)[:190])
+
+        # INV-Y: 配布リンクを作るとシートにQRが載り、リンクが無ければ出ない
+        qr = page.evaluate("""()=>{ return (async()=>{ try{
+            const orig = window.html2canvas;
+            window.html2canvas = () => Promise.resolve({ toDataURL: () => 'data:image/png;base64,AA' });
+            const id = currentCourseId != null ? currentCourseId : (currentCourseId = 'qr-test');
+            _setShareLink(id, 'https://example.test/footpath/?course=abc.json');
+            await openPrintSheet();
+            const withLink = !!document.querySelector('#printSheet .sh-qr');
+            const stored = _shareLinkOf(id);
+            try { localStorage.removeItem(LS.shareLinks); } catch(_){}
+            await openPrintSheet();
+            const noLink = !!document.querySelector('#printSheet .sh-qr');
+            window.html2canvas = orig;
+            return {withLink:withLink, noLink:noLink, stored:stored};
+          }catch(e){ return 'ERR:'+e.message; } })(); }""")
+        chk('機能', '配布リンクがあるときだけシートにQR欄が出る',
+            isinstance(qr, dict) and qr.get('withLink') is True and qr.get('noLink') is False
+            and 'abc.json' in str(qr.get('stored')), str(qr)[:170])
 
         b.close()
 
