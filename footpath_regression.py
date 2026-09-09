@@ -283,6 +283,14 @@ def static_checks(src):
     chk('静的', '難易度の判定 courseDifficulty 存在', 'function courseDifficulty' in src)
     chk('静的', 'サイドバーに難易度を出す', 'id="diffDisp"' in src and 'function _renderDifficulty' in src)
     chk('静的', '配布シートに難易度を載せる', "'難易度<b style=\"color:'" in src or '難易度<b' in src)
+    # --- v96: GPX読み込み ---
+    chk('静的', 'GPX読み込み parseGpx 存在', 'function parseGpx' in src)
+    chk('静的', '取り込み口が GPX も受け付ける', 'accept=".json,.gpx' in src and 'JSON / GPX' in src)
+    chk('静的', '軌跡の間引き _thinPoints 存在', 'function _thinPoints' in src)
+    chk('静的', 'GPXは道順が引き直しになることを伝える', '調整点（道順の細かい指定）' in src)
+    chk('静的', 'スポットがあるGPXは軌跡を取り込まない（二重防止）',
+        'const hadWpt = wps.length > 0;' in src and 'hadWpt ? [] : _thinPoints' in src)
+    chk('静的', '取り込み点数の上限 GPX_MAX_TRKPTS 維持', 'const GPX_MAX_TRKPTS' in src)
     chk('静的', '背景地図に配色済みタイル追加', all(k in src for k in ['opentopo:', 'carto:', 'osm_hot:']))
     chk('静的', '背景地図切替 cycleBaseMap 存在', 'function cycleBaseMap' in src)
     chk('静的', 'PCツールバーに地図切替ボタン', 'id="btnBaseMap"' in src)
@@ -788,6 +796,40 @@ def functional_checks(index_path):
                     hasVer: items.some(r => (r.detail||'').indexOf(APP_VERSION) >= 0),
                     txtOK: txt.indexOf('動作確認') >= 0 && txt.length > 100};
           }catch(e){ return 'ERR:'+e.message; } })(); }""")
+        # INV-AJ: GPXを読み込める（自分で書き出したGPXは往復できる／軌跡だけでもコースになる）
+        gi = page.evaluate("""()=>{ try{
+            // ① 自分で書き出したGPXを読み直す（往復）
+            const mine = buildGpx();
+            const back = parseGpx(mine, 'test.gpx');
+            const mineSpots = wps.filter(w => w.type !== 'node').length;
+            // ② 軌跡だけのGPX（他アプリの記録を想定）
+            let trk = '';
+            for (let i = 0; i < 8; i++) trk += '<trkpt lat="' + (35.15 + i*0.001) + '" lon="' + (134.44 + i*0.001) + '"></trkpt>';
+            const only = parseGpx('<?xml version="1.0"?><gpx version="1.1" creator="t" xmlns="http://www.topografix.com/GPX/1/1">'
+                       + '<metadata><name>歩いた記録</name></metadata><trk><trkseg>' + trk + '</trkseg></trk></gpx>', 'x.gpx');
+            // ③ GPXでないもの
+            const bad = parseGpx('{"name":"json"}', 'x.gpx');
+            const bad2 = parseGpx('<?xml version="1.0"?><foo/>', 'x.gpx');
+            return {
+              backSpots: back.wps ? back.wps.length : -1, mineSpots: mineSpots,
+              backPath: back.customPaths ? back.customPaths.length : -1,
+              backName: back.name, sameFirstName: back.wps && back.wps[0] && back.wps[0].name,
+              typesKept: back.wps ? back.wps.every(w => WT.some(t => t.v === w.type)) : false,
+              onlySpots: only.wps ? only.wps.length : -1,
+              onlyTypes: only.wps ? only.wps.map(w => w.type).join(',') : '',
+              onlyPath: only.customPaths && only.customPaths[0] ? only.customPaths[0].pts.length : 0,
+              onlyName: only.name,
+              badErr: !!(bad && bad.error), bad2Err: !!(bad2 && bad2.error)
+            };
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        ok_gi = (isinstance(gi, dict) and gi.get('backSpots') == gi.get('mineSpots') and gi.get('backSpots', 0) >= 2
+                 and gi.get('typesKept') is True
+                 and gi.get('backPath') == 0          # スポットがあるときは軌跡を入れない（二重になるため）
+                 and gi.get('onlySpots') == 2 and gi.get('onlyTypes') == 'start,goal'
+                 and gi.get('onlyPath', 0) >= 2 and gi.get('onlyName') == '歩いた記録'
+                 and gi.get('badErr') is True and gi.get('bad2Err') is True)
+        chk('機能', 'GPXを読み込める（往復・軌跡のみ・誤ファイル）', ok_gi, str(gi)[:200])
+
         # INV-AI: 難易度は距離と登りで決まり、高低差が無いときは出さない
         df = page.evaluate("""()=>{ try{
             const keep = _elevData;

@@ -1,6 +1,6 @@
 # ARCHITECTURE — フットパスマップメーカー 設計書
 
-対象：**v95**（`index.html` / `sw.js`）
+対象：**v96**（`index.html` / `sw.js`）
 読む人：このアプリを直す人（人間・AI どちらも）
 
 `CLAUDE.md`（作業規約）→ 本書 → `HANDOFF_開発引き継ぎ書.md`（経緯と変更履歴）の順で読む。
@@ -171,10 +171,18 @@ routeLine.setLatLngs(...)           ← 画面に出るのはこれだけ
 | 埋め込み | `?course=…&embed=1` | `body.embed` でヘッダ・サイドバー・編集UIを全部隠し、地図＋帯だけにする。帯には コース名・距離・「大きな地図で開く」（`embed` を外したURL） |
 | 配布シート | `openPrintSheet()` | 地図画像＋凡例・縮尺・方位・見どころ・スポット一覧・QR。`@media print` で **A4横**に印刷 |
 | QRコード | `LS.shareLinks` に覚えた配布リンクを描画 | ライブラリが無ければQR欄ごと出さない |
-| GPX | `buildGpx()` | GPX1.1。`<trk>` は**実データ** `_lastRouteCoords`。なぞり端点(node)は除外 |
+| GPX 書き出し | `buildGpx()` | GPX1.1。`<trk>` は**実データ** `_lastRouteCoords`。なぞり端点(node)は除外 |
+| GPX 読み込み | `parseGpx()` | `<wpt>`→スポット（`<type>` から種別も復元）。**`<wpt>` があるときは軌跡を取り込まない**（スポットからのルートと二重になり距離が約3倍に狂うため）。`<wpt>` が無い（歩いた記録）ときだけ、始点/終点をスタート・ゴールにし軌跡を細道にする |
 | バックアップ | `buildBackupData()` / `applyBackupData()` | 復元は同IDを上書き・無いものを追加（二重に増えない） |
 
 閲覧専用のときは `body.viewonly` で編集UIを隠す（ツールバー・保存ボタン・並替ヒント・モバイルの編集シェルフ）。
+
+> **GPXの限界**：GPXには**調整点(VP)を表す仕組みが無い**ため、書き出して読み戻すと**道順は引き直しになる**
+> （実測：調整点17個のコースが 2.36km → 7.43km）。取り込み時にその旨を明示している。
+> 道順をそのまま残す用途では **JSON** を使う。
+
+> **細道(customPaths)はコース単位ではなくアプリ全体で共有**（`LS.custompaths`）。
+> `loadCourseData()` はコースに細道が入っているときだけ上書きし、空なら現状維持＝消さない。
 
 ---
 
@@ -202,9 +210,9 @@ routeLine.setLatLngs(...)           ← 画面に出るのはこれだけ
 
 | 場所 | 例 |
 |---|---|
-| `index.html` の `APP_VERSION` | `'v95'` |
-| `version.json` | `{"version":"v95"}` |
-| `package.json` の `version` | `0.95.0` |
+| `index.html` の `APP_VERSION` | `'v96'` |
+| `version.json` | `{"version":"v96"}` |
+| `package.json` の `version` | `0.96.0` |
 
 利用者側は `?v=` を手で書き換えなくてよい。アプリが `version.json` と自分の版を比べ、
 違えば**一覧画面のときだけ**「新しい版があります／更新する」を出す
@@ -238,7 +246,7 @@ CONSTANTS(904) → STATE(968) → STORAGE(1015) → 版のお知らせ(1021) →
 
 ## 13. 不変条件とテストの対応
 
-`footpath_regression.py`（**207項目**）が本書の条件を機械で見張っている。
+`footpath_regression.py`（**214項目**）が本書の条件を機械で見張っている。
 
 | 本書の条件 | 対応する検査 |
 |---|---|

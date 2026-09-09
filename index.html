@@ -558,8 +558,8 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
     <div class="s1-sec-h"><span>保存済みコース</span><span class="s1-count" id="s1Count">0件</span></div>
     <div id="courseList"><div class="no-courses">保存されたコースはありません</div></div>
     <label class="s1-import">
-      <svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v4a1 1 0 0 0 1 1h4" /> <path d="M5 13v-8a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2h-5.5m-9.5 -2h7m-3 -3l3 3l-3 3" /></svg>JSONファイルから読み込む
-      <input type="file" accept=".json" style="display:none" onchange="importCourseFromFile(this)">
+      <svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v4a1 1 0 0 0 1 1h4" /> <path d="M5 13v-8a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2h-5.5m-9.5 -2h7m-3 -3l3 3l-3 3" /></svg>ファイルから読み込む（JSON / GPX）
+      <input type="file" accept=".json,.gpx,application/gpx+xml" style="display:none" onchange="importCourseFromFile(this)">
     </label>
     <div class="s1-tools">
       <button class="s1-tool" onclick="exportAllCourses()" title="保存されている全コースを1つのファイルに書き出します">すべて書き出す<br>（バックアップ）</button>
@@ -963,6 +963,9 @@ const WALK_SPEEDS = [3, 3.5, 4, 4.5, 5];   // km/h。3=ゆっくり / 4=標準 /
 const WALK_SPEED_DEFAULT = 2;              // 既定は 4km/h（従来と同じ計算になる位置）
 // 登りの時間加算：標高100mにつき+10分（登り600mで1時間。ネイスミスの法則の一般的な係数）
 const CLIMB_MIN_PER_100M = 10;
+// --- GPX読み込み（歩いた記録・他アプリのルートを取り込む）---
+const GPX_MAX_TRKPTS = 2000;   // 細道として取り込む点の上限（多すぎると重くなる）
+const GPX_THIN_M     = 5;      // これより近い点は間引く(m)
 // --- コースの難易度（配布物で「どのくらい大変か」を伝える）---
 // 距離と登りの合計から3段階。上から順に当てはめ、どれにも入らなければ最後の段階。
 // 高低差が取れていないときは出さない（分からないものを断定しない）。
@@ -1730,7 +1733,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v95';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
+const APP_VERSION = 'v96';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
 }catch(_){} });
@@ -5638,6 +5641,88 @@ async function exportCourse() {
 
 async function exportCourseData(data) { downloadJson(await _embedPhotos(data), data.name); }
 
+/* ---- GPX 読み込み ------------------------------------------------------
+   ・<wpt> → スポット（自分で書き出したGPXなら <type> から種別も戻る）
+   ・<wpt> が無い（歩いた記録など軌跡だけ）のときは、始点と終点をスタート/ゴールにし、
+     軌跡を細道（手描きの道）として取り込む＝その道に沿ってルートが引かれる
+   ・<wpt> があるときは軌跡を取り込まない。スポットからルートを引き直す方が正しく、
+     両方入れるとルートが二重になって距離が大きく狂うため（実測で約3倍になった）
+   ・点が多いと重くなるので、近すぎる点は間引き、上限で打ち切る
+   --------------------------------------------------------------------- */
+function _gpxNum(el, attr){ const v = parseFloat(el.getAttribute(attr)); return isFinite(v) ? v : null; }
+function _gpxText(parent, tag){
+  const e = parent.getElementsByTagNameNS('*', tag)[0];
+  return e ? (e.textContent || '').trim() : '';
+}
+// 近すぎる点を落とす（間引き）。距離は簡易計算で十分。
+function _thinPoints(pts, minM, max){
+  const out = [];
+  for (const p of pts) {
+    if (out.length) {
+      const a = out[out.length - 1];
+      const dy = (p[0] - a[0]) * 111320;
+      const dx = (p[1] - a[1]) * 111320 * Math.cos(p[0] * Math.PI / 180);
+      if (Math.hypot(dx, dy) < minM) continue;
+    }
+    out.push(p);
+    if (out.length >= max) break;
+  }
+  return out;
+}
+// GPXの文字列からコースデータを作る。作れなければ {error:'…'} を返す。
+function parseGpx(text, fallbackName){
+  let doc;
+  try { doc = new DOMParser().parseFromString(text, 'application/xml'); }
+  catch (_) { return {error: 'ファイルを読み取れませんでした'}; }
+  if (!doc || doc.getElementsByTagName('parsererror').length) return {error: 'GPXとして読み取れませんでした'};
+  const root = doc.documentElement;
+  if (!root || root.nodeName.toLowerCase().indexOf('gpx') < 0) return {error: 'GPXファイルではないようです'};
+
+  const known = WT.map(t => t.v);
+  const wps = [];
+  let id = 0;
+  [...doc.getElementsByTagNameNS('*', 'wpt')].forEach(el => {
+    const lat = _gpxNum(el, 'lat'), lng = _gpxNum(el, 'lon');
+    if (lat === null || lng === null) return;
+    const type = _gpxText(el, 'type');
+    wps.push({ id: ++id, type: known.indexOf(type) >= 0 ? type : 'course',
+               name: _gpxText(el, 'name'), desc: _gpxText(el, 'desc'), tel: '', dwell: 0,
+               fitBefore: true, fitAfter: true, onRoute: true,
+               lat: lat, lng: lng, labelDir: 'top', photos: [] });
+  });
+
+  const track = [];
+  ['trkpt', 'rtept'].forEach(tag => {
+    [...doc.getElementsByTagNameNS('*', tag)].forEach(el => {
+      const lat = _gpxNum(el, 'lat'), lng = _gpxNum(el, 'lon');
+      if (lat !== null && lng !== null) track.push([lat, lng]);
+    });
+  });
+  const hadWpt = wps.length > 0;
+  const line = hadWpt ? [] : _thinPoints(track, GPX_THIN_M, GPX_MAX_TRKPTS);   // スポットがあるなら軌跡は使わない
+
+  // スポットが無く軌跡だけなら、始点と終点をスタート/ゴールにする
+  if (!wps.length && line.length >= 2) {
+    wps.push({ id: ++id, type: 'start', name: 'スタート', desc: '', tel: '', dwell: 0,
+               fitBefore: true, fitAfter: true, onRoute: true,
+               lat: line[0][0], lng: line[0][1], labelDir: 'top', photos: [] });
+    wps.push({ id: ++id, type: 'goal', name: 'ゴール', desc: '', tel: '', dwell: 0,
+               fitBefore: true, fitAfter: true, onRoute: true,
+               lat: line[line.length - 1][0], lng: line[line.length - 1][1], labelDir: 'top', photos: [] });
+  }
+  if (wps.length < 2) return {error: '地点が足りません（スポットか軌跡が必要です）'};
+
+  const name = _gpxText(root, 'name') || (fallbackName || '').replace(/\.gpx$/i, '') || '読み込んだコース';
+  const lats = wps.map(w => w.lat), lngs = wps.map(w => w.lng);
+  return {
+    id: Date.now(), name: name, area: '', desc: _gpxText(root, 'desc') || '',
+    center: [(Math.min(...lats) + Math.max(...lats)) / 2, (Math.min(...lngs) + Math.max(...lngs)) / 2],
+    zoom: 16, wps: wps, vps: [],
+    customPaths: line.length >= 2 ? [{ id: 'gpx' + Date.now(), pts: line }] : [],
+    maxWpId: id, maxVpNum: 0, savedAt: new Date().toISOString(), version: APP_VERSION,
+  };
+}
+
 /* ---- GPX 書き出し（GPX 1.1）--------------------------------------------
    ・<wpt> = スポット（なぞり端点 node は除く）／<trk> = 実際に描いているルート
    ・要素の順番は GPX 1.1 の規定どおり（metadata → wpt → trk、wpt内は name→desc→type）
@@ -5899,10 +5984,17 @@ function exportRouteCoords() {
 function importCourseFromFile(input) {
   const file = input.files[0];
   if (!file) return;
+  const isGpx = /\.gpx$/i.test(file.name || '');
   const reader = new FileReader();
   reader.onload = async e => {
     try {
-      const data = JSON.parse(e.target.result);
+      let data;
+      if (isGpx) {                                   // GPX：歩いた記録・他アプリのルート
+        data = parseGpx(e.target.result, file.name);
+        if (data && data.error) { alert('GPXを読み込めませんでした：' + data.error); return; }
+      } else {
+        data = JSON.parse(e.target.result);
+      }
       if (!data.name || !Array.isArray(data.wps)) { alert('無効なコースファイルです'); return; }
       data.id = Date.now();
       data.savedAt = new Date().toISOString();
@@ -5915,7 +6007,16 @@ function importCourseFromFile(input) {
         alert('⚠️ 読み込みましたが保存できませんでした（ブラウザの保存容量がいっぱいです）\n\n'
             + '不要なコースを削除してから、もう一度読み込んでください。');
       } else {
-        showToast('📂 コースを読み込みました: ' + data.name);
+        const trkPts = ((data.customPaths || [])[0] || {}).pts || [];
+        const extra = isGpx ? '（スポット' + data.wps.length + (trkPts.length ? '・軌跡' + trkPts.length + '点' : '') + '）' : '';
+        showToast('📂 コースを読み込みました: ' + data.name + extra);
+        // GPXには「調整点」が入らない＝道順は引き直しになる。黙って違う道順にしない。
+        if (isGpx && !trkPts.length) {
+          alert('GPXを読み込みました（スポット' + data.wps.length + '件）。\n\n'
+              + 'GPXには「調整点（道順の細かい指定）」が含まれないため、'
+              + '道順はこのアプリが引き直します。元の道順をそのまま残したいときは、'
+              + 'JSONでの書き出し・読み込みをお使いください。');
+        }
       }
     } catch(err) { alert('ファイルの読み込みに失敗しました: '+err.message); }
   };
