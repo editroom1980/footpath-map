@@ -1,6 +1,6 @@
 # ARCHITECTURE — フットパスマップメーカー 設計書
 
-対象：**v98**（`index.html` / `sw.js`）
+対象：**v99**（`index.html` / `sw.js`）
 読む人：このアプリを直す人（人間・AI どちらも）
 
 `CLAUDE.md`（作業規約）→ 本書 → `HANDOFF_開発引き継ぎ書.md`（経緯と変更履歴）の順で読む。
@@ -159,6 +159,13 @@ routeLine.setLatLngs(...)           ← 画面に出るのはこれだけ
 - 起動時に `migratePhotosToIdb()` が既存コースを移行し、`gcPhotos()` が孤児写真を掃除する。
 - 一覧画面に使用量を表示（`renderStorageInfo()`／3.5MB超で警告）。
 
+### ラベルの自動配置（v99）
+`autoPlaceLabels()` が密集したラベルを空いている向き（上→右→下→左）へ逃がす。
+- **利用者が「上」以外を選んだラベルは動かさない**。既定(上)のものだけが自動配置の対象。
+- 自動で決めた向きは `wp._autoDir`（**保存データには入れない**。`labelDir` は触らない）。
+- スポットの○も障害物として扱い、ラベルで他のスポットを隠さない。
+- 呼び出しは `scheduleAutoLabels()`（180msでまとめる）。ルート更新・ズーム・サイズ変更のあと。
+
 ### 現在地追従（v97）
 `toggleFollowMode()` が `watchPosition` を始める。**電池を使うので、使うときだけON。**
 - 一覧に戻る／ページを離れるときは必ず止める（`stopFollowMode`）。
@@ -222,9 +229,9 @@ routeLine.setLatLngs(...)           ← 画面に出るのはこれだけ
 
 | 場所 | 例 |
 |---|---|
-| `index.html` の `APP_VERSION` | `'v98'` |
-| `version.json` | `{"version":"v98"}` |
-| `package.json` の `version` | `0.98.0` |
+| `index.html` の `APP_VERSION` | `'v99'` |
+| `version.json` | `{"version":"v99"}` |
+| `package.json` の `version` | `0.99.0` |
 
 利用者側は `?v=` を手で書き換えなくてよい。アプリが `version.json` と自分の版を比べ、
 違えば**一覧画面のときだけ**「新しい版があります／更新する」を出す
@@ -258,7 +265,7 @@ CONSTANTS(904) → STATE(968) → STORAGE(1015) → 版のお知らせ(1021) →
 
 ## 13. 不変条件とテストの対応
 
-`footpath_regression.py`（**226項目**）が本書の条件を機械で見張っている。
+`footpath_regression.py`（**231項目**）が本書の条件を機械で見張っている。
 
 | 本書の条件 | 対応する検査 |
 |---|---|

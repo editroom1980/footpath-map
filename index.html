@@ -954,6 +954,9 @@ const WALK_SPEEDS = [3, 3.5, 4, 4.5, 5];   // km/h。3=ゆっくり / 4=標準 /
 const WALK_SPEED_DEFAULT = 2;              // 既定は 4km/h（従来と同じ計算になる位置）
 // 登りの時間加算：標高100mにつき+10分（登り600mで1時間。ネイスミスの法則の一般的な係数）
 const CLIMB_MIN_PER_100M = 10;
+// --- 地名ラベルの自動配置（重なりを避ける）---
+const LABEL_DIRS   = ['top', 'right', 'bottom', 'left'];  // 試す向きの順番
+const LABEL_GAP_PX = 2;                                   // ラベル同士のすき間(px)
 // --- 現在地追従（歩きながら使う）---
 const FOLLOW_MIN_MOVE_M = 4;      // これ以上動いたときだけ地図を寄せる（小刻みな揺れで動かさない）
 const FOLLOW_MIN_ZOOM   = 16;     // 追従を始めるときの最低倍率
@@ -1630,6 +1633,7 @@ function initMap() {
   leafMap.on('click', onMapClick);
   leafMap.on('movestart', hideCtxMenu);
   leafMap.on('zoomend', _customScaleWeights);
+  leafMap.on('zoomend', () => { if (typeof scheduleAutoLabels === 'function') scheduleAutoLabels(); });
   leafMap.on('zoomend', _redrawRouteOffset);   // 往復ずらし表示をズームに追従して再計算
   canvasRenderer = L.canvas({padding: 0.5}); // Canvas renderer for polylines
 
@@ -1745,7 +1749,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v98';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
+const APP_VERSION = 'v99';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
 }catch(_){} });
@@ -2477,7 +2481,8 @@ function updateTooltip(wp) {
   if (!wp.marker) return;
   wp.marker.unbindTooltip();
   if (wp.name && wp.name.trim()) {
-    const dir  = wp.labelDir || 'top';
+    // 利用者が「上」以外を選んでいればそれを尊重。既定(上)のままなら自動配置に任せる
+    const dir  = (wp.labelDir && wp.labelDir !== 'top') ? wp.labelDir : (wp._autoDir || 'top');
     const offV = Math.round(_wpSize()[1] / 2 + 4);   // ○の半径+4px。標準サイズでは従来と同じ(スマホ22/PC19)
     const off  = dir==='top'    ? [0,-offV] :
                  dir==='bottom' ? [0, offV] :
@@ -2507,6 +2512,71 @@ function updateTooltip(wp) {
     const _ttObj = wp.marker.getTooltip();
     if (_ttObj && typeof _ttObj.update === 'function') _ttObj.update();
   }
+}
+
+/* ---- 地名ラベルの自動配置 -----------------------------------------------
+   密集地でラベル同士が重なると読めないので、空いている向きへ逃がす。
+   ・利用者が向きを選んだラベル（上以外）は動かさない
+   ・保存データは変えない（_autoDir は画面表示だけの一時情報）
+   ・重なりが減らないときは元の向きのまま（無理に動かして遠くへ飛ばさない）
+   ----------------------------------------------------------------------- */
+let _autoLabelTimer = null, _autoLabelBusy = false;
+
+function _rectsOverlap(a, b){
+  return !(a.x + a.w + LABEL_GAP_PX <= b.x || b.x + b.w + LABEL_GAP_PX <= a.x ||
+           a.y + a.h + LABEL_GAP_PX <= b.y || b.y + b.h + LABEL_GAP_PX <= a.y);
+}
+// 指定の向きに置いたときのラベルの矩形（地図コンテナ座標）
+function _labelRect(cx, cy, w, h, dir, off){
+  if (dir === 'bottom') return {x: cx - w/2, y: cy + off,     w: w, h: h};
+  if (dir === 'left')   return {x: cx - off - w, y: cy - h/2, w: w, h: h};
+  if (dir === 'right')  return {x: cx + off, y: cy - h/2,     w: w, h: h};
+  return {x: cx - w/2, y: cy - off - h, w: w, h: h};              // top
+}
+function autoPlaceLabels(){
+  if (!leafMap || _autoLabelBusy) return 0;
+  _autoLabelBusy = true;
+  try {
+    const size = _wpSize()[0], off = Math.round(size / 2 + 4);
+    const items = [];
+    const blockers = [];                       // スポットの○（ラベルで隠さない）
+    wps.forEach(wp => {
+      if (!wp.marker) return;
+      const p = leafMap.latLngToContainerPoint([wp.lat, wp.lng]);
+      blockers.push({x: p.x - size/2, y: p.y - size/2, w: size, h: size});
+      const tt = wp.marker.getTooltip && wp.marker.getTooltip();
+      const el = tt && tt.getElement && tt.getElement();
+      if (!el || !wp.name || !wp.name.trim()) return;
+      if (wp.labelDir && wp.labelDir !== 'top') return;            // 利用者が選んだ向きは動かさない
+      const r = el.getBoundingClientRect();
+      if (!r.width) return;
+      items.push({wp: wp, cx: p.x, cy: p.y, w: r.width, h: r.height});
+    });
+    if (items.length < 2) return 0;
+    items.sort((a, b) => a.cy - b.cy);                             // 上にあるものから決めていく
+    const placed = [];
+    let moved = 0;
+    items.forEach(it => {
+      const cur = it.wp._autoDir || 'top';
+      const order = [cur].concat(LABEL_DIRS.filter(d => d !== cur));
+      let chosen = null;
+      for (const d of order) {
+        const r = _labelRect(it.cx, it.cy, it.w, it.h, d, off);
+        const hit = placed.some(p => _rectsOverlap(r, p)) || blockers.some(b => _rectsOverlap(r, b));
+        if (!hit) { chosen = {dir: d, rect: r}; break; }
+      }
+      if (!chosen) chosen = {dir: cur, rect: _labelRect(it.cx, it.cy, it.w, it.h, cur, off)};
+      placed.push(chosen.rect);
+      if (chosen.dir !== cur) { it.wp._autoDir = chosen.dir; moved++; }
+    });
+    if (moved) items.forEach(it => updateTooltip(it.wp));
+    return moved;
+  } finally { _autoLabelBusy = false; }
+}
+// 続けて呼ばれても1回にまとめる（描き直しのたびに走らせない）
+function scheduleAutoLabels(){
+  if (_autoLabelTimer) clearTimeout(_autoLabelTimer);
+  _autoLabelTimer = setTimeout(() => { _autoLabelTimer = null; try { autoPlaceLabels(); } catch(_){} }, 180);
 }
 
 function deleteWp(id) {
@@ -4156,6 +4226,7 @@ function updateDistanceAndTime(coords) {
     if (mobDist) mobDist.textContent = (dist/1000).toFixed(1);
     if (mobTime) mobTime.textContent = calcTotalTime(dist);
     if (typeof _fillEmbedBar === 'function') _fillEmbedBar();   // 埋め込みの帯にも距離を出す
+    if (typeof scheduleAutoLabels === 'function') scheduleAutoLabels();   // ラベルの重なりを避ける
     _renderDifficulty(dist);                                    // 難易度（高低差が取れていれば）
   } else {
     if (distEl) distEl.textContent = '総距離: — km';
@@ -6164,6 +6235,7 @@ function setLabelSize(i){
   _labelSizeIdx = i; _saveIdxPref(LS.labelSize, i);
   wps.forEach(wp => updateTooltip(wp));          // 表示中のラベルへ即反映
   _syncSizeMenu();
+  scheduleAutoLabels();                          // 大きさが変わると重なり方も変わる
   if (typeof showToast === 'function') showToast('🔠 名称ラベル: ' + LABEL_SIZE_LABELS[i]);
 }
 // スポット○の大きさを段階で設定（表示のみ。座標・ルート・高低差のデータは変えない）
@@ -6173,6 +6245,7 @@ function setWpSize(i){
   refreshIcons();                                // ○を新しい大きさで作り直す
   wps.forEach(wp => updateTooltip(wp));          // ラベル位置を新しい○に合わせ直す
   _syncSizeMenu();
+  scheduleAutoLabels();
   if (typeof showToast === 'function') showToast('⭕ スポットの○: ' + WP_SIZE_LABELS[i]);
 }
 // PCツールバーの「文字」ボタン：標準→大→特大→極大→最大 を循環

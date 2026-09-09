@@ -307,6 +307,13 @@ def static_checks(src):
     chk('静的', '色の定義は WT の1か所だけ（CSSに直書きしない）',
         '.wp-tt-course{background:' not in src and 'function _injectWpStyles' in src)
     chk('静的', '画像保存の色も WT から作る', "_colors['wp-tt-' + t.v] = t.c" in src)
+    # --- v99: ラベルの自動配置 ---
+    chk('静的', 'ラベル自動配置 autoPlaceLabels 存在', 'function autoPlaceLabels' in src)
+    chk('静的', 'まとめて実行する scheduleAutoLabels 存在', 'function scheduleAutoLabels' in src)
+    chk('静的', '利用者が選んだ向きは尊重する',
+        "(wp.labelDir && wp.labelDir !== 'top') ? wp.labelDir : (wp._autoDir || 'top')" in src)
+    chk('静的', '自動の向きは保存データに入れない（_autoDir）',
+        '_autoDir' in src and 'labelDir:w.labelDir' in src.replace(' ', ''))
     chk('静的', '背景地図に配色済みタイル追加', all(k in src for k in ['opentopo:', 'carto:', 'osm_hot:']))
     chk('静的', '背景地図切替 cycleBaseMap 存在', 'function cycleBaseMap' in src)
     chk('静的', 'PCツールバーに地図切替ボタン', 'id="btnBaseMap"' in src)
@@ -812,6 +819,45 @@ def functional_checks(index_path):
                     hasVer: items.some(r => (r.detail||'').indexOf(APP_VERSION) >= 0),
                     txtOK: txt.indexOf('動作確認') >= 0 && txt.length > 100};
           }catch(e){ return 'ERR:'+e.message; } })(); }""")
+        # INV-AM: 密集したラベルの重なりが自動配置で減る
+        lb = page.evaluate("""()=>{ try{
+            const keepW = wps.slice();
+            wps.length = 0;
+            const c = leafMap.getCenter();
+            _resetBounds(); _setAnchor(c.lat, c.lng, true);
+            // 近接した4点に長めの名前を付ける（既定はすべて「上」＝重なる）
+            const names = ['見晴らしの丘展望台', '飯見の棚田入口', '加茂神明神社の参道', '休憩所とトイレ'];
+            const made = [];
+            names.forEach((n, i) => {
+              const w = addWp(c.lat + (i % 2) * 0.00022, c.lng + Math.floor(i / 2) * 0.00030, 'course');
+              w.name = n; w._autoDir = null; updateTooltip(w); made.push(w);
+            });
+            const rects = () => made.map(w => {
+              const el = w.marker.getTooltip().getElement();
+              const r = el.getBoundingClientRect();
+              return {x:r.left, y:r.top, w:r.width, h:r.height};
+            });
+            const count = rs => { let n = 0;
+              for (let i = 0; i < rs.length; i++) for (let j = i+1; j < rs.length; j++) {
+                const a = rs[i], b = rs[j];
+                if (!(a.x + a.w <= b.x || b.x + b.w <= a.x || a.y + a.h <= b.y || b.y + b.h <= a.y)) n++;
+              } return n; };
+            const before = count(rects());
+            const moved = autoPlaceLabels();
+            const after = count(rects());
+            // 利用者が選んだ向きは動かさない
+            made[0].labelDir = 'left'; made[0]._autoDir = null; updateTooltip(made[0]);
+            autoPlaceLabels();
+            const keptManual = made[0]._autoDir === null || made[0]._autoDir === undefined;
+            made.forEach(w => { if (w.marker) leafMap.removeLayer(w.marker); });
+            wps.length = 0; keepW.forEach(w => wps.push(w));
+            return {before:before, after:after, moved:moved, keptManual:keptManual};
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        ok_lb = (isinstance(lb, dict) and lb.get('before', 0) > 0
+                 and lb.get('after', 99) < lb.get('before') and lb.get('moved', 0) > 0
+                 and lb.get('keptManual') is True)
+        chk('機能', '密集したラベルの重なりが自動で減る', ok_lb, str(lb)[:170])
+
         # INV-AL: スポットの色が実際に別々に描かれる（ラベル・○・凡例）
         col = page.evaluate("""()=>{ try{
             const style = document.getElementById('wpTypeStyles');
