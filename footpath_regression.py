@@ -291,6 +291,10 @@ def functional_checks(index_path):
     local = (src
         .replace('https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css', leaf_css)
         .replace('https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js', leaf_js))
+    h2c = os.path.join(here, 'node_modules/html2canvas/dist/html2canvas.min.js')
+    if os.path.exists(h2c):
+        local = local.replace('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',
+                              'file://' + h2c)
     tdir = tempfile.mkdtemp()
     tpath = os.path.join(tdir, 'test_local.html')
     open(tpath, 'w', encoding='utf-8').write(local)
@@ -878,6 +882,180 @@ def offline_checks(index_path):
         try: httpd.shutdown()
         except Exception: pass
 
+
+# ----------------------------------------------------------------------
+# 4) 見た目の比較検査（配布シート・保存画像）
+#    「保存画像の見え方は確認できない」を減らすための検査。
+#    地図タイルは比較対象から外す（提供元の絵が変わるため）。比べるのは
+#    こちら側が作っている部分＝○・番号・ラベル・凡例・縮尺・方位・タイトル帯。
+#    文字の描かれ方はOSごとに違うので、基準画像を作った環境でだけ比較する。
+# ----------------------------------------------------------------------
+VISUAL_DIFF_MAX = 0.01     # 画素の食い違いが1%を超えたら不合格
+VISUAL_CH_TOL   = 24       # 1画素あたり、この差までは同じ色とみなす
+
+def _visual_platform():
+    import platform
+    return platform.system()
+
+def _compare_png(cur_bytes, base_path, name):
+    """基準画像と比べる。無ければ作って報告だけする。"""
+    from PIL import Image, ImageChops
+    import io as _io
+    if not os.path.exists(base_path):
+        with open(base_path, 'wb') as f:
+            f.write(cur_bytes)
+        return True, f'基準画像を新規作成: {os.path.basename(base_path)}（内容を目視で確認してください）'
+    cur  = Image.open(_io.BytesIO(cur_bytes)).convert('RGB')
+    base = Image.open(base_path).convert('RGB')
+    if cur.size != base.size:
+        return False, f'大きさが違う 現在={cur.size} 基準={base.size}'
+    diff = ImageChops.difference(cur, base)
+    bad = 0
+    for px in diff.getdata():
+        if px[0] > VISUAL_CH_TOL or px[1] > VISUAL_CH_TOL or px[2] > VISUAL_CH_TOL:
+            bad += 1
+    ratio = bad / float(cur.size[0] * cur.size[1])
+    ok = ratio <= VISUAL_DIFF_MAX
+    return ok, f'食い違い {ratio*100:.2f}%（許容 {VISUAL_DIFF_MAX*100:.0f}%）'
+
+def visual_checks(index_path):
+    try:
+        from playwright.sync_api import sync_playwright
+    except Exception:
+        return
+    try:
+        from PIL import Image  # noqa: F401
+    except Exception:
+        chk('見た目', '画像比較の準備', False, 'Pillow が未導入 → pip install pillow'); return
+
+    here = os.path.dirname(os.path.abspath(index_path))
+    base_dir = os.path.join(here, 'tests', 'baseline')
+    os.makedirs(base_dir, exist_ok=True)
+    mark = os.path.join(base_dir, 'PLATFORM.txt')
+    plat = _visual_platform()
+    if os.path.exists(mark):
+        made_on = open(mark, encoding='utf-8').read().strip()
+        if made_on != plat:
+            chk('見た目', f'比較は基準を作った環境でのみ実施（基準={made_on} / 現在={plat}）', True,
+                '文字の描かれ方がOSで違うため、この環境では比較しない')
+            return
+    else:
+        with open(mark, 'w', encoding='utf-8') as f:
+            f.write(plat)
+
+    # 機能チェックと同じローカル差し替え版を使う
+    leaf_css = 'file://' + os.path.join(here, 'node_modules/leaflet/dist/leaflet.css')
+    leaf_js  = 'file://' + os.path.join(here, 'node_modules/leaflet/dist/leaflet.js')
+    h2c      = os.path.join(here, 'node_modules/html2canvas/dist/html2canvas.min.js')
+    if not (os.path.exists(leaf_js[7:]) and os.path.exists(h2c)):
+        chk('見た目', 'ローカルの部品が揃っている', False, 'npm install が必要'); return
+    src = open(index_path, encoding='utf-8').read()
+    local = (src.replace('https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css', leaf_css)
+                .replace('https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js', leaf_js)
+                .replace('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',
+                         'file://' + h2c))
+    tdir = tempfile.mkdtemp()
+    tpath = os.path.join(tdir, 'visual.html')
+    open(tpath, 'w', encoding='utf-8').write(local)
+
+    sandbox_chrome = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome'
+    launch_kwargs = {'args': ['--allow-file-access-from-files', '--force-device-scale-factor=1',
+                              '--hide-scrollbars', '--disable-lcd-text']}
+    if os.path.exists(sandbox_chrome):
+        launch_kwargs['executable_path'] = sandbox_chrome
+
+    with sync_playwright() as pw:
+        b = pw.chromium.launch(**launch_kwargs)
+        ctx = b.new_context(viewport={'width': 1100, 'height': 800}, device_scale_factor=1)
+        page = ctx.new_page()
+        page.goto('file://' + tpath, wait_until='domcontentloaded'); page.wait_for_timeout(400)
+        page.click('.s1-fab'); page.wait_for_timeout(120)
+        page.fill('#s1Name', '見た目検査コース'); page.fill('#s1Area', '宍粟市波賀町')
+        page.click('#s1Btn'); page.wait_for_timeout(900)
+
+        # 毎回まったく同じコースを作る（座標・名前・種別・縮尺を固定）
+        page.evaluate("""() => {
+            if (!leafMap) initMap();
+            leafMap.eachLayer(l => { if (l instanceof L.TileLayer) leafMap.removeLayer(l); });  // 地図の絵は比較しない
+            // 地域名の検索結果（ネット依存）で表示範囲が制限されないよう、基準点を作り直して固定する
+            // （_setAnchor は既に基準点があると何もしないので、先に _resetBounds が要る）
+            _resetBounds();
+            _setAnchor(35.1538, 134.4468, true);
+            wps.length = 0; vps.length = 0; idW = 0; idV = 0;
+            const S = [[35.1520,134.4450,'start','出発点'],
+                       [35.1535,134.4462,'course','棚田の見どころ'],
+                       [35.1548,134.4448,'shrine','山の神神社'],
+                       [35.1556,134.4470,'view','見晴らし台'],
+                       [35.1541,134.4489,'toilet','公衆トイレ'],
+                       [35.1524,134.4478,'goal','到着点']];
+            S.forEach(s => { const w = addWp(s[0], s[1], s[2]); w.name = s[3]; updateTooltip(w); });
+            // 経路サーバの応答でルート形状が変わらないよう、区間はすべて直線に固定する
+            // （道なりの精度はここでは検査対象外。○・番号・ラベル・線の描かれ方を見る）
+            wps.forEach(w => { w.fitBefore = false; w.fitAfter = false; });
+            segCache = {};
+            const el = document.getElementById('iDesc');
+            if (el) el.value = '棚田と神社をめぐる短い周回コース。見た目検査のための固定データです。';
+            setLabelSize(0); setWpSize(0); setWalkSpeed(2);
+            leafMap.setView([35.1538, 134.4468], 16);
+            _elevData = null;
+            redrawStraight();
+        }""")
+        page.wait_for_timeout(1200)
+
+        # 前提の確認：印が地図の中に入っていること。
+        # （入っていないまま撮ると「空っぽの基準画像」ができてしまうため必ず確かめる）
+        inside = page.evaluate("""() => {
+            const m = document.getElementById('map').getBoundingClientRect();
+            const els = [...document.querySelectorAll('.leaflet-marker-icon')];
+            const tips = [...document.querySelectorAll('.leaflet-tooltip.wp-tt')];
+            const ok = e => { const r = e.getBoundingClientRect();
+                return r.left >= m.left - 2 && r.right <= m.right + 2 && r.top >= m.top - 2 && r.bottom <= m.bottom + 2; };
+            return {markers: els.length, inside: els.filter(ok).length, tips: tips.length,
+                    tipsInside: tips.filter(ok).length};
+        }""")
+        pre_ok = (isinstance(inside, dict) and inside.get('markers', 0) >= 6
+                  and inside['markers'] == inside['inside']
+                  and inside.get('tips', 0) >= 6 and inside['tips'] == inside['tipsInside'])
+        chk('見た目', '検査用コースが地図の中に収まっている', pre_ok, str(inside))
+
+        # (A) 保存画像（地図＋○＋ラベル）— 実際に html2canvas で描く
+        img_a = page.evaluate("""() => (async () => {
+            const c = await _captureMapCanvas();
+            return c.toDataURL('image/png');
+        })()""")
+        # (B) 配布シート — 地図部分は単色に差し替え、こちらが組んだ紙面だけを比べる
+        page.evaluate("""() => {
+            window.__origCap = _captureMapCanvas;
+            window._captureMapCanvas = async () => {
+                const c = document.createElement('canvas');
+                c.width = 900; c.height = 560;
+                const g = c.getContext('2d'); g.fillStyle = '#E8EDE2'; g.fillRect(0, 0, 900, 560);
+                return c;
+            };
+        }""")
+        # QRも比較対象にするため、配布リンクを確実に結びつける
+        page.evaluate("""() => { currentCourseId = 'visual-test';
+            _setShareLink(currentCourseId, 'https://example.test/footpath/?course=vis.json'); }""")
+        page.evaluate("""() => openPrintSheet()""")
+        page.wait_for_timeout(1500)
+        sheet = page.query_selector('#printSheet')
+        img_b = sheet.screenshot(type='png') if sheet else None
+        b.close()
+
+    import base64
+    if img_a and img_a.startswith('data:image/png;base64,'):
+        raw = base64.b64decode(img_a.split(',', 1)[1])
+        ok, msg = _compare_png(raw, os.path.join(base_dir, 'map_image.png'), '保存画像')
+        chk('見た目', '保存画像（○・番号・ラベル）が基準どおり', ok, msg)
+    else:
+        chk('見た目', '保存画像を作成できる', False, '画像が取得できなかった')
+
+    if img_b:
+        ok, msg = _compare_png(img_b, os.path.join(base_dir, 'print_sheet.png'), '配布シート')
+        chk('見た目', '配布シート（凡例・縮尺・方位・QR）が基準どおり', ok, msg)
+    else:
+        chk('見た目', '配布シートを作成できる', False, 'シートが取得できなかった')
+
 # ----------------------------------------------------------------------
 def main():
     if not os.path.exists(INDEX):
@@ -887,6 +1065,7 @@ def main():
     static_checks(src)
     functional_checks(INDEX)
     offline_checks(INDEX)
+    visual_checks(INDEX)
 
     # 結果出力
     cats = {}

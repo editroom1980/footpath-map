@@ -1,0 +1,41 @@
+# push のたびに回帰テストを自動実行する。
+# 目的は「テストを流し忘れたまま公開」を防ぐこと。
+# 失敗しても公開（GitHub Pages）は止まらないが、赤い×と通知メールで気づける。
+name: 回帰テスト
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+  workflow_dispatch:      # 手動でも実行できる
+
+jobs:
+  regression:
+    name: npm test（回帰テスト）
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: ソースを取得
+        uses: actions/checkout@v4
+
+      - name: Node を用意
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: テスト用の依存を入れる（leaflet / html2canvas）
+        run: npm install
+
+      - name: Python を用意
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Playwright と画像比較ライブラリを入れる
+        run: pip install playwright pillow
+
+      - name: Chromium を入れる
+        run: python -m playwright install --with-deps chromium
+
+      - name: 回帰テストを実行
+        run: npm test
