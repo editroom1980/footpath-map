@@ -1,6 +1,6 @@
 # ARCHITECTURE — フットパスマップメーカー 設計書
 
-対象：**v93**（`index.html` / `sw.js`）
+対象：**v94**（`index.html` / `sw.js`）
 読む人：このアプリを直す人（人間・AI どちらも）
 
 `CLAUDE.md`（作業規約）→ 本書 → `HANDOFF_開発引き継ぎ書.md`（経緯と変更履歴）の順で読む。
@@ -163,6 +163,7 @@ routeLine.setLatLngs(...)           ← 画面に出るのはこれだけ
 |---|---|---|
 | 配布リンク | `?course=ファイル名.json` | 同じ場所に置いたJSONを読み、**閲覧専用**で表示。見る人の端末には保存しない |
 | 確認用リンク | `?view=<コースID>` | 自分の端末のみ（localStorage 参照） |
+| 埋め込み | `?course=…&embed=1` | `body.embed` でヘッダ・サイドバー・編集UIを全部隠し、地図＋帯だけにする。帯には コース名・距離・「大きな地図で開く」（`embed` を外したURL） |
 | 配布シート | `openPrintSheet()` | 地図画像＋凡例・縮尺・方位・見どころ・スポット一覧・QR。`@media print` で **A4横**に印刷 |
 | QRコード | `LS.shareLinks` に覚えた配布リンクを描画 | ライブラリが無ければQR欄ごと出さない |
 | GPX | `buildGpx()` | GPX1.1。`<trk>` は**実データ** `_lastRouteCoords`。なぞり端点(node)は除外 |
@@ -196,9 +197,9 @@ routeLine.setLatLngs(...)           ← 画面に出るのはこれだけ
 
 | 場所 | 例 |
 |---|---|
-| `index.html` の `APP_VERSION` | `'v93'` |
-| `version.json` | `{"version":"v93"}` |
-| `package.json` の `version` | `0.93.0` |
+| `index.html` の `APP_VERSION` | `'v94'` |
+| `version.json` | `{"version":"v94"}` |
+| `package.json` の `version` | `0.94.0` |
 
 利用者側は `?v=` を手で書き換えなくてよい。アプリが `version.json` と自分の版を比べ、
 違えば**一覧画面のときだけ**「新しい版があります／更新する」を出す
@@ -232,7 +233,7 @@ CONSTANTS(904) → STATE(968) → STORAGE(1015) → 版のお知らせ(1021) →
 
 ## 13. 不変条件とテストの対応
 
-`footpath_regression.py`（**195項目**）が本書の条件を機械で見張っている。
+`footpath_regression.py`（**201項目**）が本書の条件を機械で見張っている。
 
 | 本書の条件 | 対応する検査 |
 |---|---|

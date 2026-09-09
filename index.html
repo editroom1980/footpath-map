@@ -211,6 +211,19 @@ html,body{min-height:calc(100% + env(safe-area-inset-top));font-family:'Hiragino
 .vip-photos{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
 .vip-photos img{width:calc(50% - 4px);max-width:200px;height:140px;object-fit:cover;border-radius:8px;cursor:pointer}
 .vip-photos img:only-child{width:100%;max-width:100%;height:210px}
+/* 埋め込み表示（?embed=1）：ホームページの中に置くので、地図だけを見せる */
+body.embed #hdr, body.embed #sidebar, body.embed #mobileTopBar, body.embed #mobileShelf,
+body.embed #mobileElevBand, body.embed #viewBadge, body.embed #mobileRbtns{display:none!important}
+body.embed #s2, body.embed #mapArea, body.embed #mapWrap{height:100%!important;min-height:0!important}
+#embedBar{position:absolute;top:0;left:0;right:0;z-index:1200;display:none;align-items:center;gap:8px;
+  padding:7px 10px;background:linear-gradient(180deg,rgba(255,255,255,.96),rgba(255,255,255,.82));
+  font-size:12.5px;color:#4A2E0E;box-shadow:0 1px 6px rgba(0,0,0,.12)}
+body.embed #embedBar{display:flex}
+#embedBar .eb-name{flex:1;min-width:0;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#embedBar .eb-stat{flex:none;color:#7A6A55;font-size:11.5px;white-space:nowrap}
+#embedBar a{flex:none;background:linear-gradient(135deg,#FB8B3E,#F2670E);color:#fff;text-decoration:none;
+  font-size:11.5px;font-weight:700;padding:5px 10px;border-radius:8px}
+body.embed .leaflet-control-attribution{font-size:9px}
 /* 配布リンク(?course= / ?view=)で開いたときは編集UIを隠す（見る人が触って壊さないように）*/
 body.viewonly #tbar, body.viewonly #descSec, body.viewonly .hbtn-save, body.viewonly .drag-hint,
 body.viewonly .mob-modes, body.viewonly .mob-save,
@@ -662,6 +675,8 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
         <div id="map"></div>
         <div id="mapMsg">⚠️ プレビュー環境では地図タイルは表示されません<br><span style="font-size:10px">GitHub Pagesに公開すると正常に表示されます</span></div>
         <div id="rtMsg">🔄 ルートを計算中...</div>
+        <!-- 埋め込み表示のときだけ出る帯（コース名・距離・大きな地図で開く） -->
+        <div id="embedBar"><span class="eb-name"></span><span class="eb-stat"></span><a target="_blank" rel="noopener">大きな地図で開く ↗</a></div>
         <!-- モバイル: 地図上フロートUI -->
         <div id="mobileTopBar">
           <div class="mob-back" onclick="backToS1()" aria-label="一覧へ戻る"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l14 0" /> <path d="M5 12l6 6" /> <path d="M5 12l6 -6" /></svg></div>
@@ -1702,7 +1717,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v93';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
+const APP_VERSION = 'v94';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
 }catch(_){} });
@@ -4012,6 +4027,7 @@ function updateDistanceAndTime(coords) {
     if (timeEl) timeEl.textContent = `所要時間: 約${calcTotalTime(dist)}${_timeNote()}`;
     if (mobDist) mobDist.textContent = (dist/1000).toFixed(1);
     if (mobTime) mobTime.textContent = calcTotalTime(dist);
+    if (typeof _fillEmbedBar === 'function') _fillEmbedBar();   // 埋め込みの帯にも距離を出す
   } else {
     if (distEl) distEl.textContent = '総距離: — km';
     if (timeEl) timeEl.textContent = '所要時間: —';
@@ -4879,7 +4895,7 @@ function _viewParams() {
   const p = new URLSearchParams(location.search);
   const file = _safeCourseFile(p.get('course'));
   const id   = p.get('view');
-  return { file: file, id: id, on: !!(file || id) };
+  return { file: file, id: id, embed: p.get('embed') === '1', on: !!(file || id) };
 }
 
 // 配布リンクで読めるのは「同じ場所に置いた .json」だけに限定する。
@@ -4915,6 +4931,20 @@ function _applyViewDesc() {
   ta.readOnly = true;
 }
 
+// 埋め込み表示の帯を埋める。「大きな地図で開く」は同じコースを普通の閲覧ページで開く。
+function _fillEmbedBar() {
+  if (!document.body.classList.contains('embed')) return;
+  const bar = document.getElementById('embedBar');
+  if (!bar) return;
+  const nameEl = bar.querySelector('.eb-name'), statEl = bar.querySelector('.eb-stat'), a = bar.querySelector('a');
+  if (nameEl) nameEl.textContent = (courseInfo && courseInfo.name) || 'コース';
+  if (statEl) statEl.textContent = ((document.getElementById('distDisp') || {}).textContent || '').replace('総距離: ', '');
+  if (a) {
+    const p = new URLSearchParams(location.search); p.delete('embed');
+    a.href = location.origin + location.pathname + '?' + p.toString();
+  }
+}
+
 function _showViewError(msg) {
   const mapArea = document.getElementById('mapArea');
   if (mapArea) mapArea.innerHTML = '<div style="padding:40px;text-align:center;color:#888;line-height:1.8">' + escHtml(msg) + '</div>';
@@ -4929,6 +4959,7 @@ function initViewMode() {
   document.getElementById('s1').style.display = 'none';
   document.getElementById('s2').style.display = 'flex';
   document.body.classList.add('viewonly');
+  if (v.embed) document.body.classList.add('embed');   // ホームページ内に埋め込むときは地図だけ見せる
   const vb = document.getElementById('viewBadge');
   if (vb) vb.style.display = 'block';
 
@@ -5487,6 +5518,7 @@ function loadCourseData(data) {
     const descEl = document.getElementById('iDesc');
     if (descEl) descEl.value = data.desc||'';
     _applyViewDesc();   // 配布リンクで開いているときだけ、説明文を読み取り専用で表示する
+    _fillEmbedBar();    // 埋め込み表示の帯（コース名・距離・大きな地図で開く）
 
     // カスタム道路: 機能廃止につき読み込まない
     customRoads = [];
@@ -5695,7 +5727,11 @@ function openShareDialog(course) {
       + '<div style="font-size:12px;font-weight:700;color:#4A2E0E;margin-bottom:5px">④ このリンクを配る</div>'
       + '<div style="font-size:11px;color:#6A645E;line-height:1.6;margin-bottom:6px">このリンクは「配布シート」のQRコードにも使われます（紙の地図から、スマホの地図へ）。</div>'
       + '<input id="shUrl" readonly style="width:100%;border:1px solid #DED5C8;border-radius:8px;padding:9px 10px;font-size:12px;background:#F9F7F4;margin-bottom:8px">'
+      + '<div style="font-size:12px;font-weight:700;color:#4A2E0E;margin:12px 0 5px">⑤ ホームページに貼る（埋め込み）</div>'
+      + '<div style="font-size:11px;color:#6A645E;line-height:1.6;margin-bottom:6px">市のホームページなどに、この地図をそのまま置けます。下のコードをコピーして貼り付けてください。</div>'
+      + '<textarea id="shEmbed" readonly rows="3" style="width:100%;border:1px solid #DED5C8;border-radius:8px;padding:8px 10px;font-size:11px;background:#F9F7F4;font-family:ui-monospace,monospace;resize:vertical;margin-bottom:8px"></textarea>'
       + '<div style="display:flex;flex-direction:column;gap:8px">'
+      +   '<button id="shCopyEmbed" style="border:none;border-radius:10px;padding:11px;font-size:14px;font-weight:700;background:#EEE5D8;color:#4A2E0E">埋め込みコードをコピー</button>'
       +   '<button id="shCopy" style="border:none;border-radius:10px;padding:11px;font-size:14px;font-weight:700;background:#EEE5D8;color:#4A2E0E">リンクをコピー</button>'
       +   '<button id="shPreview" style="border:none;border-radius:10px;padding:11px;font-size:14px;font-weight:700;background:#EEE5D8;color:#4A2E0E">この端末で見え方を確認</button>'
       +   '<button id="shClose" style="border:none;border-radius:10px;padding:11px;font-size:14px;font-weight:700;background:#F5F1EA;color:#6A645E">閉じる</button>'
@@ -5704,9 +5740,13 @@ function openShareDialog(course) {
     ov.addEventListener('click', e => { if (e.target === ov) ov.style.display = 'none'; });
   }
   const fileEl = ov.querySelector('#shFile'), urlEl = ov.querySelector('#shUrl');
+  const embedEl = ov.querySelector('#shEmbed');
   const sync = () => {
     urlEl.value = _shareBaseUrl() + '?course=' + _shareFileName(fileEl.value);
     _setShareLink(course.id, urlEl.value);      // 配布シートのQRコードにも使う
+    if (embedEl) embedEl.value = '<iframe src="' + urlEl.value + '&embed=1" width="100%" height="480" '
+      + 'style="border:1px solid #ddd;border-radius:8px" loading="lazy" '
+      + 'title="' + escHtml(course.name || 'コース地図') + '"></iframe>';
   };
   ov.querySelector('#shName').textContent = course.name || '(名称未設定)';
   fileEl.value = _shareFileName('course-' + (course.id || Date.now()));
@@ -5714,6 +5754,12 @@ function openShareDialog(course) {
   ov.querySelector('#shExport').onclick = async () => {
     _downloadJsonAs(await _embedPhotos(course), _shareFileName(fileEl.value));   // 配布ファイルは写真も入れる
     sync();
+  };
+  ov.querySelector('#shCopyEmbed').onclick = () => {
+    embedEl.select(); embedEl.setSelectionRange(0, 99999);
+    if (navigator.clipboard) navigator.clipboard.writeText(embedEl.value).then(
+      () => showToast('📋 埋め込みコードをコピーしました'), () => showToast('コピーできませんでした（長押しで選択してください）'));
+    else showToast('長押しでコピーしてください');
   };
   ov.querySelector('#shCopy').onclick = () => {
     urlEl.select(); urlEl.setSelectionRange(0, 99999);

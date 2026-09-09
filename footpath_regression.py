@@ -271,6 +271,13 @@ def static_checks(src):
         f"直書き={len(re.findall(r'router.project-osrm.org', src))}箇所")
     chk('静的', 'なぞりのスナップも同じサーバを使う', '(ROUTERS[_routerIdx] || ROUTERS[0]).base' in src)
     chk('静的', '動作確認が全サーバを調べる', 'routerProbes' in src)
+    # --- v94: ホームページへの埋め込み ---
+    chk('静的', '埋め込みパラメータ embed=1 を読む', "p.get('embed') === '1'" in src)
+    chk('静的', '埋め込み表示のCSS（地図だけ見せる）', 'body.embed #hdr' in src and 'body.embed #sidebar' in src)
+    chk('静的', '埋め込みの帯 _fillEmbedBar 存在', 'function _fillEmbedBar' in src)
+    chk('静的', '「大きな地図で開く」がある', '大きな地図で開く' in src)
+    chk('静的', '共有ダイアログに埋め込みコード',
+        'shEmbed' in src and '<iframe src=' in src and 'shCopyEmbed' in src)
     chk('静的', '背景地図に配色済みタイル追加', all(k in src for k in ['opentopo:', 'carto:', 'osm_hot:']))
     chk('静的', '背景地図切替 cycleBaseMap 存在', 'function cycleBaseMap' in src)
     chk('静的', 'PCツールバーに地図切替ボタン', 'id="btnBaseMap"' in src)
@@ -776,6 +783,27 @@ def functional_checks(index_path):
                     hasVer: items.some(r => (r.detail||'').indexOf(APP_VERSION) >= 0),
                     txtOK: txt.indexOf('動作確認') >= 0 && txt.length > 100};
           }catch(e){ return 'ERR:'+e.message; } })(); }""")
+        # INV-AH: 埋め込み表示では地図だけを見せ、外へ出るリンクが正しい
+        emb = page.evaluate("""()=>{ try{
+            const keep = document.body.className;
+            document.body.classList.add('viewonly', 'embed');
+            const g = id => { const e = document.getElementById(id); return e ? getComputedStyle(e).display : 'なし'; };
+            const hidden = ['hdr','sidebar','mobileTopBar','mobileShelf'].map(g);
+            const barShown = getComputedStyle(document.getElementById('embedBar')).display;
+            courseInfo = courseInfo || {}; courseInfo.name = '埋め込みテスト';
+            _fillEmbedBar();
+            const bar = document.getElementById('embedBar');
+            const name = bar.querySelector('.eb-name').textContent;
+            const href = bar.querySelector('a').getAttribute('href') || '';
+            document.body.className = keep;
+            return {hidden:hidden, barShown:barShown, name:name,
+                    hrefHasEmbed: href.indexOf('embed=1') >= 0, href:href.slice(-40)};
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        chk('機能', '埋め込み表示は地図だけを見せる',
+            isinstance(emb, dict) and all(d == 'none' for d in emb.get('hidden', ['x']))
+            and emb.get('barShown') == 'flex' and emb.get('name') == '埋め込みテスト'
+            and emb.get('hrefHasEmbed') is False, str(emb)[:180])
+
         # INV-AG: 経路サーバへ一斉に投げない（相手への配慮＋止まったサーバを1巡目で見切るため）
         par = page.evaluate("""()=>{ return (async()=>{ try{
             const origFetch = window.fetch, keepIdx = _routerIdx, keepDead = _routerDead.slice();
