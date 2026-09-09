@@ -300,6 +300,13 @@ def static_checks(src):
     chk('静的', '追従中も利用者の拡大縮小を邪魔しない（2回目以降はpanTo）',
         'leafMap.panTo([lat, lng], {animate:true})' in src)
     chk('静的', 'スマホメニューに「現在地を追う」', 'mmSwFollow' in src and '現在地を追う' in src)
+    # --- v98: スポットの色（見分けやすさ・定義の一本化）---
+    wt_colors = re.findall(r"c:'(#[0-9A-Fa-f]{6})'", src)
+    chk('静的', 'スポットの色に重複がない', len(wt_colors) == len(set(c.upper() for c in wt_colors)),
+        f'{len(wt_colors)}色 / 重複={[c for c in wt_colors if wt_colors.count(c) > 1]}')
+    chk('静的', '色の定義は WT の1か所だけ（CSSに直書きしない）',
+        '.wp-tt-course{background:' not in src and 'function _injectWpStyles' in src)
+    chk('静的', '画像保存の色も WT から作る', "_colors['wp-tt-' + t.v] = t.c" in src)
     chk('静的', '背景地図に配色済みタイル追加', all(k in src for k in ['opentopo:', 'carto:', 'osm_hot:']))
     chk('静的', '背景地図切替 cycleBaseMap 存在', 'function cycleBaseMap' in src)
     chk('静的', 'PCツールバーに地図切替ボタン', 'id="btnBaseMap"' in src)
@@ -805,6 +812,27 @@ def functional_checks(index_path):
                     hasVer: items.some(r => (r.detail||'').indexOf(APP_VERSION) >= 0),
                     txtOK: txt.indexOf('動作確認') >= 0 && txt.length > 100};
           }catch(e){ return 'ERR:'+e.message; } })(); }""")
+        # INV-AL: スポットの色が実際に別々に描かれる（ラベル・○・凡例）
+        col = page.evaluate("""()=>{ try{
+            const style = document.getElementById('wpTypeStyles');
+            const wp = addWp(35.1521, 134.4452, 'parking'); wp.name = '色テスト'; updateTooltip(wp);
+            const tt = wp.marker.getTooltip().getElement();
+            const bg = getComputedStyle(tt).backgroundColor;
+            const icon = wp.marker.getElement().firstElementChild;
+            const iconBg = getComputedStyle(icon).backgroundColor;
+            const pairs = {};
+            WT.forEach(t => { pairs[t.c] = (pairs[t.c] || 0) + 1; });
+            return {styleInjected: !!style, ttBg: bg, iconBg: iconBg,
+                    dupColors: Object.values(pairs).filter(n => n > 1).length,
+                    parking: (WT.find(t => t.v === 'parking') || {}).c,
+                    view: (WT.find(t => t.v === 'view') || {}).c};
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        ok_col = (isinstance(col, dict) and col.get('styleInjected') is True
+                  and col.get('dupColors') == 0 and col.get('parking') != col.get('view')
+                  and col.get('ttBg') == col.get('iconBg')       # ラベルと○が同じ色で描かれる
+                  and col.get('ttBg', '').startswith('rgb'))
+        chk('機能', 'スポットの色が種別ごとに別々に描かれる', ok_col, str(col)[:180])
+
         # INV-AK: 現在地追従（位置情報を差し替えて動きを確かめる）
         fo = page.evaluate("""()=>{ return (async()=>{ try{
             const realGeo = navigator.geolocation;

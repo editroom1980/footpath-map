@@ -1,6 +1,6 @@
 # ARCHITECTURE — フットパスマップメーカー 設計書
 
-対象：**v97**（`index.html` / `sw.js`）
+対象：**v98**（`index.html` / `sw.js`）
 読む人：このアプリを直す人（人間・AI どちらも）
 
 `CLAUDE.md`（作業規約）→ 本書 → `HANDOFF_開発引き継ぎ書.md`（経緯と変更履歴）の順で読む。
@@ -98,6 +98,10 @@
    外部のデータを読み込ませない。
 
 8. **版数は3か所そろえる**（10章）。
+
+9. **スポットの色は `WT` の1か所だけ**。`.wp-tt-<種別>` のCSSは起動時に `_injectWpStyles()` が
+   WTから作り、画像保存の色も WT から引く。**CSSや画像保存側に色を直書きしない**
+   （v98以前は3か所に同じ色が書かれ、ビュースポットと駐車場が同色になっていた）。
 
 ---
 
@@ -218,9 +222,9 @@ routeLine.setLatLngs(...)           ← 画面に出るのはこれだけ
 
 | 場所 | 例 |
 |---|---|
-| `index.html` の `APP_VERSION` | `'v97'` |
-| `version.json` | `{"version":"v97"}` |
-| `package.json` の `version` | `0.97.0` |
+| `index.html` の `APP_VERSION` | `'v98'` |
+| `version.json` | `{"version":"v98"}` |
+| `package.json` の `version` | `0.98.0` |
 
 利用者側は `?v=` を手で書き換えなくてよい。アプリが `version.json` と自分の版を比べ、
 違えば**一覧画面のときだけ**「新しい版があります／更新する」を出す
@@ -254,7 +258,7 @@ CONSTANTS(904) → STATE(968) → STORAGE(1015) → 版のお知らせ(1021) →
 
 ## 13. 不変条件とテストの対応
 
-`footpath_regression.py`（**222項目**）が本書の条件を機械で見張っている。
+`footpath_regression.py`（**226項目**）が本書の条件を機械で見張っている。
 
 | 本書の条件 | 対応する検査 |
 |---|---|
