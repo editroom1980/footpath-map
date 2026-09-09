@@ -236,7 +236,6 @@ body.viewonly #descSec.view-desc textarea{background:#F9F7F4;border-color:#E6DCC
 .ck-sub-btn{background:#EEE5D8;color:#4A2E0E}
 .ck-guide{background:#F9F7F4;border-radius:10px;padding:11px 13px;margin-top:12px;font-size:11.5px;color:#5A4A35;line-height:1.85}
 .ck-guide b{color:#4A2E0E}
-#s1CheckLink{display:block;margin-top:6px;font-size:10.5px;color:#9A8F80;text-align:center;text-decoration:underline;cursor:pointer}
 /* ===== 配布シート（印刷・PDF・画像）===== */
 #sheetOver{position:fixed;inset:0;z-index:6500;display:none;overflow:auto;background:rgba(40,30,20,.55);padding:16px}
 #sheetOver .sheet-actions{display:flex;gap:8px;justify-content:center;margin:0 auto 12px;max-width:1040px;flex-wrap:wrap}
@@ -278,6 +277,10 @@ body.viewonly #descSec.view-desc textarea{background:#F9F7F4;border-color:#E6DCC
   *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
   @page{size:A4 landscape;margin:8mm}
 }
+#updBar{position:fixed;left:8px;right:8px;top:max(8px,env(safe-area-inset-top));z-index:7000;display:flex;align-items:center;gap:10px;background:#4A2E0E;color:#F5EDD8;font-size:12.5px;padding:9px 12px;border-radius:12px;box-shadow:0 6px 24px rgba(0,0,0,.35)}
+#updBar span{flex:1;line-height:1.45}
+#updBar button{border:none;border-radius:8px;padding:7px 13px;font-size:12.5px;font-weight:700;font-family:inherit;background:linear-gradient(135deg,#FB8B3E,#F2670E);color:#fff;cursor:pointer;flex:none}
+#updBar .upd-x{background:transparent;color:#D9CDB4;padding:6px 4px;font-size:14px}
 #offlineBadge{position:fixed;top:8px;left:50%;transform:translateX(-50%);background:rgba(90,58,26,.92);color:#fff;font-size:11px;padding:4px 14px;border-radius:14px;z-index:2600;pointer-events:none;display:none}
 body.offline #offlineBadge{display:block}
 #viewBadge{position:fixed;top:8px;left:50%;transform:translateX(-50%);background:rgba(196,112,58,.9);color:#fff;font-size:11px;padding:4px 14px;border-radius:14px;z-index:2500;pointer-events:none;display:none}
@@ -547,7 +550,6 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
       <label class="s1-tool" title="バックアップファイルからコースを戻します">バックアップ<br>から復元<input type="file" accept=".json" style="display:none" onchange="importBackupFile(this)"></label>
     </div>
     <div id="storageInfo"></div>
-    <a id="s1CheckLink" onclick="openSelfCheck()">動作確認（実機チェック）</a>
   </div>
   <div style="padding:14px 0 6px">
     <button class="s1-fab" onclick="openNewCourseSheet()"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5l0 14" /> <path d="M5 12l14 0" /></svg>新しいコースを作成</button>
@@ -752,7 +754,6 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
         <div class="mm-grid">
           <button class="mm-act" onclick="closeMobileMenu();saveMapAsImage()"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h1a2 2 0 0 0 2 -2a1 1 0 0 1 1 -1h6a1 1 0 0 1 1 1a2 2 0 0 0 2 2h1a2 2 0 0 1 2 2v9a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-9a2 2 0 0 1 2 -2" /> <path d="M9 13a3 3 0 1 0 6 0a3 3 0 0 0 -6 0" /></svg><span>画像保存</span></button>
           <button class="mm-act" onclick="closeMobileMenu();saveMapNoText()"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 8h.01" /> <path d="M7 3h11a3 3 0 0 1 3 3v11m-.856 3.099a2.991 2.991 0 0 1 -2.144 .901h-12a3 3 0 0 1 -3 -3v-12c0 -.845 .349 -1.608 .91 -2.153" /> <path d="M3 16l5 -5c.928 -.893 2.072 -.893 3 0l5 5" /> <path d="M16.33 12.338c.574 -.054 1.155 .166 1.67 .662l3 3" /> <path d="M3 3l18 18" /></svg><span>文字なし保存</span></button>
-          <button class="mm-act" onclick="closeMobileMenu();openSelfCheck()" title="この端末で正しく動いているかを調べます"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2l4 -4" /> <path d="M12 3a12 12 0 0 0 8.5 3a12 12 0 0 1 -8.5 15a12 12 0 0 1 -8.5 -15a12 12 0 0 0 8.5 -3" /></svg><span>動作確認</span></button>
           <button class="mm-act" onclick="closeMobileMenu();saveMapOffline()" title="このコースの範囲の地図を端末に保存します（圏外でも表示できます）"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12" /> <path d="M8 11l4 4l4 -4" /> <path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2" /> <path d="M3 3l18 18" opacity="0"/></svg><span>地図を持ち歩く</span></button>
           <button class="mm-act" onclick="closeMobileMenu();openPrintSheet()" title="配布シート（A4印刷・PDF・画像。凡例・縮尺・方位つき）"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 17h2a2 2 0 0 0 2 -2v-4a2 2 0 0 0 -2 -2h-14a2 2 0 0 0 -2 2v4a2 2 0 0 0 2 2h2" /> <path d="M17 9v-4a2 2 0 0 0 -2 -2h-6a2 2 0 0 0 -2 2v4" /> <path d="M7 13m0 2a2 2 0 0 1 2 -2h6a2 2 0 0 1 2 2v4a2 2 0 0 1 -2 2h-6a2 2 0 0 1 -2 -2z" /></svg><span>配布シート</span></button>
           <button class="mm-act" onclick="closeMobileMenu();exportGpx()" title="GPXで書き出し（YAMAP・ヤマレコ・Garmin・Google Earth などで開けます）"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l4 -8l5 6l3 -4l6 6" /> <path d="M3 21h18" /></svg><span>GPX書き出し</span></button>
@@ -1015,6 +1016,62 @@ let courseInfo  = {name:'', area:'', start:'', goal:''};
    ============================================================ */
 let _memCourses = [];
 let _lsAvail    = null;
+
+/* ============================================================
+   新しい版のお知らせ
+   公開所に置いた version.json と、いま動いている版を見比べるだけ。
+   ちがっていれば画面上部に案内を出し、押すと最新版で開き直す。
+   （URLの ?v= を手で書き換える作業をなくすための仕組み）
+   ============================================================ */
+const VERSION_URL = 'version.json';
+async function checkForUpdate(){
+  if (navigator.onLine === false) return null;
+  try {
+    const res = await fetch(VERSION_URL + '?_=' + Date.now(), {cache: 'no-store'});
+    if (!res.ok) return null;
+    const data = await res.json();
+    const v = data && data.version;
+    return (v && v !== APP_VERSION) ? v : null;      // 同じ版なら何もしない
+  } catch (_) { return null; }                       // 取得できなければ黙って何もしない
+}
+let _updVersion = null;   // 公開されている新しい版（あれば）
+
+// 案内は一覧画面でだけ出す。
+// ・地図画面ではスマホの「戻る／保存」ボタンに重なってしまう
+// ・編集中に更新すると、保存していない変更が失われる
+function _onCourseList(){
+  const s2 = document.getElementById('s2');
+  return !s2 || getComputedStyle(s2).display === 'none';
+}
+function showUpdateBar(v){
+  if (document.getElementById('updBar')) return;
+  if (!_onCourseList()) return;
+  const bar = document.createElement('div');
+  bar.id = 'updBar';
+  bar.innerHTML = '<span>新しい版 ' + escHtml(v) + ' が公開されています</span>'
+    + '<button onclick="applyUpdate(\'' + escHtml(v) + '\')">更新する</button>'
+    + '<button class="upd-x" onclick="this.parentNode.remove()" aria-label="閉じる">✕</button>';
+  document.body.appendChild(bar);
+}
+// 最新版で開き直す（保存済みの地図や写真は消さない）
+async function applyUpdate(v){
+  try {
+    if ('serviceWorker' in navigator) {
+      const reg = await navigator.serviceWorker.getRegistration();
+      if (reg) await reg.update();
+    }
+  } catch (_) {}
+  const base = location.origin + location.pathname;
+  location.replace(base + '?v=' + String(v).replace(/^v/, ''));
+}
+async function watchVersion(){
+  _updVersion = await checkForUpdate();
+  if (_updVersion) showUpdateBar(_updVersion);
+}
+// 一覧に戻ってきたときに、確認済みの新版があれば改めて案内する（再取得はしない）
+function showUpdateBarIfPending(){
+  if (_updVersion) showUpdateBar(_updVersion);
+}
 
 /* ============================================================
    オフライン対応（サービスワーカー）
@@ -1326,6 +1383,7 @@ window.addEventListener('DOMContentLoaded', () => {
   // 閲覧モード初期化
   initViewMode();
   setupOffline();     // オフライン対応（失敗してもアプリは通常どおり動く）
+  watchVersion();     // 新しい版が公開されていれば案内を出す（?v= の手作業をなくす）
   // 実機チェック用リンク（?check=1）を開いたときは、そのまま動作確認を出す
   if (new URLSearchParams(location.search).get('check') === '1') setTimeout(openSelfCheck, 400);
   const syncOnline = () => document.body.classList.toggle('offline', navigator.onLine === false);
@@ -1393,6 +1451,7 @@ function backToS1() {
 }
 function _doBackToS1() {
   _dirty = false;             // 保存/破棄をダイアログで選んだあと＝以降は確認不要
+  setTimeout(showUpdateBarIfPending, 300);   // 一覧に戻ったら新版の案内を出す
   if (typeof _closeAllPopups === 'function') _closeAllPopups();
   document.getElementById('s2').style.display = 'none';
   document.getElementById('s1').style.display = 'flex';
@@ -1627,7 +1686,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v91';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
+const APP_VERSION = 'v92';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
 }catch(_){} });
@@ -4229,9 +4288,9 @@ async function saveMapAsImage() {
   }
 }
 
-/* ---- 動作確認（実機チェック）------------------------------------------
-   実機（iPhone/Android）で「本当に動いているか」を、開発者ツール無しで確かめる。
-   結果は実測のみ。分からないものは「分からない」と出す。
+/* ---- 動作確認（不具合調査用・URLに ?check=1 を付けたときだけ開く）--------
+   普段の画面には出さない。「地図が出ない」等の相談時に、開発者ツール無しで
+   状況を数値で確かめて送ってもらうための窓口。結果は実測のみ。
    ----------------------------------------------------------------------- */
 function _ckRow(state, label, detail){ return {state: state, label: label, detail: detail || ''}; }
 

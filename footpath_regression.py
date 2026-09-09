@@ -235,11 +235,26 @@ def static_checks(src):
     chk('静的', '動作確認 runSelfCheck 存在', 'async function runSelfCheck' in src)
     chk('静的', '動作確認を開く openSelfCheck 存在', 'async function openSelfCheck' in src)
     chk('静的', '?check=1 で自動的に開く', "get('check') === '1'" in src)
-    chk('静的', '起動画面とメニューの両方に入口',
-        'id="s1CheckLink"' in src and src.count('openSelfCheck()') >= 3,
-        f"呼び出し={src.count('openSelfCheck()')}")
+    chk('静的', '動作確認は普段の画面に出さない（?check=1 のみ）',
+        'id="s1CheckLink"' not in src and 'openSelfCheck()' not in src.split('<script')[0],
+        '起動画面・メニューからは外し、不具合調査用に残す')
     chk('静的', '結果をコピーできる', 'function copySelfCheck' in src and 'function _selfCheckText' in src)
     chk('静的', '圏外での確認手順を載せている', '機内モード' in src)
+    # --- v92: 新しい版のお知らせ（?v= の手作業をなくす）---
+    ver_path = os.path.join(os.path.dirname(os.path.abspath(INDEX)), 'version.json')
+    ver_txt = open(ver_path, encoding='utf-8').read() if os.path.exists(ver_path) else ''
+    m_app = re.search(r"const APP_VERSION = '([^']+)'", src)
+    m_ver = re.search(r'"version"\s*:\s*"([^"]+)"', ver_txt)
+    chk('静的', 'version.json がある', bool(ver_txt), ver_path)
+    chk('静的', 'version.json と APP_VERSION が一致',
+        bool(m_app and m_ver and m_app.group(1) == m_ver.group(1)),
+        f'app={m_app.group(1) if m_app else None} / json={m_ver.group(1) if m_ver else None}')
+    chk('静的', '更新チェック checkForUpdate 存在', 'async function checkForUpdate' in src)
+    chk('静的', '更新の案内バー showUpdateBar 存在', 'function showUpdateBar' in src)
+    chk('静的', '起動時に更新を確認する', 'watchVersion();' in src)
+    chk('静的', '更新の案内は一覧画面だけに出す',
+        'function _onCourseList' in src and 'if (!_onCourseList()) return;' in src)
+    chk('静的', '一覧に戻ったら案内を出し直す', 'showUpdateBarIfPending' in src)
     chk('静的', '背景地図に配色済みタイル追加', all(k in src for k in ['opentopo:', 'carto:', 'osm_hot:']))
     chk('静的', '背景地図切替 cycleBaseMap 存在', 'function cycleBaseMap' in src)
     chk('静的', 'PCツールバーに地図切替ボタン', 'id="btnBaseMap"' in src)
@@ -741,6 +756,36 @@ def functional_checks(index_path):
                     hasVer: items.some(r => (r.detail||'').indexOf(APP_VERSION) >= 0),
                     txtOK: txt.indexOf('動作確認') >= 0 && txt.length > 100};
           }catch(e){ return 'ERR:'+e.message; } })(); }""")
+        # INV-AE: 新しい版が出ていれば案内し、同じ版なら何も出さない
+        up = page.evaluate("""()=>{ return (async()=>{ try{
+            const orig = window.fetch;
+            window.fetch = () => Promise.resolve({ok:true, json:()=>Promise.resolve({version:'v999'})});
+            const newer = await checkForUpdate();
+            window.fetch = () => Promise.resolve({ok:true, json:()=>Promise.resolve({version:APP_VERSION})});
+            const same = await checkForUpdate();
+            window.fetch = () => Promise.reject(new Error('offline'));
+            const fail = await checkForUpdate();
+            window.fetch = orig;
+            const s2 = document.getElementById('s2'), keep = s2.style.display;
+            const kill = () => { const e = document.getElementById('updBar'); if (e) e.remove(); };
+            s2.style.display = 'none';            // ① 一覧画面 → 案内が出る
+            showUpdateBar('v999');
+            const bar = !!document.getElementById('updBar');
+            const btn = document.querySelector('#updBar button');
+            const txt = document.querySelector('#updBar span') ? document.querySelector('#updBar span').textContent : '';
+            kill();
+            s2.style.display = 'flex';            // ② 地図画面 → 出さない（操作ボタンを隠さない）
+            showUpdateBar('v999');
+            const barOnMap = !!document.getElementById('updBar');
+            kill();
+            s2.style.display = keep;
+            return {newer:newer, same:same, fail:fail, bar:bar, barOnMap:barOnMap, hasBtn:!!btn, txt:txt};
+          }catch(e){ return 'ERR:'+e.message; } })(); }""")
+        chk('機能', '新しい版があるときだけ案内が出る',
+            isinstance(up, dict) and up.get('newer') == 'v999' and up.get('same') is None
+            and up.get('fail') is None and up.get('bar') is True and up.get('barOnMap') is False
+            and up.get('hasBtn') is True and 'v999' in up.get('txt', ''), str(up)[:180])
+
         chk('機能', '動作確認が各項目の判定を返す',
             isinstance(sc, dict) and sc.get('items', 0) >= 8 and sc.get('bad') == 0
             and sc.get('hasVer') is True and sc.get('txtOK') is True
