@@ -255,6 +255,22 @@ def static_checks(src):
     chk('静的', '更新の案内は一覧画面だけに出す',
         'function _onCourseList' in src and 'if (!_onCourseList()) return;' in src)
     chk('静的', '一覧に戻ったら案内を出し直す', 'showUpdateBarIfPending' in src)
+    # --- v93: 経路サーバの待避 ---
+    chk('静的', '経路サーバ一覧 ROUTERS 維持', 'const ROUTERS' in src)
+    chk('静的', '予備サーバが用意されている',
+        len(re.findall(r"base:\s*'https://", src)) >= 2,
+        f"台数={len(re.findall(chr(98)+chr(97)+chr(115)+chr(101)+chr(58), src))}")
+    chk('静的', '1台ずつ試す _tryRouter 存在', 'async function _tryRouter' in src)
+    chk('静的', '全滅時のクールダウン ROUTER_COOLDOWN_MS 維持', 'const ROUTER_COOLDOWN_MS' in src)
+    chk('静的', '経路サーバへ一斉に投げない（同時数の上限）',
+        'const ROUTER_MAX_PARALLEL' in src and 'function _routeSlot' in src and 'await _routeSlot();' in src)
+    chk('静的', 'だめだったサーバは区間ごとに試さない',
+        'let   _routerDead' in src and 'if (Date.now() < (_routerDead[i] || 0)) continue;' in src)
+    chk('静的', '経路URLの直書きは一覧の1か所だけ',
+        len(re.findall(r'router\.project-osrm\.org', src)) == 1,
+        f"直書き={len(re.findall(r'router.project-osrm.org', src))}箇所")
+    chk('静的', 'なぞりのスナップも同じサーバを使う', '(ROUTERS[_routerIdx] || ROUTERS[0]).base' in src)
+    chk('静的', '動作確認が全サーバを調べる', 'routerProbes' in src)
     chk('静的', '背景地図に配色済みタイル追加', all(k in src for k in ['opentopo:', 'carto:', 'osm_hot:']))
     chk('静的', '背景地図切替 cycleBaseMap 存在', 'function cycleBaseMap' in src)
     chk('静的', 'PCツールバーに地図切替ボタン', 'id="btnBaseMap"' in src)
@@ -760,6 +776,65 @@ def functional_checks(index_path):
                     hasVer: items.some(r => (r.detail||'').indexOf(APP_VERSION) >= 0),
                     txtOK: txt.indexOf('動作確認') >= 0 && txt.length > 100};
           }catch(e){ return 'ERR:'+e.message; } })(); }""")
+        # INV-AG: 経路サーバへ一斉に投げない（相手への配慮＋止まったサーバを1巡目で見切るため）
+        par = page.evaluate("""()=>{ return (async()=>{ try{
+            const origFetch = window.fetch, keepIdx = _routerIdx, keepDead = _routerDead.slice();
+            const geo = {code:'Ok', routes:[{geometry:{coordinates:[[134.445,35.152],[134.446,35.153]]}}]};
+            let live = 0, peak = 0;
+            window.fetch = () => { live++; peak = Math.max(peak, live);
+              return new Promise(r => setTimeout(() => { live--; r({ok:true, json:()=>Promise.resolve(geo)}); }, 30)); };
+            _routerIdx = 0; _routerDeadUntil = 0; _routerDead = []; segCache = {};
+            const jobs = [];
+            for (let i = 0; i < 12; i++) jobs.push(fetchOSRM('134.4'+i+',35.15;134.5,35.16',
+                                                  [{lat:35.15,lng:134.4},{lat:35.16,lng:134.5}]));
+            const out = await Promise.all(jobs);
+            window.fetch = origFetch; _routerIdx = keepIdx; _routerDead = keepDead; segCache = {};
+            return {peak:peak, limit:ROUTER_MAX_PARALLEL, done:out.length, ok:out.every(o=>o.length===2)};
+          }catch(e){ return 'ERR:'+e.message; } })(); }""")
+        chk('機能', '経路サーバへ同時に投げすぎない',
+            isinstance(par, dict) and par.get('done') == 12 and par.get('ok') is True
+            and 0 < par.get('peak', 99) <= par.get('limit', 0), str(par))
+
+        # INV-AF: 1台目が止まっていたら予備サーバへ切り替わる／全滅なら直線＋しばらく問い合わせない
+        rt = page.evaluate("""()=>{ return (async()=>{ try{
+            const origFetch = window.fetch, keepIdx = _routerIdx, keepDead = _routerDeadUntil;
+            const keepEach = _routerDead.slice();
+            const geo = {code:'Ok', routes:[{geometry:{coordinates:[[134.445,35.152],[134.446,35.153]]}}]};
+            const pts = [{lat:35.152,lng:134.445},{lat:35.153,lng:134.446}];
+            let calls = [];
+            // ① 1台目だけ落ちている → 2台目に切り替わる
+            _routerIdx = 0; _routerDeadUntil = 0; _routerDead = []; segCache = {};
+            window.fetch = (u) => { calls.push(u);
+              return u.indexOf(ROUTERS[0].base) === 0 ? Promise.reject(new Error('down'))
+                                                      : Promise.resolve({ok:true, json:()=>Promise.resolve(geo)}); };
+            const a = await fetchOSRM('134.445,35.152;134.446,35.153', pts);
+            const switched = {idx:_routerIdx, points:a.length, tried:calls.length};
+            // 2区間目：止まっているサーバはもう試さない（待ち時間が積み上がらない）
+            calls = [];
+            const a2 = await fetchOSRM('134.447,35.154;134.448,35.155', pts);
+            const second = {tried:calls.length, points:a2.length};
+            // ② 全部落ちている → 直線になり、クールダウンが立つ
+            calls = []; _routerIdx = 0; _routerDeadUntil = 0; _routerDead = [];
+            window.fetch = (u) => { calls.push(u); return Promise.reject(new Error('down')); };
+            const b2 = await fetchOSRM('134.445,35.152;134.446,35.153', pts);
+            const dead = {straight: b2.length === 2, tried: calls.length, cooldown: _routerDeadUntil > Date.now()};
+            // ③ クールダウン中は問い合わせない（待たされない）
+            calls = [];
+            const c = await fetchOSRM('134.445,35.152;134.446,35.153', pts);
+            const cooled = {straight: c.length === 2, tried: calls.length};
+            window.fetch = origFetch; _routerIdx = keepIdx; _routerDeadUntil = keepDead;
+            _routerDead = keepEach; segCache = {};
+            return {switched:switched, second:second, dead:dead, cooled:cooled, routers:ROUTERS.length};
+          }catch(e){ return 'ERR:'+e.message; } })(); }""")
+        ok_rt = (isinstance(rt, dict) and rt.get('routers', 0) >= 2
+                 and rt['switched']['idx'] == 1 and rt['switched']['points'] == 2
+                 and rt['switched']['tried'] == 2
+                 and rt['second']['tried'] == 1 and rt['second']['points'] == 2
+                 and rt['dead']['straight'] is True and rt['dead']['tried'] == rt['routers']
+                 and rt['dead']['cooldown'] is True
+                 and rt['cooled']['straight'] is True and rt['cooled']['tried'] == 0)
+        chk('機能', '経路サーバが止まったら予備へ切り替わる', ok_rt, str(rt)[:200])
+
         # INV-AE: 新しい版が出ていれば案内し、同じ版なら何も出さない
         up = page.evaluate("""()=>{ return (async()=>{ try{
             const orig = window.fetch;

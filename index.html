@@ -928,6 +928,17 @@ const IMG_SCALE  = 3;        // 画像保存の目標倍率(実機の高解像�
 // --- オフライン用の地図保存（1回に保存するタイル数の上限）---
 const OFFLINE_MAX_TILES = 600;   // 端末の容量と待ち時間の兼ね合い。超える範囲は縮尺を落として収める
 const OFFLINE_ZOOMS     = 2;     // 現在の縮尺から何段階ぶん保存するか（近づいた表示ぶんも用意する）
+// --- 経路サーバ（道なりのルート計算）---
+// 同じ形式(OSRM API)のサーバを並べておき、止まっていたら順に次へ切り替える。
+// 1台目が使えるうちは1台目だけを使う（予備サーバへ余計な負荷をかけない）。
+const ROUTERS = [
+  { name: 'OSRM（公式デモ）', base: 'https://router.project-osrm.org/route/v1/foot/' },
+  { name: 'FOSSGIS（予備）',  base: 'https://routing.openstreetmap.de/routed-foot/route/v1/foot/' },
+];
+const ROUTER_TIMEOUT_MS  = 7000;    // 1台あたりの待ち時間
+const ROUTER_MAX_PARALLEL = 4;      // 提供元サーバへ同時に投げる上限。一斉に投げない（相手への配慮＋
+                                    // 「止まっているサーバ」を1巡目で見切れるようにするため）
+const ROUTER_COOLDOWN_MS = 60000;   // 全部だめだったあと、次に試すまでの間（待ち時間で操作が止まらないように）
 // --- 歩く速さ（所要時間の計算）---
 const WALK_SPEEDS = [3, 3.5, 4, 4.5, 5];   // km/h。3=ゆっくり / 4=標準 / 5=速め
 const WALK_SPEED_DEFAULT = 2;              // 既定は 4km/h（従来と同じ計算になる位置）
@@ -962,6 +973,11 @@ let   _labelSizeIdx = 0;     // 名称ラベルの文字サイズ段階（0=標�
 let   _wpSizeIdx    = 0;     // スポット○の大きさ段階（0=標準/1=大/2=特大）。WP_SIZES の添字
 let   _dirty        = false; // 保存していない変更があるか（タブを閉じる前の確認に使う）
 let   _walkSpeedIdx = WALK_SPEED_DEFAULT;  // 歩く速さの段階。WALK_SPEEDS の添字
+let   _routerIdx      = 0;   // いま使えている経路サーバ（ROUTERS の添字）
+let   _routerDeadUntil = 0;  // 全部だめだった時刻＋クールダウン。この間は問い合わせない
+let   _routerDead     = [];  // サーバごとの「しばらく使わない」時刻。1度だめなら区間ごとに試さない
+let   _routeRunning   = 0;   // いま経路サーバへ投げている数
+let   _routeWaiting   = [];  // 順番待ち
 let   _routeLineBase = null; // ルート線の素の座標（中央=データ準拠／ズーム再計算用）
 
 /* ============================================================
@@ -1686,7 +1702,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v92';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
+const APP_VERSION = 'v93';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
 }catch(_){} });
@@ -3751,9 +3767,9 @@ async function _prefetchOsrm() {
 async function _osrmSnapDistances(points) {
   if (!points || points.length < 2) return null;
   const coordStr = points.map(p => `${p[1].toFixed(6)},${p[0].toFixed(6)}`).join(';');
-  const url = `https://router.project-osrm.org/route/v1/foot/${coordStr}?overview=false`;
+  const url = (ROUTERS[_routerIdx] || ROUTERS[0]).base + coordStr + '?overview=false';   // 生きているサーバを使う
   const ctrl = new AbortController();
-  const tid  = setTimeout(() => ctrl.abort(), 8000);
+  const tid  = setTimeout(() => ctrl.abort(), ROUTER_TIMEOUT_MS);
   try {
     const res = await fetch(url, {signal: ctrl.signal});
     clearTimeout(tid);
@@ -3870,21 +3886,62 @@ function _warnRouteFallback(){
   if (typeof showToast === 'function') showToast('⚠️ 経路サーバに接続できません（区間を直線で表示中）');
 }
 
-async function fetchOSRM(coordStr, pts) {
-  const url = `https://router.project-osrm.org/route/v1/foot/${coordStr}?overview=full&geometries=geojson`;
+// 経路サーバ1台に問い合わせる。取れたら座標、だめなら null（例外は投げない）。
+async function _tryRouter(i, coordStr) {
+  const r = ROUTERS[i];
+  if (!r) return null;
   const ctrl = new AbortController();
-  const tid  = setTimeout(()=>ctrl.abort(), 8000);
+  const tid  = setTimeout(() => ctrl.abort(), ROUTER_TIMEOUT_MS);
   try {
-    const res  = await fetch(url, {signal:ctrl.signal});
+    const res = await fetch(r.base + coordStr + '?overview=full&geometries=geojson', {signal: ctrl.signal});
     clearTimeout(tid);
-    if (!res.ok) throw new Error('OSRM '+res.status);
+    if (!res.ok) return null;
     const data = await res.json();
-    if (data.code==='Ok' && data.routes?.[0]) {
-      return data.routes[0].geometry.coordinates.map(c=>[c[1],c[0]]);
+    if (data.code === 'Ok' && data.routes?.[0]) {
+      return data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
     }
-  } catch(_) { clearTimeout(tid); }
+    return null;
+  } catch (_) { clearTimeout(tid); return null; }
+}
+
+// 経路サーバへの同時アクセスを ROUTER_MAX_PARALLEL 件までに抑える順番待ち
+function _routeSlot(){
+  if (_routeRunning < ROUTER_MAX_PARALLEL) { _routeRunning++; return Promise.resolve(); }
+  return new Promise(res => _routeWaiting.push(res));
+}
+function _routeRelease(){
+  const next = _routeWaiting.shift();
+  if (next) next(); else _routeRunning--;
+}
+
+// 道なりのルートを取る。1台目がだめなら順に次のサーバへ切り替える。
+// 全部だめなら直線にし、しばらく（ROUTER_COOLDOWN_MS）問い合わせを止める
+// ＝つながらない場所で、区間ごとに待たされて操作できなくなるのを防ぐ。
+async function fetchOSRM(coordStr, pts) {
+  await _routeSlot();                     // 一斉に投げず、順番に
+  try { return await _fetchRoute(coordStr, pts); }
+  finally { _routeRelease(); }
+}
+async function _fetchRoute(coordStr, pts) {
+  const straight = () => pts.map(p => [p.lat, p.lng]);
+  if (Date.now() < _routerDeadUntil) { _warnRouteFallback(); return straight(); }
+  for (let n = 0; n < ROUTERS.length; n++) {
+    const i = (_routerIdx + n) % ROUTERS.length;
+    if (Date.now() < (_routerDead[i] || 0)) continue;   // 直前にだめだったサーバは飛ばす（区間ごとに待たない）
+    const co = await _tryRouter(i, coordStr);
+    if (co) {
+      _routerDead[i] = 0;
+      if (i !== _routerIdx) {                       // 切り替わったことは伝える
+        _routerIdx = i;
+        if (typeof showToast === 'function') showToast('🔀 経路サーバを切り替えました（' + ROUTERS[i].name + '）');
+      }
+      return co;
+    }
+    _routerDead[i] = Date.now() + ROUTER_COOLDOWN_MS;   // だめだったサーバはしばらく休ませる
+  }
+  _routerDeadUntil = Date.now() + ROUTER_COOLDOWN_MS;
   _warnRouteFallback();              // 直線になったことをユーザーに伝える（黙って直線にしない）
-  return pts.map(p=>[p.lat,p.lng]);  // fallback: straight line
+  return straight();                 // fallback: straight line
 }
 
 function showRtMsg(show) {
@@ -4372,15 +4429,23 @@ async function runSelfCheck(){
     rows.push({sec: '外部サービス（今つながるか）'});
     const conf = BASEMAPS[_baseMapId] || BASEMAPS[BASEMAP_DEFAULT];
     const tileUrl = conf.url.replace('{s}', (conf.subdomains || 'a')[0]).replace('{z}', 14).replace('{x}', 14374).replace('{y}', 6455);
-    const [tile, osrm, elev] = await Promise.all([
+    const routerProbes = ROUTERS.map(r =>
+      _ckFetch(r.base + '134.445,35.152;134.446,35.153?overview=false', 8000));
+    const [tile, elev, ...routers] = await Promise.all([
       _ckFetch(tileUrl, 6000),
-      _ckFetch('https://router.project-osrm.org/route/v1/foot/134.445,35.152;134.446,35.153?overview=false', 8000),
       _ckFetch('https://cyberjapandata2.gsi.go.jp/general/dem/scripts/getelevation.php?lon=134.445&lat=35.152&outtype=JSON', 6000),
+      ...routerProbes,
     ]);
     rows.push(_ckRow(tile.ok ? 'ok' : 'ng', '地図タイル（' + conf.label + '）',
       tile.ok ? ('取得できました（' + tile.ms + 'ミリ秒）') : '取得できませんでした'));
-    rows.push(_ckRow(osrm.ok ? 'ok' : 'warn', '経路サーバ',
-      osrm.ok ? ('応答あり（' + osrm.ms + 'ミリ秒）') : '応答なし。いまは道なりのルートが引けません（区間は直線で表示されます）'));
+    routers.forEach((r, i) => {
+      const using = (i === _routerIdx) ? '（いま使用中）' : '';
+      rows.push(_ckRow(r.ok ? 'ok' : 'warn', '経路サーバ ' + ROUTERS[i].name + using,
+        r.ok ? ('応答あり（' + r.ms + 'ミリ秒）') : '応答なし'));
+    });
+    if (!routers.some(r => r.ok)) {
+      rows.push(_ckRow('ng', '道なりのルート', 'どの経路サーバにもつながりません（区間は直線で表示されます）'));
+    }
     rows.push(_ckRow(elev.ok ? 'ok' : 'warn', '標高（高低差グラフ）',
       elev.ok ? ('取得できました（' + elev.ms + 'ミリ秒）') : '取得できませんでした'));
   }
