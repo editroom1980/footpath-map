@@ -291,6 +291,15 @@ def static_checks(src):
     chk('静的', 'スポットがあるGPXは軌跡を取り込まない（二重防止）',
         'const hadWpt = wps.length > 0;' in src and 'hadWpt ? [] : _thinPoints' in src)
     chk('静的', '取り込み点数の上限 GPX_MAX_TRKPTS 維持', 'const GPX_MAX_TRKPTS' in src)
+    # --- v97: 現在地追従 ---
+    chk('静的', '追従の切替 toggleFollowMode 存在', 'function toggleFollowMode' in src)
+    chk('静的', '追従の停止 stopFollowMode 存在', 'function stopFollowMode' in src)
+    chk('静的', 'watchPosition を使う', 'navigator.geolocation.watchPosition' in src)
+    chk('静的', '一覧に戻ると追従を止める（電池）', 'if (_followOn) stopFollowMode(true);' in src)
+    chk('静的', '小刻みな揺れで動かさない FOLLOW_MIN_MOVE_M', 'const FOLLOW_MIN_MOVE_M' in src)
+    chk('静的', '追従中も利用者の拡大縮小を邪魔しない（2回目以降はpanTo）',
+        'leafMap.panTo([lat, lng], {animate:true})' in src)
+    chk('静的', 'スマホメニューに「現在地を追う」', 'mmSwFollow' in src and '現在地を追う' in src)
     chk('静的', '背景地図に配色済みタイル追加', all(k in src for k in ['opentopo:', 'carto:', 'osm_hot:']))
     chk('静的', '背景地図切替 cycleBaseMap 存在', 'function cycleBaseMap' in src)
     chk('静的', 'PCツールバーに地図切替ボタン', 'id="btnBaseMap"' in src)
@@ -796,6 +805,42 @@ def functional_checks(index_path):
                     hasVer: items.some(r => (r.detail||'').indexOf(APP_VERSION) >= 0),
                     txtOK: txt.indexOf('動作確認') >= 0 && txt.length > 100};
           }catch(e){ return 'ERR:'+e.message; } })(); }""")
+        # INV-AK: 現在地追従（位置情報を差し替えて動きを確かめる）
+        fo = page.evaluate("""()=>{ return (async()=>{ try{
+            const realGeo = navigator.geolocation;
+            let cb = null, cleared = 0, watchId = 77;
+            Object.defineProperty(navigator, 'geolocation', {configurable:true, value:{
+              watchPosition: (ok) => { cb = ok; return watchId; },
+              clearWatch: () => { cleared++; },
+              getCurrentPosition: () => {},
+            }});
+            const c = leafMap.getCenter();
+            _resetBounds(); _setAnchor(c.lat, c.lng, true);       // 現在地を範囲内にする
+            toggleFollowMode();
+            const on = _followOn;
+            cb({coords:{latitude:c.lat, longitude:c.lng, accuracy:12}});
+            const first = {marker: !!_gpsMarker, circle: !!_gpsCircle,
+                           center: [leafMap.getCenter().lat, leafMap.getCenter().lng]};
+            // ほんの少し（1m弱）動いた → 地図は寄せ直さない
+            cb({coords:{latitude:c.lat + 0.000005, longitude:c.lng, accuracy:12}});
+            const tiny = [leafMap.getCenter().lat, leafMap.getCenter().lng];
+            // 20mほど動いた → 追従する（移動はアニメーションなので少し待つ）
+            cb({coords:{latitude:c.lat + 0.00018, longitude:c.lng, accuracy:12}});
+            await new Promise(r => setTimeout(r, 700));
+            const moved = [leafMap.getCenter().lat, leafMap.getCenter().lng];
+            toggleFollowMode();                                   // OFF
+            const off = {on:_followOn, cleared:cleared, circle: !!_gpsCircle};
+            Object.defineProperty(navigator, 'geolocation', {configurable:true, value: realGeo});
+            return {on:on, first:first, tinySame: Math.abs(tiny[0]-first.center[0]) < 1e-9,
+                    movedDiff: Math.abs(moved[0]-first.center[0]) > 1e-6, off:off};
+          }catch(e){ return 'ERR:'+e.message; } })(); }""")
+        ok_fo = (isinstance(fo, dict) and fo.get('on') is True
+                 and fo['first']['marker'] is True and fo['first']['circle'] is True
+                 and fo.get('tinySame') is True and fo.get('movedDiff') is True
+                 and fo['off']['on'] is False and fo['off']['cleared'] == 1
+                 and fo['off']['circle'] is False)
+        chk('機能', '現在地追従が動き、少しの揺れでは地図を動かさない', ok_fo, str(fo)[:200])
+
         # INV-AJ: GPXを読み込める（自分で書き出したGPXは往復できる／軌跡だけでもコースになる）
         gi = page.evaluate("""()=>{ try{
             // ① 自分で書き出したGPXを読み直す（往復）

@@ -499,6 +499,7 @@ body.offline #offlineBadge{display:block}
 /* シェルフのモードボタン洗練 */
 .mob-more{width:38px;height:38px;border-radius:12px;background:#F7F3ED;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#6A645E;font-size:19px;border:none;cursor:pointer}
 .mob-mode.lbl{gap:5px;padding:0 11px}
+.mrb.gps.on{background:#F2670E!important;color:#fff!important}
 .mrb.gps{color:#3B82F6}
 /* 保存・戻るボタン グラデーション */
 .mob-save{background:linear-gradient(135deg,#FB8B3E,#F2670E)!important;box-shadow:0 3px 9px rgba(242,103,14,0.3)}
@@ -733,6 +734,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
           <div class="mm-tog" onclick="toggleManualMode();_syncMobileMenu()"><span class="mm-tog-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 13v-7.5a1.5 1.5 0 0 1 3 0v6.5" /> <path d="M11 5.5v-2a1.5 1.5 0 1 1 3 0v8.5" /> <path d="M14 5.5a1.5 1.5 0 0 1 3 0v6.5" /> <path d="M17 7.5a1.5 1.5 0 0 1 3 0v8.5a6 6 0 0 1 -6 6h-2h.208a6 6 0 0 1 -5.012 -2.7a69.74 69.74 0 0 1 -.196 -.3c-.312 -.479 -1.407 -2.388 -3.286 -5.728a1.5 1.5 0 0 1 .536 -2.022a1.867 1.867 0 0 1 2.28 .28l1.47 1.47" /></svg></span><span class="mm-tog-l">手動モード</span><div class="mm-sw" id="mmSwManual"></div></div>
           <div class="mm-tog" onclick="toggleViewMode();_syncMobileMenu()"><span class="mm-tog-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" /> <path d="M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6" /></svg></span><span class="mm-tog-l">閲覧モード</span><div class="mm-sw" id="mmSwView"></div></div>
           <div class="mm-tog" onclick="toggleCustomFeature();_syncMobileMenu()"><span class="mm-tog-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6 -6l4 4l8 -8"/><path d="M14 7l7 0l0 7"/></svg></span><span class="mm-tog-l">細道機能</span><div class="mm-sw" id="mmSwCustom"></div></div>
+          <div class="mm-tog" onclick="toggleFollowMode();_syncMobileMenu()" title="歩きながら地図が現在地に付いてきます（電池を使います）"><span class="mm-tog-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 11a1 1 0 1 0 2 0a1 1 0 0 0 -2 0" /> <path d="M12.5 8.5l-4.5 -1.5l-4 12l12 -4l-1.5 -4.5" /> <path d="M21 3l-6 18" /></svg></span><span class="mm-tog-l">現在地を追う</span><div class="mm-sw" id="mmSwFollow"></div></div>
           <div class="mm-tog" onclick="toggleCustomSnap();_syncMobileMenu()"><span class="mm-tog-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5l10 -10"/></svg></span><span class="mm-tog-l">スナップ</span><div class="mm-sw" id="mmSwSnap"></div></div>
         </div>
         <div class="mm-sec">文字の大きさ（地名ラベル）</div>
@@ -963,6 +965,9 @@ const WALK_SPEEDS = [3, 3.5, 4, 4.5, 5];   // km/h。3=ゆっくり / 4=標準 /
 const WALK_SPEED_DEFAULT = 2;              // 既定は 4km/h（従来と同じ計算になる位置）
 // 登りの時間加算：標高100mにつき+10分（登り600mで1時間。ネイスミスの法則の一般的な係数）
 const CLIMB_MIN_PER_100M = 10;
+// --- 現在地追従（歩きながら使う）---
+const FOLLOW_MIN_MOVE_M = 4;      // これ以上動いたときだけ地図を寄せる（小刻みな揺れで動かさない）
+const FOLLOW_MIN_ZOOM   = 16;     // 追従を始めるときの最低倍率
 // --- GPX読み込み（歩いた記録・他アプリのルートを取り込む）---
 const GPX_MAX_TRKPTS = 2000;   // 細道として取り込む点の上限（多すぎると重くなる）
 const GPX_THIN_M     = 5;      // これより近い点は間引く(m)
@@ -1006,6 +1011,10 @@ let   _walkSpeedIdx = WALK_SPEED_DEFAULT;  // 歩く速さの段階。WALK_SPEED
 let   _routerIdx      = 0;   // いま使えている経路サーバ（ROUTERS の添字）
 let   _routerDeadUntil = 0;  // 全部だめだった時刻＋クールダウン。この間は問い合わせない
 let   _routerDead     = [];  // サーバごとの「しばらく使わない」時刻。1度だめなら区間ごとに試さない
+let   _followOn       = false;  // 現在地を追いかけているか
+let   _followWatchId  = null;   // watchPosition のID
+let   _gpsCircle      = null;   // 現在地の精度を表す円
+let   _followLast     = null;   // 直近に地図を寄せた位置
 let   _routeRunning   = 0;   // いま経路サーバへ投げている数
 let   _routeWaiting   = [];  // 順番待ち
 let   _routeLineBase = null; // ルート線の素の座標（中央=データ準拠／ズーム再計算用）
@@ -1438,6 +1447,7 @@ window.addEventListener('DOMContentLoaded', () => {
   window.addEventListener('offline', syncOnline);
   syncOnline();
   // 未保存のまま閉じようとしたときだけブラウザに確認させる（閲覧リンクでは出さない）
+  window.addEventListener('pagehide', () => { if (_followOn) stopFollowMode(true); });
   window.addEventListener('beforeunload', e => {
     if (!_dirty || viewMode) return;
     e.preventDefault();
@@ -1497,6 +1507,7 @@ function backToS1() {
   _askSaveBack();
 }
 function _doBackToS1() {
+  if (_followOn) stopFollowMode(true);   // 地図画面を離れたら追従を止める（電池のため）
   _dirty = false;             // 保存/破棄をダイアログで選んだあと＝以降は確認不要
   setTimeout(showUpdateBarIfPending, 300);   // 一覧に戻ったら新版の案内を出す
   if (typeof _closeAllPopups === 'function') _closeAllPopups();
@@ -1733,7 +1744,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v96';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
+const APP_VERSION = 'v97';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
 }catch(_){} });
@@ -2884,6 +2895,7 @@ function _syncMobileMenu() {
   document.getElementById('mmSwVia')?.classList.toggle('on', viaVisible !== false);
   document.getElementById('mmSwManual')?.classList.toggle('on', manualMode === true);
   document.getElementById('mmSwView')?.classList.toggle('on', viewMode === true);
+  document.getElementById('mmSwFollow')?.classList.toggle('on', _followOn === true);
   _syncBaseMapMenu();
   _syncCustomMenu();
   _syncSizeMenu();
@@ -2903,6 +2915,81 @@ function closeNewCourseSheet() {
    GPS現在地（ボタン押下時のみ地図を移動）
    ============================================================ */
 let _gpsMarker = null;
+/* ---- 現在地追従 ---------------------------------------------------------
+   歩きながら地図が付いてくるモード。電池を使うので、使うときだけONにする。
+   ・地図を寄せるのは FOLLOW_MIN_MOVE_M 以上動いたときだけ（小刻みな揺れで暴れない）
+   ・コース範囲外の位置では地図を動かさない（既存の範囲制限と同じ扱い）
+   ・一覧に戻る／ページを離れるときは必ず止める
+   ----------------------------------------------------------------------- */
+function _distM(a, b){
+  const dy = (a[0] - b[0]) * 111320;
+  const dx = (a[1] - b[1]) * 111320 * Math.cos(a[0] * Math.PI / 180);
+  return Math.hypot(dx, dy);
+}
+// 現在地の印と精度の円を今の位置に合わせる（印が無ければ作る）
+function _showGpsHere(lat, lng, accuracy){
+  const ll = [lat, lng];
+  if (_gpsMarker) { _gpsMarker.setLatLng(ll); }
+  else {
+    _gpsMarker = L.circleMarker(ll, {
+      radius:8, color:'#fff', weight:3,
+      fillColor:'#3B82F6', fillOpacity:1, interactive:true, bubblingMouseEvents:false, pane:'markerPane'
+    }).addTo(leafMap);
+    _gpsMarker.on('click', function(ev){
+      L.DomEvent.stopPropagation(ev);
+      if (viewMode) return;
+      if (typeof _drawActive !== 'undefined' && _drawActive) return;
+      const g = _gpsMarker.getLatLng();
+      showWpTypePicker(g.lat, g.lng, ev);
+    });
+  }
+  if (accuracy > 0) {                       // 精度の円（どのくらい確からしいか）
+    if (_gpsCircle) { _gpsCircle.setLatLng(ll); _gpsCircle.setRadius(accuracy); }
+    else _gpsCircle = L.circle(ll, {radius:accuracy, color:'#3B82F6', weight:1,
+                                    fillColor:'#3B82F6', fillOpacity:.12, interactive:false}).addTo(leafMap);
+  }
+}
+function _syncFollowBtn(){
+  document.querySelectorAll('.mrb.gps').forEach(b => b.classList.toggle('on', _followOn));
+  const sw = document.getElementById('mmSwFollow');
+  if (sw) sw.classList.toggle('on', _followOn);
+}
+function stopFollowMode(silent){
+  if (_followWatchId !== null) { try { navigator.geolocation.clearWatch(_followWatchId); } catch(_){} }
+  _followWatchId = null; _followOn = false; _followLast = null;
+  if (_gpsCircle) { try { leafMap.removeLayer(_gpsCircle); } catch(_){} _gpsCircle = null; }
+  _syncFollowBtn();
+  if (!silent && typeof showToast === 'function') showToast('現在地の追従を止めました');
+}
+function toggleFollowMode(){
+  if (_followOn) { stopFollowMode(); return; }
+  if (!navigator.geolocation) { showToast('この端末では位置情報を利用できません'); return; }
+  if (!leafMap) return;
+  _followOn = true; _followLast = null; _syncFollowBtn();
+  showToast('📍 現在地を追いかけます（電池を使います）');
+  _followWatchId = navigator.geolocation.watchPosition(
+    function(pos){
+      if (!_followOn || !leafMap) return;
+      const lat = pos.coords.latitude, lng = pos.coords.longitude;
+      const acc = pos.coords.accuracy || 0;
+      if (!_maxBounds) { const ctr = leafMap.getCenter(); _setAnchor(ctr.lat, ctr.lng, true); }
+      if (!_inAllowedArea(lat, lng)) return;          // 範囲外では動かさない（既存の方針と同じ）
+      _showGpsHere(lat, lng, acc);
+      if (!_followLast || _distM(_followLast, [lat, lng]) >= FOLLOW_MIN_MOVE_M) {
+        const first = !_followLast;
+        _followLast = [lat, lng];
+        // 最初の1回だけ倍率を合わせ、以後は寄せるだけ
+        //（毎回 setView すると、利用者が全体を見ようと縮小しても引き戻してしまうため）
+        if (first) leafMap.setView([lat, lng], Math.max(leafMap.getZoom(), FOLLOW_MIN_ZOOM), {animate:false});
+        else       leafMap.panTo([lat, lng], {animate:true});
+      }
+      if (typeof _checkVisits === 'function') _checkVisits(lat, lng);   // スタンプ（v100で使う）
+    },
+    function(){ showToast('現在地を取得できませんでした'); stopFollowMode(true); },
+    {enableHighAccuracy:true, maximumAge:3000, timeout:20000}
+  );
+}
+
 function gotoCurrentLocation() {
   if (!navigator.geolocation) { showToast('この端末では位置情報を利用できません'); return; }
   if (!leafMap) return;
