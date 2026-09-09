@@ -207,6 +207,12 @@ html,body{min-height:calc(100% + env(safe-area-inset-top));font-family:'Hiragino
 body.embed #hdr, body.embed #sidebar, body.embed #mobileTopBar, body.embed #mobileShelf,
 body.embed #mobileElevBand, body.embed #viewBadge, body.embed #mobileRbtns{display:none!important}
 body.embed #s2, body.embed #mapArea, body.embed #mapWrap{height:100%!important;min-height:0!important}
+#stampBar{position:absolute;right:8px;bottom:8px;z-index:1200;display:none;background:rgba(255,255,255,.94);
+  color:#4A2E0E;font-size:12px;font-weight:700;padding:6px 11px;border-radius:14px;
+  box-shadow:0 2px 10px rgba(0,0,0,.18);cursor:pointer}
+#stampBar.done{background:#2E7D32;color:#fff}
+.wp-visited{position:absolute;right:-3px;top:-3px;width:14px;height:14px;border-radius:50%;background:#2E7D32;
+  color:#fff;font-size:9px;line-height:14px;text-align:center;border:1.5px solid #fff;font-weight:700}
 #embedBar{position:absolute;top:0;left:0;right:0;z-index:1200;display:none;align-items:center;gap:8px;
   padding:7px 10px;background:linear-gradient(180deg,rgba(255,255,255,.96),rgba(255,255,255,.82));
   font-size:12.5px;color:#4A2E0E;box-shadow:0 1px 6px rgba(0,0,0,.12)}
@@ -954,6 +960,8 @@ const WALK_SPEEDS = [3, 3.5, 4, 4.5, 5];   // km/h。3=ゆっくり / 4=標準 /
 const WALK_SPEED_DEFAULT = 2;              // 既定は 4km/h（従来と同じ計算になる位置）
 // 登りの時間加算：標高100mにつき+10分（登り600mで1時間。ネイスミスの法則の一般的な係数）
 const CLIMB_MIN_PER_100M = 10;
+// --- スタンプラリー（歩いた人の記録。閲覧モードのときだけ働く）---
+const VISIT_RADIUS_M = 50;    // これだけ近づいたら「訪れた」とみなす(m)。GPSの誤差を見込む
 // --- 地名ラベルの自動配置（重なりを避ける）---
 const LABEL_DIRS   = ['top', 'right', 'bottom', 'left'];  // 試す向きの順番
 const LABEL_GAP_PX = 2;                                   // ラベル同士のすき間(px)
@@ -992,6 +1000,7 @@ const LS = {
   wpSize:      'fp_wpsize',       // スポット○の大きさ段階（WP_SIZES の添字）
   walkSpeed:   'fp_walkspeed',    // 歩く速さの段階（WALK_SPEEDS の添字）
   shareLinks:  'fp_sharelinks',   // コースIDごとの配布リンク（配布シートのQRに使う）
+  visits:      'fp_visits',       // スタンプ（コースIDごと・訪れたスポットと時刻）
 };
 // --- サンプルコース（初回起動時に一度だけ取り込む。削除したら復活しない）---
 const SAMPLE_URL = 'sample.json';   // index.html と同じ場所に置く
@@ -1003,6 +1012,7 @@ let   _walkSpeedIdx = WALK_SPEED_DEFAULT;  // 歩く速さの段階。WALK_SPEED
 let   _routerIdx      = 0;   // いま使えている経路サーバ（ROUTERS の添字）
 let   _routerDeadUntil = 0;  // 全部だめだった時刻＋クールダウン。この間は問い合わせない
 let   _routerDead     = [];  // サーバごとの「しばらく使わない」時刻。1度だめなら区間ごとに試さない
+let   _visits         = {};    // いま開いているコースのスタンプ {wpId: 時刻}
 let   _followOn       = false;  // 現在地を追いかけているか
 let   _followWatchId  = null;   // watchPosition のID
 let   _gpsCircle      = null;   // 現在地の精度を表す円
@@ -1749,7 +1759,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v99';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
+const APP_VERSION = 'v100';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
 }catch(_){} });
@@ -2452,9 +2462,11 @@ function wpIcon(wp, sz, anc) {
   }
   const t   = WT.find(x=>x.v===wp.type)||WT[0];
   const sym = wp.type==='course' ? (courseNum(wp)||'?') : (SYM[wp.type]||'●');
+  // 閲覧モードで訪問済みなら、○の右上に小さなチェックを付ける（スタンプラリー）
+  const stamp = (viewMode && _visits && _visits[wp.id]) ? '<span class="wp-visited">✓</span>' : '';
   return L.divIcon({
     className:'',
-    html:`<div data-wtype="${wp.type||'course'}" style="width:${sz[0]}px;height:${sz[1]}px;border-radius:50%;background:${t.c};color:#fff;text-align:center;line-height:${sz[1]-4}px;font-size:${_wpFont(sz[0], sym)}px;font-weight:bold;border:2px solid rgba(255,255,255,.85);box-shadow:0 2px 6px rgba(0,0,0,.45);cursor:pointer">${sym}</div>`,
+    html:`<div data-wtype="${wp.type||'course'}" style="position:relative;width:${sz[0]}px;height:${sz[1]}px;border-radius:50%;background:${t.c};color:#fff;text-align:center;line-height:${sz[1]-4}px;font-size:${_wpFont(sz[0], sym)}px;font-weight:bold;border:2px solid rgba(255,255,255,.85);box-shadow:0 2px 6px rgba(0,0,0,.45);cursor:pointer">${sym}${stamp}</div>`,
     iconSize:sz, iconAnchor:anc
   });
 }
@@ -2942,6 +2954,7 @@ function toggleViewMode() {
   } else {
     closeViewInfo();           // 閲覧パネルを閉じて編集に復帰
   }
+  loadVisits(); renderStampBar(); refreshIcons();    // 閲覧モードの切替でスタンプ表示も切り替える
   showToast(viewMode
     ? '👁 閲覧モード ON：ウェイポイントをタップで写真・解説を表示'
     : '閲覧モード OFF：ウェイポイントをタップで編集できます');
@@ -2986,6 +2999,66 @@ function closeNewCourseSheet() {
    GPS現在地（ボタン押下時のみ地図を移動）
    ============================================================ */
 let _gpsMarker = null;
+/* ---- スタンプラリー -----------------------------------------------------
+   配布リンクで歩く人が、スポットに近づくと記録がつく。
+   ・記録はその人の端末だけに残る（コースの中身は変えない・誰にも送らない）
+   ・閲覧モードのときだけ働く（作る人の画面を汚さない）
+   ----------------------------------------------------------------------- */
+function _allVisits(){
+  if (!lsAvail()) return {};
+  try { return JSON.parse(localStorage.getItem(LS.visits) || '{}') || {}; } catch(_) { return {}; }
+}
+function _saveVisits(){
+  if (!lsAvail() || currentCourseId == null) return;
+  try {
+    const all = _allVisits();
+    all[String(currentCourseId)] = _visits;
+    localStorage.setItem(LS.visits, JSON.stringify(all));
+  } catch(_){}
+}
+function loadVisits(){
+  _visits = (currentCourseId == null) ? {} : (_allVisits()[String(currentCourseId)] || {});
+  return _visits;
+}
+function _stampTargets(){ return wps.filter(w => w.type !== 'node'); }
+function visitCount(){
+  const t = _stampTargets();
+  return { done: t.filter(w => _visits[w.id]).length, total: t.length };
+}
+// 現在地から近いスポットにスタンプを付ける（閲覧モードのときだけ）
+function _checkVisits(lat, lng){
+  if (!viewMode) return 0;
+  let got = 0;
+  _stampTargets().forEach(w => {
+    if (_visits[w.id]) return;
+    if (_distM([lat, lng], [w.lat, w.lng]) > VISIT_RADIUS_M) return;
+    _visits[w.id] = Date.now();
+    got++;
+    if (typeof showToast === 'function') showToast('🏁 スタンプ獲得：' + (w.name || 'スポット'));
+  });
+  if (got) { _saveVisits(); refreshIcons(); renderStampBar(); }
+  return got;
+}
+function clearVisits(){
+  _visits = {}; _saveVisits(); refreshIcons(); renderStampBar();
+  if (typeof showToast === 'function') showToast('スタンプを消しました');
+}
+// 画面上の「スタンプ n/m」。閲覧モードでスポットがあるときだけ出す。
+function renderStampBar(){
+  let el = document.getElementById('stampBar');
+  const show = viewMode && _stampTargets().length > 0;
+  if (!show) { if (el) el.style.display = 'none'; return; }
+  if (!el) {
+    el = document.createElement('div'); el.id = 'stampBar';
+    el.onclick = function(){ if (confirm('スタンプを全部消しますか？')) clearVisits(); };
+    (document.getElementById('mapWrap') || document.body).appendChild(el);
+  }
+  const c = visitCount();
+  el.style.display = 'block';
+  el.textContent = '🏁 スタンプ ' + c.done + ' / ' + c.total;
+  el.classList.toggle('done', c.done > 0 && c.done === c.total);
+}
+
 /* ---- 現在地追従 ---------------------------------------------------------
    歩きながら地図が付いてくるモード。電池を使うので、使うときだけONにする。
    ・地図を寄せるのは FOLLOW_MIN_MOVE_M 以上動いたときだけ（小刻みな揺れで暴れない）
@@ -5719,6 +5792,7 @@ function loadCourseData(data) {
     if (descEl) descEl.value = data.desc||'';
     _applyViewDesc();   // 配布リンクで開いているときだけ、説明文を読み取り専用で表示する
     _fillEmbedBar();    // 埋め込み表示の帯（コース名・距離・大きな地図で開く）
+    loadVisits(); renderStampBar(); refreshIcons();   // スタンプ（この端末に残っている記録）
 
     // カスタム道路: 機能廃止につき読み込まない
     customRoads = [];

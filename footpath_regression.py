@@ -314,6 +314,13 @@ def static_checks(src):
         "(wp.labelDir && wp.labelDir !== 'top') ? wp.labelDir : (wp._autoDir || 'top')" in src)
     chk('静的', '自動の向きは保存データに入れない（_autoDir）',
         '_autoDir' in src and 'labelDir:w.labelDir' in src.replace(' ', ''))
+    # --- v100: スタンプラリー ---
+    chk('静的', 'スタンプ判定 _checkVisits 存在', 'function _checkVisits' in src)
+    chk('静的', 'スタンプの保存キー(LS.visits)', re.search(r"visits:\s*'fp_visits'", src) is not None)
+    chk('静的', '判定の半径 VISIT_RADIUS_M 維持', 'const VISIT_RADIUS_M' in src)
+    chk('静的', '閲覧モードのときだけ働く', 'if (!viewMode) return 0;' in src)
+    chk('静的', '○にスタンプ印を付ける', 'wp-visited' in src)
+    chk('静的', 'スタンプの表示と消去', 'function renderStampBar' in src and 'function clearVisits' in src)
     chk('静的', '背景地図に配色済みタイル追加', all(k in src for k in ['opentopo:', 'carto:', 'osm_hot:']))
     chk('静的', '背景地図切替 cycleBaseMap 存在', 'function cycleBaseMap' in src)
     chk('静的', 'PCツールバーに地図切替ボタン', 'id="btnBaseMap"' in src)
@@ -819,6 +826,42 @@ def functional_checks(index_path):
                     hasVer: items.some(r => (r.detail||'').indexOf(APP_VERSION) >= 0),
                     txtOK: txt.indexOf('動作確認') >= 0 && txt.length > 100};
           }catch(e){ return 'ERR:'+e.message; } })(); }""")
+        # INV-AN: スタンプラリー（近づくと記録／遠いと記録しない／閲覧モード限定／消せる）
+        st = page.evaluate("""()=>{ try{
+            const keepView = viewMode, keepId = currentCourseId, keepW = wps.slice();
+            wps.length = 0;
+            const c = leafMap.getCenter();
+            _resetBounds(); _setAnchor(c.lat, c.lng, true);
+            const a = addWp(c.lat, c.lng, 'course'); a.name = 'スタンプ地点A';
+            const b2 = addWp(c.lat + 0.02, c.lng, 'course'); b2.name = '遠い地点B';   // 約2km先
+            currentCourseId = 'stamp-test';
+            _visits = {}; _saveVisits();
+            viewMode = false;
+            const inEdit = _checkVisits(c.lat, c.lng);            // 編集中は記録しない
+            viewMode = true;
+            const near = _checkVisits(c.lat, c.lng);              // 近い → 記録
+            const again = _checkVisits(c.lat, c.lng);             // 二度目は増えない
+            const cnt = visitCount();
+            const stored = JSON.parse(localStorage.getItem(LS.visits) || '{}')['stamp-test'] || {};
+            const icon = a.marker.getElement().innerHTML.indexOf('wp-visited') >= 0;
+            const bar = document.getElementById('stampBar');
+            const barText = bar ? bar.textContent : '';
+            clearVisits();
+            const afterClear = visitCount();
+            wps.forEach(w => { if (w.marker) leafMap.removeLayer(w.marker); });
+            wps.length = 0; keepW.forEach(w => wps.push(w));
+            viewMode = keepView; currentCourseId = keepId; loadVisits();
+            try { localStorage.removeItem(LS.visits); } catch(_){}
+            return {inEdit:inEdit, near:near, again:again, done:cnt.done, total:cnt.total,
+                    storedKeys:Object.keys(stored).length, icon:icon, barText:barText,
+                    afterClear:afterClear.done};
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        ok_st = (isinstance(st, dict) and st.get('inEdit') == 0 and st.get('near') == 1
+                 and st.get('again') == 0 and st.get('done') == 1 and st.get('total') == 2
+                 and st.get('storedKeys') == 1 and st.get('icon') is True
+                 and '1 / 2' in st.get('barText', '') and st.get('afterClear') == 0)
+        chk('機能', 'スタンプが近づいたときだけ付き、消せる', ok_st, str(st)[:190])
+
         # INV-AM: 密集したラベルの重なりが自動配置で減る
         lb = page.evaluate("""()=>{ try{
             const keepW = wps.slice();
