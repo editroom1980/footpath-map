@@ -103,6 +103,9 @@ html,body{min-height:calc(100% + env(safe-area-inset-top));font-family:'Hiragino
 #infoSec{padding:8px 10px;background:#F0EAE0;flex-shrink:0;border-top:1px solid #D4C4A8}
 #distDisp{font-size:12px;font-weight:bold;color:#4A2E0E}
 #timeDisp{font-size:11px;color:#5A3A1A;margin-top:2px}
+#diffDisp{margin-top:4px;font-size:11px;display:none;align-items:center;gap:5px}
+#diffDisp .dbadge{display:inline-block;color:#fff;font-weight:700;font-size:10.5px;padding:1px 8px;border-radius:9px}
+#diffDisp .dsub{color:#7A6A55;font-size:10px}
 #walkSpeedRow{display:flex;align-items:center;gap:5px;margin-top:5px;font-size:10px;color:#7A6A55}
 #walkSpeedSel{flex:1;min-width:0;font-size:10px;font-family:inherit;padding:2px 4px;border:1px solid #D4C4A8;border-radius:3px;background:#fff;color:#5A3A1A}
 #descSec{padding:8px 10px;flex-shrink:0;border-top:1px solid #D4C4A8}
@@ -619,6 +622,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
       <div id="infoSec">
         <div id="distDisp">総距離: — km</div>
         <div id="timeDisp">所要時間: —</div>
+        <div id="diffDisp"></div>
         <label id="walkSpeedRow">歩く速さ
           <select id="walkSpeedSel" onchange="setWalkSpeed(Number(this.value))" title="所要時間の計算に使います。高低差を取得済みなら登りの時間も加算されます">
             <option value="0">3.0 km/h（ゆっくり）</option>
@@ -959,6 +963,14 @@ const WALK_SPEEDS = [3, 3.5, 4, 4.5, 5];   // km/h。3=ゆっくり / 4=標準 /
 const WALK_SPEED_DEFAULT = 2;              // 既定は 4km/h（従来と同じ計算になる位置）
 // 登りの時間加算：標高100mにつき+10分（登り600mで1時間。ネイスミスの法則の一般的な係数）
 const CLIMB_MIN_PER_100M = 10;
+// --- コースの難易度（配布物で「どのくらい大変か」を伝える）---
+// 距離と登りの合計から3段階。上から順に当てはめ、どれにも入らなければ最後の段階。
+// 高低差が取れていないときは出さない（分からないものを断定しない）。
+const DIFFICULTY = [
+  { label: 'やさしい', color: '#2E7D32', maxKm: 3,    maxUp: 100  },
+  { label: 'ふつう',   color: '#B87503', maxKm: 6,    maxUp: 300  },
+  { label: '健脚',     color: '#C0392B', maxKm: 1e9,  maxUp: 1e9  },
+];
 // --- 標高（高低差グラフ）の取得 ---
 const ELEV_BATCH = 6;        // 標高APIへの同時リクエスト数（ブラウザの同時接続上限に合わせ、待ち行列による誤タイムアウトを防ぐ）
 // --- 名称ラベルの文字サイズ（PCツールバーの「文字」ボタンで切替）---
@@ -994,6 +1006,7 @@ let   _routerDead     = [];  // サーバごとの「しばらく使わない」
 let   _routeRunning   = 0;   // いま経路サーバへ投げている数
 let   _routeWaiting   = [];  // 順番待ち
 let   _routeLineBase = null; // ルート線の素の座標（中央=データ準拠／ズーム再計算用）
+let   _lastRouteDistM = 0;   // 直近に計算した総距離(m)。配布シートの難易度表示で使う
 
 /* ============================================================
    STATE
@@ -1717,7 +1730,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v94';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
+const APP_VERSION = 'v95';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
 }catch(_){} });
@@ -3992,6 +4005,29 @@ function calcTotalTime(distM) {
   return `${h}時間${m}分`;
 }
 
+// サイドバーに難易度を出す（高低差が未取得なら何も出さない）
+function _renderDifficulty(distM){
+  const el = document.getElementById('diffDisp');
+  if (!el) return;
+  const d = courseDifficulty(distM);
+  if (!d) { el.style.display = 'none'; el.innerHTML = ''; return; }
+  el.style.display = 'flex';
+  el.innerHTML = '<span class="dbadge" style="background:' + d.color + '">' + escHtml(d.label) + '</span>'
+               + '<span class="dsub">登り ' + Math.round(d.up) + ' m</span>';
+}
+
+// コースの難易度。高低差がまだ取れていなければ null（表示しない）。
+function courseDifficulty(distM){
+  const up = _totalAscent();
+  if (up === null || !(distM > 0)) return null;
+  const km = distM / 1000;
+  for (const d of DIFFICULTY) {
+    if (km <= d.maxKm && up <= d.maxUp) return { label: d.label, color: d.color, km: km, up: up };
+  }
+  const last = DIFFICULTY[DIFFICULTY.length - 1];
+  return { label: last.label, color: last.color, km: km, up: up };
+}
+
 // 所要時間の注記（速さと、坂を見ているかどうか）
 function _timeNote(){
   return '（' + _walkSpeed() + 'km/h' + (_totalAscent() ? '・登り込み' : '') + '）';
@@ -4012,6 +4048,7 @@ function updateDistanceAndTime(coords) {
   for (let i=0; i<c.length-1; i++) dist += haversine(c[i][0],c[i][1],c[i+1][0],c[i+1][1]);
 
   // コースがまだ無い（2点未満）間は、高低差バンドと距離表示を隠す
+  _lastRouteDistM = dist;                 // 配布シートなど、あとから参照するため覚えておく
   const hasRoute = c.length >= 2;
   const band  = document.getElementById('mobileElevBand');
   const shelf = document.getElementById('mobileShelf');
@@ -4028,9 +4065,11 @@ function updateDistanceAndTime(coords) {
     if (mobDist) mobDist.textContent = (dist/1000).toFixed(1);
     if (mobTime) mobTime.textContent = calcTotalTime(dist);
     if (typeof _fillEmbedBar === 'function') _fillEmbedBar();   // 埋め込みの帯にも距離を出す
+    _renderDifficulty(dist);                                    // 難易度（高低差が取れていれば）
   } else {
     if (distEl) distEl.textContent = '総距離: — km';
     if (timeEl) timeEl.textContent = '所要時間: —';
+    _renderDifficulty(0);
     if (mobDist) mobDist.textContent = '—';
     if (mobTime) mobTime.textContent = '—';
   }
@@ -4579,6 +4618,7 @@ function _sheetHtml(imgUrl, cssWidth) {
   }).join('');
   const attr = (BASEMAPS[_baseMapId] || {}).attribution || '';
   const link = _shareLinkOf(currentCourseId);      // 配布リンクを作ってあればQRを載せる
+  const diff = courseDifficulty(_lastRouteDistM);  // 難易度（高低差が取れていれば）
   const d = new Date(), p = n => String(n).padStart(2, '0');
   return ''
     + '<div class="sh-head">'
@@ -4587,6 +4627,8 @@ function _sheetHtml(imgUrl, cssWidth) {
     +   '<div class="sh-stats">'
     +     '<div>総距離<b>' + escHtml(dist.replace(/^総距離:\s*/, '')) + '</b></div>'
     +     '<div>所要時間<b>' + escHtml(time.replace(/^所要時間:\s*/, '').replace(/（.*?）/, '')) + '</b></div>'
+    +     (diff ? '<div>難易度<b style="color:' + diff.color + '">' + escHtml(diff.label) + '</b>'
+    +             '<span style="display:block;font-size:10px">登り ' + Math.round(diff.up) + ' m</span></div>' : '')
     +   '</div>'
     + '</div>'
     + '<div class="sh-body">'

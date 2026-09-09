@@ -278,6 +278,11 @@ def static_checks(src):
     chk('静的', '「大きな地図で開く」がある', '大きな地図で開く' in src)
     chk('静的', '共有ダイアログに埋め込みコード',
         'shEmbed' in src and '<iframe src=' in src and 'shCopyEmbed' in src)
+    # --- v95: コースの難易度 ---
+    chk('静的', '難易度の段階 DIFFICULTY 維持', 'const DIFFICULTY' in src)
+    chk('静的', '難易度の判定 courseDifficulty 存在', 'function courseDifficulty' in src)
+    chk('静的', 'サイドバーに難易度を出す', 'id="diffDisp"' in src and 'function _renderDifficulty' in src)
+    chk('静的', '配布シートに難易度を載せる', "'難易度<b style=\"color:'" in src or '難易度<b' in src)
     chk('静的', '背景地図に配色済みタイル追加', all(k in src for k in ['opentopo:', 'carto:', 'osm_hot:']))
     chk('静的', '背景地図切替 cycleBaseMap 存在', 'function cycleBaseMap' in src)
     chk('静的', 'PCツールバーに地図切替ボタン', 'id="btnBaseMap"' in src)
@@ -783,6 +788,26 @@ def functional_checks(index_path):
                     hasVer: items.some(r => (r.detail||'').indexOf(APP_VERSION) >= 0),
                     txtOK: txt.indexOf('動作確認') >= 0 && txt.length > 100};
           }catch(e){ return 'ERR:'+e.message; } })(); }""")
+        # INV-AI: 難易度は距離と登りで決まり、高低差が無いときは出さない
+        df = page.evaluate("""()=>{ try{
+            const keep = _elevData;
+            const set = ups => { const e = [100]; ups.forEach(u => e.push(e[e.length-1] + u)); _elevData = {pts:[], elevs:e}; };
+            _elevData = null;
+            const none = courseDifficulty(2000);                 // 高低差が無い → 出さない
+            set([50]);            const easy   = courseDifficulty(2000);   // 2km・登り50m
+            set([200]);           const normal = courseDifficulty(5000);   // 5km・登り200m
+            set([400]);           const hard   = courseDifficulty(2000);   // 2km・登り400m（登りで健脚）
+            set([50]);            const long   = courseDifficulty(9000);   // 9km・登り50m（距離で健脚）
+            _elevData = keep;
+            const el = document.getElementById('diffDisp');
+            return {none:none, easy:easy && easy.label, normal:normal && normal.label,
+                    hard:hard && hard.label, long:long && long.label, hasEl: !!el};
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        chk('機能', '難易度が距離と登りで正しく決まる',
+            isinstance(df, dict) and df.get('none') is None and df.get('easy') == 'やさしい'
+            and df.get('normal') == 'ふつう' and df.get('hard') == '健脚'
+            and df.get('long') == '健脚' and df.get('hasEl') is True, str(df)[:180])
+
         # INV-AH: 埋め込み表示では地図だけを見せ、外へ出るリンクが正しい
         emb = page.evaluate("""()=>{ try{
             const keep = document.body.className;
@@ -1100,10 +1125,15 @@ def visual_checks(index_path):
             if (el) el.value = '棚田と神社をめぐる短い周回コース。見た目検査のための固定データです。';
             setLabelSize(0); setWpSize(0); setWalkSpeed(2);
             leafMap.setView([35.1538, 134.4468], 16);
-            _elevData = null;
+            // 高低差はルート再計算で消えるため、あとから（下で）入れ直す
             redrawStraight();
         }""")
         page.wait_for_timeout(1200)
+        # 高低差を固定値で入れ、難易度も比較対象にする
+        # （clearCache() 等でルート再計算のたびに _elevData は消えるので、計算が落ち着いてから入れる）
+        page.evaluate("""() => { _elevData = {pts: [], elevs: [100, 140, 120, 180]};   // 登り100m
+            updateDistanceAndTime(_lastRouteCoords); }""")
+        page.wait_for_timeout(300)
 
         # 前提の確認：印が地図の中に入っていること。
         # （入っていないまま撮ると「空っぽの基準画像」ができてしまうため必ず確かめる）
@@ -1116,6 +1146,8 @@ def visual_checks(index_path):
             return {markers: els.length, inside: els.filter(ok).length, tips: tips.length,
                     tipsInside: tips.filter(ok).length};
         }""")
+        diff_ok = page.evaluate("() => { const d = courseDifficulty(_lastRouteDistM); return d ? d.label : null; }")
+        chk('見た目', '検査用コースの難易度が決まっている', diff_ok is not None, str(diff_ok))
         pre_ok = (isinstance(inside, dict) and inside.get('markers', 0) >= 6
                   and inside['markers'] == inside['inside']
                   and inside.get('tips', 0) >= 6 and inside['tips'] == inside['tipsInside'])
