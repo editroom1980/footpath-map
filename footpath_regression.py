@@ -435,6 +435,10 @@ def static_checks(src):
     chk('静的', '選べる種類の出どころは _buildTypeOptions のまま（チップは select を読む）',
         "const cur = sel.value, opts = [...sel.options].map(o => o.value);" in src and 'function _buildTypeOptions' in src)
     chk('静的', '最初の案内が「種類と名前はあとから」を伝える', '種類と名前は、○を押してあとから決められます' in src)
+    # --- v152: 手数を減らす④（メニューの「コースのことを書く」にまとめる）---
+    chk('静的', 'スマホのメニュー：説明・情報・心得（書く側）は2階層目「コースのことを書く」に。歩く人には心得・情報の行を残す',
+        'data-sub="write"' in src and "write:'コースのことを書く'" in src and 'id="mmKokoroeRow"' in src and 'id="mmInfoRow"' in src
+        and src.index('data-sub="write"') < src.index('id="mmDescState"') and "onclick=\"openMmSub('write')\"" in src)
     # --- v151: 閉じ忘れの修正（v148〜v150 で歩く人のカード・操作ガイドが見えなくなっていた）---
     _mo = src[src.index('<div id="mOver" class="m-over">'):src.index('<!-- Via point context menu (singleton) -->')]
     chk('静的', 'スポットの編集画面（#mOver）の div の開きと閉じが釣り合っている（後ろの要素を巻き込まない）',
@@ -2074,6 +2078,22 @@ def functional_checks(index_path):
           }catch(e){ return 'ERR:'+e.message; } }""")
         chk('機能', 'スポット削除の「元に戻す」が戻し、別の操作の後は案内し、通知は重ならず、種別はこのコースで使った順',
             isinstance(b1, dict) and all(b1.get(k) for k in ('gone', 'toast', 'back', 'guarded', 'stacked', 'order')), str(b1)[:220])
+
+        # v152: 作る人のメニューには「コースのことを書く」、歩く人には心得・情報の行
+        wr = page.evaluate("""()=>{ try{
+            const keepV = viewMode, keepCls = document.body.className;
+            const vis = el => !!el && getComputedStyle(el).display !== 'none' && !el.closest('[hidden]');
+            viewMode = false; document.body.classList.remove('viewing'); openMobileMenu();
+            const out = {editHidden: !vis(document.getElementById('mmKokoroeRow')) && !vis(document.getElementById('mmInfoRow')), writeRow: vis([...document.querySelectorAll('#mmMain .mm-map')].find(e => (e.getAttribute('onclick') || '').indexOf("openMmSub('write')") >= 0))};
+            openMmSub('write'); out.pane = vis(document.querySelector('.mm-subpane[data-sub="write"]')) && document.querySelectorAll('.mm-subpane[data-sub="write"] .mm-map').length === 3 && document.getElementById('mmSubT').textContent === 'コースのことを書く';
+            closeMmSub(); closeMobileMenu();
+            viewMode = true; document.body.classList.add('viewing'); openMobileMenu();
+            out.walkRows = vis(document.getElementById('mmKokoroeRow')) && vis(document.getElementById('mmInfoRow'));
+            closeMobileMenu(); viewMode = keepV; document.body.className = keepCls; _syncFindUi();
+            return out;
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        chk('機能', 'メニュー：作る人には「コースのことを書く」（3行の2階層目）、歩く人には心得・情報の行',
+            isinstance(wr, dict) and all(wr.get(k) for k in ('editHidden', 'writeRow', 'pane', 'walkRows')), str(wr)[:200])
 
         # v151: 画面の上に出るもの（歩く人のカード・操作ガイド・メニュー・種類の選択）が body 直下にあり、実際に見える
         dom = page.evaluate("""()=>{ try{

@@ -309,7 +309,7 @@ body.embed #s2, body.embed #mapArea, body.embed #mapWrap{height:100%!important;m
 /* 発見（v143） */
 .wp-sticker.find{border-color:#E8F5E9}
 .find-dot{border-radius:50%;color:#fff;font-weight:bold;text-align:center;border:2.5px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.45);cursor:pointer}
-#mobileFindBtn[hidden],#btnFind[hidden],#mmFindsRow[hidden],#btnGoal[hidden],#mmGoalRow[hidden]{display:none!important}
+#mobileFindBtn[hidden],#btnFind[hidden],#mmFindsRow[hidden],#btnGoal[hidden],#mmGoalRow[hidden],#mmKokoroeRow[hidden],#mmInfoRow[hidden]{display:none!important}
 /* スポットの編集：くわしい設定（v148） */
 .m-more{border:1px solid #E6DCCB;border-radius:10px;padding:0 10px;margin:4px 0 10px;background:#FCFAF6}
 .m-more summary{cursor:pointer;list-style:none;min-height:var(--tap);display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:#4A2E0E}
@@ -1414,14 +1414,14 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
         <div id="mmMain">
         <div class="mm-sec">コース</div>
         <div class="mm-maplist">
-          <div class="mm-map" onclick="closeMobileMenu();openDescSheet()" data-edit="1"><span class="mm-map-l">コースの説明・見どころ</span><span class="mm-v" id="mmDescState">›</span></div>
+          <div class="mm-map" onclick="openMmSub('write')" data-edit="1"><span class="mm-map-l">コースのことを書く（説明・情報・心得）</span><span class="mm-v" id="mmWrite">›</span></div>
           <div class="mm-map" onclick="closeMobileMenu();openReorderSheet()" data-edit="1"><span class="mm-map-l">スポットの並べ替え</span><span class="mm-v" id="mmReorderN">›</span></div>
           <div class="mm-map" onclick="closeMobileMenu();openNearbySheet()" data-edit="1"><span class="mm-map-l">周辺の情報を取り込む（お店・史跡・学校…）</span><span class="mm-v">›</span></div>
           <div class="mm-map" onclick="closeMobileMenu();saveMapOffline()" title="このコースの範囲の地図を端末に保存します（圏外でも表示できます）"><span class="mm-map-l">地図を持ち歩く（圏外用）</span><span class="mm-v">›</span></div>
-          <div class="mm-map" onclick="closeMobileMenu();openKokoroeSheet(viewMode ? 'view' : 'edit')"><span class="mm-map-l">歩く人の心得</span><span class="mm-v" id="mmKokoroe">›</span></div>
+          <div class="mm-map" id="mmKokoroeRow" onclick="closeMobileMenu();openKokoroeSheet('view')" hidden><span class="mm-map-l">歩く人の心得</span><span class="mm-v" id="mmKokoroe">›</span></div>
           <div class="mm-map" id="mmFindsRow" onclick="closeMobileMenu();openFindsSheet()" hidden><span class="mm-map-l">見つけたもの（発見）</span><span class="mm-v" id="mmFinds">0 件 ›</span></div>
           <div class="mm-map" id="mmGoalRow" onclick="closeMobileMenu();openGoalCard()" hidden><span class="mm-map-l">ゴールの記念写真</span><span class="mm-v">›</span></div>
-          <div class="mm-map" onclick="closeMobileMenu();openInfoSheet(viewMode ? 'view' : 'edit')"><span class="mm-map-l">コースの情報（アクセス・トイレ…）</span><span class="mm-v" id="mmInfo">›</span></div>
+          <div class="mm-map" id="mmInfoRow" onclick="closeMobileMenu();openInfoSheet('view')" hidden><span class="mm-map-l">コースの情報（アクセス・トイレ…）</span><span class="mm-v" id="mmInfo">›</span></div>
         </div>
         <div class="mm-sec">歩くとき</div>
         <div class="mm-tog-wrap list">
@@ -1485,6 +1485,14 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
           <div class="mm-map" data-wsz="1" onclick="setWpSize(1)"><span class="mm-dot"></span><span class="mm-map-l">大</span><span class="mm-map-ck">✓</span></div>
           <div class="mm-map" data-wsz="2" onclick="setWpSize(2)"><span class="mm-dot"></span><span class="mm-map-l">特大</span><span class="mm-map-ck">✓</span></div>
         </div>
+          </div>
+          <div class="mm-subpane" data-sub="write">
+        <div class="mm-maplist">
+          <div class="mm-map" onclick="closeMobileMenu();openDescSheet()"><span class="mm-map-l">コースの説明・見どころ</span><span class="mm-v" id="mmDescState">›</span></div>
+          <div class="mm-map" onclick="closeMobileMenu();openInfoSheet('edit')"><span class="mm-map-l">コースの情報（アクセス・トイレ…）</span><span class="mm-v" id="mmInfo2">›</span></div>
+          <div class="mm-map" onclick="closeMobileMenu();openKokoroeSheet('edit')"><span class="mm-map-l">歩く人の心得（この地域の追記）</span><span class="mm-v" id="mmKokoroe2">›</span></div>
+        </div>
+            <div class="s1-hint" style="padding:0 6px">ここで書いたものは、歩く人の画面と配布シートに載ります</div>
           </div>
           <div class="mm-subpane" data-sub="spd">
         <div class="mm-maplist">
@@ -2739,7 +2747,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v151';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
+const APP_VERSION = 'v152';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
 }catch(_){} });
@@ -4300,7 +4308,7 @@ function _syncMobileMenu() {
 function openMmSub(kind){
   const main = document.getElementById('mmMain'), sub = document.getElementById('mmSub');
   if (!main || !sub) return;
-  const T = {map:'背景地図', size:'見た目（色・シール・文字の大きさ）', spd:'歩く速さ（所要時間の計算）'};
+  const T = {map:'背景地図', size:'見た目（色・シール・文字の大きさ）', spd:'歩く速さ（所要時間の計算）', write:'コースのことを書く'};
   document.getElementById('mmSubT').textContent = T[kind] || '';
   sub.querySelectorAll('.mm-subpane').forEach(pn => pn.classList.toggle('show', pn.getAttribute('data-sub') === kind));
   main.hidden = true; sub.hidden = false;
@@ -4328,8 +4336,9 @@ function _syncMmValues(){
     v('mmValSize', ls === ws ? ls : `文字 ${ls}・印 ${ws}`);
     v('mmValSpd', (WALK_SPEEDS[_walkSpeedIdx] || 4).toFixed(1) + ' km/h');
     v('mmReorderN', String(_stampTargets().length));   // 「描いた道の点」は数えない（B4・v140）
-    v('mmKokoroe', (courseInfo.kokoroe || '').trim() ? '追記あり' : '標準');
-    v('mmInfo', `${_courseInfoCount()} / ${COURSE_INFO_FIELDS.length}`);
+    v('mmKokoroe', (courseInfo.kokoroe || '').trim() ? '追記あり' : '標準'); v('mmKokoroe2', (courseInfo.kokoroe || '').trim() ? '追記あり' : '標準');
+    v('mmInfo', `${_courseInfoCount()} / ${COURSE_INFO_FIELDS.length}`); v('mmInfo2', `${_courseInfoCount()} / ${COURSE_INFO_FIELDS.length}`);
+    const _wd = ((document.getElementById('iDesc') || {}).value || '').trim() ? 1 : 0; v('mmWrite', `${_wd + Math.min(1, _courseInfoCount()) + ((courseInfo.kokoroe || '').trim() ? 1 : 0)} / 3 書いた`);
     v('mmTheme', _themeName());
   } catch(_) {}
 }
@@ -7428,6 +7437,8 @@ function _syncFindUi(){
   const row = document.getElementById('mmFindsRow'); if (row) row.hidden = !on;
   const v = document.getElementById('mmFinds'); if (v) v.textContent = n + ' 件 ›';
   const gr = document.getElementById('mmGoalRow'); if (gr) gr.hidden = !on;   // ゴールの記念写真（v147）
+  const kr = document.getElementById('mmKokoroeRow'); if (kr) kr.hidden = !on;   // 歩く人だけに出す行（作る人は「コースのことを書く」の中・v152）
+  const ir = document.getElementById('mmInfoRow'); if (ir) ir.hidden = !on;
   const gb = document.getElementById('btnGoal'); if (gb) gb.hidden = !on;
 }
 /* 貼る（シート） */
