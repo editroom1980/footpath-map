@@ -338,6 +338,22 @@ body.offline #offlineBadge{display:block}
 #firstTip .ft-n{font-size:11px;color:var(--t-sub);margin-top:10px}
 body.viewonly #firstTip,body.embed #firstTip{display:none!important}
 
+/* コースの説明を書く画面（スマホ。パソコンは左側の欄で書ける）*/
+#descScrim{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:3400;display:none}
+#descSheet{position:fixed;left:0;right:0;bottom:0;z-index:3401;display:none;background:#fff;
+  border-radius:18px 18px 0 0;box-shadow:0 -6px 26px rgba(0,0,0,.22);
+  padding:10px 16px calc(16px + env(safe-area-inset-bottom))}
+#descSheet .ds-dh{width:38px;height:4px;border-radius:2px;background:#D9D1C4;margin:0 auto 12px}
+#descSheet .ds-t{font-size:17px;font-weight:800;color:#231C14;margin-bottom:3px}
+#descSheet .ds-n{font-size:11.5px;color:var(--t-sub);margin-bottom:10px;line-height:1.7}
+#descSheet textarea{width:100%;min-height:34vh;padding:11px 12px;border:1px solid #D4C4A8;border-radius:10px;
+  font-size:15px;font-family:inherit;line-height:1.8;background:#fff;outline:none;resize:none;color:#231C14}
+#descSheet textarea:focus{border-color:var(--brand)}
+#descSheet .ds-row{display:flex;gap:9px;margin-top:12px}
+#descSheet .ds-btn{flex:1;min-height:var(--tap);border:none;border-radius:12px;font-family:inherit;
+  font-size:15px;font-weight:800;background:var(--brand-grad);color:#fff;cursor:pointer}
+#descSheet .ds-btn.ghost{flex:0 0 96px;background:#F2EEE7;color:var(--t-sub)}
+
 /* 押せる範囲を広げる（見た目は変えない）。隣どうしが重ならないよう、
    並べるときは「見た目の大きさ＋すきま」が --tap 以上になるようにしている */
 .tap{position:relative}
@@ -766,6 +782,19 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
         <div id="mobileElevStatsRow"></div>
         <svg id="mobileElevSvg" preserveAspectRatio="none"></svg>
       </div>
+      <!-- コースの説明（スマホ用） -->
+      <div id="descScrim" onclick="closeDescSheet()"></div>
+      <div id="descSheet">
+        <div class="ds-dh"></div>
+        <div class="ds-t">コースの説明・見どころ</div>
+        <div class="ds-n">ここに書いた文章は、配布シートと配布リンクにそのまま載ります。</div>
+        <textarea id="mDescText" placeholder="例：棚田と神社をめぐる周回コース。春は桜、秋は稲架掛けが見どころです。"></textarea>
+        <div class="ds-row">
+          <button class="ds-btn ghost" onclick="closeDescSheet()">やめる</button>
+          <button class="ds-btn" onclick="saveDescSheet()">この内容にする</button>
+        </div>
+      </div>
+
       <!-- モバイル: …メニューシート -->
       <div id="mobileMenuScrim" onclick="closeMobileMenu()"></div>
       <div id="mobileMenuSheet">
@@ -805,6 +834,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
         </div>
         <div class="mm-sec">コース</div>
         <div class="mm-maplist">
+          <div class="mm-map" onclick="closeMobileMenu();openDescSheet()"><span class="mm-map-l">コースの説明・見どころ</span><span class="mm-map-ck" id="mmDescState">›</span></div>
           <div class="mm-map" onclick="closeMobileMenu();openReorderSheet()"><span class="mm-map-l">コースポイントの並べ替え</span><span class="mm-map-ck">›</span></div>
         </div>
         <div class="mm-sec">背景地図</div>
@@ -1715,6 +1745,11 @@ function initMap() {
   leafMap.on('movestart', hideCtxMenu);
   leafMap.on('zoomend', _customScaleWeights);
   leafMap.on('zoomend', () => { if (typeof scheduleAutoLabels === 'function') scheduleAutoLabels(); });
+  const _dsc = document.getElementById('iDesc');
+  if (_dsc && !_dsc._dirtyHooked) {          // 説明を書き換えたら「未保存」にする（これまで拾えていなかった）
+    _dsc._dirtyHooked = true;
+    _dsc.addEventListener('input', () => { _dirty = true; });
+  }
   leafMap.on('zoomend', _redrawRouteOffset);   // 往復ずらし表示をズームに追従して再計算
   leafMap.on('moveend', () => {               // 三角は画面内だけ作るので、動かしたら作り直す
     if (routeLine && _routeLineBase) _drawRouteBody(_buildDisplayCoords(_routeLineBase));
@@ -1833,7 +1868,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v117';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
+const APP_VERSION = 'v118';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
 }catch(_){} });
@@ -2204,6 +2239,35 @@ function _syncCustomMenu(){
 
 /* ---- コースポイントの並べ替え（モバイル対応：上へ/下へ） ---- */
 let _roDragId=null, _roFromIdx=-1, _roCurIdx=-1, _roStartY=0, _roRowH=48, _roRows=[];
+/* コースの説明（スマホ）。パソコンの左側の欄（#iDesc）と同じ中身を読み書きする。
+   配布シート・配布リンクはどちらも #iDesc を見るので、出どころは1つのまま。 */
+function openDescSheet(){
+  const ta = document.getElementById('mDescText'), src = document.getElementById('iDesc');
+  if (!ta || !src) return;
+  ta.value = src.value || '';
+  document.getElementById('descScrim').style.display = 'block';
+  document.getElementById('descSheet').style.display = 'block';
+  setTimeout(() => ta.focus(), 60);
+}
+function closeDescSheet(){
+  const sc = document.getElementById('descScrim'), sh = document.getElementById('descSheet');
+  if (sc) sc.style.display = 'none';
+  if (sh) sh.style.display = 'none';
+}
+function saveDescSheet(){
+  const ta = document.getElementById('mDescText'), src = document.getElementById('iDesc');
+  if (ta && src && src.value !== ta.value) { src.value = ta.value; _dirty = true; }
+  _syncDescState();
+  closeDescSheet();
+  showToast('コースの説明を書き込みました（保存はまだです）');
+}
+/* メニューに「書かれています／未記入」を出す＝書き忘れに気づける */
+function _syncDescState(){
+  const el = document.getElementById('mmDescState'), src = document.getElementById('iDesc');
+  if (!el || !src) return;
+  el.textContent = (src.value || '').trim() ? '書かれています ›' : '未記入 ›';
+}
+
 function openReorderSheet(){
   let sh=document.getElementById('reorderSheet');
   if(!sh){
@@ -3059,6 +3123,7 @@ function toggleViewMode() {
    モバイル …メニューシート
    ============================================================ */
 function openMobileMenu() {
+  _syncDescState();
   if (_customMode_) { showToast('作成・編集モード中はメニューを開けません（終了してください）'); return; }
   _closeAllPopups('menu');
   _syncMobileMenu();

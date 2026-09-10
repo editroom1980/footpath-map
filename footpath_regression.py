@@ -346,6 +346,13 @@ def static_checks(src):
     chk('静的', '進行方向の三角を作る仕組みがある',
         'function _buildDirMarks' in src and 'const DIR_EVERY_DASHES' in src)
     chk('静的', 'スポットの手前にも三角を出す', 'if (dw - clear > 0) wpCuts.push(dw - clear);' in src)
+    # --- v118: スマホでコースの説明を書ける（UI点検 11）---
+    chk('静的', 'スマホにコース説明の入力画面がある',
+        'id="descSheet"' in src and 'function openDescSheet' in src)
+    chk('静的', '説明の出どころは1つのまま（#iDesc を読み書き）',
+        "src.value = ta.value; _dirty = true;" in src)
+    chk('静的', 'メニューに「書かれています／未記入」を出す', 'function _syncDescState' in src)
+    chk('静的', '説明を書き換えたら未保存になる', "_dsc.addEventListener('input'" in src)
     chk('静的', '近すぎる「ふつうの三角」を飛ばすきまりがある', 'const DIR_MIN_DASHES' in src)
     chk('静的', '置き場所と向きは線に沿った距離で決める（点の細かさに左右されない）', 'DIR_LOOK_PX' in src)
     chk('静的', 'スポットの○の下に隠れる位置は避ける', 'DIR_AVOID_PX' in src)
@@ -1163,6 +1170,29 @@ def functional_checks(index_path):
                     justBefore:justBefore.length, tooClose:tooClose.length,
                     clear:Math.round(clear), per:Math.round(PER)};
           }catch(e){ return 'ERR:'+e.message; } }""")
+        # v118: スマホの説明画面と、パソコンの欄が同じ中身になる
+        dsc = page.evaluate("""()=>{ try{
+            const src = document.getElementById('iDesc');
+            const keep = src.value;
+            src.value = '';
+            openDescSheet();
+            const shown = getComputedStyle(document.getElementById('descSheet')).display;
+            document.getElementById('mDescText').value = '棚田と神社をめぐる周回コース。';
+            saveDescSheet();
+            const after = src.value;
+            const closed = getComputedStyle(document.getElementById('descSheet')).display;
+            const state = (document.getElementById('mmDescState')||{}).textContent || '';
+            const saved = buildCurrentSaveData();
+            src.value = keep;
+            return {shown:shown, after:after, closed:closed, state:state,
+                    inSave:(saved && saved.desc) || ''};
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        chk('機能', 'スマホで書いた説明がパソコンの欄・保存データに入る',
+            isinstance(dsc, dict) and dsc.get('shown') == 'block'
+            and dsc.get('after') == '棚田と神社をめぐる周回コース。'
+            and dsc.get('closed') == 'none' and '書かれています' in dsc.get('state', '')
+            and dsc.get('inSave') == '棚田と神社をめぐる周回コース。', str(dsc)[:190])
+
         chk('機能', 'スポットの手前にも三角が出て、○に重ならない',
             isinstance(wpt, dict) and wpt.get('justBefore', 0) >= 1
             and wpt.get('tooClose', 1) == 0,
