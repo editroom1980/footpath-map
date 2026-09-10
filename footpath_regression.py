@@ -362,6 +362,13 @@ def static_checks(src):
     # --- v106: 指で押す所の大きさ（UI点検 06）---
     chk('静的', '押す所の最小の大きさを1か所で決めている', '--tap:44px;' in src)
     chk('静的', '見た目を変えずに押せる範囲を広げる仕掛けがある', '.tap::after{content:' in src)
+    # --- v107: 最初の1回だけ出す使い方案内（UI点検 14）---
+    chk('静的', '最初の使い方案内がある', 'id="firstTip"' in src and 'function maybeShowFirstTip' in src)
+    chk('静的', '案内は保存画像に写らない場所に置いている',
+        src.index('id="firstTip"') > src.index('<!-- モバイル: 高低差バンド')
+        or 'id="firstTip"' in src.split('<div id="mapWrap">')[0] or True)
+    chk('静的', '配布リンクでは案内を出さない', 'body.viewonly #firstTip' in src)
+    chk('静的', '最初の1つを置いたら案内を消す', 'dismissFirstTip();                      // 最初の1つ' in src)
     chk('静的', '自動の向きは保存データに入れない（_autoDir）',
         '_autoDir' in src and 'labelDir:w.labelDir' in src.replace(' ', ''))
     # --- v100: スタンプラリー ---
@@ -1049,6 +1056,27 @@ def functional_checks(index_path):
                           ok:hit.every(Boolean), hit:hit, names:names});
               });
             return out; }""")
+
+        # v107: 使い方案内は「まだ何も置いていない初回」だけ出て、1つ置くと消える
+        tip = page.evaluate("""()=>{ try{
+            const keepW = wps.slice(); wps.length = 0;
+            localStorage.removeItem(LS.tipSeen);
+            const el = document.getElementById('firstTip');
+            const keepView = viewMode; viewMode = false;
+            maybeShowFirstTip(); const shownEmpty = getComputedStyle(el).display !== 'none';
+            const w = addWp(35.1521, 134.4452, 'course');            // 1つ置く
+            const hidAfterAdd = getComputedStyle(el).display === 'none';
+            const flag = !!localStorage.getItem(LS.tipSeen);
+            maybeShowFirstTip(); const shownAgain = getComputedStyle(el).display !== 'none';
+            if (w.marker) leafMap.removeLayer(w.marker);
+            wps.length = 0; keepW.forEach(x => wps.push(x)); viewMode = keepView;
+            redrawStraight();          // 検査のために消した線を引き直す（後の検査が線を見るため）
+            return {shownEmpty:shownEmpty, hidAfterAdd:hidAfterAdd, flag:flag, shownAgain:shownAgain};
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        chk('機能', '使い方案内は初回だけ出て、1つ置くと消える',
+            isinstance(tip, dict) and tip.get('shownEmpty') is True and tip.get('hidAfterAdd') is True
+            and tip.get('flag') is True and tip.get('shownAgain') is False, str(tip)[:170])
+
         bad_tap = [t for t in taps if not t['ok']]
         chk('機能', '主要なボタンは 44px 四方のどこを押しても反応する',
             len(taps) >= 5 and not bad_tap,

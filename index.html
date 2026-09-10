@@ -325,6 +325,19 @@ body.offline #offlineBadge{display:block}
 .ctx-it.wpick{padding:7px 14px;font-size:12px}
 .ctx-it.ctx-cancel{color:var(--t-sub);font-size:11px;justify-content:center}
 .ctx-sep{height:1px;background:#EEE8DE;margin:2px 0}
+/* 最初の1回だけ出す使い方案内（スポットが0個のときだけ・地図の中央）
+   ※ #map の外に置いているので、保存画像や配布シートには写らない */
+#firstTip{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:1300;display:none;
+  width:min(340px,calc(100% - 40px));background:#fff;border-radius:18px;padding:22px 20px 18px;text-align:center;
+  box-shadow:0 10px 34px rgba(0,0,0,.24);pointer-events:auto}
+#firstTip .ft-ic{font-size:32px;line-height:1}
+#firstTip .ft-t{font-size:17px;font-weight:800;margin-top:8px;line-height:1.55;color:#231C14}
+#firstTip .ft-d{font-size:12.5px;color:var(--t-sub);margin-top:9px;line-height:1.85}
+#firstTip .ft-b{margin-top:15px;width:100%;border:none;border-radius:12px;padding:13px;font-family:inherit;
+  font-size:15px;font-weight:800;background:var(--brand-grad);color:#fff;cursor:pointer;min-height:var(--tap)}
+#firstTip .ft-n{font-size:11px;color:var(--t-sub);margin-top:10px}
+body.viewonly #firstTip,body.embed #firstTip{display:none!important}
+
 /* 押せる範囲を広げる（見た目は変えない）。隣どうしが重ならないよう、
    並べるときは「見た目の大きさ＋すきま」が --tap 以上になるようにしている */
 .tap{position:relative}
@@ -718,6 +731,15 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
           <button class="mrb tap" onclick="leafMap&&leafMap.zoomOut()" aria-label="縮小"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l14 0" /></svg></button>
         </div>
       </div>
+      <!-- 最初の1回だけ出す使い方案内（スポット0個のとき） -->
+      <div id="firstTip">
+        <div class="ft-ic">📍</div>
+        <div class="ft-t">地図をタップして<br>最初の場所を置いてみましょう</div>
+        <div class="ft-d">置いた場所は、自動で道に沿ってつながります。<br>順番はあとから変えられます。</div>
+        <button class="ft-b" onclick="dismissFirstTip()">はじめる</button>
+        <div class="ft-n">この案内は最初の1回だけ出ます</div>
+      </div>
+
       <!-- モバイル: コントロールシェルフ -->
       <div id="mobileShelf">
                 <div class="mob-modes">
@@ -1033,6 +1055,7 @@ const LS = {
   walkSpeed:   'fp_walkspeed',    // 歩く速さの段階（WALK_SPEEDS の添字）
   shareLinks:  'fp_sharelinks',   // コースIDごとの配布リンク（配布シートのQRに使う）
   visits:      'fp_visits',       // スタンプ（コースIDごと・訪れたスポットと時刻）
+  tipSeen:     'fp_tip_seen',     // 最初の使い方案内を見たかどうか（1回だけ出す）
 };
 // --- サンプルコース（初回起動時に一度だけ取り込む。削除したら復活しない）---
 const SAMPLE_URL = 'sample.json';   // index.html と同じ場所に置く
@@ -1546,6 +1569,7 @@ async function newCourse() {
     if (c && leafMap) { leafMap.setView([c.lat, c.lng], 15); _setAnchor(c.lat, c.lng, false); }
     else if (leafMap) { const ctr = leafMap.getCenter(); _setAnchor(ctr.lat, ctr.lng, false); }  // 失敗時も範囲を必ず確定
     btn.disabled = false; btn.textContent = 'コース設定画面へ →';
+    maybeShowFirstTip();                  // まだ何も置いていない人に、最初の一歩を示す
   }, 60);
 }
 
@@ -1792,7 +1816,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v106';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
+const APP_VERSION = 'v107';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
 }catch(_){} });
@@ -2380,6 +2404,26 @@ async function saveMapNoText() {
 }
 
 /* ============================================================
+   最初の使い方案内（1回だけ）
+   ・スポットが0個のときだけ出す。1つ置いたら消える
+   ・「はじめる」を押すか、最初のスポットを置いた時点で以後は出さない
+   ============================================================ */
+function maybeShowFirstTip() {
+  const el = document.getElementById('firstTip');
+  if (!el) return;
+  const seen = (function(){ try { return localStorage.getItem(LS.tipSeen); } catch(_) { return '1'; } })();
+  const hide = seen || wps.length > 0 || viewMode
+            || document.body.classList.contains('viewonly')
+            || document.body.classList.contains('embed');
+  el.style.display = hide ? 'none' : 'block';
+}
+function dismissFirstTip() {
+  try { localStorage.setItem(LS.tipSeen, '1'); } catch(_) {}
+  const el = document.getElementById('firstTip');
+  if (el) el.style.display = 'none';
+}
+
+/* ============================================================
    WPタイプピッカー（マップクリック時に種別選択）
    ============================================================ */
 function showWpTypePicker(lat, lng, e) {
@@ -2438,6 +2482,7 @@ function addWpFromPicker(type) {
 
 function addWp(lat, lng, type) {
   type = type || 'course';
+  dismissFirstTip();                      // 最初の1つを置いたら案内は役目を終える
   { const _s=_snapCustom(lat,lng); lat=_s[0]; lng=_s[1]; }   // 細道スナップ(失敗時は元座標)
   if (!_boundsAnchor) _setAnchor(lat, lng, false);  // 地域未指定時は最初のWPを基準点に
   saveSnapshot();
