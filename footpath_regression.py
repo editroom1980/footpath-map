@@ -346,7 +346,12 @@ def static_checks(src):
     chk('静的', 'ラベル自動配置 autoPlaceLabels 存在', 'function autoPlaceLabels' in src)
     chk('静的', 'まとめて実行する scheduleAutoLabels 存在', 'function scheduleAutoLabels' in src)
     chk('静的', '利用者が選んだ向きは尊重する',
-        "(wp.labelDir && wp.labelDir !== 'top') ? wp.labelDir : (wp._autoDir || 'top')" in src)
+        "(!wp.labelDir || wp.labelDir === 'auto') ? (wp._autoDir || 'top') : wp.labelDir" in src)
+    # --- v104: ラベル位置に「自動」を足す ---
+    chk('静的', 'ラベル位置に「自動」の選択肢がある', '<option value="auto">自動（おすすめ）</option>' in src)
+    chk('静的', '新しいスポットの既定は「自動」', "labelDir:'top'" not in src and "labelDir: 'top'" not in src)
+    chk('静的', "古いコースの'top'を自動として読み替える",
+        "(w.labelDir && w.labelDir !== 'top') ? w.labelDir : 'auto'" in src)
     chk('静的', '自動の向きは保存データに入れない（_autoDir）',
         '_autoDir' in src and 'labelDir:w.labelDir' in src.replace(' ', ''))
     # --- v100: スタンプラリー ---
@@ -935,6 +940,29 @@ def functional_checks(index_path):
                  and lb.get('after', 99) < lb.get('before') and lb.get('moved', 0) > 0
                  and lb.get('keptManual') is True)
         chk('機能', '密集したラベルの重なりが自動で減る', ok_lb, str(lb)[:170])
+
+        # v104: 「上」を選んだら本当に上のまま、「自動」なら空いている方へ動く
+        dir_ok = page.evaluate("""()=>{ try{
+            const keepW = wps.slice();
+            const made = [];
+            ['あ','い','う','え','お'].forEach((n,i)=>{
+              const w = addWp(35.1521 + (i % 2) * 0.00022, 134.4452 + Math.floor(i / 2) * 0.00030, 'course');
+              w.name = n + 'ラベルの向きの検査'; w.labelDir = 'auto'; w._autoDir = null;
+              updateTooltip(w); made.push(w);
+            });
+            autoPlaceLabels();
+            const autoMoved = made.some(w => w._autoDir && w._autoDir !== 'top');
+            made.forEach(w => { w.labelDir = 'top'; w._autoDir = null; updateTooltip(w); });
+            autoPlaceLabels();
+            const pinnedKept = made.every(w => !w._autoDir);
+            const cls = made[0].marker.getTooltip().getElement().className;
+            made.forEach(w => { if (w.marker) leafMap.removeLayer(w.marker); });
+            wps.length = 0; keepW.forEach(w => wps.push(w));
+            return {autoMoved:autoMoved, pinnedKept:pinnedKept, cls:cls};
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        chk('機能', '「自動」は動き、「上」を選ぶと上のまま',
+            isinstance(dir_ok, dict) and dir_ok.get('autoMoved') is True
+            and dir_ok.get('pinnedKept') is True, str(dir_ok)[:170])
 
         # INV-AL: スポットの色が実際に別々に描かれる（ラベル・○・凡例）
         col = page.evaluate("""()=>{ try{

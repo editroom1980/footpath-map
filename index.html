@@ -834,7 +834,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
       </label>
       <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
         <span style="font-size:11px;font-weight:bold;color:var(--t-sub)">名称ラベル表示位置</span>
-        <select id="mLabelDir" style="font-size:11px;padding:2px 4px;border:1px solid #C4B89A;border-radius:4px;background:#FAF6EE;width:auto;margin:0"><option value="top">上</option><option value="bottom">下</option><option value="left">左</option><option value="right">右</option></select>
+        <select id="mLabelDir" style="font-size:11px;padding:2px 4px;border:1px solid #C4B89A;border-radius:4px;background:#FAF6EE;width:auto;margin:0"><option value="auto">自動（おすすめ）</option><option value="top">上</option><option value="bottom">下</option><option value="left">左</option><option value="right">右</option></select>
       </div>
       <div style="font-size:11px;font-weight:bold;color:var(--t-sub);margin-bottom:5px">写真（最大5枚）</div>
       <div id="mPhotoStrip" class="photo-strip"></div>
@@ -1782,7 +1782,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v103';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
+const APP_VERSION = 'v104';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
 }catch(_){} });
@@ -2433,7 +2433,7 @@ function addWp(lat, lng, type) {
   saveSnapshot();
   idW++;
   const onRoute = true; // 全種別でデフォルトはルートに含める（モーダルで変更可）
-  const wp = {id:idW, type, name:'', desc:'', tel:'', dwell:0, fitBefore:true, fitAfter:true, onRoute, lat, lng, photos:[], labelDir:'top', marker:null};
+  const wp = {id:idW, type, name:'', desc:'', tel:'', dwell:0, fitBefore:true, fitAfter:true, onRoute, lat, lng, photos:[], labelDir:'auto', marker:null};
   wps.push(wp);
   buildWpMarker(wp);
   redrawStraight(); scheduleRouting(); // 全種別でルートを再計算
@@ -2517,7 +2517,7 @@ function updateTooltip(wp) {
   wp.marker.unbindTooltip();
   if (wp.name && wp.name.trim()) {
     // 利用者が「上」以外を選んでいればそれを尊重。既定(上)のままなら自動配置に任せる
-    const dir  = (wp.labelDir && wp.labelDir !== 'top') ? wp.labelDir : (wp._autoDir || 'top');
+    const dir  = (!wp.labelDir || wp.labelDir === 'auto') ? (wp._autoDir || 'top') : wp.labelDir;
     const offV = Math.round(_wpSize()[1] / 2 + 4);   // ○の半径+4px。標準サイズでは従来と同じ(スマホ22/PC19)
     const off  = dir==='top'    ? [0,-offV] :
                  dir==='bottom' ? [0, offV] :
@@ -2582,7 +2582,7 @@ function autoPlaceLabels(){
       const tt = wp.marker.getTooltip && wp.marker.getTooltip();
       const el = tt && tt.getElement && tt.getElement();
       if (!el || !wp.name || !wp.name.trim()) return;
-      if (wp.labelDir && wp.labelDir !== 'top') return;            // 利用者が選んだ向きは動かさない
+      if (wp.labelDir && wp.labelDir !== 'auto') return;           // 利用者が向きを選んだラベルは動かさない
       const r = el.getBoundingClientRect();
       if (!r.width) return;
       items.push({wp: wp, cx: p.x, cy: p.y, w: r.width, h: r.height});
@@ -2864,7 +2864,7 @@ function _deleteNode(wpId) {
     if (seg.length > 0) {
       const last = seg[seg.length-1];
       idW++;
-      const nn = {id:idW, type:'node', name:'', desc:'', tel:'', dwell:0, fitBefore:false, fitAfter:false, onRoute:true, lat:last.lat, lng:last.lng, photos:[], labelDir:'top', marker:null};
+      const nn = {id:idW, type:'node', name:'', desc:'', tel:'', dwell:0, fitBefore:false, fitAfter:false, onRoute:true, lat:last.lat, lng:last.lng, photos:[], labelDir:'auto', marker:null};
       const pi = wps.findIndex(w => w.id === prevWp.id);
       wps.splice(pi+1, 0, nn); buildWpMarker(nn);
       if (last.marker) leafMap.removeLayer(last.marker);
@@ -2879,7 +2879,7 @@ function _deleteNode(wpId) {
     if (seg.length > 0) {
       const first = seg[0];
       idW++;
-      const nn = {id:idW, type:'node', name:'', desc:'', tel:'', dwell:0, fitBefore:false, fitAfter:false, onRoute:true, lat:first.lat, lng:first.lng, photos:[], labelDir:'top', marker:null};
+      const nn = {id:idW, type:'node', name:'', desc:'', tel:'', dwell:0, fitBefore:false, fitAfter:false, onRoute:true, lat:first.lat, lng:first.lng, photos:[], labelDir:'auto', marker:null};
       wps.splice(Math.max(0,oldIdx), 0, nn); buildWpMarker(nn);
       vps.forEach(v => { if (v.segAfter === wpId) v.segAfter = nn.id; });
       if (first.marker) leafMap.removeLayer(first.marker);
@@ -3394,7 +3394,7 @@ function _addTraceWp(lat, lng, type, afterWp) {
   idW++;
   const wp = {id:idW, type:type||'node', name:'', desc:'', tel:'', dwell:0,
     fitBefore:false, fitAfter:false, onRoute:true, lat:lat, lng:lng,
-    photos:[], labelDir:'top', marker:null};
+    photos:[], labelDir:'auto', marker:null};
   if (afterWp) {
     const i = wps.findIndex(w=>w.id===afterWp.id);
     if (i>=0) wps.splice(i+1, 0, wp); else wps.push(wp);
@@ -4470,7 +4470,7 @@ function openModal(id) {
   document.getElementById('mOnRoute').checked = _onRouteDefault;
   document.getElementById('mFitBefore').checked = (wp.fitBefore !== false);
   document.getElementById('mFitAfter').checked  = (wp.fitAfter  !== false);
-  document.getElementById('mLabelDir').value    = wp.labelDir  || 'top';
+  document.getElementById('mLabelDir').value    = wp.labelDir  || 'auto';
   _modalPhotos = [...(wp.photos || [])];
   renderModalPhotos();
   document.getElementById('mOver').classList.add('show');
@@ -5004,7 +5004,7 @@ function setMode(m) {
    ============================================================ */
 function _makeSnapshot() {
   return {
-    wps: wps.map(w=>({id:w.id,type:w.type,name:w.name,desc:w.desc,tel:w.tel,dwell:w.dwell||0,fitBefore:w.fitBefore!==false,fitAfter:w.fitAfter!==false,onRoute:w.onRoute!==undefined?w.onRoute!==false:(w.type==='course'),lat:w.lat,lng:w.lng,labelDir:w.labelDir||'top'})),
+    wps: wps.map(w=>({id:w.id,type:w.type,name:w.name,desc:w.desc,tel:w.tel,dwell:w.dwell||0,fitBefore:w.fitBefore!==false,fitAfter:w.fitAfter!==false,onRoute:w.onRoute!==undefined?w.onRoute!==false:(w.type==='course'),lat:w.lat,lng:w.lng,labelDir:w.labelDir||'auto'})),
     vps: vps.map(v=>({id:v.id,segAfter:v.segAfter,fitBefore:v.fitBefore!==false,fitAfter:v.fitAfter!==false,lat:v.lat,lng:v.lng,order:v.order||0})),
     idW, idV,
     customPaths: customPaths.map(p=>({id:p.id, pts:(p.pts||[]).map(pt=>pt.slice())})),
@@ -5100,7 +5100,7 @@ function ctxConvertToWp() {
   const newWp = {id:idW, type:'course', name:'', desc:'', tel:'', dwell:0,
                  fitBefore:true, fitAfter:true,
                  lat:vp.lat, lng:vp.lng,
-                 photos:[], labelDir:'top', labelWrap:false, marker:null};
+                 photos:[], labelDir:'auto', labelWrap:false, marker:null};
   wps.splice(wpAIdx+1, 0, newWp);
   buildWpMarker(newWp);
 
@@ -5687,7 +5687,7 @@ function buildCurrentSaveData() {
     desc:    document.getElementById('iDesc')?.value||'',
     center:  leafMap ? {lat:leafMap.getCenter().lat, lng:leafMap.getCenter().lng} : null,
     zoom:    leafMap ? leafMap.getZoom() : 14,
-    wps:     wps.map(w=>({id:w.id,type:w.type,name:w.name,desc:w.desc,tel:w.tel,dwell:w.dwell||0,fitBefore:w.fitBefore!==false,fitAfter:w.fitAfter!==false,onRoute:w.onRoute!==undefined?w.onRoute!==false:(w.type==='course'),lat:w.lat,lng:w.lng,labelDir:w.labelDir||'top',photos:w.photos||[]})),
+    wps:     wps.map(w=>({id:w.id,type:w.type,name:w.name,desc:w.desc,tel:w.tel,dwell:w.dwell||0,fitBefore:w.fitBefore!==false,fitAfter:w.fitAfter!==false,onRoute:w.onRoute!==undefined?w.onRoute!==false:(w.type==='course'),lat:w.lat,lng:w.lng,labelDir:w.labelDir||'auto',photos:w.photos||[]})),
     vps:     vps.map(v=>({id:v.id,segAfter:v.segAfter,fitBefore:v.fitBefore!==false,fitAfter:v.fitAfter!==false,lat:v.lat,lng:v.lng,order:v.order||0})),
     customRoads: customRoads.map(r=>({id:r.id,name:r.name,coords:r.coords})),
     customPaths: (customPaths||[]).map(p=>({id:p.id, pts:(p.pts||[]).map(pt=>pt.slice())})),
@@ -5771,7 +5771,8 @@ function loadCourseData(data) {
         dwell:     w.dwell||0,
         fitBefore: w.fitBefore !== undefined ? w.fitBefore !== false : _fitR,
         fitAfter:  w.fitAfter  !== undefined ? w.fitAfter  !== false : _fitR,
-        labelDir:  w.labelDir  || 'top',
+        // v103までは 'top' が「自動でよい」の合図だった。見た目を変えないため自動として読み替える
+        labelDir:  (w.labelDir && w.labelDir !== 'top') ? w.labelDir : 'auto',
         labelWrap: !!w.labelWrap,
         // onRoute: 保存値を尊重。旧データはtype===courseをデフォルト
         onRoute:   w.onRoute !== undefined ? w.onRoute !== false : w.type === 'course',
@@ -5948,7 +5949,7 @@ function parseGpx(text, fallbackName){
     wps.push({ id: ++id, type: known.indexOf(type) >= 0 ? type : 'course',
                name: _gpxText(el, 'name'), desc: _gpxText(el, 'desc'), tel: '', dwell: 0,
                fitBefore: true, fitAfter: true, onRoute: true,
-               lat: lat, lng: lng, labelDir: 'top', photos: [] });
+               lat: lat, lng: lng, labelDir: 'auto', photos: [] });
   });
 
   const track = [];
@@ -5965,10 +5966,10 @@ function parseGpx(text, fallbackName){
   if (!wps.length && line.length >= 2) {
     wps.push({ id: ++id, type: 'start', name: 'スタート', desc: '', tel: '', dwell: 0,
                fitBefore: true, fitAfter: true, onRoute: true,
-               lat: line[0][0], lng: line[0][1], labelDir: 'top', photos: [] });
+               lat: line[0][0], lng: line[0][1], labelDir: 'auto', photos: [] });
     wps.push({ id: ++id, type: 'goal', name: 'ゴール', desc: '', tel: '', dwell: 0,
                fitBefore: true, fitAfter: true, onRoute: true,
-               lat: line[line.length - 1][0], lng: line[line.length - 1][1], labelDir: 'top', photos: [] });
+               lat: line[line.length - 1][0], lng: line[line.length - 1][1], labelDir: 'auto', photos: [] });
   }
   if (wps.length < 2) return {error: '地点が足りません（スポットか軌跡が必要です）'};
 
