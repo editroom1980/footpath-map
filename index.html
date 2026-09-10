@@ -1632,7 +1632,7 @@ async function _autoOfflineForLink(file, opts) {
     const cap = (nc && nc.type === 'wifi') ? OFFLINE_AUTO_WIFI_TILES : OFFLINE_AUTO_TILES;
     const bounds = L.latLngBounds(wps.map(w => [w.lat, w.lng])).pad(0.25);
     let urls = [];
-    for (let z = Math.max(10, Math.min(leafMap.getZoom(), 16)); z >= 11 && !urls.length; z--) urls = offlineTileUrls(bounds, z, z + OFFLINE_ZOOMS - 1, cap);   // 広いコースは縮尺を落として収める
+    for (let z = Math.max(10, Math.min(leafMap.getZoom(), 16)); z >= 10 && !urls.length; z--) urls = offlineTileUrls(bounds, z, z + OFFLINE_ZOOMS - 1, cap);   // 広いコースは縮尺を落として収める
     let done = 0;
     const BATCH = 4;                                  // 提供元サーバへの配慮（手動保存の6より控えめ）
     for (let i = 0; i < urls.length; i += BATCH) {
@@ -2258,7 +2258,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v135';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
+const APP_VERSION = 'v136';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
 }catch(_){} });
@@ -6842,9 +6842,9 @@ function undoDeleteCourse() {
   renderCourseList();
   showToast('元に戻しました');
 }
-function _finalizeDelete() { _delPending = null; const t = document.getElementById('undoToast'); if (t) t.remove(); }
+function _finalizeDelete() { _delPending = null; const t = document.getElementById('undoToast'); if (t) { clearTimeout(t._timer); t.remove(); } }
 function _showUndoToast(msg, onUndo, ms) {
-  const old = document.getElementById('undoToast'); if (old) old.remove();
+  const old = document.getElementById('undoToast'); if (old) { clearTimeout(old._timer); old.remove(); }   // 前のタイマーが新しい方を消さないように（v136）
   const t = document.createElement('div'); t.id = 'undoToast'; t.setAttribute('role', 'status');
   const sp = document.createElement('span'); sp.textContent = msg;
   const b  = document.createElement('button'); b.type = 'button'; b.className = 'tap'; b.textContent = '元に戻す';
@@ -7538,7 +7538,8 @@ function showToast(msg) {
   Object.assign(t.style, {
     position:'fixed', bottom:'80px', left:'50%', transform:'translateX(-50%)',
     background:'rgba(62,42,14,.9)', color:'#F5EDD8', padding:'8px 18px',
-    borderRadius:'20px', fontSize:'12px', zIndex:'9999', whiteSpace:'nowrap',
+    borderRadius:'20px', fontSize:'12px', zIndex:'9999', whiteSpace:'normal', textAlign:'center', lineHeight:'1.5',
+    maxWidth:'calc(100vw - 24px)', boxSizing:'border-box',
     boxShadow:'0 2px 12px rgba(0,0,0,.3)', transition:'opacity .5s'
   });
   document.body.appendChild(t);

@@ -435,6 +435,11 @@ def static_checks(src):
     chk('静的', '選べる種類の出どころは _buildTypeOptions のまま（チップは select を読む）',
         "const cur = sel.value, opts = [...sel.options].map(o => o.value);" in src and 'function _buildTypeOptions' in src)
     chk('静的', '最初の案内が「種類と名前はあとから」を伝える', '種類と名前は、○を押してあとから決められます' in src)
+    # --- v136: 見直しで見つけた3件（通知の折り返し／削除タイマー／圏外の縮尺10）---
+    chk('静的', '通知は折り返す（375px幅で両側にはみ出していた）', "whiteSpace:'normal', textAlign:'center'" in src and "maxWidth:'calc(100vw - 24px)'" in src)
+    chk('静的', '削除の「元に戻す」は前のトーストのタイマーを止めてから出す', "if (old) { clearTimeout(old._timer); old.remove(); }" in src
+        and "if (t) { clearTimeout(t._timer); t.remove(); }" in src)
+    chk('静的', '圏外の自動保存は縮尺10でも保存する', "z >= 10 && !urls.length; z--" in src)
     # --- v135: 圏外でも配布リンクが開く（ロードマップ 段階2-3）---
     chk('静的', '配布リンクを開くと、道順が落ち着いてから地図を自動で持ち歩く',
         'function _autoOfflineForLink' in src and "setTimeout(() => _autoOfflineForLink(v.file), OFFLINE_AUTO_DELAY_MS)" in src and "offAuto:     'fp_offauto'" in src)
@@ -1836,6 +1841,28 @@ def functional_checks(index_path):
         page.set_viewport_size({'width': 390, 'height': 812}); page.evaluate("()=>{ leafMap.invalidateSize(); }")
         chk('機能', 'iPhone の幅（402・375）で、見えている要素が画面からはみ出さない',
             all(isinstance(v, dict) and v.get('sw') == v.get('vw') and v.get('bad') == [] for v in _ov.values()), str(_ov)[:220])
+
+        # v136: 長い通知が375px幅に収まる／続けて2回削除しても新しい「元に戻す」が残る
+        page.set_viewport_size({'width': 375, 'height': 812})
+        rv = page.evaluate("""()=>{ return (async () => { try{
+            showToast('👁 歩く人の見え方：スポットをタップすると写真・解説が出ます（検査用の長い文）');
+            const t = [...document.querySelectorAll('body > div')].pop(); const r = t.getBoundingClientRect(); t.remove();
+            const out = {toastIn: r.left >= 0 && r.right <= innerWidth, w: Math.round(r.width)};
+            const keepC = getCourses(), keepP = _delPending;
+            const mk = (id, name) => ({id, name, wps: [], vps: [], customRoads: [], customPaths: [], savedAt: 'T'});
+            setCourses([mk(9201, 'A'), mk(9202, 'B'), mk(9203, 'C')]);
+            _showUndoToast('A', () => {}, 400); _delPending = {course: mk(9201, 'A'), index: 0};   // 前の削除（400ms後に確定が走るはずだった）
+            deleteCourse(9202);
+            await new Promise(res => setTimeout(res, 700));
+            out.newToastKept = !!document.getElementById('undoToast') && document.getElementById('undoToast').textContent.indexOf('「B」') >= 0;
+            out.pendingKept = !!_delPending && _delPending.course.name === 'B';
+            document.querySelector('#undoToast button').click(); out.restored = getCourses().map(c => c.name).join('') === 'ABC';
+            _finalizeDelete(); setCourses(keepC); _delPending = keepP; renderCourseList();
+            return out;
+          }catch(e){ return 'ERR:'+e.message; } })(); }""")
+        page.set_viewport_size({'width': 390, 'height': 812}); page.evaluate("()=>{ leafMap.invalidateSize(); }")
+        chk('機能', '長い通知が375px幅に収まり、続けて2回削除しても新しい「元に戻す」が残って戻せる',
+            isinstance(rv, dict) and rv.get('toastIn') and rv.get('newToastKept') and rv.get('pendingKept') and rv.get('restored'), str(rv)[:200])
 
         # v121: バックアップからの日数・未反映の保存回数で色が変わり、書き出すと戻る。iPhone の案内は1回だけ
         bk = page.evaluate("""()=>{ return (async()=>{ try{
