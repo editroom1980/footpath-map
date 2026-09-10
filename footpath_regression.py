@@ -434,6 +434,23 @@ def static_checks(src):
     chk('静的', '選べる種類の出どころは _buildTypeOptions のまま（チップは select を読む）',
         "const cur = sel.value, opts = [...sel.options].map(o => o.value);" in src and 'function _buildTypeOptions' in src)
     chk('静的', '最初の案内が「種類と名前はあとから」を伝える', '種類と名前は、○を押してあとから決められます' in src)
+    # --- v131: PC・スマホの機能を揃える（ロードマップ 段階1-6）---
+    def _region(a, b):
+        i = src.index(a); j = src.index(b, i); return src[i:j]
+    _pc  = _region('<div id="hdr">', '<div id="mapWrap">') + _region('<div id="tbar">', '<!-- モバイル: 地図上フロートUI -->')
+    _mob = _region('<div id="mobileTopBar">', '<!-- コースの説明（スマホ用） -->') + _region('<div id="mobileMenuSheet">', 'id="reorderSheet"' if 'id="reorderSheet"' in src[src.index('<div id="mobileMenuSheet">'):] else '</body>')
+    _feats = {"なぞり描き": "setMode('draw')", "自分で描いた道": 'toggleCustomMode()', "現在地": 'gotoCurrentLocation()', "並べ替え画面": 'openReorderSheet()',
+              "自分で描いた道を使う": 'toggleCustomFeature()', "描いた道に吸い付く": 'toggleCustomSnap()', "道に沿わせない": 'toggleManualMode()',
+              "通り道の点を表示": 'toggleViaVisibility()', "地名とスポット": 'toggleMapLabels()', "文字の大きさ": 'setLabelSize(', "印の大きさ": 'setWpSize(',
+              "背景地図": "setBaseMap(", "歩く人の見え方": 'toggleViewMode()', "配る": 'openShareSheet()', "保存": 'saveCourse()', "取消": 'undoLast()',
+              "やり直し": 'redoAction()', "すべて消去": 'clearAll()', "操作ガイド": 'openHelp()', "JSONで保存": 'exportCourse()', "座標": 'exportRouteCoords()',
+              "文字なし保存": 'saveMapNoText()'}
+    _missing = [f"{k}(PC)" for k, v in _feats.items() if v not in _pc] + [f"{k}(スマホ)" for k, v in _feats.items() if v not in _mob]
+    chk('静的', '機種だけで使えない機能が0（地図を持ち歩く・現在地追従はスマホ専用でよい）', not _missing, str(_missing)[:200])
+    chk('静的', 'PCの左の道具に「なぞる」「道を描く」、下に「現在地」、左の欄に「並べ替え」がある',
+        'id="btnDraw" onclick="setMode(\'draw\')"' in src and 'id="btnCustom" onclick="toggleCustomMode()"' in src
+        and 'id="btnGps" onclick="gotoCurrentLocation()"' in src and 'class="wp-ro-btn drag-hint" onclick="openReorderSheet()"' in src)
+    chk('静的', '高低差の詳細は最初の1回で開く（実際の表示で判定）', "var isOpen = getComputedStyle(panel).display !== 'none';" in src)
     # --- v130: 言葉の言い換え（ロードマップ 段階1-5）と、コース削除の「元に戻す」---
     _old_words = ['aria-label="調整点"', 'aria-label="WP"', 'aria-label="なぞり"', 'aria-label="細道 作成・編集"', "'スナップ ON'", '👁 閲覧モード',
                   'ウェイポイント編集', '手動モード ON', '経路調整点', 'なぞり点（調整点）', '細道機能', 'このウェイポイントを削除', '細い道 作成・編集']
@@ -480,7 +497,7 @@ def static_checks(src):
         and 'class="rl-btn ed on" id="btnWp"' in src)
     chk('静的', '右上＝背景地図（5種＋地図の見せ方）と凡例、下＝高低差',
         'id="btnBaseMap"' in src and 'id="btnLegend"' in src and 'id="pcLegendBody"' in src and src.count('#popMap [data-bm]') >= 1
-        and 'id="pcBl"><button class="pc-pill" id="btnElev"' in src)
+        and '<div id="pcBl"><button class="pc-pill" id="btnGps"' in src and 'id="btnElev" onclick="toggleElevPanel()"' in src)
     chk('静的', 'その他＝JSON・座標・文字なし・操作ガイド・上級者向け（手動・通り道の点）・すべて消去',
         all(x in src for x in ['closePcPops();exportCourse()', 'closePcPops();exportRouteCoords()', 'closePcPops();saveMapNoText()',
                                 'closePcPops();openHelp()', 'closePcPops();clearAll()', 'id="btnManual"', 'id="btnToggleVia"']))
@@ -1526,7 +1543,7 @@ def functional_checks(index_path):
             isinstance(pc3, dict) and pc3.get('noText') == [] and pc3.get('dup') == [] and pc3.get('nBtn', 0) >= 8
             and pc3.get('hdrH', 99) <= 60 and pc3.get('railIn') and pc3.get('hint') == 'クリックでスポットを追加'
             and pc3.get('popMapOpen') and pc3.get('bm') == 'gsi_photo' and pc3.get('pill') == '航空写真'
-            and pc3.get('legendOpen') and pc3.get('legendRows', 0) >= 2 and pc3.get('moreOpen') and pc3.get('moreRows') == 7
+            and pc3.get('legendOpen') and pc3.get('legendRows', 0) >= 2 and pc3.get('moreOpen') and pc3.get('moreRows') == 9
             and pc3.get('manualFlip') and pc3.get('hintVia') == 'ルート線の上をクリックして道順を変える'
             and pc3.get('viewHidden') and pc3.get('viewBack') and pc3.get('closedAll'), str(pc3)[:300])
 
@@ -1625,6 +1642,49 @@ def functional_checks(index_path):
             isinstance(du, dict) and du.get('afterDel') == 'AC' and du.get('toast') and du.get('btn') == '元に戻す' and '「B」を削除しました' == du.get('msg')
             and du.get('pending') and du.get('afterUndo') == 'ABC' and du.get('toastGone') and du.get('pendingAfter') is False and du.get('sameData')
             and du.get('afterFinal') == 'BC' and du.get('toastGone2') and du.get('noResurrect') == 'BC', str(du)[:260])
+
+        # v131: PC で なぞる／道を描く／現在地／並べ替え画面 が動き、高低差は1回で開く。スマホの帯は展開すると詳細（4つの数字）
+        page.set_viewport_size({'width': 1024, 'height': 700})
+        pa = page.evaluate("""()=>{ try{
+            leafMap.invalidateSize();
+            const vis = el => { if (!el) return false; const r = el.getBoundingClientRect(), cs = getComputedStyle(el); return cs.display !== 'none' && r.width > 0 && r.height > 0; };
+            const out = {};
+            document.getElementById('btnDraw').click(); out.draw = mode === 'draw' && _drawActive === true && document.getElementById('btnDraw').classList.contains('on');
+            setMode('wp'); out.drawOff = _drawActive === false;
+            const keepFeat = _customOn_; if (!keepFeat) toggleCustomFeature();
+            document.getElementById('btnCustom').click(); out.custom = _customMode_ === true && document.getElementById('btnCustom').classList.contains('on');
+            document.getElementById('btnCustom').click(); out.customOff = _customMode_ === false;
+            if (!keepFeat) toggleCustomFeature();
+            out.gps = vis(document.getElementById('btnGps')) && document.getElementById('btnGps').textContent.trim() === '現在地';
+            document.querySelector('.wp-ro-btn').click();
+            const rs = document.getElementById('reorderSheet'); const rr = rs ? rs.getBoundingClientRect() : null;
+            out.reorder = !!rs && vis(rs) && rr.width <= 480 && Math.abs((rr.left + rr.right) / 2 - innerWidth / 2) < 2 && rs.querySelectorAll('.ro-row').length >= 2;
+            closeReorderSheet();
+            // 高低差：1回で開く
+            closeElevModal(); const panel = document.getElementById('elevDetailPanel'); panel.style.display = '';
+            toggleElevPanel(); out.elevOnce = getComputedStyle(panel).display !== 'none'; closeElevModal();
+            togglePcPop('popMore', document.getElementById('btnMore'));
+            out.moreRows = [...document.querySelectorAll('#popMore .pp-row')].filter(vis).map(b => b.textContent.trim());
+            closePcPops();
+            return out;
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        page.set_viewport_size({'width': 390, 'height': 812})
+        pb = page.evaluate("""()=>{ try{
+            leafMap.invalidateSize();
+            const keepE = _elevData;
+            if (!_elevData) { const pts = _sampleCoords(_lastRouteCoords || buildStraightCoords(), 50); _elevData = {pts, elevs: pts.map((p, i) => 300 + (i % 7) * 3)}; }
+            _setElevExpanded(true);
+            const n = document.querySelectorAll('#mobileElevStatsRow .mev-stat').length, txt = document.getElementById('mobileElevStatsRow').textContent;
+            const svgH = document.getElementById('mobileElevSvg').getBoundingClientRect().height;
+            _setElevExpanded(false); _elevData = keepE;
+            return {n, ok: /最高/.test(txt) && /最低/.test(txt) && /上り/.test(txt) && /下り/.test(txt), svgH: Math.round(svgH)};
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        chk('機能', 'PC：なぞる・道を描く・現在地・並べ替え画面が動き、高低差は1回で開く',
+            isinstance(pa, dict) and pa.get('draw') and pa.get('drawOff') and pa.get('custom') and pa.get('customOff') and pa.get('gps')
+            and pa.get('reorder') and pa.get('elevOnce') and '自分で描いた道を使う' in pa.get('moreRows', []) and '描いた道に吸い付く' in pa.get('moreRows', []),
+            str(pa)[:260])
+        chk('機能', 'スマホ：高低差の帯を開くと詳細（最高・最低・上り・下り）が出る',
+            isinstance(pb, dict) and pb.get('n') == 4 and pb.get('ok') and pb.get('svgH', 0) >= 100, str(pb)[:160])
 
         # v121: バックアップからの日数・未反映の保存回数で色が変わり、書き出すと戻る。iPhone の案内は1回だけ
         bk = page.evaluate("""()=>{ return (async()=>{ try{

@@ -164,7 +164,7 @@ html,body{min-height:calc(100% + env(safe-area-inset-top));font-family:'Hiragino
   box-shadow:0 1px 6px rgba(0,0,0,.12);max-width:calc(100% - 330px)}
 #tbar-st{font-size:11.5px;color:var(--t-sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #pcTr{position:absolute;right:12px;top:12px;z-index:1001;display:flex;gap:7px}
-#pcBl{position:absolute;left:12px;bottom:12px;z-index:1001}
+#pcBl{position:absolute;left:12px;bottom:12px;z-index:1001;display:flex;gap:7px}
 .pc-pill{height:36px;border-radius:9px;background:#fff;box-shadow:0 2px 10px rgba(0,0,0,.16);display:inline-flex;align-items:center;gap:6px;padding:0 12px;
   font-size:12.5px;font-weight:700;color:#2C2620;border:none;font-family:inherit;cursor:pointer;white-space:nowrap}
 .pc-pill:hover{background:var(--brand-soft)}
@@ -468,7 +468,10 @@ body.viewonly #firstTip,body.embed #firstTip{display:none!important}
   #shareSheet{left:50%;right:auto;bottom:auto;top:50%;transform:translate(-50%,-50%);width:440px;max-width:calc(100vw - 32px);
     border-radius:16px;padding:18px 20px 20px}
   #shareSheet .ss-dh{display:none}
+  #reorderSheet{left:50%!important;right:auto!important;width:440px;transform:translateX(-50%);border-radius:16px 16px 0 0}   /* PC では中央（v131） */
 }
+.wp-ro-btn{margin-left:6px;border:1px solid #D4C4A8;background:#fff;border-radius:6px;font-size:10.5px;padding:2px 7px;cursor:pointer;font-family:inherit;color:#4A2E0E}
+.wp-ro-btn:hover{background:var(--brand-soft);border-color:var(--brand)}
 /* 上バーの「配る」：白い小さなボタン（ふだんは目立たない） */
 .mob-share{background:rgba(255,255,255,.95);color:#231C14;font-size:12.5px;font-weight:700;min-height:40px;padding:0 13px;
   display:inline-flex;align-items:center;border-radius:20px;border:0.5px solid rgba(0,0,0,.1);cursor:pointer;font-family:inherit;
@@ -831,6 +834,8 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
       <div class="pp-sec ed">上級者向け</div>
       <button class="pp-row ed" id="btnManual" onclick="toggleManualMode();_syncPcPops()" title="ONの間は通り道の点が道に吸い付かない（OSMにない山道・農道用）">道に沿わせない<span class="pp-sw"></span></button>
       <button class="pp-row ed" id="btnToggleVia" onclick="toggleViaVisibility();_syncPcPops()" title="隠している間はルート線をドラッグできません（ルートは保持されます）">通り道の点を表示<span class="pp-sw"></span></button>
+      <button class="pp-row ed" id="btnCustomFeat" onclick="toggleCustomFeature();_syncPcPops()" title="地図に無い道を自分で描いて、その道に沿って道順を引く">自分で描いた道を使う<span class="pp-sw"></span></button>
+      <button class="pp-row ed" id="btnSnap" onclick="toggleCustomSnap();_syncPcPops()" title="置いた点を、描いた道の上にそろえる">描いた道に吸い付く<span class="pp-sw"></span></button>
       <button class="pp-row ed danger" onclick="closePcPops();clearAll()">すべて消去</button>
     </div>
   </div>
@@ -839,7 +844,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
       <div id="wpSec">
         <div class="sec-hdr-wp">
           <span style="display:inline-flex;align-items:center;gap:4px"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M9 11a3 3 0 1 0 6 0a3 3 0 0 0 -6 0" /> <path d="M17.657 16.657l-4.243 4.243a2 2 0 0 1 -2.827 0l-4.244 -4.243a8 8 0 1 1 11.314 0" /></svg>スポット</span>
-          <span class="drag-hint" style="font-size:11px;color:var(--t-sub);font-weight:normal">ドラッグで並替</span>
+          <span class="drag-hint" style="font-size:11px;color:var(--t-sub);font-weight:normal">ドラッグで並替</span><button class="wp-ro-btn drag-hint" onclick="openReorderSheet()" title="並べ替え画面（上下に動かす）">並べ替え</button>
         </div>
         <div id="wpList">
           <div id="wpEmpty" style="font-size:11px;color:var(--t-sub);text-align:center;padding:14px">地図をクリックして追加</div>
@@ -884,6 +889,8 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
         <!-- PC（v126）：地図の左＝置く・通り道・取消。id は #tbar のまま（閲覧中に隠す規則と検査が参照する）-->
         <div id="tbar">
           <button class="rl-btn ed on" id="btnWp" onclick="setMode('wp')" title="クリックでスポットをコースに追加"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M9 11a3 3 0 1 0 6 0a3 3 0 0 0 -6 0" /> <path d="M17.657 16.657l-4.243 4.243a2 2 0 0 1 -2.827 0l-4.244 -4.243a8 8 0 1 1 11.314 0" /></svg><span>スポット</span></button>
+          <button class="rl-btn ed" id="btnDraw" onclick="setMode('draw')" title="指でなぞって描く&#10;地図をドラッグしてなぞると、そのとおりにコースが引かれます"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 19a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" /> <path d="M19 7a2 2 0 1 0 0 -4a2 2 0 0 0 0 4" /> <path d="M11 19h5.5a3.5 3.5 0 0 0 0 -7h-8a3.5 3.5 0 0 1 0 -7h4.5" /></svg><span>なぞる</span></button>
+          <button class="rl-btn ed" id="btnCustom" onclick="toggleCustomMode()" title="自分で描いた道&#10;地図に無い道をなぞって描く（終了で確定・長押しで削除）"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4"/><path d="M13.5 6.5l4 4"/></svg><span>道を描く</span></button>
           <button class="rl-btn ed" id="btnVia" onclick="setMode('via')" title="地図をクリックすると、そこを通るように道順が変わります"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M12 6a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /> <path d="M4 6l8 0" /> <path d="M16 6l4 0" /> <path d="M6 12a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /> <path d="M4 12l2 0" /> <path d="M10 12l10 0" /> <path d="M15 18a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /> <path d="M4 18l11 0" /> <path d="M19 18l1 0" /></svg><span>通り道</span></button>
           <div class="rl-div ed"></div>
           <button class="rl-btn ed" id="btnUndo" onclick="undoLast()" title="取り消し (⌘Z)" disabled><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M9 14l-4 -4l4 -4" /> <path d="M5 10h11a4 4 0 1 1 0 8h-1" /></svg><span>取消</span></button>
@@ -910,7 +917,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
           <div class="pc-pop" id="popLegend"><div class="pp-sec">このコースの凡例</div><div class="sh-legend" id="pcLegendBody"></div></div>
         </div>
         <!-- PC（v126）：下＝高低差 -->
-        <div id="pcBl"><button class="pc-pill" id="btnElev" onclick="toggleElevPanel()" title="高低差グラフ"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M4 19l16 0" /> <path d="M4 15l4 -6l4 2l4 -5l4 4" /></svg><span>高低差</span></button></div>
+        <div id="pcBl"><button class="pc-pill" id="btnGps" onclick="gotoCurrentLocation()" title="現在地へ移動（位置情報の許可が要ります）"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12a3 3 0 1 0 6 0a3 3 0 1 0 -6 0" /> <path d="M4 12a8 8 0 1 0 16 0a8 8 0 1 0 -16 0" /> <path d="M12 2l0 2" /> <path d="M12 20l0 2" /> <path d="M20 12l2 0" /> <path d="M2 12l2 0" /></svg><span>現在地</span></button><button class="pc-pill" id="btnElev" onclick="toggleElevPanel()" title="高低差グラフ"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M4 19l16 0" /> <path d="M4 15l4 -6l4 2l4 -5l4 4" /></svg><span>高低差</span></button></div>
         <div id="mapMsg">⚠️ プレビュー環境では地図タイルは表示されません<br><span style="font-size:11px">GitHub Pagesに公開すると正常に表示されます</span></div>
         <div id="rtMsg">🔄 ルートを計算中...</div>
         <!-- 埋め込み表示のときだけ出る帯（コース名・距離・大きな地図で開く） -->
@@ -2162,7 +2169,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v130';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
+const APP_VERSION = 'v131';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
 }catch(_){} });
@@ -2529,6 +2536,7 @@ function _syncCustomMenu(){
   document.getElementById('mmSwCustom')?.classList.toggle('on', _customOn_===true);
   document.getElementById('mmSwSnap')?.classList.toggle('on', _snapOn_===true);
   document.getElementById('mobileCustomBtn')?.classList.toggle('on', _customMode_===true);
+  document.getElementById('btnCustom')?.classList.toggle('on', _customMode_===true);        // PC の道具（v131）
 }
 
 /* ---- コースポイントの並べ替え（モバイル対応：上へ/下へ） ---- */
@@ -2634,7 +2642,7 @@ function _renderReorder(){
       +'<div class="ro-handle" aria-label="\u30C9\u30E9\u30C3\u30B0\u3057\u3066\u4E26\u3079\u66FF\u3048"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 8h16"/><path d="M4 12h16"/><path d="M4 16h16"/></svg></div>'
       +'</div>';
   }).join('');
-  sh.innerHTML='<div class="ro-head"><span>\u30B3\u30FC\u30B9\u30DD\u30A4\u30F3\u30C8\u306E\u4E26\u3079\u66FF\u3048</span><button onclick="closeReorderSheet()" class="ro-close">\u5B8C\u4E86</button></div>'
+  sh.innerHTML='<div class="ro-head"><span>\u30B9\u30DD\u30C3\u30C8\u306E\u4E26\u3079\u66FF\u3048</span><button onclick="closeReorderSheet()" class="ro-close">\u5B8C\u4E86</button></div>'
     +'<div class="ro-hint">\u2261 \u3092\u62BC\u3057\u305F\u307E\u307E\u4E0A\u4E0B\u306B\u30C9\u30E9\u30C3\u30B0</div>'
     +'<div id="roList">'+(rows || '<div style="color:#999;padding:14px;text-align:center">\u30DD\u30A4\u30F3\u30C8\u304C\u3042\u308A\u307E\u305B\u3093</div>')+'</div>';
   sh.querySelectorAll('.ro-handle').forEach(h=>{
@@ -5201,6 +5209,8 @@ function _syncPcPops(){
     document.getElementById('btnMapLabels')?.classList.toggle('on', _showMapLabels !== false);
     document.getElementById('btnManual')?.classList.toggle('on', manualMode === true);
     document.getElementById('btnToggleVia')?.classList.toggle('on', viaVisible !== false);
+    document.getElementById('btnCustomFeat')?.classList.toggle('on', _customOn_ === true);
+    document.getElementById('btnSnap')?.classList.toggle('on', _snapOn_ === true);
   } catch(_) {}
 }
 document.addEventListener('click', e => {           // 外側を押したら閉じる
@@ -5763,6 +5773,7 @@ function setMode(m) {
   document.getElementById('btnWp')?.classList.toggle('on',   m==='wp');
   document.getElementById('btnVia')?.classList.toggle('on',  m==='via');
   document.getElementById('btnRoad')?.classList.toggle('on', m==='road');
+  document.getElementById('btnDraw')?.classList.toggle('on', m==='draw');
   document.getElementById('mobileWpBtn')?.classList.toggle('on',   m==='wp');
   document.getElementById('mobileViaBtn')?.classList.toggle('on',  m==='via');
   document.getElementById('mobileDrawBtn')?.classList.toggle('on', m==='draw');
@@ -6129,7 +6140,7 @@ async function toggleElevPanel() {
   // 詳細パネルのトグル
   var panel = document.getElementById('elevDetailPanel');
   if (!panel) return;
-  var isOpen = panel.style.display !== 'none';
+  var isOpen = getComputedStyle(panel).display !== 'none';   // 最初はインラインstyleが空なので実際の表示で判定（v131）
   if (isOpen) {
     closeElevModal();
     return;
