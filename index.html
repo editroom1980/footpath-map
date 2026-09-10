@@ -58,7 +58,21 @@ html,body{min-height:calc(100% + env(safe-area-inset-top));font-family:'Hiragino
 .s1-tools{display:flex;gap:8px;margin-top:8px}
 .s1-tool{flex:1;display:flex;align-items:center;justify-content:center;gap:5px;padding:10px 6px;border-radius:11px;border:1px solid #E6DCCB;background:#FBF9F5;color:#6A645E;font-size:11.5px;font-family:inherit;cursor:pointer;text-align:center;line-height:1.35}
 .s1-tool:hover{background:#F4EFE7}
-#storageInfo{margin-top:8px;font-size:10.5px;color:#9A8F80;text-align:center;line-height:1.6}
+#storageInfo{margin-top:8px;font-size:11px;color:var(--t-sub);text-align:center;line-height:1.6}
+/* 消える前に知らせる：最後のバックアップからの日数と未反映の保存回数（v121）*/
+#backupInfo{display:none;margin-top:10px;padding:10px 12px;border-radius:10px;font-size:12px;line-height:1.7;text-align:left;
+  align-items:center;gap:10px;justify-content:space-between}
+#backupInfo.bk-ok{background:#F4F0E9;color:var(--t-sub)}
+#backupInfo.bk-warn{background:#F6EBD2;color:#5C4200}
+#backupInfo.bk-bad{background:#F7E2DE;color:#7A1C12}
+#backupInfo .bk-btn{flex:none;border:none;border-radius:9px;padding:0 12px;min-height:38px;font-family:inherit;font-size:12.5px;
+  font-weight:800;background:var(--brand);color:#fff;cursor:pointer;white-space:nowrap}
+/* iPhone のホーム画面追加の案内（最初の1回だけ）*/
+#homeTip{display:none;margin-top:10px;background:#fff;border:1px solid #E6DCCB;border-radius:14px;padding:14px 14px 12px;text-align:left}
+#homeTip .ht-t{font-size:14px;font-weight:800;margin-bottom:4px;color:#231C14}
+#homeTip .ht-d{font-size:12.5px;color:var(--t-sub);line-height:1.75}
+#homeTip .ht-b{margin-top:10px;width:100%;min-height:var(--tap);border:none;border-radius:11px;background:var(--brand-grad);color:#fff;
+  font-family:inherit;font-size:14px;font-weight:800;cursor:pointer}
 #storageInfo.warn{color:#C0562A;font-weight:700}
 .s1-fab{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:16px;border-radius:16px;background:var(--brand-grad);color:#fff;border:none;font-family:'Plus Jakarta Sans','Hiragino Sans',sans-serif;font-size:15px;font-weight:800;box-shadow:0 6px 16px var(--brand-sh);cursor:pointer}
 .s1-fab .svgi{font-size:20px}
@@ -632,7 +646,13 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
       <button class="s1-tool" onclick="exportAllCourses()" title="保存されている全コースを1つのファイルに書き出します">すべて書き出す<br>（バックアップ）</button>
       <label class="s1-tool" title="バックアップファイルからコースを戻します">バックアップ<br>から復元<input type="file" accept=".json" style="display:none" onchange="importBackupFile(this)"></label>
     </div>
+    <div id="backupInfo"></div>
     <div id="storageInfo"></div>
+    <div id="homeTip">
+      <div class="ht-t">📱 iPhone をお使いの方へ</div>
+      <div class="ht-d">Safari は、このアプリを <b>7日以上開かない</b>と、保存したコースを消すことがあります。<br><b>ホーム画面に追加</b>すると消えにくくなります。下の共有ボタン（□↑）→「ホーム画面に追加」です。</div>
+      <button class="ht-b tap" onclick="dismissHomeTip()">わかった</button>
+    </div>
   </div>
   <div style="padding:14px 0 6px">
     <button class="s1-fab" onclick="openNewCourseSheet()"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5l0 14" /> <path d="M5 12l14 0" /></svg>新しいコースを作成</button>
@@ -1125,6 +1145,10 @@ const LS = {
   visits:      'fp_visits',       // スタンプ（コースIDごと・訪れたスポットと時刻）
   tipSeen:     'fp_tip_seen',     // 最初の使い方案内を見たかどうか（1回だけ出す）
   walkTipSeen: 'fp_walktip_seen', // 配布リンクを開いた人への案内を見たかどうか（1回だけ出す）
+  backupAt:    'fp_backup_at',    // 最後に「すべて書き出す」をした日時（消える前に知らせるため）
+  saveCount:   'fp_save_count',   // その後の保存回数（＝バックアップに入っていない回数）
+  firstSaveAt: 'fp_first_save',   // 最初の保存の日時（一度もバックアップが無いときの起点）
+  homeTipSeen: 'fp_hometip_seen', // iPhone のホーム画面追加の案内を見たかどうか
 };
 // --- サンプルコース（初回起動時に一度だけ取り込む。削除したら復活しない）---
 const SAMPLE_URL = 'sample.json';   // index.html と同じ場所に置く
@@ -1491,6 +1515,59 @@ function renderStorageInfo(){
     + (s.photos ? '（写真' + s.photos + '枚は別の保存先）' : '')
     + (near ? '<br>上限に近づいています。バックアップを取り、不要なコースを削除してください。' : '');
 }
+
+/* ── 消える前に知らせる（v121）───────────────────────────────────
+   作ったコースはこの端末のブラウザにしか無い。機種変更・履歴削除・Safari の長期未使用で消える。
+   だから「最後のバックアップから何日か」「その後の保存が何回か」を一覧に出し続け、
+   30日で黄、60日で赤にする。iPhone にはホーム画面への追加を1回だけ案内する。 */
+function _lsGet(k){ try { return localStorage.getItem(k); } catch(_) { return null; } }
+function _lsSet(k, v){ try { localStorage.setItem(k, v); } catch(_) {} }
+function _daysSince(iso){ const t = Date.parse(iso); return isNaN(t) ? null : Math.floor((Date.now() - t) / 86400000); }
+function _noteSaved(){
+  if (!_lsGet(LS.firstSaveAt)) _lsSet(LS.firstSaveAt, new Date().toISOString());
+  const n = (+_lsGet(LS.saveCount) || 0) + 1;
+  _lsSet(LS.saveCount, String(n));
+  if (n % 5 === 0) showToast('💾 保存 ' + n + ' 回ぶんがバックアップに入っていません。一覧の「すべて書き出す」で残せます');
+}
+function _noteBackup(){ _lsSet(LS.backupAt, new Date().toISOString()); _lsSet(LS.saveCount, '0'); renderBackupStatus(); }
+function backupStatus(){
+  const backupAt = _lsGet(LS.backupAt), first = _lsGet(LS.firstSaveAt), saves = +_lsGet(LS.saveCount) || 0;
+  if (!backupAt && !first) return null;                        // まだ守るものがない（保存したことがない）
+  const days = _daysSince(backupAt || first);
+  let level = 'ok';
+  if (days >= 60) level = 'bad';
+  else if (days >= 30 || saves >= 5) level = 'warn';
+  else if (!backupAt && days >= 7) level = 'warn';             // 一度も取っていないまま1週間
+  return {backupAt, first, saves, days, level};
+}
+function renderBackupStatus(){
+  const el = document.getElementById('backupInfo'); if (!el) return;
+  const st = backupStatus();
+  if (!st || !getCourses().length) { el.style.display = 'none'; el.className = ''; return; }
+  el.className = 'bk-' + st.level; el.style.display = 'flex';
+  let msg = st.backupAt
+    ? '最後のバックアップ：' + (st.days === 0 ? '今日' : st.days + ' 日前')
+    : 'バックアップを一度も取っていません（最初の保存から ' + st.days + ' 日）';
+  if (st.saves > 0) msg += '。保存 ' + st.saves + ' 回ぶんが未反映';
+  const warn = st.level === 'bad'  ? '<br><b>機種変更・ブラウザの履歴削除で、コースは写真ごと消えます。</b>'
+             : st.level === 'warn' ? '<br>そろそろ書き出しておきましょう。' : '';
+  el.innerHTML = '<span>' + msg + warn + '</span>'
+    + '<button class="bk-btn tap" onclick="exportAllCourses()">いま書き出す</button>';
+}
+// iPhone の Safari（ホーム画面に追加していない状態）かどうか。検査で差し替えられるよう関数にしてある
+function _isIosBrowserTab(){
+  const ua = navigator.userAgent || '';
+  const ios = /iPhone|iPad|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const standalone = window.navigator.standalone === true
+    || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+  return ios && !standalone;
+}
+function renderHomeTip(){
+  const el = document.getElementById('homeTip'); if (!el) return;
+  const show = !_lsGet(LS.homeTipSeen) && getCourses().length > 0 && _isIosBrowserTab();
+  el.style.display = show ? 'block' : 'none';
+}
+function dismissHomeTip(){ _lsSet(LS.homeTipSeen, '1'); renderHomeTip(); }
 
 // 保存領域の使用状況（一覧画面の表示用）
 function storageInfo(){
@@ -1894,7 +1971,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v120';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
+const APP_VERSION = 'v121';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
 }catch(_){} });
@@ -6088,6 +6165,7 @@ async function saveCourse() {
     return false;
   }
   _dirty = false;             // 保存できた＝未保存の変更なし
+  _noteSaved();               // バックアップに入っていない保存回数を数える
   showToast(lsAvail() ? '💾 保存しました（ブラウザ）' : '💾 保存しました（メモリ/JSONエクスポート推奨）');
   return true;
 }
@@ -6224,6 +6302,7 @@ function renderCourseList() {
   const cont    = document.getElementById('courseList');
   const courses = getCourses();
   if (typeof renderStorageInfo === 'function') renderStorageInfo();
+  renderBackupStatus(); renderHomeTip();     // 消える前に知らせる（v121）
 
   // Storage notice
   let notice = document.getElementById('storageNotice');
@@ -6449,6 +6528,7 @@ async function exportAllCourses() {
   for (const c of getCourses()) data.courses.push(await _embedPhotos(c));   // バックアップにも写真の実体を入れる
   const d = new Date(), p = n => String(n).padStart(2, '0');
   _downloadJsonAs(data, 'footpath_backup_' + d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()) + '.json');
+  _noteBackup();              // 「いつ書き出したか」を記録（消える前に知らせる起点）
 }
 function importBackupFile(input) {
   const file = input.files && input.files[0];

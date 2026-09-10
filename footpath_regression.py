@@ -367,6 +367,12 @@ def static_checks(src):
                                "function clearAll() {\n  if (viewMode) return;", "row.draggable  = !viewMode;"]))
     chk('静的', 'メニューの編集項目に印がある（7か所以上）', src.count('data-edit="1"') >= 7)
     chk('静的', '歩く人への案内がある', 'id="walkTip"' in src and 'function maybeShowWalkTip' in src)
+    # --- v121: 消える前に知らせる（ロードマップ 段階0-3）---
+    chk('静的', 'バックアップの記録キーが LS にある',
+        all(k in src for k in ["backupAt:", "saveCount:", "firstSaveAt:", "homeTipSeen:"]))
+    chk('静的', '保存と書き出しで記録を更新する', '_noteSaved();' in src and '_noteBackup();' in src)
+    chk('静的', '一覧を開くたびに状態を出す', 'renderBackupStatus(); renderHomeTip();' in src)
+    chk('静的', 'iPhone のホーム画面追加の案内がある', 'id="homeTip"' in src and 'function _isIosBrowserTab' in src)
     chk('静的', '出発点・到着点のつなぎ区間も同梱する', 'if (startWp && startWp.id !== rw[0].id) pairs.push' in src)
     chk('静的', '近すぎる「ふつうの三角」を飛ばすきまりがある', 'const DIR_MIN_DASHES' in src)
     chk('静的', '置き場所と向きは線に沿った距離で決める（点の細かさに左右されない）', 'DIR_LOOK_PX' in src)
@@ -1185,6 +1191,46 @@ def functional_checks(index_path):
                     justBefore:justBefore.length, tooClose:tooClose.length,
                     clear:Math.round(clear), per:Math.round(PER)};
           }catch(e){ return 'ERR:'+e.message; } }""")
+        # v121: バックアップからの日数・未反映の保存回数で色が変わり、書き出すと戻る。iPhone の案内は1回だけ
+        bk = page.evaluate("""()=>{ return (async()=>{ try{
+            const keepC = getCourses();
+            const keys = [LS.backupAt, LS.saveCount, LS.firstSaveAt, LS.homeTipSeen];
+            const keepLS = keys.map(k => localStorage.getItem(k));
+            setCourses([buildCurrentSaveData()]);
+            const ago = d => new Date(Date.now() - d*86400000).toISOString();
+            const st = () => { renderCourseList(); const e = document.getElementById('backupInfo');
+              return e.className + '|' + e.style.display + '|' + e.textContent; };
+            keys.forEach(k => localStorage.removeItem(k));
+            const none = st();
+            localStorage.setItem(LS.backupAt, ago(61)); localStorage.setItem(LS.saveCount, '7'); const bad = st();
+            localStorage.setItem(LS.backupAt, ago(31)); localStorage.setItem(LS.saveCount, '0'); const warn = st();
+            localStorage.setItem(LS.backupAt, ago(1));  const ok = st();
+            localStorage.setItem(LS.saveCount, '5');    const warn5 = st();
+            localStorage.removeItem(LS.backupAt); localStorage.setItem(LS.firstSaveAt, ago(3)); localStorage.setItem(LS.saveCount, '1');
+            const never = st();
+            const origDl = window._downloadJsonAs; window._downloadJsonAs = () => {};
+            await exportAllCourses(); window._downloadJsonAs = origDl;
+            const after = st(); const cnt = localStorage.getItem(LS.saveCount);
+            const origIos = window._isIosBrowserTab; window._isIosBrowserTab = () => true; localStorage.removeItem(LS.homeTipSeen);
+            renderHomeTip(); const tipShown = getComputedStyle(document.getElementById('homeTip')).display !== 'none';
+            dismissHomeTip(); const tipHid = getComputedStyle(document.getElementById('homeTip')).display === 'none';
+            renderHomeTip(); const tipAgain = getComputedStyle(document.getElementById('homeTip')).display !== 'none';
+            window._isIosBrowserTab = origIos;
+            keys.forEach((k,i) => { if (keepLS[i] === null) localStorage.removeItem(k); else localStorage.setItem(k, keepLS[i]); });
+            setCourses(keepC); renderCourseList();
+            return {none, bad, warn, ok, warn5, never, after, cnt, tipShown, tipHid, tipAgain};
+          }catch(e){ return 'ERR:'+e.message; } })(); }""")
+        ok_bk = (isinstance(bk, dict)
+                 and '|none|' in bk.get('none', '')
+                 and bk.get('bad', '').startswith('bk-bad|flex|') and '61 日' in bk['bad'] and '7 回' in bk['bad']
+                 and bk.get('warn', '').startswith('bk-warn|flex|') and '31 日' in bk['warn']
+                 and bk.get('ok', '').startswith('bk-ok|flex|') and '1 日前' in bk['ok']
+                 and bk.get('warn5', '').startswith('bk-warn|') and '5 回' in bk['warn5']
+                 and bk.get('never', '').startswith('bk-ok|') and '一度も' in bk['never']
+                 and bk.get('after', '').startswith('bk-ok|') and '今日' in bk['after'] and bk.get('cnt') == '0'
+                 and bk.get('tipShown') is True and bk.get('tipHid') is True and bk.get('tipAgain') is False)
+        chk('機能', 'バックアップからの日数で色が変わり、書き出すと戻る。iPhone の案内は1回だけ', ok_bk, str(bk)[:200])
+
         # v120: 閲覧モードにすると、押せる編集操作が0になり、地図タップ・編集画面・印の移動が効かない
         vw = page.evaluate("""()=>{ try{
             if (viewMode) toggleViewMode();

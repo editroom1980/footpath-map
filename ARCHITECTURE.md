@@ -61,6 +61,11 @@
   maxWpId, maxVpNum, savedAt, version }
 ```
 
+### 消える前に知らせるための記録（コースとは別・端末ごと、v121）
+`LS.backupAt`（最後に「すべて書き出す」をした日時）／`LS.saveCount`（その後の保存回数）／`LS.firstSaveAt`（最初の保存）。
+`renderCourseList()` のたびに `backupStatus()` で 30日＝黄・60日＝赤 を判定して一覧に出す。
+**保存の入口を足したら `_noteSaved()`、書き出しの入口を足したら `_noteBackup()` を呼ぶこと。**
+
 ### 写真の持ち方（v89以降）
 - ブラウザ内の保存では `photos:['idb:p123abc', …]` の**参照**だけを持つ。実体は IndexedDB。
 - **書き出し（JSON・配布リンク・バックアップ）では実体（data URI）を埋め込み直す**。
