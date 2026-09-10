@@ -435,6 +435,12 @@ def static_checks(src):
     chk('静的', '選べる種類の出どころは _buildTypeOptions のまま（チップは select を読む）',
         "const cur = sel.value, opts = [...sel.options].map(o => o.value);" in src and 'function _buildTypeOptions' in src)
     chk('静的', '最初の案内が「種類と名前はあとから」を伝える', '種類と名前は、○を押してあとから決められます' in src)
+    # --- v145: 地図の色（テーマ）---
+    chk('静的', 'テーマは5つの組み合わせ＋線の色・点線／実線・太さ。コースに保存（theme）され、読み込み時に印を作る前に適用',
+        "const THEMES = [" in src and src.count("{id:'") >= 5 and 'function applyTheme' in src and 'theme:    courseInfo.theme || undefined' in src
+        and "applyTheme(courseInfo.theme, {quiet:true});" in src and 'if (_themeSolid()) return null;' in src and '* _themeK()' in src)
+    chk('静的', '凡例の線も同じ色。標準に戻すと WT_BASE の色へ。入口は PC・スマホの「地図の見せ方」（編集のときだけ）',
+        "stroke=\"' + LINE_STYLE.color + '\"" in src and 'const WT_BASE = {};' in src and 'id="btnTheme"' in src and 'onclick="closeMobileMenu();openThemeSheet()" data-edit="1"' in src)
     # --- v144: 周辺の情報を取り込む（OSM・Wikipedia。Google は使わない）---
     chk('静的', '周辺の情報は OpenStreetMap（Overpass 2系統）と Wikipedia から。Google の情報は使わない',
         "NEARBY_OVERPASS   = ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter']" in src and "NEARBY_WIKI       = 'https://ja.wikipedia.org/w/api.php'" in src
@@ -2031,6 +2037,24 @@ def functional_checks(index_path):
           }catch(e){ return 'ERR:'+e.message; } }""")
         chk('機能', 'スポット削除の「元に戻す」が戻し、別の操作の後は案内し、通知は重ならず、種別はこのコースで使った順',
             isinstance(b1, dict) and all(b1.get(k) for k in ('gone', 'toast', 'back', 'guarded', 'stacked', 'order')), str(b1)[:220])
+
+        # v145: テーマ：適用で印・線・凡例の色が変わり、実線・太さも効き、保存に入り、標準に戻る
+        th = page.evaluate("""()=>{ try{
+            const keepT = courseInfo.theme || null, keepD = _dirty, keepLRC = _lastRouteCoords;
+            const cw = wps.find(w => w.type === 'course') || wps.find(w => w.type !== 'node');
+            applyTheme(null); const w0 = _routeWeight(), c0 = (WT.find(t => t.v === cw.type) || {}).c;
+            applyTheme({preset:'mono', dash:false, width:'thick'});
+            const out = {color: WT.find(t => t.v === 'course').c === '#222222' && LINE_STYLE.color === '#222222', solid: _routeDash() === null, thick: Math.abs(_routeWeight() / w0 - 1.4) < 0.01,
+                         legend: _sheetLegend().indexOf('#222222') >= 0, icon: (function(){ const el = cw.marker && cw.marker.getElement(); return !el || el.innerHTML.indexOf('#222222') >= 0; })(), name: _themeName() === '白黒（実線・太）'};
+            applyTheme({preset:'aki', route:'#1976D2'}); out.custom = LINE_STYLE.color === '#1976D2' && WT.find(t => t.v === 'course').c === '#BF360C' && _themeName() === '秋（線の色）';
+            courseInfo.theme = {preset:'aki', route:'#1976D2', dash:true, width:'std'}; out.saved = buildCurrentSaveData().theme.preset === 'aki' && buildCurrentSaveData().theme.route === '#1976D2';
+            courseInfo.theme = null; out.omit = buildCurrentSaveData().theme === undefined;
+            applyTheme(null); out.back = (WT.find(t => t.v === cw.type) || {}).c === c0 && LINE_STYLE.color === '#E84040' && _routeDash() !== null && Math.abs(_routeWeight() - w0) < 0.01 && _sheetLegend().indexOf('#E84040') >= 0;
+            courseInfo.theme = keepT; applyTheme(keepT); _dirty = keepD; _lastRouteCoords = keepLRC;
+            return out;
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        chk('機能', 'テーマ：印・線・凡例の色、実線・太さ、線の色だけ変える、保存に theme、標準に戻る',
+            isinstance(th, dict) and all(th.get(k) for k in ('color', 'solid', 'thick', 'legend', 'icon', 'name', 'custom', 'saved', 'omit', 'back')), str(th)[:240])
 
         # v144: 周辺の情報：通信は差し替えて、候補→重複除外→選んで追加→1回で取り消し
         nb = page.evaluate("""async ()=>{ try{

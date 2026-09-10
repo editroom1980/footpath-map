@@ -357,6 +357,20 @@ body.embed #s2, body.embed #mapArea, body.embed #mapWrap{height:100%!important;m
 .nb-t small{font-size:11px;color:var(--t-sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .leaflet-tooltip.nb-tt{font-size:11px;padding:2px 6px;background:#fff;border:1px solid #D4C4A8;color:#2C2620}
 @media (min-width:769px){.fsh.nb{width:560px}}
+/* 地図の色（v145） */
+.th-presets{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;margin-top:6px}
+.th-card{display:flex;flex-direction:column;gap:5px;align-items:flex-start;border:1.5px solid #E6DCCB;border-radius:12px;background:#fff;padding:10px;font-family:inherit;text-align:left;cursor:pointer;min-height:var(--tap)}
+.th-card.on{border-color:var(--brand);background:#FFF7F2}
+.th-strip{display:flex;align-items:center;gap:4px;height:16px}
+.th-strip i{display:inline-block;width:34px;height:4px;border-radius:2px}
+.th-strip b{display:inline-block;width:12px;height:12px;border-radius:50%;border:1.5px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.08)}
+.th-l{font-size:14px;font-weight:800;color:#231C14}
+.th-card small{font-size:11px;color:var(--t-sub);line-height:1.4}
+.th-chips{display:flex;flex-wrap:wrap;gap:8px}
+.th-chip{width:34px;height:34px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 1.5px #D4C4A8;cursor:pointer}
+.th-chip.on{box-shadow:0 0 0 2.5px var(--brand)}
+.th-two{display:flex;gap:16px;flex-wrap:wrap}
+.pp-val{margin-left:auto;font-size:12px;color:var(--t-sub);font-weight:500}
 @media (min-width:769px){.fsh{left:50%;right:auto;bottom:auto;top:50%;transform:translate(-50%,-50%);width:460px;max-width:calc(100vw - 32px);border-radius:16px;padding:18px 20px 20px}.fsh .ds-dh{display:none}}
 .wp-visited{position:absolute;right:-3px;top:-3px;width:14px;height:14px;border-radius:50%;background:var(--ok);
   color:#fff;font-size:9px;line-height:14px;text-align:center;border:1.5px solid #fff;font-weight:700}
@@ -1096,6 +1110,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
       <div class="pp-sec">地図の見せ方</div>
       <button class="pp-row" id="btnMapLabels" onclick="toggleMapLabels();_syncPcPops()">地名とスポットを表示<span class="pp-sw"></span></button>
       <button class="pp-row ed" id="btnStickers" onclick="toggleStickers();_syncPcPops()" title="写真のあるスポットの印を、写真そのもの（シール）にする。歩く人の画面と配布シートにも同じに出る">写真をシールで見せる<span class="pp-sw"></span></button>
+      <button class="pp-row ed" id="btnTheme" onclick="closePcPops();openThemeSheet()" title="道順の線と印の色の組み合わせ。コースに保存され、歩く人の画面と配布シートも同じ色になる">地図の色（テーマ）<span class="pp-val" id="pcThemeName">標準</span></button>
       <div class="pp-row static">文字の大きさ<span class="pp-seg" id="btnLabelSize"><button data-lsz="0" onclick="setLabelSize(0);_syncPcPops()">標準</button><button data-lsz="1" onclick="setLabelSize(1);_syncPcPops()">大</button><button data-lsz="2" onclick="setLabelSize(2);_syncPcPops()">特大</button><button data-lsz="3" hidden onclick="setLabelSize(3);_syncPcPops()">極大</button><button data-lsz="4" hidden onclick="setLabelSize(4);_syncPcPops()">最大</button></span></div>
       <div class="pp-row static">スポットの○<span class="pp-seg"><button data-wsz="0" onclick="setWpSize(0);_syncPcPops()">標準</button><button data-wsz="1" onclick="setWpSize(1);_syncPcPops()">大</button><button data-wsz="2" onclick="setWpSize(2);_syncPcPops()">特大</button></span></div>
       <span id="lblSizeTxt" hidden></span>
@@ -1226,6 +1241,26 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
         </div>
       </div>
 
+      <!-- 地図の色（テーマ・v145） -->
+      <div id="themeScrim" class="fsh-scrim" onclick="closeThemeSheet()"></div>
+      <div id="themeSheet" class="fsh" role="dialog" aria-label="地図の色">
+        <div class="ds-dh"></div>
+        <div class="ds-t">地図の色（テーマ）</div>
+        <div class="ds-n">道順の線と印の色の組み合わせです。選ぶとその場で地図に映ります。コースに保存され、歩く人の画面・配布シート・地図画像も同じ色になります。</div>
+        <div class="th-presets" id="thPresets"></div>
+        <label class="kk-l">道順の線の色</label>
+        <div class="th-chips" id="thRoute"></div>
+        <div class="th-two">
+          <div><label class="kk-l">線</label><div class="g-seg nb-seg" id="thDash"><button type="button" data-v="dash" onclick="_thPick('dash',true)">点線</button><button type="button" data-v="solid" onclick="_thPick('dash',false)">実線</button></div></div>
+          <div><label class="kk-l">太さ</label><div class="g-seg nb-seg" id="thWidth"><button type="button" data-v="thin" onclick="_thPick('width','thin')">細</button><button type="button" data-v="std" onclick="_thPick('width','std')">標準</button><button type="button" data-v="thick" onclick="_thPick('width','thick')">太</button></div></div>
+        </div>
+        <div class="ds-row">
+          <button class="ds-btn ghost" onclick="closeThemeSheet()">閉じる</button>
+          <button class="ds-btn ghost" style="flex:0 0 96px" onclick="resetThemeSheet()">標準に戻す</button>
+          <button class="ds-btn" onclick="saveThemeSheet()">この色にする</button>
+        </div>
+      </div>
+
       <!-- 周辺の情報（v144）：OSM・Wikipedia から候補→選んだものだけスポット -->
       <div id="nearbyScrim" class="fsh-scrim" onclick="closeNearbySheet()"></div>
       <div id="nearbySheet" class="fsh nb" role="dialog" aria-label="周辺の情報を取り込む">
@@ -1352,8 +1387,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
         <div class="mm-maplist">
           <div class="mm-map" onclick="openMmSub('map')"><span class="mm-map-l">背景地図</span><span class="mm-v" id="mmValMap">›</span></div>
           <div class="mm-tog" onclick="toggleMapLabels();_syncMobileMenu()"><span class="mm-tog-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 7.5a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" /> <path d="M3 6v5.172a2 2 0 0 0 .586 1.414l7.71 7.71a2.41 2.41 0 0 0 3.408 0l5.592 -5.592a2.41 2.41 0 0 0 0 -3.408l-7.71 -7.71a2 2 0 0 0 -1.414 -.586h-5.172a3 3 0 0 0 -3 3" /></svg></span><span class="mm-tog-l">地名とスポットを表示</span><div class="mm-sw" id="mmSwLabels"></div></div>
-          <div class="mm-tog" onclick="toggleStickers();_syncMobileMenu()" data-edit="1"><span class="mm-tog-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 8h.01" /><path d="M4 6a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2z" /><path d="M4 15l4 -4a3 5 0 0 1 3 0l5 5" /><path d="M14 14l1 -1a3 5 0 0 1 3 0l2 2" /></svg></span><span class="mm-tog-l">写真をシールで見せる</span><div class="mm-sw" id="mmSwStickers"></div></div>
-          <div class="mm-map" onclick="openMmSub('size')"><span class="mm-map-l">文字・印の大きさ</span><span class="mm-v" id="mmValSize">›</span></div>
+          <div class="mm-map" onclick="openMmSub('size')"><span class="mm-map-l">見た目（色・シール・文字の大きさ）</span><span class="mm-v" id="mmValSize">›</span></div>
           <div class="mm-map" onclick="openMmSub('spd')"><span class="mm-map-l">歩く速さ（所要時間の計算）</span><span class="mm-v" id="mmValSpd">›</span></div>
         </div>
         <button class="mm-adv-h" id="mmAdvBtn" onclick="toggleMmAdv()" aria-expanded="false">上級者向け<span>ふだんは触らなくて大丈夫です</span><i>›</i></button>
@@ -1385,6 +1419,11 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
         </div>
           </div>
           <div class="mm-subpane" data-sub="size">
+            <div class="mm-sec">色とシール</div>
+        <div class="mm-maplist">
+          <div class="mm-map" onclick="closeMobileMenu();openThemeSheet()" data-edit="1"><span class="mm-map-l">地図の色（テーマ）</span><span class="mm-v" id="mmTheme">標準 ›</span></div>
+          <div class="mm-tog" onclick="toggleStickers();_syncMobileMenu()" data-edit="1"><span class="mm-tog-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 8h.01" /><path d="M4 6a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2z" /><path d="M4 15l4 -4a3 5 0 0 1 3 0l5 5" /><path d="M14 14l1 -1a3 5 0 0 1 3 0l2 2" /></svg></span><span class="mm-tog-l">写真をシールで見せる</span><div class="mm-sw" id="mmSwStickers"></div></div>
+        </div>
             <div class="mm-sec">地名ラベルの文字</div>
         <div class="mm-maplist">
           <div class="mm-map" data-lsz="0" onclick="setLabelSize(0)"><span class="mm-map-l">標準</span><span class="mm-map-ck">✓</span></div>
@@ -1613,6 +1652,17 @@ const NEARBY_KINDS = [                                // 画面の並び。t＝�
   {k:'wiki',    l:'Wikipedia の記事', t:'history', q:null},
 ];
 const NEARBY_KIND_DEFAULT_OFF = ['bus'];             // 最初は外しておく種類
+/* 地図の色（テーマ・v145・構想「色を自由に」）。コースに保存され、歩く人の画面・配布シート・地図画像も同じ色になる。
+   組み合わせ（preset）＝道順の線の色＋印の色。線の色・点線／実線・太さは個別にも変えられる */
+const THEMES = [
+  {id:'std',      l:'標準',   n:'いまの色',                          route:'#E84040', pal:null},
+  {id:'satoyama', l:'里山',   n:'土と緑。田畑や林の道に',            route:'#2E7D32', pal:{course:'#6D4C41', start:'#1B5E20', goal:'#B71C1C', view:'#00695C', shop:'#AD1457', shrine:'#4E342E', history:'#7B1FA2', park:'#33691E', school:'#00838F', hall:'#3E2723', toilet:'#546E7A', parking:'#283593', other:'#616161'}},
+  {id:'umi',      l:'海と空', n:'青を基調に。川や海辺の道に',        route:'#1976D2', pal:{course:'#0D47A1', start:'#00695C', goal:'#C62828', view:'#01579B', shop:'#C2185B', shrine:'#5D4037', history:'#6A1B9A', park:'#2E7D32', school:'#00838F', hall:'#37474F', toilet:'#607D8B', parking:'#303F9F', other:'#757575'}},
+  {id:'aki',      l:'秋',     n:'紅葉の暖色。里の秋の道に',          route:'#D84315', pal:{course:'#BF360C', start:'#33691E', goal:'#B71C1C', view:'#EF6C00', shop:'#AD1457', shrine:'#4E342E', history:'#6A1B9A', park:'#558B2F', school:'#00838F', hall:'#3E2723', toilet:'#546E7A', parking:'#3949AB', other:'#5F5F5F'}},
+  {id:'mono',     l:'白黒',   n:'白黒コピー向け。印は形と番号で見分ける', route:'#222222', pal:{course:'#222222', start:'#333333', goal:'#000000', view:'#555555', shop:'#444444', shrine:'#333333', history:'#555555', park:'#666666', school:'#444444', hall:'#222222', toilet:'#777777', parking:'#555555', other:'#888888'}},
+];
+const THEME_ROUTE_COLORS = ['#E84040', '#D84315', '#F57F17', '#2E7D32', '#1976D2', '#6A1B9A', '#AD1457', '#222222'];
+const THEME_WIDTHS = {thin:0.75, std:1, thick:1.4};
 const TYPE_BIG = ['course', 'view', 'history', 'shop'];   // 編集画面で大きく出す「よく使う4つ」（オーナー指定・v129）。残りは畳む
 const LINE_STYLE = {color:'#E84040', weight:4, dashArray:'8,5', opacity:.9, lineJoin:'round', lineCap:'round', smoothFactor:0};
 const DBL_GAP_PX = 2;        // 往復で重なる区間：2本の線の間隔(px)
@@ -2325,6 +2375,7 @@ async function newCourse() {
   courseInfo  = {name, area, start:document.getElementById('s1Start').value.trim(), goal:document.getElementById('s1Goal').value.trim(), kokoroe:'', info:{}};
   currentCourseId = null;
   if (typeof loadFinds === 'function') loadFinds();   // 発見の印を片づける（v143）
+  if (typeof applyTheme === 'function') applyTheme(null, {quiet:true});   // 色を標準に戻す（v145）
 
   const btn = document.getElementById('s1Btn');
   btn.disabled = true; btn.textContent = '⏳ マップを読み込み中...';
@@ -2606,7 +2657,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v144';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
+const APP_VERSION = 'v145';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
 }catch(_){} });
@@ -4160,7 +4211,7 @@ function _syncMobileMenu() {
 function openMmSub(kind){
   const main = document.getElementById('mmMain'), sub = document.getElementById('mmSub');
   if (!main || !sub) return;
-  const T = {map:'背景地図', size:'文字・印の大きさ', spd:'歩く速さ（所要時間の計算）'};
+  const T = {map:'背景地図', size:'見た目（色・シール・文字の大きさ）', spd:'歩く速さ（所要時間の計算）'};
   document.getElementById('mmSubT').textContent = T[kind] || '';
   sub.querySelectorAll('.mm-subpane').forEach(pn => pn.classList.toggle('show', pn.getAttribute('data-sub') === kind));
   main.hidden = true; sub.hidden = false;
@@ -4190,6 +4241,7 @@ function _syncMmValues(){
     v('mmReorderN', String(_stampTargets().length));   // 「描いた道の点」は数えない（B4・v140）
     v('mmKokoroe', (courseInfo.kokoroe || '').trim() ? '追記あり' : '標準');
     v('mmInfo', `${_courseInfoCount()} / ${COURSE_INFO_FIELDS.length}`);
+    v('mmTheme', _themeName());
   } catch(_) {}
 }
 
@@ -5039,12 +5091,12 @@ function buildSegCoordsList() {
 // ── 往復（同じ道の行き帰り）で重なる区間だけ、表示上だけ左右に振り分ける（表示専用） ──
 // データ(_lastRouteCoords)・当たり判定(allCoordsオーバーレイ)は一切変更しない。往復が無ければ素の座標をそのまま返す。
 // 規則：道路と同じく「進行方向に対して常に右側」へ寄せる（右法線=(-dy,dx)）。行きと帰りが必ず反対側になり交差しない。破線・間隔も線幅と同縮尺、折返しは半円。
-function _routeWeight(){ const z=leafMap?leafMap.getZoom():16; return Math.max(2, Math.min(10, 3 + (z-16)*1.3)); } // 拡大で線を太く
+function _routeWeight(){ const z=leafMap?leafMap.getZoom():16; return Math.max(2, Math.min(10, 3 + (z-16)*1.3)) * _themeK(); } // 拡大で線を太く（テーマの太さ倍率込み・v145）
 function _routeK(){ return _routeWeight()/3; }                          // 基準ズーム16を1とする倍率（破線・間隔も同縮尺）
 /* 破線の寸法。三角は「破線の切れ目の中央」に置くので、どちらもここの数字から決まる。 */
 function _dashPeriodPx(){ return (DASH_ON + DASH_OFF) * _routeK(); }        // 破線1本ぶんの長さ
 function _dashGapCenterPx(){ return (DASH_ON + DASH_OFF / 2) * _routeK(); } // 最初の切れ目の中央
-function _routeDash(){ const k = _routeK(); return (DASH_ON*k).toFixed(1) + ',' + (DASH_OFF*k).toFixed(1); }
+function _routeDash(){ if (_themeSolid()) return null; const k = _routeK(); return (DASH_ON*k).toFixed(1) + ',' + (DASH_OFF*k).toFixed(1); }   // 実線のテーマなら破線なし（v145）
 function _buildDisplayCoords(coords){
   if(!_dblOn || !coords || coords.length<3 || !leafMap) return coords;
   const n=coords.length;
@@ -6297,8 +6349,8 @@ function _sheetLegend() {
   });
   rows.push('<div class="sh-lg"><span class="sh-lgline">'
     + '<svg width="27" height="10" viewBox="0 0 27 10">'
-    + '<path d="M0 5 H15" stroke="#E84040" stroke-width="3"/>'
-    + '<path d="M26 5 L18.5 8.8 L18.5 1.2 Z" fill="#E84040" stroke="#fff" stroke-width="1.2" stroke-linejoin="round"/>'
+    + '<path d="M0 5 H15" stroke="' + LINE_STYLE.color + '" stroke-width="3"/>'
+    + '<path d="M26 5 L18.5 8.8 L18.5 1.2 Z" fill="' + LINE_STYLE.color + '" stroke="#fff" stroke-width="1.2" stroke-linejoin="round"/>'
     + '</svg></span><span>歩くコース（三角の向きに歩く）</span></div>');
   return rows.join('');
 }
@@ -6891,6 +6943,68 @@ function _clusterStickers(){
   });
   leaders.forEach(l => { if (l.n > 1) { l.w._clusterN = l.n; l.w.marker.setIcon(wpIcon(l.w)); } });
 }
+
+/* ===== 地図の色（テーマ・v145）===== */
+const WT_BASE = {}; WT.forEach(t => { WT_BASE[t.v] = t.c; });     // 標準の色（テーマを外すときに戻す）
+const ROUTE_BASE = LINE_STYLE.color;
+let _theme = null, _thEdit = null;
+function _themeOf(id){ return THEMES.find(t => t.id === id) || THEMES[0]; }
+function _themeIsDefault(t){ return !t || ((!t.preset || t.preset === 'std') && (!t.route || t.route === ROUTE_BASE) && t.dash !== false && (!t.width || t.width === 'std')); }
+function _themeSolid(){ return !!(_theme && _theme.dash === false); }
+function _themeK(){ return (_theme && THEME_WIDTHS[_theme.width]) || 1; }
+function _themeName(){ if (_themeIsDefault(_theme)) return '標準'; const pre = _themeOf(_theme.preset); const ex = []; if (_theme.route && _theme.route !== pre.route) ex.push('線の色'); if (_theme.dash === false) ex.push('実線'); if (_theme.width && _theme.width !== 'std') ex.push(_theme.width === 'thin' ? '細' : '太'); return pre.l + (ex.length ? '（' + ex.join('・') + '）' : ''); }
+function applyTheme(theme, opts){
+  _theme = _themeIsDefault(theme) ? null : Object.assign({}, theme);
+  const pre = _themeOf(_theme ? _theme.preset : 'std');
+  WT.forEach(t => { t.c = (pre.pal && pre.pal[t.v]) || WT_BASE[t.v]; });
+  LINE_STYLE.color = (_theme && _theme.route) || pre.route || ROUTE_BASE;
+  if (!opts || !opts.quiet) _themeRedraw();
+  const mv = document.getElementById('mmTheme'); if (mv) mv.textContent = _themeName() + ' ›';
+  const pv = document.getElementById('pcThemeName'); if (pv) pv.textContent = _themeName();
+}
+function _themeRedraw(){
+  if (!leafMap) return;
+  try { if (routeLine) routeLine.setStyle({color: LINE_STYLE.color}); if (routeDirs) routeDirs.setStyle({fillColor: LINE_STYLE.color}); _redrawRouteOffset(); } catch(_) {}
+  try { refreshIcons(); wps.forEach(w => updateTooltip(w)); redrawList(); if (typeof scheduleAutoLabels === 'function') scheduleAutoLabels(); } catch(_) {}
+  const lb = document.getElementById('pcLegendBody'); if (lb && lb.innerHTML) lb.innerHTML = _sheetLegend();
+}
+function openThemeSheet(){
+  if (viewMode) { showToast('地図の色は編集画面で変えられます'); return; }
+  _closeAllPopups();
+  const t = courseInfo.theme || {};
+  _thEdit = {preset: t.preset || 'std', route: t.route || null, dash: t.dash !== false, width: t.width || 'std'};
+  _thRender();
+  document.getElementById('themeScrim').style.display = 'block'; document.getElementById('themeSheet').style.display = 'block';
+}
+function _thPick(k, v){
+  if (!_thEdit) return;
+  if (k === 'preset') { _thEdit.preset = v; _thEdit.route = null; }
+  else if (k === 'route') _thEdit.route = (v === _themeOf(_thEdit.preset).route) ? null : v;
+  else _thEdit[k] = v;
+  _thRender(); applyTheme(_thValue(), null);            // その場で地図に映す（閉じれば元に戻る）
+}
+function _thValue(){ return {preset:_thEdit.preset, route:_thEdit.route || undefined, dash:_thEdit.dash, width:_thEdit.width}; }
+function _thRender(){
+  if (!_thEdit) return;
+  const pre = _themeOf(_thEdit.preset), route = _thEdit.route || pre.route;
+  const box = document.getElementById('thPresets');
+  box.innerHTML = THEMES.map(t => { const pal = t.pal || WT_BASE;
+    return '<button type="button" class="th-card tap' + (t.id === _thEdit.preset ? ' on' : '') + '" onclick="_thPick(\'preset\',\'' + t.id + '\')">'
+      + '<span class="th-strip"><i style="background:' + t.route + '"></i>' + ['course', 'start', 'view', 'shop', 'shrine'].map(v => '<b style="background:' + (pal[v] || WT_BASE[v]) + '"></b>').join('') + '</span>'
+      + '<span class="th-l">' + escHtml(t.l) + '</span><small>' + escHtml(t.n) + '</small></button>'; }).join('');
+  document.getElementById('thRoute').innerHTML = THEME_ROUTE_COLORS.map(c => '<button type="button" class="th-chip' + (c.toLowerCase() === route.toLowerCase() ? ' on' : '') + '" style="background:' + c + '" onclick="_thPick(\'route\',\'' + c + '\')" aria-label="' + c + '"></button>').join('');
+  document.querySelectorAll('#thDash button').forEach(b => b.classList.toggle('on', (b.getAttribute('data-v') === 'dash') === _thEdit.dash));
+  document.querySelectorAll('#thWidth button').forEach(b => b.classList.toggle('on', b.getAttribute('data-v') === _thEdit.width));
+}
+function closeThemeSheet(){ document.getElementById('themeScrim').style.display = 'none'; document.getElementById('themeSheet').style.display = 'none'; _thEdit = null; applyTheme(courseInfo.theme || null); }
+function saveThemeSheet(){
+  if (!_thEdit) return;
+  const v = _thValue(); courseInfo.theme = _themeIsDefault(v) ? null : v; _dirty = true;
+  _thEdit = null; document.getElementById('themeScrim').style.display = 'none'; document.getElementById('themeSheet').style.display = 'none';
+  applyTheme(courseInfo.theme); _syncMmValues();
+  showToast('地図の色：' + _themeName() + '（保存すると歩く人の画面と配布シートも同じ色になります）');
+}
+function resetThemeSheet(){ if (!_thEdit) return; _thEdit = {preset:'std', route:null, dash:true, width:'std'}; _thRender(); applyTheme(null); }
 
 /* ===== 周辺の情報（v144）：OpenStreetMap と Wikipedia から候補を出し、選んだものだけスポットにする =====
    候補は地図に薄い○で出す（押すと選択）。追加は「道順に入らないスポット」としてまとめて置き、1回の取り消しで全部戻る */
@@ -7861,6 +7975,7 @@ function buildCurrentSaveData() {
     kokoroe: courseInfo.kokoroe || '',   // 歩く人の心得の「地域の追記」（標準の文は KOKOROE）（v137）
     info:    _courseInfoClean(),         // アクセス・駐車場・トイレ・休憩・季節・注意・問い合わせ・難易度（v139）
     stickers: courseInfo.stickers ? true : undefined,   // 写真のある印をシールで見せる（v142）。OFF のときは書かない
+    theme:    courseInfo.theme || undefined,            // 地図の色（v145）。標準のときは書かない
     center:  leafMap ? {lat:leafMap.getCenter().lat, lng:leafMap.getCenter().lng} : null,
     zoom:    leafMap ? leafMap.getZoom() : 14,
     wps:     wps.map(w=>({id:w.id,type:w.type,name:w.name,desc:w.desc,tel:w.tel,dwell:w.dwell||0,fitBefore:w.fitBefore!==false,fitAfter:w.fitAfter!==false,onRoute:w.onRoute!==undefined?w.onRoute!==false:(w.type==='course'),lat:w.lat,lng:w.lng,labelDir:w.labelDir||'auto',photos:w.photos||[]})),
@@ -7951,7 +8066,8 @@ function _fitCourseToScreen(data){
   }
 }
 function loadCourseData(data) {
-  courseInfo = {name:data.name, area:data.area, start:data.start||'', goal:data.goal||'', kokoroe:data.kokoroe||'', info:(data.info && typeof data.info === 'object') ? Object.assign({}, data.info) : {}, stickers: data.stickers === true};
+  courseInfo = {name:data.name, area:data.area, start:data.start||'', goal:data.goal||'', kokoroe:data.kokoroe||'', info:(data.info && typeof data.info === 'object') ? Object.assign({}, data.info) : {}, stickers: data.stickers === true, theme:(data.theme && typeof data.theme === 'object') ? Object.assign({}, data.theme) : null};
+  applyTheme(courseInfo.theme, {quiet:true});   // 印と線を作る前に色を決める（v145）
   currentCourseId = data.id;
   _dirty = false;             // 読み込み直後は未保存の変更なし
 
@@ -8031,6 +8147,7 @@ function loadCourseData(data) {
     _fillEmbedBar();    // 埋め込み表示の帯（コース名・距離・大きな地図で開く）
     loadVisits(); renderStampBar(); refreshIcons();   // スタンプ（この端末に残っている記録）
     loadFinds();                                       // 発見（この端末に残っているもの・v143）
+    _themeRedraw();                                    // 地図の色（v145）
 
     // カスタム道路: 機能廃止につき読み込まない
     customRoads = [];
