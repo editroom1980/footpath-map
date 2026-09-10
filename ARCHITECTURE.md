@@ -107,6 +107,9 @@
 
 8. **版数は3か所そろえる**（10章）。
 
+12. **文字の無いボタンには必ず `aria-label`**（v122）。読み上げで「ボタン」としか聞こえないのを防ぐ。JSで作る雛形も同じ。
+    検査が HTML・雛形・実画面の3か所で数えるので、付け忘れると落ちる。ページの拡大は禁止しない
+    （`user-scalable=no` を戻さない）。地図だけ `#map{touch-action:none}` でピンチを Leaflet に渡す。
 11. **閲覧中（`viewMode`）は編集の操作を一切受け付けない**（v120）。見た目は `body.viewing`（配布リンクは `body.viewonly` も）で
     隠し、動きは `onMapClick`／`openModal`／`undoLast`／`redoAction`／`clearAll`／一覧のドラッグの `if (viewMode) return;` と
     `_applyViewLock()`（印の `dragging.disable()`）で止める。**編集の入口を足したら、この門も足すこと。**

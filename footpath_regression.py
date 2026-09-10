@@ -373,6 +373,15 @@ def static_checks(src):
     chk('静的', '保存と書き出しで記録を更新する', '_noteSaved();' in src and '_noteBackup();' in src)
     chk('静的', '一覧を開くたびに状態を出す', 'renderBackupStatus(); renderHomeTip();' in src)
     chk('静的', 'iPhone のホーム画面追加の案内がある', 'id="homeTip"' in src and 'function _isIosBrowserTab' in src)
+    # --- v122: 読み上げ名と拡大禁止の解除（ロードマップ 段階0-4）---
+    import html as _html
+    _miss = []
+    for _m in re.finditer(r'<button\b([^>]*)>(.*?)</button>', src, re.S):
+        _t = _html.unescape(re.sub(r'\$\{[^}]*\}', '', re.sub(r'<[^>]+>', '', _m.group(2)))).strip()
+        if not _t and 'aria-label' not in _m.group(1): _miss.append(_m.group(1)[:50])
+    chk('静的', '文字の無いボタンすべてに読み上げ名がある（HTMLとJSの雛形）', not _miss, str(_miss)[:160])
+    chk('静的', 'ページの拡大を禁止していない', 'user-scalable=no' not in src)
+    chk('静的', '地図の上だけは指の操作を Leaflet に渡す', '#map{touch-action:none}' in src)
     chk('静的', '出発点・到着点のつなぎ区間も同梱する', 'if (startWp && startWp.id !== rw[0].id) pairs.push' in src)
     chk('静的', '近すぎる「ふつうの三角」を飛ばすきまりがある', 'const DIR_MIN_DASHES' in src)
     chk('静的', '置き場所と向きは線に沿った距離で決める（点の細かさに左右されない）', 'DIR_LOOK_PX' in src)
@@ -1191,6 +1200,23 @@ def functional_checks(index_path):
                     justBefore:justBefore.length, tooClose:tooClose.length,
                     clear:Math.round(clear), per:Math.round(PER)};
           }catch(e){ return 'ERR:'+e.message; } }""")
+        # v122: 画面に実際にあるボタンで読み上げ名の無いものが0。地図は拡大操作を Leaflet が受ける
+        a11y = page.evaluate("""()=>{ try{
+            renderCourseList();                                            // 一覧のボタンも作ってから数える
+            const miss = [...document.querySelectorAll('button')].filter(b =>
+              !b.textContent.trim() && !b.getAttribute('aria-label') && !b.getAttribute('aria-labelledby'))
+              .map(b => (b.id || b.className || '?').slice(0, 30));
+            const meta = (document.querySelector('meta[name="viewport"]') || {}).content || '';
+            return {miss, total: document.querySelectorAll('button').length,
+                    zoomAllowed: meta.indexOf('user-scalable=no') < 0,
+                    mapTouch: getComputedStyle(document.getElementById('map')).touchAction,
+                    leafletPinch: !!(leafMap && leafMap.touchZoom && leafMap.touchZoom.enabled())};
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        chk('機能', '読み上げ名の無いボタンが0、ページは拡大でき、地図の指操作は Leaflet が受ける',
+            isinstance(a11y, dict) and a11y.get('miss') == [] and a11y.get('total', 0) >= 40
+            and a11y.get('zoomAllowed') is True and a11y.get('mapTouch') == 'none'
+            and a11y.get('leafletPinch') is True, str(a11y)[:190])
+
         # v121: バックアップからの日数・未反映の保存回数で色が変わり、書き出すと戻る。iPhone の案内は1回だけ
         bk = page.evaluate("""()=>{ return (async()=>{ try{
             const keepC = getCourses();
