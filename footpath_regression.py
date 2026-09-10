@@ -435,6 +435,13 @@ def static_checks(src):
     chk('静的', '選べる種類の出どころは _buildTypeOptions のまま（チップは select を読む）',
         "const cur = sel.value, opts = [...sel.options].map(o => o.value);" in src and 'function _buildTypeOptions' in src)
     chk('静的', '最初の案内が「種類と名前はあとから」を伝える', '種類と名前は、○を押してあとから決められます' in src)
+    # --- v153: 画面の骨組みの検査（閉じ忘れを二度と出さない）＋小さな手直し ---
+    _a = src.index('<body'); _b = src.index('<script src=', _a)
+    _mk = re.sub(r'<script\b.*?</script>', '', src[_a:_b], flags=re.S)
+    _unbal = [t for t in ('div', 'span', 'button', 'label', 'details', 'ul', 'li', 'select', 'textarea') if len(re.findall(r'<' + t + r'\b', _mk)) != _mk.count('</' + t + '>')]
+    chk('静的', '画面の骨組み（body の HTML）でタグの開きと閉じが釣り合っている', not _unbal, str(_unbal))
+    chk('静的', 'スマホでは「歩く人の見え方」の札を上の帯の下に出す。歩く人のメニューの「コースの情報」は件数でなく「見る」',
+        '@media (max-width:768px){#viewBadge{top:72px}}' in src and "v('mmInfo', viewMode ? (_courseInfoCount() ? '見る' : 'なし')" in src)
     # --- v152: 手数を減らす④（メニューの「コースのことを書く」にまとめる）---
     chk('静的', 'スマホのメニュー：説明・情報・心得（書く側）は2階層目「コースのことを書く」に。歩く人には心得・情報の行を残す',
         'data-sub="write"' in src and "write:'コースのことを書く'" in src and 'id="mmKokoroeRow"' in src and 'id="mmInfoRow"' in src

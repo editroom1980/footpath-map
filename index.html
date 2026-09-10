@@ -607,6 +607,7 @@ body.embed #nextBar{display:none!important}
 #nextBar .nb-cmp.on{background:var(--brand-soft)}
 #nextBar .nb-cmp[hidden]{display:none}
 body.viewonly #viewBadge{display:none!important}   /* 歩く人には「歩く人の見え方」の札は要らない（v132） */
+@media (max-width:768px){#viewBadge{top:72px}}   /* スマホでは上の帯（次のスポット）の下に出す（v153） */
 @media (min-width:769px){#nextBar{left:12px;right:auto;top:12px;width:380px}}
 /* 通知の箱（C3・v140） */
 #toastBox{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:9999;display:flex;flex-direction:column;gap:6px;align-items:center;width:max-content;max-width:calc(100vw - 24px);pointer-events:none}
@@ -2747,7 +2748,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v152';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
+const APP_VERSION = 'v153';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
 }catch(_){} });
@@ -4337,7 +4338,7 @@ function _syncMmValues(){
     v('mmValSpd', (WALK_SPEEDS[_walkSpeedIdx] || 4).toFixed(1) + ' km/h');
     v('mmReorderN', String(_stampTargets().length));   // 「描いた道の点」は数えない（B4・v140）
     v('mmKokoroe', (courseInfo.kokoroe || '').trim() ? '追記あり' : '標準'); v('mmKokoroe2', (courseInfo.kokoroe || '').trim() ? '追記あり' : '標準');
-    v('mmInfo', `${_courseInfoCount()} / ${COURSE_INFO_FIELDS.length}`); v('mmInfo2', `${_courseInfoCount()} / ${COURSE_INFO_FIELDS.length}`);
+    v('mmInfo', viewMode ? (_courseInfoCount() ? '見る' : 'なし') : `${_courseInfoCount()} / ${COURSE_INFO_FIELDS.length}`); v('mmInfo2', `${_courseInfoCount()} / ${COURSE_INFO_FIELDS.length}`);   // 歩く人には件数より「見る」（v153）
     const _wd = ((document.getElementById('iDesc') || {}).value || '').trim() ? 1 : 0; v('mmWrite', `${_wd + Math.min(1, _courseInfoCount()) + ((courseInfo.kokoroe || '').trim() ? 1 : 0)} / 3 書いた`);
     v('mmTheme', _themeName());
   } catch(_) {}
