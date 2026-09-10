@@ -342,15 +342,6 @@ def static_checks(src):
     chk('静的', '白いふちは当たり判定に使わない', "interactive:false, renderer: canvasRenderer}).addTo(leafMap)" in src)
     chk('静的', '白いふちも後片付けする', 'if (routeCasing) { if(leafMap) leafMap.removeLayer(routeCasing); routeCasing=null; }' in src)
     chk('静的', 'スポットの○の白いふちがはっきりしている', 'border:2.5px solid #fff' in src)
-    # --- v108: 進行方向の矢印 ---
-    chk('静的', '進行方向の矢印を作る仕組みがある',
-        'function _buildArrows' in src and 'const ARROW_GAP_PX' in src)
-    chk('静的', '矢印も当たり判定に使わない', 'routeArrows       = L.polyline(shapes' in src)
-    chk('静的', '矢印も後片付けする', 'if (routeArrows)       { if(leafMap) leafMap.removeLayer(routeArrows);' in src)
-    chk('静的', 'ルート線に破線を使っていない（矢印の連なりで示す）',
-        "dashArray:'8,5'" not in src and '_routeDash' not in src)
-    chk('静的', '矢印の大きさに上限がある（拡大しても大きくなりすぎない）', 'ARROW_MAX_K' in src)
-    chk('静的', '配布シートの凡例も矢印つきにそろえている', '矢印の向きに歩く' in src)
     # --- v99: ラベルの自動配置 ---
     chk('静的', 'ラベル自動配置 autoPlaceLabels 存在', 'function autoPlaceLabels' in src)
     chk('静的', 'まとめて実行する scheduleAutoLabels 存在', 'function scheduleAutoLabels' in src)
@@ -444,6 +435,9 @@ def functional_checks(index_path):
         page.on('dialog', lambda d: d.accept())
         page.goto('file://' + tpath, wait_until='domcontentloaded'); page.wait_for_timeout(400)
         page.click('.s1-fab'); page.wait_for_timeout(120)
+        # 地名の検索はネット任せで、応答が遅れると『あとから』地図を動かしてしまう。
+        # 検査は毎回同じ場所を見たいので、固定の座標を返すように差し替える。
+        page.evaluate("() => { window.geocode = async () => ({lat:35.1538, lng:134.4468}); }")
         page.fill('#s1Name', 'T'); page.fill('#s1Area', '宍粟市'); page.click('#s1Btn'); page.wait_for_timeout(1100)
         page.evaluate("()=>{ if(!leafMap)initMap(); leafMap.setMaxZoom(24); }")
 
@@ -1105,26 +1099,6 @@ def functional_checks(index_path):
                     baseLen: (_routeLineBase||[]).length,
                     lastLen: (_lastRouteCoords||[]).length};
           }catch(e){ return 'ERR:'+e.message; } }""")
-        # v108: 矢印が歩く向きを指している（西→東の線なら右向き、東→西なら左向き）
-        arw = page.evaluate("""()=>{ try{
-            // 矢印は「画面に入っている所だけ」作るので、検査用の線を画面に収めてから調べる
-            const test = [[35.152,134.444],[35.152,134.462]];
-            leafMap.fitBounds(L.latLngBounds(test.map(c => L.latLng(c[0], c[1]))), {animate:false, padding:[20,20]});
-            const mk = line => _buildArrows(line).map(sh =>
-              sh.map(c => leafMap.latLngToLayerPoint(L.latLng(c[0], c[1]))));
-            const east = mk(test);
-            const west = mk(test.slice().reverse());
-            const tipAhead = (arr, sign) => arr.length > 0 && arr.every(q =>
-              q.length === 3 && (q[1].x - (q[0].x + q[2].x) / 2) * sign > 0.5);
-            return {n:east.length, eastOk:tipAhead(east, 1), westOk:tipAhead(west, -1),
-                    dense: east.length >= 6,
-                    live: routeArrows ? routeArrows.getLatLngs().length : 0,
-                    hit: hitOverlays.length, baseLen:(_routeLineBase||[]).length};
-          }catch(e){ return 'ERR:'+e.message; } }""")
-        chk('機能', '矢印が歩く向きを指し、連なって並ぶ',
-            isinstance(arw, dict) and arw.get('dense') is True and arw.get('eastOk') is True
-            and arw.get('westOk') is True and arw.get('baseLen', 0) > 1, str(arw)[:180])
-
         ok_cas = (isinstance(cas, dict) and cas.get('has') and cas.get('same')
                   and cas.get('thicker') and cas.get('white') and cas.get('notHit')
                   and cas.get('baseLen', 0) > 1 and cas.get('lastLen', 0) > 1)
@@ -1516,6 +1490,9 @@ def visual_checks(index_path):
         page = ctx.new_page()
         page.goto('file://' + tpath, wait_until='domcontentloaded'); page.wait_for_timeout(400)
         page.click('.s1-fab'); page.wait_for_timeout(120)
+        # 地名の検索はネット任せで、応答が遅れると『あとから』地図を動かしてしまう。
+        # 検査は毎回同じ場所を見たいので、固定の座標を返すように差し替える。
+        page.evaluate("() => { window.geocode = async () => ({lat:35.1538, lng:134.4468}); }")
         page.fill('#s1Name', '見た目検査コース'); page.fill('#s1Area', '宍粟市波賀町')
         page.click('#s1Btn'); page.wait_for_timeout(900)
 

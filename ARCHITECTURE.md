@@ -39,7 +39,6 @@
 | `vps` | 調整点（Via Point）配列。ルートの通り道を手で決めるための点 |
 | `routeLine` / `_routeLineBase` | 画面上のルート線 / **その素の座標**（データ準拠） |
 | `routeCasing` | ルート線の下に敷く白い実線（v103）。**表示専用** |
-| `routeArrows` / `routeArrowsCasing` | 進行方向の矢印とその白いふち（v108）。**表示専用** |
 | `_lastRouteCoords` | 実際に採用されたルート座標。**GPX・距離・高低差の出どころ** |
 | `hitOverlays` | 区間ごとの当たり判定用の透明な線 |
 | `courseInfo` / `currentCourseId` | 開いているコースの名称等 / そのID |
@@ -116,19 +115,16 @@
 _lastRouteCoords / _routeLineBase   ← ★これが「実データ」。GPX・距離・高低差はここから
    ↓ _buildDisplayCoords()          ★表示専用：往復区間だけ右へずらす
 routeLine.setLatLngs(...)           ← 画面に出る赤い破線
-   ├ routeCasing                    ★表示専用：同じ座標の白い実線を「下」に敷く（v103）
-   └ routeArrows(+Casing)           ★表示専用：同じ座標から画面上90px間隔で矢印を作る（v108）
+   └ routeCasing                    ★表示専用：同じ座標の白い実線を「下」に敷く（v103）
 ```
 
-**表示専用の3つ（`routeCasing`・`routeArrows`・`routeArrowsCasing`）の約束**
+**表示専用（`routeCasing`）の約束**
 - すべて `interactive:false`。当たり判定（`hitOverlays`）には**絶対に使わない**。
 - 座標は必ず `_buildDisplayCoords()` の結果を共有する（別々に作るとずれる）。
 - `removeLines()` で必ず消す。消し忘れると古い線が残る。
-- 矢印は**画面上の距離**で置き、**画面に入っている所だけ**作る。そのため `zoomend` と `moveend` の
-  両方で作り直す（`_drawArrows`）。拡大するとルートの画面上の長さが数万pxになるため、
-  全部作ると重い。大きさは `ARROW_MAX_K` で頭打ちにしている。
-- ルート線は**破線ではない**（v109）。進行方向は矢印の連なりで示し、線は矢印をつなぐ細い糸。
-  配布シートの凡例も同じ見た目にそろえること（地図と凡例が食い違うと混乱する）。
+- **進行方向の矢印は v108→v109 で試し、v110 で取り下げた**（線の上に矢印を重ねると、
+  破線と競合しても、連ねても読みにくかった）。再挑戦するときは、線に重ねる以外の方法
+  （曲がり角だけに大きな矢印を置く／番号と S・G に任せる 等）を先に検討すること。
 
 - 当たり判定（`hitOverlays`）は**素の座標**で作る。ずらした線で作ると区間の取り違えが起きる。
 - ズームを変えると見かけの間隔が変わるため、`zoomend` で表示座標だけ作り直す。
