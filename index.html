@@ -666,6 +666,28 @@ body.viewonly .mob-share, body.embed .mob-share{display:none!important}
 .mm-act{display:flex;flex-direction:column;align-items:center;gap:6px;padding:11px 4px;border-radius:13px;background:#F9F7F4;color:#3D3835;font-size:19px;border:none;cursor:pointer;font-family:inherit}
 .mm-act span{font-size:11px;color:#5A554E;text-align:center;line-height:1.3;font-weight:500}
 .mm-act-ph{visibility:hidden}
+/* v125: メニューを1画面に。「›」の右に今の設定、上級者向けは畳む、2階層目（#mmSub）に選択肢 */
+.mm-v{margin-left:auto;flex:none;color:var(--t-sub);font-size:12.5px;font-weight:600;white-space:nowrap;max-width:58%;overflow:hidden;text-overflow:ellipsis}
+#mmMain[hidden],#mmSub[hidden]{display:none}
+.mm-adv-h{width:100%;display:flex;align-items:center;gap:8px;min-height:var(--tap);padding:4px 2px 8px;border:none;background:none;font-family:inherit;
+  font-size:11px;font-weight:700;color:var(--t-sub);letter-spacing:.06em;cursor:pointer;text-align:left}
+.mm-adv-h span{flex:1;font-weight:500;letter-spacing:0;font-size:11px}
+.mm-adv-h i{font-style:normal;font-size:17px;line-height:1;transition:transform .15s}
+.mm-adv-h[aria-expanded="true"] i{transform:rotate(90deg)}
+#mmAdv{display:none}#mmAdv.show{display:block}
+.mm-grid.four{grid-template-columns:repeat(4,1fr)}
+.mm-sub-hd{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+#mmSubT{font-size:14px;font-weight:800;color:#1C1917}
+.mm-back{border:none;background:#F2EFEA;border-radius:10px;min-height:36px;padding:0 12px;font-family:inherit;font-size:13px;font-weight:700;color:#2C2620;cursor:pointer}
+/* 少数の切替はリスト行（媒体クエリの格子 #mobileMenuSheet .mm-tog-wrap より強い指定）。格子は上級者向けの4個だけ */
+#mobileMenuSheet .mm-tog-wrap.list{display:block;padding:1px 14px;margin-bottom:12px}
+#mobileMenuSheet .mm-tog-wrap.list .mm-tog,#mobileMenuSheet .mm-maplist .mm-tog{flex-direction:row;gap:10px;padding:9px 0;min-height:var(--tap);
+  border-bottom:0.5px solid rgba(0,0,0,0.05);text-align:left}
+#mobileMenuSheet .mm-tog-wrap.list .mm-tog:last-child{border-bottom:none}
+#mobileMenuSheet .mm-tog-wrap.list .mm-tog-l,#mobileMenuSheet .mm-maplist .mm-tog-l{flex:1;font-size:13px;line-height:1.3;color:#4A2E0E}
+.mm-subpane{display:none}.mm-subpane.show{display:block}
+/* 文字の大きさは3段階だけ見せる。以前の極大・最大は、選んである時だけ行を出す（設定は消さない） */
+.mm-map[data-lsz='3']:not(.on),.mm-map[data-lsz='4']:not(.on){display:none}
 .mm-danger{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:11px;border-radius:13px;background:#FEF2F2;color:#DC2626;border:none;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer}
 /* なぞり描きモード：3モード構成でボタンを詰める */
 #mobileShelf .mob-modes{gap:2px}
@@ -903,7 +925,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
         </div>
         <div class="ss-n" id="ssName"></div>
         <div class="ss-cards">
-          <button class="ss-card" data-share="image" onclick="shareExit('image')"><div class="t">🖼 画像で保存</div><div class="d">SNS・チラシに貼る<br>PNG（地図のみも可）</div></button>
+          <button class="ss-card" data-share="image" onclick="shareExit('image')"><div class="t">🖼 画像で保存</div><div class="d">SNS・チラシに貼る<br>PNG画像</div></button>
           <button class="ss-card" data-share="sheet" onclick="shareExit('sheet')"><div class="t">🖨 配布シート</div><div class="d">A4で印刷・PDF<br>凡例・縮尺・方位つき</div></button>
           <button class="ss-card" data-share="link" onclick="shareExit('link')"><div class="t">🔗 リンクを作る</div><div class="d">スマホで見てもらう<br>写真・解説つき</div></button>
           <button class="ss-card" data-share="gpx" onclick="shareExit('gpx')"><div class="t">📍 GPXで書き出す</div><div class="d">YAMAP・ヤマレコ<br>Garmin などで開く</div></button>
@@ -922,44 +944,46 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
       <div id="mobileMenuSheet">
         <div class="mm-dh"></div>
         <div class="mm-t">メニュー<button class="mm-close tap" onclick="closeMobileMenu()" aria-label="閉じる"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6l-12 12" /> <path d="M6 6l12 12" /></svg></button></div>
-        <div class="mm-sec">表示・設定</div>
-        <div class="mm-tog-wrap">
-          <div class="mm-tog" onclick="toggleMapLabels();_syncMobileMenu()"><span class="mm-tog-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 7.5a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" /> <path d="M3 6v5.172a2 2 0 0 0 .586 1.414l7.71 7.71a2.41 2.41 0 0 0 3.408 0l5.592 -5.592a2.41 2.41 0 0 0 0 -3.408l-7.71 -7.71a2 2 0 0 0 -1.414 -.586h-5.172a3 3 0 0 0 -3 3" /></svg></span><span class="mm-tog-l">地名・WP</span><div class="mm-sw" id="mmSwLabels"></div></div>
-          <div class="mm-tog" onclick="toggleViaVisibility();_syncMobileMenu()" data-edit="1"><span class="mm-tog-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 12a4 4 0 1 0 8 0a4 4 0 1 0 -8 0" /></svg></span><span class="mm-tog-l">調整点</span><div class="mm-sw" id="mmSwVia"></div></div>
-          <div class="mm-tog" onclick="toggleManualMode();_syncMobileMenu()" data-edit="1"><span class="mm-tog-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 13v-7.5a1.5 1.5 0 0 1 3 0v6.5" /> <path d="M11 5.5v-2a1.5 1.5 0 1 1 3 0v8.5" /> <path d="M14 5.5a1.5 1.5 0 0 1 3 0v6.5" /> <path d="M17 7.5a1.5 1.5 0 0 1 3 0v8.5a6 6 0 0 1 -6 6h-2h.208a6 6 0 0 1 -5.012 -2.7a69.74 69.74 0 0 1 -.196 -.3c-.312 -.479 -1.407 -2.388 -3.286 -5.728a1.5 1.5 0 0 1 .536 -2.022a1.867 1.867 0 0 1 2.28 .28l1.47 1.47" /></svg></span><span class="mm-tog-l">手動モード</span><div class="mm-sw" id="mmSwManual"></div></div>
-          <div class="mm-tog" onclick="toggleViewMode();_syncMobileMenu()" data-view-toggle="1"><span class="mm-tog-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" /> <path d="M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6" /></svg></span><span class="mm-tog-l">閲覧モード</span><div class="mm-sw" id="mmSwView"></div></div>
-          <div class="mm-tog" onclick="toggleCustomFeature();_syncMobileMenu()" data-edit="1"><span class="mm-tog-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6 -6l4 4l8 -8"/><path d="M14 7l7 0l0 7"/></svg></span><span class="mm-tog-l">細道機能</span><div class="mm-sw" id="mmSwCustom"></div></div>
-          <div class="mm-tog" onclick="toggleFollowMode();_syncMobileMenu()" title="歩きながら地図が現在地に付いてきます（電池を使います）"><span class="mm-tog-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 11a1 1 0 1 0 2 0a1 1 0 0 0 -2 0" /> <path d="M12.5 8.5l-4.5 -1.5l-4 12l12 -4l-1.5 -4.5" /> <path d="M21 3l-6 18" /></svg></span><span class="mm-tog-l">現在地を追う</span><div class="mm-sw" id="mmSwFollow"></div></div>
-          <div class="mm-tog" onclick="toggleCustomSnap();_syncMobileMenu()" data-edit="1"><span class="mm-tog-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5l10 -10"/></svg></span><span class="mm-tog-l">スナップ</span><div class="mm-sw" id="mmSwSnap"></div></div>
-        </div>
-        <div class="mm-sec">文字の大きさ（地名ラベル）</div>
-        <div class="mm-maplist">
-          <div class="mm-map" data-lsz="0" onclick="setLabelSize(0)"><span class="mm-map-l">標準</span><span class="mm-map-ck">✓</span></div>
-          <div class="mm-map" data-lsz="1" onclick="setLabelSize(1)"><span class="mm-map-l">大</span><span class="mm-map-ck">✓</span></div>
-          <div class="mm-map" data-lsz="2" onclick="setLabelSize(2)"><span class="mm-map-l">特大</span><span class="mm-map-ck">✓</span></div>
-          <div class="mm-map" data-lsz="3" onclick="setLabelSize(3)"><span class="mm-map-l">極大</span><span class="mm-map-ck">✓</span></div>
-          <div class="mm-map" data-lsz="4" onclick="setLabelSize(4)"><span class="mm-map-l">最大</span><span class="mm-map-ck">✓</span></div>
-        </div>
-        <div class="mm-sec">歩く速さ（所要時間の計算）</div>
-        <div class="mm-maplist">
-          <div class="mm-map" data-spd="0" onclick="setWalkSpeed(0)"><span class="mm-map-l">3.0 km/h（ゆっくり）</span><span class="mm-map-ck">✓</span></div>
-          <div class="mm-map" data-spd="1" onclick="setWalkSpeed(1)"><span class="mm-map-l">3.5 km/h</span><span class="mm-map-ck">✓</span></div>
-          <div class="mm-map" data-spd="2" onclick="setWalkSpeed(2)"><span class="mm-map-l">4.0 km/h（標準）</span><span class="mm-map-ck">✓</span></div>
-          <div class="mm-map" data-spd="3" onclick="setWalkSpeed(3)"><span class="mm-map-l">4.5 km/h</span><span class="mm-map-ck">✓</span></div>
-          <div class="mm-map" data-spd="4" onclick="setWalkSpeed(4)"><span class="mm-map-l">5.0 km/h（速め）</span><span class="mm-map-ck">✓</span></div>
-        </div>
-        <div class="mm-sec">スポット○の大きさ</div>
-        <div class="mm-maplist">
-          <div class="mm-map" data-wsz="0" onclick="setWpSize(0)"><span class="mm-dot"></span><span class="mm-map-l">標準</span><span class="mm-map-ck">✓</span></div>
-          <div class="mm-map" data-wsz="1" onclick="setWpSize(1)"><span class="mm-dot"></span><span class="mm-map-l">大</span><span class="mm-map-ck">✓</span></div>
-          <div class="mm-map" data-wsz="2" onclick="setWpSize(2)"><span class="mm-dot"></span><span class="mm-map-l">特大</span><span class="mm-map-ck">✓</span></div>
-        </div>
+        <!-- v125: コース → 歩くとき → 地図の見せ方 → 上級者向け（畳む）。選択肢は「›」の先（#mmSub）。書き出しは「配る」へ -->
+        <div id="mmMain">
         <div class="mm-sec">コース</div>
         <div class="mm-maplist">
-          <div class="mm-map" onclick="closeMobileMenu();openDescSheet()" data-edit="1"><span class="mm-map-l">コースの説明・見どころ</span><span class="mm-map-ck" id="mmDescState">›</span></div>
-          <div class="mm-map" onclick="closeMobileMenu();openReorderSheet()" data-edit="1"><span class="mm-map-l">コースポイントの並べ替え</span><span class="mm-map-ck">›</span></div>
+          <div class="mm-map" onclick="closeMobileMenu();openDescSheet()" data-edit="1"><span class="mm-map-l">コースの説明・見どころ</span><span class="mm-v" id="mmDescState">›</span></div>
+          <div class="mm-map" onclick="closeMobileMenu();openReorderSheet()" data-edit="1"><span class="mm-map-l">スポットの並べ替え</span><span class="mm-v" id="mmReorderN">›</span></div>
+          <div class="mm-map" onclick="closeMobileMenu();saveMapOffline()" title="このコースの範囲の地図を端末に保存します（圏外でも表示できます）"><span class="mm-map-l">地図を持ち歩く（圏外用）</span><span class="mm-v">›</span></div>
         </div>
-        <div class="mm-sec">背景地図</div>
+        <div class="mm-sec">歩くとき</div>
+        <div class="mm-tog-wrap list">
+          <div class="mm-tog" onclick="toggleFollowMode();_syncMobileMenu()" title="歩きながら地図が現在地に付いてきます（電池を使います）"><span class="mm-tog-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 11a1 1 0 1 0 2 0a1 1 0 0 0 -2 0" /> <path d="M12.5 8.5l-4.5 -1.5l-4 12l12 -4l-1.5 -4.5" /> <path d="M21 3l-6 18" /></svg></span><span class="mm-tog-l">現在地を追う</span><div class="mm-sw" id="mmSwFollow"></div></div>
+          <div class="mm-tog" onclick="toggleViewMode();_syncMobileMenu()" data-view-toggle="1"><span class="mm-tog-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" /> <path d="M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6" /></svg></span><span class="mm-tog-l">歩く人の見え方を確認（閲覧モード）</span><div class="mm-sw" id="mmSwView"></div></div>
+        </div>
+        <div class="mm-sec">地図の見せ方</div>
+        <div class="mm-maplist">
+          <div class="mm-map" onclick="openMmSub('map')"><span class="mm-map-l">背景地図</span><span class="mm-v" id="mmValMap">›</span></div>
+          <div class="mm-tog" onclick="toggleMapLabels();_syncMobileMenu()"><span class="mm-tog-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 7.5a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" /> <path d="M3 6v5.172a2 2 0 0 0 .586 1.414l7.71 7.71a2.41 2.41 0 0 0 3.408 0l5.592 -5.592a2.41 2.41 0 0 0 0 -3.408l-7.71 -7.71a2 2 0 0 0 -1.414 -.586h-5.172a3 3 0 0 0 -3 3" /></svg></span><span class="mm-tog-l">地名とスポットを表示</span><div class="mm-sw" id="mmSwLabels"></div></div>
+          <div class="mm-map" onclick="openMmSub('size')"><span class="mm-map-l">文字・印の大きさ</span><span class="mm-v" id="mmValSize">›</span></div>
+          <div class="mm-map" onclick="openMmSub('spd')"><span class="mm-map-l">歩く速さ（所要時間の計算）</span><span class="mm-v" id="mmValSpd">›</span></div>
+        </div>
+        <button class="mm-adv-h" id="mmAdvBtn" onclick="toggleMmAdv()" aria-expanded="false">上級者向け<span>ふだんは触らなくて大丈夫です</span><i>›</i></button>
+        <div id="mmAdv">
+          <div class="mm-tog-wrap">
+          <div class="mm-tog" onclick="toggleViaVisibility();_syncMobileMenu()" data-edit="1"><span class="mm-tog-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 12a4 4 0 1 0 8 0a4 4 0 1 0 -8 0" /></svg></span><span class="mm-tog-l">調整点を表示</span><div class="mm-sw" id="mmSwVia"></div></div>
+          <div class="mm-tog" onclick="toggleManualMode();_syncMobileMenu()" data-edit="1"><span class="mm-tog-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 13v-7.5a1.5 1.5 0 0 1 3 0v6.5" /> <path d="M11 5.5v-2a1.5 1.5 0 1 1 3 0v8.5" /> <path d="M14 5.5a1.5 1.5 0 0 1 3 0v6.5" /> <path d="M17 7.5a1.5 1.5 0 0 1 3 0v8.5a6 6 0 0 1 -6 6h-2h.208a6 6 0 0 1 -5.012 -2.7a69.74 69.74 0 0 1 -.196 -.3c-.312 -.479 -1.407 -2.388 -3.286 -5.728a1.5 1.5 0 0 1 .536 -2.022a1.867 1.867 0 0 1 2.28 .28l1.47 1.47" /></svg></span><span class="mm-tog-l">手動モード（道に沿わせない）</span><div class="mm-sw" id="mmSwManual"></div></div>
+          <div class="mm-tog" onclick="toggleCustomFeature();_syncMobileMenu()" data-edit="1"><span class="mm-tog-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6 -6l4 4l8 -8"/><path d="M14 7l7 0l0 7"/></svg></span><span class="mm-tog-l">細道機能（自分で描いた道）</span><div class="mm-sw" id="mmSwCustom"></div></div>
+          <div class="mm-tog" onclick="toggleCustomSnap();_syncMobileMenu()" data-edit="1"><span class="mm-tog-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5l10 -10"/></svg></span><span class="mm-tog-l">スナップ（描いた道に吸い付く）</span><div class="mm-sw" id="mmSwSnap"></div></div>
+          </div>
+          <div class="mm-grid four">
+          <button class="mm-act" onclick="closeMobileMenu();saveMapNoText()"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 8h.01" /> <path d="M7 3h11a3 3 0 0 1 3 3v11m-.856 3.099a2.991 2.991 0 0 1 -2.144 .901h-12a3 3 0 0 1 -3 -3v-12c0 -.845 .349 -1.608 .91 -2.153" /> <path d="M3 16l5 -5c.928 -.893 2.072 -.893 3 0l5 5" /> <path d="M16.33 12.338c.574 -.054 1.155 .166 1.67 .662l3 3" /> <path d="M3 3l18 18" /></svg><span>文字なし保存</span></button>
+          <button class="mm-act" onclick="closeMobileMenu();exportCourse()"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v4a1 1 0 0 0 1 1h4" /> <path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2" /> <path d="M12 17v-6" /> <path d="M9.5 14.5l2.5 2.5l2.5 -2.5" /></svg><span>JSONで保存</span></button>
+          <button class="mm-act" onclick="closeMobileMenu();exportRouteCoords()" title="実際のルート座標を書き出して開発者に送る調査用。地図・ルートには影響しません"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12" /><path d="M8 11l4 4l4 -4" /><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2" /></svg><span>座標（調査用）</span></button>
+          <button class="mm-act" onclick="closeMobileMenu();openHelp()"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0" /> <path d="M12 16v.01" /> <path d="M12 13a2 2 0 0 0 .914 -3.782a1.98 1.98 0 0 0 -2.414 .483" /></svg><span>ヘルプ</span></button>
+          </div>
+        <button class="mm-danger" onclick="closeMobileMenu();clearAll()" data-edit="1"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7l16 0" /> <path d="M10 11l0 6" /> <path d="M14 11l0 6" /> <path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12" /> <path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3" /></svg>すべて消去</button>
+        </div>
+        </div>
+        <div id="mmSub" hidden>
+          <div class="mm-sub-hd"><button class="mm-back" onclick="closeMmSub()">‹ 戻る</button><div id="mmSubT"></div></div>
+          <div class="mm-subpane" data-sub="map">
         <div class="mm-maplist">
           <div class="mm-map" data-bm="osm" onclick="setBaseMap('osm')"><span class="mm-map-l">標準地図（OSM）</span><span class="mm-map-ck">✓</span></div>
           <div class="mm-map" data-bm="gsi_photo" onclick="setBaseMap('gsi_photo')"><span class="mm-map-l">航空写真</span><span class="mm-map-ck">✓</span></div>
@@ -967,18 +991,33 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
           <div class="mm-map" data-bm="carto" onclick="setBaseMap('carto')"><span class="mm-map-l">淡色カラー地図</span><span class="mm-map-ck">✓</span></div>
           <div class="mm-map" data-bm="osm_hot" onclick="setBaseMap('osm_hot')"><span class="mm-map-l">色違いOSM（HOT）</span><span class="mm-map-ck">✓</span></div>
         </div>
-        <div class="mm-sec">書き出し・その他</div>
-        <div class="mm-grid">
-          <button class="mm-act" onclick="closeMobileMenu();saveMapAsImage()"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h1a2 2 0 0 0 2 -2a1 1 0 0 1 1 -1h6a1 1 0 0 1 1 1a2 2 0 0 0 2 2h1a2 2 0 0 1 2 2v9a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-9a2 2 0 0 1 2 -2" /> <path d="M9 13a3 3 0 1 0 6 0a3 3 0 0 0 -6 0" /></svg><span>画像保存</span></button>
-          <button class="mm-act" onclick="closeMobileMenu();saveMapNoText()"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 8h.01" /> <path d="M7 3h11a3 3 0 0 1 3 3v11m-.856 3.099a2.991 2.991 0 0 1 -2.144 .901h-12a3 3 0 0 1 -3 -3v-12c0 -.845 .349 -1.608 .91 -2.153" /> <path d="M3 16l5 -5c.928 -.893 2.072 -.893 3 0l5 5" /> <path d="M16.33 12.338c.574 -.054 1.155 .166 1.67 .662l3 3" /> <path d="M3 3l18 18" /></svg><span>文字なし保存</span></button>
-          <button class="mm-act" onclick="closeMobileMenu();saveMapOffline()" title="このコースの範囲の地図を端末に保存します（圏外でも表示できます）"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12" /> <path d="M8 11l4 4l4 -4" /> <path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2" /> <path d="M3 3l18 18" opacity="0"/></svg><span>地図を持ち歩く</span></button>
-          <button class="mm-act" onclick="closeMobileMenu();openPrintSheet()" title="配布シート（A4印刷・PDF・画像。凡例・縮尺・方位つき）"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 17h2a2 2 0 0 0 2 -2v-4a2 2 0 0 0 -2 -2h-14a2 2 0 0 0 -2 2v4a2 2 0 0 0 2 2h2" /> <path d="M17 9v-4a2 2 0 0 0 -2 -2h-6a2 2 0 0 0 -2 2v4" /> <path d="M7 13m0 2a2 2 0 0 1 2 -2h6a2 2 0 0 1 2 2v4a2 2 0 0 1 -2 2h-6a2 2 0 0 1 -2 -2z" /></svg><span>配布シート</span></button>
-          <button class="mm-act" onclick="closeMobileMenu();exportGpx()" title="GPXで書き出し（YAMAP・ヤマレコ・Garmin・Google Earth などで開けます）"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l4 -8l5 6l3 -4l6 6" /> <path d="M3 21h18" /></svg><span>GPX書き出し</span></button>
-          <button class="mm-act" onclick="closeMobileMenu();exportCourse()"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v4a1 1 0 0 0 1 1h4" /> <path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2" /> <path d="M12 17v-6" /> <path d="M9.5 14.5l2.5 2.5l2.5 -2.5" /></svg><span>JSON書き出し</span></button>
-          <button class="mm-act" onclick="closeMobileMenu();exportRouteCoords()" title="実際のルート座標を書き出して開発者に送る調査用。地図・ルートには影響しません"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12" /><path d="M8 11l4 4l4 -4" /><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2" /></svg><span>ルート座標(調査)</span></button>
-          <button class="mm-act" onclick="closeMobileMenu();openHelp()"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0" /> <path d="M12 16v.01" /> <path d="M12 13a2 2 0 0 0 .914 -3.782a1.98 1.98 0 0 0 -2.414 .483" /></svg><span>ヘルプ</span></button>
+          </div>
+          <div class="mm-subpane" data-sub="size">
+            <div class="mm-sec">地名ラベルの文字</div>
+        <div class="mm-maplist">
+          <div class="mm-map" data-lsz="0" onclick="setLabelSize(0)"><span class="mm-map-l">標準</span><span class="mm-map-ck">✓</span></div>
+          <div class="mm-map" data-lsz="1" onclick="setLabelSize(1)"><span class="mm-map-l">大</span><span class="mm-map-ck">✓</span></div>
+          <div class="mm-map" data-lsz="2" onclick="setLabelSize(2)"><span class="mm-map-l">特大</span><span class="mm-map-ck">✓</span></div>
+          <div class="mm-map" data-lsz="3" onclick="setLabelSize(3)"><span class="mm-map-l">極大</span><span class="mm-map-ck">✓</span></div>
+          <div class="mm-map" data-lsz="4" onclick="setLabelSize(4)"><span class="mm-map-l">最大</span><span class="mm-map-ck">✓</span></div>
         </div>
-        <button class="mm-danger" onclick="closeMobileMenu();clearAll()" data-edit="1"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7l16 0" /> <path d="M10 11l0 6" /> <path d="M14 11l0 6" /> <path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12" /> <path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3" /></svg>すべて消去</button>
+            <div class="mm-sec">スポットの○</div>
+        <div class="mm-maplist">
+          <div class="mm-map" data-wsz="0" onclick="setWpSize(0)"><span class="mm-dot"></span><span class="mm-map-l">標準</span><span class="mm-map-ck">✓</span></div>
+          <div class="mm-map" data-wsz="1" onclick="setWpSize(1)"><span class="mm-dot"></span><span class="mm-map-l">大</span><span class="mm-map-ck">✓</span></div>
+          <div class="mm-map" data-wsz="2" onclick="setWpSize(2)"><span class="mm-dot"></span><span class="mm-map-l">特大</span><span class="mm-map-ck">✓</span></div>
+        </div>
+          </div>
+          <div class="mm-subpane" data-sub="spd">
+        <div class="mm-maplist">
+          <div class="mm-map" data-spd="0" onclick="setWalkSpeed(0)"><span class="mm-map-l">3.0 km/h（ゆっくり）</span><span class="mm-map-ck">✓</span></div>
+          <div class="mm-map" data-spd="1" onclick="setWalkSpeed(1)"><span class="mm-map-l">3.5 km/h</span><span class="mm-map-ck">✓</span></div>
+          <div class="mm-map" data-spd="2" onclick="setWalkSpeed(2)"><span class="mm-map-l">4.0 km/h（標準）</span><span class="mm-map-ck">✓</span></div>
+          <div class="mm-map" data-spd="3" onclick="setWalkSpeed(3)"><span class="mm-map-l">4.5 km/h</span><span class="mm-map-ck">✓</span></div>
+          <div class="mm-map" data-spd="4" onclick="setWalkSpeed(4)"><span class="mm-map-l">5.0 km/h（速め）</span><span class="mm-map-ck">✓</span></div>
+        </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -1887,6 +1926,7 @@ function _syncBaseMapMenu(){
   document.querySelectorAll('.mm-map[data-bm]').forEach(el => {
     el.classList.toggle('on', el.getAttribute('data-bm') === _baseMapId);
   });
+  _syncMmValues();
 }
 function setBaseMap(id){
   if (!BASEMAPS[id]) return;
@@ -2048,7 +2088,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v124';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
+const APP_VERSION = 'v125';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
 }catch(_){} });
@@ -3386,6 +3426,7 @@ function openMobileMenu() {
   _syncDescState();
   if (_customMode_) { showToast('作成・編集モード中はメニューを開けません（終了してください）'); return; }
   _closeAllPopups('menu');
+  closeMmSub(); toggleMmAdv(false);        // 開くたびに1階層目・上級者向けは畳んだ状態から（v125）
   _syncMobileMenu();
   document.getElementById('mobileMenuScrim')?.classList.add('show');
   document.getElementById('mobileMenuSheet')?.classList.add('show');
@@ -3403,6 +3444,41 @@ function _syncMobileMenu() {
   _syncBaseMapMenu();
   _syncCustomMenu();
   _syncSizeMenu();
+  _syncMmValues();
+}
+/* ---- メニューの2階層目（v125）：背景地図・文字と印の大きさ・歩く速さ。選択肢の行は以前のまま（同期関数が data-bm 等を見る）---- */
+function openMmSub(kind){
+  const main = document.getElementById('mmMain'), sub = document.getElementById('mmSub');
+  if (!main || !sub) return;
+  const T = {map:'背景地図', size:'文字・印の大きさ', spd:'歩く速さ（所要時間の計算）'};
+  document.getElementById('mmSubT').textContent = T[kind] || '';
+  sub.querySelectorAll('.mm-subpane').forEach(pn => pn.classList.toggle('show', pn.getAttribute('data-sub') === kind));
+  main.hidden = true; sub.hidden = false;
+  const sheet = document.getElementById('mobileMenuSheet'); if (sheet) sheet.scrollTop = 0;
+}
+function closeMmSub(){
+  const main = document.getElementById('mmMain'), sub = document.getElementById('mmSub');
+  if (main) main.hidden = false;
+  if (sub) sub.hidden = true;
+  _syncMmValues();
+}
+function toggleMmAdv(force){
+  const adv = document.getElementById('mmAdv'), b = document.getElementById('mmAdvBtn');
+  if (!adv || !b) return;
+  const on = (typeof force === 'boolean') ? force : !adv.classList.contains('show');
+  adv.classList.toggle('show', on); b.setAttribute('aria-expanded', on ? 'true' : 'false');
+}
+/* 「›」の右に今の設定を出す（背景地図・大きさ・速さ・並べ替えの件数）＝開かなくても分かる */
+function _syncMmValues(){
+  try {
+    const v = (id, t) => { const el = document.getElementById(id); if (el) el.textContent = t + ' ›'; };
+    const bm = document.querySelector('.mm-map[data-bm].on .mm-map-l');
+    v('mmValMap', bm ? bm.textContent.replace(/（.*）/, '') : '');
+    const ls = LABEL_SIZE_LABELS[_labelSizeIdx] || LABEL_SIZE_LABELS[0], ws = WP_SIZE_LABELS[_wpSizeIdx] || WP_SIZE_LABELS[0];
+    v('mmValSize', ls === ws ? ls : `文字 ${ls}・印 ${ws}`);
+    v('mmValSpd', (WALK_SPEEDS[_walkSpeedIdx] || 4).toFixed(1) + ' km/h');
+    v('mmReorderN', String(wps.length));
+  } catch(_) {}
 }
 
 /* 新規コース作成シート */

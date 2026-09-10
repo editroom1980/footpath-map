@@ -411,6 +411,18 @@ def static_checks(src):
     # --- v124: 棚の「…」が枠からはみ出さない ---
     chk('静的', '棚の距離時間だけが縮む側で、入りきらない時は折り返す',
         '#mobileShelf .mob-stats{flex:1 1 auto;min-width:0;flex-wrap:wrap' in src)
+    # --- v125: スマホのメニューを1画面に（ロードマップ 段階1-2）---
+    _mm = src[src.index('id="mobileMenuSheet"'):src.index('id="mmSub"')]
+    chk('静的', 'メニューの順番がコース→歩くとき→地図の見せ方→上級者向け',
+        _mm.index('mm-sec">コース<') < _mm.index('mm-sec">歩くとき<') < _mm.index('mm-sec">地図の見せ方<') < _mm.index('>上級者向け<span>'))
+    chk('静的', '書き出し（画像・配布シート・GPX）はメニューから「配る」へ移した',
+        all(x not in src for x in ['closeMobileMenu();saveMapAsImage()', 'closeMobileMenu();openPrintSheet()', 'closeMobileMenu();exportGpx()']))
+    chk('静的', '選択肢は2階層目にあり、開くたびに1階層目・畳んだ状態に戻る',
+        'function openMmSub' in src and 'function closeMmSub' in src and 'closeMmSub(); toggleMmAdv(false);' in src
+        and 'id="mmSub" hidden' in src and '#mmAdv{display:none}' in src)
+    chk('静的', '文字の大きさは3段階だけ見せる（極大・最大は選んである時だけ）',
+        ".mm-map[data-lsz='3']:not(.on),.mm-map[data-lsz='4']:not(.on){display:none}" in src)
+    chk('静的', '「›」の右に今の設定を出す', 'function _syncMmValues' in src and 'id="mmValMap"' in src and 'id="mmValSize"' in src)
     chk('静的', '375px以上はボタン44pxのまま折り返しで収め、340px以下だけ見た目を詰める',
         '@media (max-width:399px){#mobileShelf .mob-stat-s{display:none}}' in src
         and '@media (max-width:340px){' in src and '#mobileShelf .mob-mode{min-width:40px' in src
@@ -1355,6 +1367,51 @@ def functional_checks(index_path):
             all(isinstance(v, dict) and v.get('inShelf') and v.get('inView') and v.get('noScroll')
                 and v.get('hit', 0) >= 44 and v.get('moreW', 0) >= 40 for v in _fit.values()),
             str(_fit)[:260])
+
+        # v125: 390×844 でメニューが1画面に収まり、2階層目と「上級者向け」が動く
+        page.set_viewport_size({'width': 390, 'height': 844})
+        mm = page.evaluate("""()=>{ try{
+            leafMap.invalidateSize();
+            const keepBm = _baseMapId, keepL = _labelSizeIdx;
+            const sh = document.getElementById('mobileMenuSheet');
+            const vis = el => !!el && getComputedStyle(el).display !== 'none' && !el.closest('[hidden]');
+            openMobileMenu();
+            const r = sh.getBoundingClientRect();
+            const out = {open: sh.classList.contains('show'), fits: sh.scrollHeight <= sh.clientHeight + 1 && r.height <= innerHeight && r.top >= 0,
+                         h: Math.round(r.height), sc: sh.scrollHeight, adv0: vis(document.getElementById('mmAdv')), sub0: vis(document.getElementById('mmSub'))};
+            const secs = [...sh.querySelectorAll('#mmMain > .mm-sec')].map(e => e.textContent.trim());
+            out.secs = secs;
+            out.valMap0 = document.getElementById('mmValMap').textContent;
+            // 背景地図 → 2階層目 → 航空写真 → 戻る
+            openMmSub('map');
+            out.subMap = vis(document.getElementById('mmSub')) && !vis(document.getElementById('mmMain'))
+                         && [...sh.querySelectorAll('.mm-subpane.show .mm-map[data-bm]')].filter(vis).length === 5;
+            sh.querySelector('.mm-map[data-bm="gsi_photo"]').click();
+            closeMmSub();
+            out.valMap1 = document.getElementById('mmValMap').textContent;
+            out.backMain = vis(document.getElementById('mmMain')) && !vis(document.getElementById('mmSub'));
+            setBaseMap(keepBm);
+            // 大きさ：3段階だけ。極大を選んである時はその行も出る
+            setLabelSize(0); openMmSub('size');
+            out.lsz3 = [...sh.querySelectorAll('.mm-map[data-lsz]')].filter(vis).length;
+            setLabelSize(3);
+            out.lsz4 = [...sh.querySelectorAll('.mm-map[data-lsz]')].filter(vis).length;
+            setLabelSize(keepL); closeMmSub();
+            // 上級者向けを開く／閉じる
+            toggleMmAdv();
+            out.adv1 = vis(document.getElementById('mmAdv')) && vis(document.getElementById('mmSwVia'));
+            toggleMmAdv();
+            out.adv2 = vis(document.getElementById('mmAdv'));
+            closeMobileMenu();
+            return out;
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        page.set_viewport_size({'width': 390, 'height': 812})
+        page.evaluate("()=>{ leafMap.invalidateSize(); }")
+        chk('機能', '390×844 でメニューが1画面に収まり、2階層目・上級者向け・3段階が動く',
+            isinstance(mm, dict) and mm.get('open') and mm.get('fits') and mm.get('adv0') is False and mm.get('sub0') is False
+            and mm.get('secs') == ['コース', '歩くとき', '地図の見せ方'] and mm.get('subMap') and '航空写真' in mm.get('valMap1', '')
+            and mm.get('backMain') and mm.get('lsz3') == 3 and mm.get('lsz4') == 4 and mm.get('adv1') and mm.get('adv2') is False,
+            str(mm)[:260])
 
         # v121: バックアップからの日数・未反映の保存回数で色が変わり、書き出すと戻る。iPhone の案内は1回だけ
         bk = page.evaluate("""()=>{ return (async()=>{ try{
