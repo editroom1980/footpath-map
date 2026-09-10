@@ -345,18 +345,17 @@ def static_checks(src):
     # --- v112: 進行方向の三角（一定間隔）---
     chk('静的', '進行方向の三角を作る仕組みがある',
         'function _buildDirMarks' in src and 'const DIR_EVERY_DASHES' in src)
-    chk('静的', 'スポットの手前にも三角を出す', 'if (m >= 0 && m <= nDash) spots.push({m: m, wp: true});' in src)
+    chk('静的', 'スポットの手前にも三角を出す', 'if (dw - clear > 0) wpCuts.push(dw - clear);' in src)
     chk('静的', '近すぎる「ふつうの三角」を飛ばすきまりがある', 'const DIR_MIN_DASHES' in src)
     chk('静的', '置き場所と向きは線に沿った距離で決める（点の細かさに左右されない）', 'DIR_LOOK_PX' in src)
     chk('静的', 'スポットの○の下に隠れる位置は避ける', 'DIR_AVOID_PX' in src)
     chk('静的', '三角も当たり判定に使わず、後片付けもする',
         'interactive:false, renderer: canvasRenderer}).addTo(leafMap);' in src
-        and 'if (routeDirs)    { if(leafMap) leafMap.removeLayer(routeDirs);' in src
-        and 'if (routeDirGaps) { if(leafMap) leafMap.removeLayer(routeDirGaps);' in src)
+        and 'if (routeDirs)    { if(leafMap) leafMap.removeLayer(routeDirs);' in src)
     chk('静的', '配布シートの凡例に進行方向の説明がある', '歩くコース（三角の向きに歩く）' in src)
     chk('静的', '破線の切れ目と三角の位置をそろえている', 'function _dashGapCenterPx' in src)
-    chk('静的', '三角の場所は破線を消してから置く（線の上に重ねない）',
-        'routeDirGaps' in src and 'const r = _buildDirMarks(disp);' in src)
+    chk('静的', '線を切れ端に分けて三角を挟む（上に重ねない）',
+        'routeLine.setLatLngs(r.pieces.length ? r.pieces : [disp]);' in src)
     # --- v99: ラベルの自動配置 ---
     chk('静的', 'ラベル自動配置 autoPlaceLabels 存在', 'function autoPlaceLabels' in src)
     chk('静的', 'まとめて実行する scheduleAutoLabels 存在', 'function scheduleAutoLabels' in src)
@@ -1103,9 +1102,10 @@ def functional_checks(index_path):
         # v103: 白いふちが赤い線と同じ形で敷かれ、データ側は何も変わっていない
         cas = page.evaluate("""()=>{ try{
             if (!routeCasing || !routeLine) return {has:false};
-            const a = routeCasing.getLatLngs(), b = routeLine.getLatLngs();
+            const a = routeCasing.getLatLngs();
+            const b = _buildDisplayCoords(_routeLineBase);      // 赤い線は切れ端に分かれるので素の表示座標と比べる
             const same = a.length === b.length && a.every((p,i)=>
-                Math.abs(p.lat-b[i].lat) < 1e-9 && Math.abs(p.lng-b[i].lng) < 1e-9);
+                Math.abs(p.lat-b[i][0]) < 1e-9 && Math.abs(p.lng-b[i][1]) < 1e-9);
             return {has:true, same:same,
                     thicker: routeCasing.options.weight > routeLine.options.weight,
                     white: routeCasing.options.color === '#fff',
@@ -1126,8 +1126,9 @@ def functional_checks(index_path):
             const pt = sh => sh.map(c => leafMap.latLngToLayerPoint(L.latLng(c[0], c[1])));
             const dirOk = (arr, sign) => arr.length > 0 && arr.every(q => {
               const v = pt(q); return (v[0].x - (v[1].x + v[2].x) / 2) * sign > 0.5; });
-            // 破線 DIR_EVERY_DASHES 本ぶんの間隔で並んでいるか
-            const step = _dashPeriodPx() * DIR_EVERY_DASHES;
+            // 「破線5本ぶん＋三角のすき間」の間隔で並んでいるか
+            const kk = _routeK(), size = DIR_TRI_PX * Math.min(kk, DIR_MAX_K);
+            const step = (DASH_ON * 5 + DASH_OFF * 4) * kk + size + 6;
             const xs = east.map(sh => pt(sh)[0].x).sort((a,b)=>a-b);
             let even = xs.length >= 2;
             for (let i = 1; i < xs.length; i++)
