@@ -330,6 +330,12 @@ def static_checks(src):
     chk('静的', 'スポットの色も 4.5:1 以上（○の中の記号が白のため）', not ng_wt, str(ng_wt))
     chk('静的', '古い操作色を直書きしていない',
         '#F2670E' not in src and '#C4703A' not in src, 'F2670E/C4703A が残っている')
+    # --- v102: 文字の大きさと濃さ ---
+    faint = [c for c in ['#BDB5A8', '#A8A29E', '#C4BEB8', '#B0A99F', '#9A8070', '#F97316',
+                         '#FB8B3E', 'color:#888', 'color:#aaa']
+             if c in src]
+    chk('静的', '読みにくい薄い文字色が残っていない', not faint, str(faint))
+    chk('静的', '補足の文字色を1か所にまとめている', '--t-sub:' in src, '')
     # --- v99: ラベルの自動配置 ---
     chk('静的', 'ラベル自動配置 autoPlaceLabels 存在', 'function autoPlaceLabels' in src)
     chk('静的', 'まとめて実行する scheduleAutoLabels 存在', 'function scheduleAutoLabels' in src)
@@ -944,6 +950,31 @@ def functional_checks(index_path):
                   and col.get('ttBg') == col.get('iconBg')       # ラベルと○が同じ色で描かれる
                   and col.get('ttBg', '').startswith('rgb'))
         chk('機能', 'スポットの色が種別ごとに別々に描かれる', ok_col, str(col)[:180])
+
+        # v102: 画面に出ている補足文字が「11px以上・4.5:1以上」で描かれている
+        txt = page.evaluate("""()=>{
+            const bgOf = el => { let e = el; while (e) {
+                const c = getComputedStyle(e).backgroundColor;
+                if (c && c !== 'rgba(0, 0, 0, 0)' && c !== 'transparent') return c;
+                e = e.parentElement; } return 'rgb(255, 255, 255)'; };
+            const lum = c => { const m = c.match(/[\d.]+/g).map(Number);
+                const f = v => { v /= 255; return v <= 0.03928 ? v/12.92 : Math.pow((v+0.055)/1.055, 2.4); };
+                return 0.2126*f(m[0]) + 0.7152*f(m[1]) + 0.0722*f(m[2]); };
+            const ratio = (a,b) => { const L1 = lum(a), L2 = lum(b);
+                return (Math.max(L1,L2)+0.05)/(Math.min(L1,L2)+0.05); };
+            const sels = ['#tbar-st','#descSec label','#walkSpeedRow','.drag-hint','#miniElevHint','#wpEmpty'];
+            const out = [];
+            sels.forEach(s => { const e = document.querySelector(s); if (!e) return;
+                const cs = getComputedStyle(e);
+                out.push({sel:s, size: Math.round(parseFloat(cs.fontSize)*10)/10,
+                          cr: Math.round(ratio(cs.color, bgOf(e))*100)/100}); });
+            return out; }""")
+        small = [t for t in txt if t['size'] < 11]
+        faint2 = [t for t in txt if t['cr'] < 4.5]
+        chk('機能', '補足の文字が 11px 以上で描かれる', len(txt) >= 4 and not small,
+            str(small) if small else f'{len(txt)}か所 OK')
+        chk('機能', '補足の文字の濃さが 4.5:1 以上', not faint2,
+            str(faint2) if faint2 else str([t['cr'] for t in txt]))
 
         # INV-AK: 現在地追従（位置情報を差し替えて動きを確かめる）
         fo = page.evaluate("""()=>{ return (async()=>{ try{

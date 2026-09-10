@@ -38,6 +38,7 @@
   --brand-grad:linear-gradient(135deg,#C25313,#B8440A);
   --brand-sh:rgba(184,68,10,.32);   /* 影 */
   --ok:#0E6B3C;           /* できた・安全・やさしい。白文字 6.59:1 */
+  --t-sub:#6B6055;        /* 補足・説明の文字。アプリのどの下地の上でも 5.0:1 以上 */
 }
 html,body{min-height:calc(100% + env(safe-area-inset-top));font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:13px;color:#2C1B0E;overflow:hidden;background:#E8D8B8}
 
@@ -47,7 +48,7 @@ html,body{min-height:calc(100% + env(safe-area-inset-top));font-family:'Hiragino
 .s1-header{padding:24px 4px 16px}
 .s1-wordmark{font-family:'Plus Jakarta Sans','Hiragino Sans',sans-serif;font-size:24px;font-weight:800;color:#1C1917;letter-spacing:-0.03em}
 .s1-wordmark em{font-style:normal;color:var(--brand)}
-.s1-ver{font-size:12px;font-weight:600;color:#A8A29E;letter-spacing:0;vertical-align:middle;margin-left:4px}
+.s1-ver{font-size:12px;font-weight:600;color:var(--t-sub);letter-spacing:0;vertical-align:middle;margin-left:4px}
 .s1-sec-h{display:flex;align-items:center;justify-content:space-between;margin:4px 4px 12px}
 .s1-sec-h>span:first-child{font-family:'Plus Jakarta Sans','Hiragino Sans',sans-serif;font-size:13px;font-weight:800;color:#1C1917}
 .s1-count{font-size:11px;color:#A39B8E;background:#fff;border:0.5px solid #ECE6DC;padding:2px 10px;border-radius:11px;font-weight:600}
@@ -66,7 +67,7 @@ html,body{min-height:calc(100% + env(safe-area-inset-top));font-family:'Hiragino
 .cc-thumb svg{width:56px;height:56px;display:block}
 .cc-info{flex:1;min-width:0}
 .cc-name{font-family:'Plus Jakarta Sans','Hiragino Sans',sans-serif;font-size:15px;font-weight:800;color:#1C1917;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.cc-loc{display:flex;align-items:center;gap:3px;font-size:11px;color:#A8A29E;margin-top:3px}
+.cc-loc{display:flex;align-items:center;gap:3px;font-size:11px;color:var(--t-sub);margin-top:3px}
 .cc-loc .svgi{font-size:12px;flex-shrink:0}
 .cc-loc span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .cc-stats{display:flex;gap:13px;margin-top:8px;align-items:center}
@@ -77,7 +78,7 @@ html,body{min-height:calc(100% + env(safe-area-inset-top));font-family:'Hiragino
 .cc-act{width:30px;height:30px;border-radius:9px;border:0.5px solid #F0EBE2;background:#FAF8F4;display:flex;align-items:center;justify-content:center;color:#8A8077;font-size:14px;cursor:pointer}
 .cc-act.rd{color:#DC2626}
 .cc-act .svgi{font-size:14px}
-.no-courses{font-size:12px;color:#B0A99F;text-align:center;padding:30px 0}
+.no-courses{font-size:12px;color:var(--t-sub);text-align:center;padding:30px 0}
 /* 新規コースシート */
 #newCourseScrim{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.34);z-index:2000}
 #newCourseScrim.show{display:block}
@@ -88,10 +89,10 @@ html,body{min-height:calc(100% + env(safe-area-inset-top));font-family:'Hiragino
 .ncs-fld{margin-bottom:14px}
 .ncs-l{font-size:12px;font-weight:700;color:#5A554E;margin-bottom:6px;display:flex;align-items:center;gap:5px}
 .ncs-l .req{color:var(--brand);font-size:10px}
-.ncs-l .svgi{font-size:14px;color:#A8A29E}
+.ncs-l .svgi{font-size:14px;color:var(--t-sub)}
 .s1-input{width:100%;padding:12px 14px;border-radius:12px;border:1.5px solid #EDE8E0;background:#F9F7F4;font-size:14px;color:#1C1917;font-family:inherit;-webkit-appearance:none;appearance:none;box-shadow:none;outline:none}
 .s1-input:focus{border-color:var(--brand);background:#fff}
-.s1-hint{font-size:10px;color:#BDB5A8;margin-top:5px}
+.s1-hint{font-size:11px;color:var(--t-sub);margin-top:5px}
 .ncs-btn{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:15px;border-radius:15px;background:var(--brand-grad);color:#fff;border:none;font-family:'Plus Jakarta Sans','Hiragino Sans',sans-serif;font-size:15px;font-weight:800;margin-top:6px;cursor:pointer}
 .ncs-btn .svgi{font-size:18px}
 
@@ -121,16 +122,16 @@ html,body{min-height:calc(100% + env(safe-area-inset-top));font-family:'Hiragino
 #timeDisp{font-size:11px;color:#5A3A1A;margin-top:2px}
 #diffDisp{margin-top:4px;font-size:11px;display:none;align-items:center;gap:5px}
 #diffDisp .dbadge{display:inline-block;color:#fff;font-weight:700;font-size:10.5px;padding:1px 8px;border-radius:9px}
-#diffDisp .dsub{color:#7A6A55;font-size:10px}
-#walkSpeedRow{display:flex;align-items:center;gap:5px;margin-top:5px;font-size:10px;color:#7A6A55}
-#walkSpeedSel{flex:1;min-width:0;font-size:10px;font-family:inherit;padding:2px 4px;border:1px solid #D4C4A8;border-radius:3px;background:#fff;color:#5A3A1A}
+#diffDisp .dsub{color:var(--t-sub);font-size:11px}
+#walkSpeedRow{display:flex;align-items:center;gap:5px;margin-top:5px;font-size:11px;color:var(--t-sub)}
+#walkSpeedSel{flex:1;min-width:0;font-size:11px;font-family:inherit;padding:2px 4px;border:1px solid #D4C4A8;border-radius:3px;background:#fff;color:#5A3A1A}
 #descSec{padding:8px 10px;flex-shrink:0;border-top:1px solid #D4C4A8}
-#descSec label{display:block;font-size:10px;font-weight:bold;color:#666;margin-bottom:3px}
+#descSec label{display:block;font-size:11px;font-weight:bold;color:var(--t-sub);margin-bottom:3px}
 #iDesc{width:100%;padding:5px 7px;border:1px solid #D4C4A8;border-radius:3px;font-size:11px;font-family:inherit;background:#fff;outline:none;resize:vertical;min-height:55px}
 #mapArea{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;position:relative}
 #map,#mapArea,.leaflet-container{user-select:none;-webkit-user-select:none}
 #tbar{background:#F5EDD8;border-bottom:1px solid #D4C4A8;padding:4px 8px;display:flex;align-items:center;gap:4px;flex-shrink:0;flex-wrap:wrap}
-#tbar-st{font-size:10px;color:#888;flex:1;min-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#tbar-st{font-size:11px;color:var(--t-sub);flex:1;min-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #mapWrap{flex:1;position:relative}
 #map{width:100%;height:100%}
 #mapMsg{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(255,255,255,.9);border:1px solid #D4C4A8;border-radius:6px;padding:10px 16px;font-size:11px;text-align:center;z-index:500;pointer-events:none;line-height:1.7}
@@ -153,7 +154,7 @@ html,body{min-height:calc(100% + env(safe-area-inset-top));font-family:'Hiragino
 .m-hbtn.x{background:rgba(0,0,0,.06);color:#6A5640;width:30px;height:30px;border-radius:50%;font-size:15px;padding:0}
 .m-hbtn.x .svgi{width:15px;height:15px}
 .m-body{padding:14px;overflow-y:auto;flex:1;min-height:0}
-.m-body label{display:block;font-size:10px;font-weight:bold;color:#555;margin-bottom:2px}
+.m-body label{display:block;font-size:11px;font-weight:bold;color:var(--t-sub);margin-bottom:2px}
 .m-body input,.m-body select,.m-body textarea{width:100%;padding:7px 9px;border:1px solid #D4C4A8;border-radius:5px;font-size:13px;font-family:inherit;background:#fff;outline:none;margin-bottom:10px}
 .m-body input[type=number]{width:120px}
 .m-body textarea{resize:vertical;min-height:55px}
@@ -173,11 +174,11 @@ html,body{min-height:calc(100% + env(safe-area-inset-top));font-family:'Hiragino
 /* WP種別ツールチップカラー */
 /* .wp-tt-<種別> の色は WT から起動時に作る（_injectWpStyles）。色の定義は WT の1か所だけ */
 .tsep{color:#D4C4A8;padding:0 3px;align-self:center}
-.btn.btn-off{opacity:0.55;background:#888!important;color:#fff!important;border-color:#888!important}
+.btn.btn-off{opacity:0.55;background:#6B6055!important;color:#fff!important;border-color:#6B6055!important}
 /* ミニ高低差（サイドバー内） */
 #miniElevSec{padding:5px 8px 7px;border-top:1px solid #D4C4A8;flex-shrink:0;cursor:pointer}
 #miniElevSec:hover{background:#F0E8D8}
-#miniElevHint{font-size:10px;color:#9A8070;margin-bottom:2px}
+#miniElevHint{font-size:11px;color:var(--t-sub);margin-bottom:2px}
 #miniElevSvg{display:block;width:100%;height:64px}
 /* 高低差詳細パネル（マップ左下・暗転なし） */
 #elevDetailPanel{display:none;position:fixed;bottom:50px;left:250px;z-index:2000;
@@ -187,14 +188,14 @@ html,body{min-height:calc(100% + env(safe-area-inset-top));font-family:'Hiragino
 #elevDetailPanel.show{display:block}
 #elevModalHdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
 #elevModalHdr span{font-size:13px;font-weight:bold;color:#4A2E0E}
-#elevModalClose{background:none;border:none;font-size:18px;cursor:pointer;color:#9A8070;line-height:1;padding:0 4px}
+#elevModalClose{background:none;border:none;font-size:18px;cursor:pointer;color:var(--t-sub);line-height:1;padding:0 4px}
 #elevModalClose:hover{color:#4A2E0E}
 #elevStats{font-size:11px;color:#6A4E2A;margin-bottom:8px;display:flex;flex-wrap:wrap;gap:10px}
 #elevStats span{white-space:nowrap}
 #elevStats b{color:var(--brand)}
 #elevChartWrap{width:100%;overflow-x:auto}
 #elevChart{min-width:280px;width:100%;height:170px;display:block}
-#elevMsg{font-size:12px;color:#9A8070;text-align:center;padding:16px 0}
+#elevMsg{font-size:12px;color:var(--t-sub);text-align:center;padding:16px 0}
 .btn-nolabel{background:#5A3E28!important;color:#fff!important;border-color:#5A3E28!important}
 #wpTypePicker{display:none;position:fixed;z-index:5000;background:#fff;border:1px solid #C4B89A;border-radius:8px;overflow-y:auto;min-width:215px;max-width:min(300px,calc(100vw - 24px - env(safe-area-inset-left) - env(safe-area-inset-right)));max-height:calc(100vh - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom));box-shadow:0 4px 20px rgba(0,0,0,.25)}
 /* カスタム道路描画UI */
@@ -321,7 +322,7 @@ body.offline #offlineBadge{display:block}
 .ctx-it:hover,.ctx-it:active{background:#F5EDD8}
 .ctx-it.ctx-del{color:#B71C1C}
 .ctx-it.wpick{padding:7px 14px;font-size:12px}
-.ctx-it.ctx-cancel{color:#888;font-size:11px;justify-content:center}
+.ctx-it.ctx-cancel{color:var(--t-sub);font-size:11px;justify-content:center}
 .ctx-sep{height:1px;background:#EEE8DE;margin:2px 0}
 /* Mobile */
 /* モバイル共通 */
@@ -336,7 +337,7 @@ body.offline #offlineBadge{display:block}
     #mobileMenuSheet .mm-map{padding:8px 0}
     #mobileMenuSheet .mm-grid{margin-bottom:7px}
     #mobileMenuSheet .mm-act{padding:7px 4px;font-size:15px;gap:3px}
-    #mobileMenuSheet .mm-act span{font-size:10px}
+    #mobileMenuSheet .mm-act span{font-size:11px}
     #mobileMenuSheet .mm-t{margin-bottom:4px;font-size:15px}
     .m-box{width:96vw;max-height:92vh}
     .m-body{padding:11px}
@@ -446,7 +447,7 @@ body.offline #offlineBadge{display:block}
   #mobileMenuSheet .mm-tog-ic{font-size:15px}
   #mobileMenuSheet .mm-grid{gap:5px;margin-bottom:5px}
   #mobileMenuSheet .mm-act{padding:4px 3px;font-size:13px;gap:2px}
-  #mobileMenuSheet .mm-act span{font-size:10px}
+  #mobileMenuSheet .mm-act span{font-size:11px}
   #mobileMenuSheet .mm-danger{padding:6px;font-size:12px;margin-top:2px}
 }
 
@@ -456,22 +457,22 @@ body.offline #offlineBadge{display:block}
 .mob-back{width:30px;height:30px;border-radius:50%;background:#F5F4F2;border:0.5px solid rgba(0,0,0,0.1);display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer}
 .mob-back i{font-size:15px;color:#1C1917}
 #mobileCourseTitle{flex:1;font-size:14px;font-weight:700;color:#1C1917;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.mob-save{background:#F97316;color:#fff;font-size:11px;font-weight:700;padding:5px 14px;border-radius:14px;border:none;cursor:pointer;flex-shrink:0}
+.mob-save{background:var(--brand);color:#fff;font-size:11px;font-weight:700;padding:5px 14px;border-radius:14px;border:none;cursor:pointer;flex-shrink:0}
 #mobileRbtns{position:absolute;right:10px;top:52px;z-index:1000;flex-direction:column;gap:5px}
 .mrb{width:32px;height:32px;background:rgba(255,255,255,0.92);border:0.5px solid rgba(0,0,0,0.09);border-radius:9px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;color:#3D3835}
 .mrb:disabled{opacity:0.35;cursor:default}
 .mrb.mt{margin-top:5px}
 #mobileShelf{background:#fff;border-top:0.5px solid rgba(0,0,0,0.07);height:54px;flex-shrink:0;padding:0 12px;gap:6px;align-items:center}
 .mob-modes{display:flex;gap:3px;align-items:center;flex-shrink:0}
-.mob-mode{height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;border:none;background:transparent;color:#C4BEB8;font-size:14px;padding:0 8px}
+.mob-mode{height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;border:none;background:transparent;color:var(--t-sub);font-size:14px;padding:0 8px}
 .mob-mode.lbl{font-size:10px;font-weight:700;gap:4px}
 .mob-mode.lbl span{font-size:10px;font-weight:700}
-.mob-mode.on{background:#FFF3EC;color:#F97316}
-.mob-mode.on span{color:#F97316}
+.mob-mode.on{background:var(--brand-soft);color:var(--brand)}
+.mob-mode.on span{color:var(--brand)}
 .mob-sdiv{width:0.5px;height:22px;background:rgba(0,0,0,0.08);flex-shrink:0}
 .mob-stats{flex:1;display:flex;align-items:center;justify-content:center;gap:4px;white-space:nowrap;flex-wrap:nowrap;font-family:'Hiragino Sans','Meiryo',sans-serif}
 .mob-stat-v{font-size:14px;font-weight:bold;color:#1C1917;white-space:nowrap}
-.mob-stat-u{font-size:9px;color:#A8A29E}
+.mob-stat-u{font-size:10px;color:var(--t-sub)}
 .mob-stat-s{font-size:10px;color:#E2DDD4}
 .cust-handle{width:20px;height:20px;border-radius:50%;background:#fff;border:2.5px solid #E8731C;box-shadow:0 1px 3px rgba(0,0,0,.35);box-sizing:border-box;cursor:grab}
 #reorderSheet .ro-head{display:flex;align-items:center;justify-content:space-between;font-size:14px;font-weight:700;color:#4A2E0E;padding:2px 0 6px}
@@ -479,25 +480,25 @@ body.offline #offlineBadge{display:block}
 #reorderSheet .ro-hint{font-size:11px;color:#9b948c;padding-bottom:6px}
 #reorderSheet .ro-row{display:flex;align-items:center;gap:8px;padding:0 4px;height:48px;box-sizing:border-box;border-bottom:0.5px solid rgba(0,0,0,.06);background:#fff;will-change:transform}
 #reorderSheet .ro-row.ro-shift{transition:transform .16s ease}
-#reorderSheet .ro-row.ro-lift{background:#FFF3EC;box-shadow:0 6px 16px rgba(0,0,0,.24);border-radius:10px;border-bottom:none;position:relative;z-index:5;transition:none}
+#reorderSheet .ro-row.ro-lift{background:var(--brand-soft);box-shadow:0 6px 16px rgba(0,0,0,.24);border-radius:10px;border-bottom:none;position:relative;z-index:5;transition:none}
 #reorderSheet .ro-badge{width:22px;height:22px;border-radius:50%;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0}
 #reorderSheet .ro-label{flex:1;font-size:13px;color:#4A2E0E;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #reorderSheet .ro-handle{flex-shrink:0;color:#9b948c;padding:12px 8px;margin:-6px -2px -6px 0;cursor:grab;touch-action:none;-webkit-user-select:none;user-select:none}
 #mobileElevBand{background:#fff;border-top:0.5px solid rgba(0,0,0,0.06);padding:5px 14px 7px;flex-shrink:0;touch-action:none;overflow:hidden;transition:height .34s cubic-bezier(.33,.0,.2,1)}
 #mobileElevGrip{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px}
-#mobileElevChev{color:#C4BEB8;font-size:15px;display:flex;transition:transform .2s}
+#mobileElevChev{color:var(--t-sub);font-size:15px;display:flex;transition:transform .2s}
 #mobileElevBand.expanded #mobileElevChev{transform:rotate(180deg)}
 #mobileElevStatsRow{display:none}
 #mobileElevBand.expanded #mobileElevStatsRow{display:flex;gap:10px;flex-wrap:nowrap;justify-content:space-between;margin:2px 0 5px;padding:5px 2px;border-top:0.5px solid rgba(0,0,0,0.05);border-bottom:0.5px solid rgba(0,0,0,0.05)}
-.mev-stat{display:flex;align-items:center;gap:3px;font-size:10px;color:#6A645E;white-space:nowrap}
+.mev-stat{display:flex;align-items:center;gap:3px;font-size:11px;color:var(--t-sub);white-space:nowrap}
 .mev-stat .svgi{width:13px;height:13px}
 .mev-stat b{font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:11px}
 .mev-up{color:#16A34A}.mev-dn{color:#DC2626}.mev-hi{color:var(--brand)}.mev-lo{color:#2563EB}
 #mobileElevSvg{display:block;width:100%;height:46px}
 #mobileElevBand.expanded #mobileElevSvg{height:170px}
 .mob-elev-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px}
-.mob-elev-hdr span{font-size:9px;color:#C4BEB8}
-#mobileElevStats{font-size:9px;color:#F97316;font-weight:bold}
+.mob-elev-hdr span{font-size:10px;color:var(--t-sub)}
+#mobileElevStats{font-size:11px;color:var(--brand);font-weight:bold}
 
 /* インラインSVGアイコン */
 .svgi{width:1em;height:1em;display:block;flex-shrink:0}
@@ -505,7 +506,7 @@ body.offline #offlineBadge{display:block}
 .mob-elev-hl{display:flex;align-items:center;gap:6px}
 .mob-elev-hl span{font-size:11px;color:#8A8077;font-weight:500}
 .mob-elev-hl strong{font-size:12px;color:var(--brand);font-family:'Plus Jakarta Sans',sans-serif;font-weight:800}
-.mob-elev-chev{color:#C4BEB8;font-size:15px;display:flex}
+.mob-elev-chev{color:var(--t-sub);font-size:15px;display:flex}
 #mobileElevBand{cursor:pointer}
 /* シェルフのモードボタン洗練 */
 .mob-more{width:38px;height:38px;border-radius:12px;background:#F7F3ED;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#6A645E;font-size:19px;border:none;cursor:pointer}
@@ -514,7 +515,7 @@ body.offline #offlineBadge{display:block}
 .mrb.gps{color:#3B82F6}
 /* 保存・戻るボタン グラデーション */
 .mob-save{background:var(--brand-grad)!important;box-shadow:0 3px 9px rgba(184,68,10,.3)}
-.mob-mode.on{background:#FFF3EC;color:var(--brand)}
+.mob-mode.on{background:var(--brand-soft);color:var(--brand)}
 .mob-mode.on span{color:var(--brand)}
 /* …メニューシート */
 #mobileMenuScrim{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.34);z-index:2000}
@@ -524,7 +525,7 @@ body.offline #offlineBadge{display:block}
 .mm-dh{width:36px;height:4px;background:#E5E7EB;border-radius:3px;margin:0 auto 9px}
 .mm-t{font-family:'Plus Jakarta Sans',sans-serif;font-size:15px;font-weight:800;color:#1C1917;margin-bottom:11px;text-align:center;position:relative}
 .mm-close{position:absolute;right:0;top:-3px;width:28px;height:28px;border-radius:50%;background:#F2EFEA;border:none;display:flex;align-items:center;justify-content:center;color:#8A8077;font-size:15px;cursor:pointer}
-.mm-sec{font-size:9px;font-weight:700;color:#B0A99F;font-family:'Plus Jakarta Sans',sans-serif;letter-spacing:0.06em;margin:0 2px 5px}
+.mm-sec{font-size:10px;font-weight:700;color:var(--t-sub);font-family:'Plus Jakarta Sans',sans-serif;letter-spacing:0.06em;margin:0 2px 5px}
 .mm-tog-wrap{background:#F9F7F4;border-radius:13px;padding:1px 14px;margin-bottom:12px}
 .mm-tog{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:0.5px solid rgba(0,0,0,0.05);cursor:pointer}
 .mm-tog:last-child{border-bottom:none}
@@ -544,7 +545,7 @@ body.offline #offlineBadge{display:block}
 .mm-sw.on::after{left:19px}
 .mm-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
 .mm-act{display:flex;flex-direction:column;align-items:center;gap:6px;padding:11px 4px;border-radius:13px;background:#F9F7F4;color:#3D3835;font-size:19px;border:none;cursor:pointer;font-family:inherit}
-.mm-act span{font-size:10px;color:#5A554E;text-align:center;line-height:1.3;font-weight:500}
+.mm-act span{font-size:11px;color:#5A554E;text-align:center;line-height:1.3;font-weight:500}
 .mm-act-ph{visibility:hidden}
 .mm-danger{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:11px;border-radius:13px;background:#FEF2F2;color:#DC2626;border:none;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer}
 /* なぞり描きモード：3モード構成でボタンを詰める */
@@ -625,10 +626,10 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
       <div id="wpSec">
         <div class="sec-hdr-wp">
           <span style="display:inline-flex;align-items:center;gap:4px"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M9 11a3 3 0 1 0 6 0a3 3 0 0 0 -6 0" /> <path d="M17.657 16.657l-4.243 4.243a2 2 0 0 1 -2.827 0l-4.244 -4.243a8 8 0 1 1 11.314 0" /></svg>ウェイポイント</span>
-          <span class="drag-hint" style="font-size:10px;color:#8A6A4A;font-weight:normal">ドラッグで並替</span>
+          <span class="drag-hint" style="font-size:11px;color:var(--t-sub);font-weight:normal">ドラッグで並替</span>
         </div>
         <div id="wpList">
-          <div id="wpEmpty" style="font-size:10px;color:#aaa;text-align:center;padding:14px">地図をクリックして追加</div>
+          <div id="wpEmpty" style="font-size:11px;color:var(--t-sub);text-align:center;padding:14px">地図をクリックして追加</div>
         </div>
       </div>
       <div id="infoSec">
@@ -689,7 +690,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
       </div>
       <div id="mapWrap">
         <div id="map"></div>
-        <div id="mapMsg">⚠️ プレビュー環境では地図タイルは表示されません<br><span style="font-size:10px">GitHub Pagesに公開すると正常に表示されます</span></div>
+        <div id="mapMsg">⚠️ プレビュー環境では地図タイルは表示されません<br><span style="font-size:11px">GitHub Pagesに公開すると正常に表示されます</span></div>
         <div id="rtMsg">🔄 ルートを計算中...</div>
         <!-- 埋め込み表示のときだけ出る帯（コース名・距離・大きな地図で開く） -->
         <div id="embedBar"><span class="eb-name"></span><span class="eb-stat"></span><a target="_blank" rel="noopener">大きな地図で開く ↗</a></div>
@@ -817,7 +818,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
       <label>電話・URL</label><input id="mTel" placeholder="例：090-1234-5678">
       <label>滞在時間（分）</label>
       <input type="number" id="mDwell" min="0" max="480" step="5" value="0" placeholder="0">
-      <div style="font-size:10px;font-weight:bold;color:#555;margin-bottom:4px">前後の接続設定</div>
+      <div style="font-size:11px;font-weight:bold;color:var(--t-sub);margin-bottom:4px">前後の接続設定</div>
       <label style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:normal;cursor:pointer;margin-bottom:5px">
         <input type="checkbox" id="mOnRoute" style="width:auto;padding:0;margin:0">
         このウェイポイントをルートに含める
@@ -832,10 +833,10 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
         後のラインを道路に沿う
       </label>
       <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
-        <span style="font-size:10px;font-weight:bold;color:#555">名称ラベル表示位置</span>
+        <span style="font-size:11px;font-weight:bold;color:var(--t-sub)">名称ラベル表示位置</span>
         <select id="mLabelDir" style="font-size:11px;padding:2px 4px;border:1px solid #C4B89A;border-radius:4px;background:#FAF6EE;width:auto;margin:0"><option value="top">上</option><option value="bottom">下</option><option value="left">左</option><option value="right">右</option></select>
       </div>
-      <div style="font-size:10px;font-weight:bold;color:#555;margin-bottom:5px">写真（最大5枚）</div>
+      <div style="font-size:11px;font-weight:bold;color:var(--t-sub);margin-bottom:5px">写真（最大5枚）</div>
       <div id="mPhotoStrip" class="photo-strip"></div>
       <div style="display:flex;gap:8px;margin-bottom:10px">
         <input type="file" accept="image/*" id="mPhotoFile" style="display:none" multiple>
@@ -937,7 +938,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
    ============================================================ */
 /* 配色（上の CSS :root と同じ値。SVG や Leaflet の色指定に使う）
    ※ ここと :root がずれていないか、回帰テストで確かめている */
-const COLOR = { brand:'#B8440A', ok:'#0E6B3C' };
+const COLOR = { brand:'#B8440A', ok:'#0E6B3C', sub:'#6B6055' };
 
 const WT = [
   {v:'course',  l:'コースポイント', c:'#A8551F'},
@@ -1779,7 +1780,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v101';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
+const APP_VERSION = 'v102';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
 }catch(_){} });
@@ -4879,7 +4880,7 @@ function _sheetHtml(imgUrl, cssWidth) {
     +     '<div>総距離<b>' + escHtml(dist.replace(/^総距離:\s*/, '')) + '</b></div>'
     +     '<div>所要時間<b>' + escHtml(time.replace(/^所要時間:\s*/, '').replace(/（.*?）/, '')) + '</b></div>'
     +     (diff ? '<div>難易度<b style="color:' + diff.color + '">' + escHtml(diff.label) + '</b>'
-    +             '<span style="display:block;font-size:10px">登り ' + Math.round(diff.up) + ' m</span></div>' : '')
+    +             '<span style="display:block;font-size:11px">登り ' + Math.round(diff.up) + ' m</span></div>' : '')
     +   '</div>'
     + '</div>'
     + '<div class="sh-body">'
@@ -5240,7 +5241,7 @@ function _fillEmbedBar() {
 
 function _showViewError(msg) {
   const mapArea = document.getElementById('mapArea');
-  if (mapArea) mapArea.innerHTML = '<div style="padding:40px;text-align:center;color:#888;line-height:1.8">' + escHtml(msg) + '</div>';
+  if (mapArea) mapArea.innerHTML = '<div style="padding:40px;text-align:center;color:#6B6055;line-height:1.8">' + escHtml(msg) + '</div>';
 }
 
 function initViewMode() {
@@ -5429,10 +5430,10 @@ function _drawElevChart(pts, elevs) {
   const grid=[0,.25,.5,.75,1].map(t=>{
     const yy=(PT+iH*(1-t)).toFixed(1);
     return `<line x1="${PL}" y1="${yy}" x2="${PL+iW}" y2="${yy}" stroke="#E8DDD0" stroke-width="0.8"/>`+
-           `<text x="${PL-3}" y="${(parseFloat(yy)+3.5).toFixed(1)}" text-anchor="end" font-size="9" fill="#9A8070">${Math.round(minE+rng*t)}m</text>`;
+           `<text x="${PL-3}" y="${(parseFloat(yy)+3.5).toFixed(1)}" text-anchor="end" font-size="9" fill="${COLOR.sub}">${Math.round(minE+rng*t)}m</text>`;
   }).join('');
   const xLabels=[0,.25,.5,.75,1].map(t=>
-    `<text x="${(PL+iW*t).toFixed(1)}" y="${PT+iH+18}" text-anchor="middle" font-size="9" fill="#9A8070">${(totalM/1000*t).toFixed(1)}km</text>`
+    `<text x="${(PL+iW*t).toFixed(1)}" y="${PT+iH+18}" text-anchor="middle" font-size="9" fill="${COLOR.sub}">${(totalM/1000*t).toFixed(1)}km</text>`
   ).join('');
   const rw=routeWps(); let wpMarks='';
   if(rw.length>=2&&totalM>0){
@@ -5484,10 +5485,10 @@ function _drawMiniChart(pts, elevs) {
   miniSvg.setAttribute('preserveAspectRatio','xMidYMid meet');
   miniSvg.innerHTML=
     `<line x1="${PL}" y1="${(PT+iH/2).toFixed(1)}" x2="${PL+iW}" y2="${(PT+iH/2).toFixed(1)}" stroke="#E8DDD0" stroke-width="0.8"/>`+
-    `<text x="${PL-2}" y="${PT+5}" text-anchor="end" font-size="7" fill="#9A8070">${Math.round(maxE)}m</text>`+
-    `<text x="${PL-2}" y="${PT+iH+1}" text-anchor="end" font-size="7" fill="#9A8070">${Math.round(minE)}m</text>`+
-    `<text x="${PL}" y="${PT+iH+11}" text-anchor="start" font-size="7" fill="#9A8070">0</text>`+
-    `<text x="${PL+iW}" y="${PT+iH+11}" text-anchor="end" font-size="7" fill="#9A8070">${(totalM/1000).toFixed(1)}km</text>`+
+    `<text x="${PL-2}" y="${PT+5}" text-anchor="end" font-size="7" fill="${COLOR.sub}">${Math.round(maxE)}m</text>`+
+    `<text x="${PL-2}" y="${PT+iH+1}" text-anchor="end" font-size="7" fill="${COLOR.sub}">${Math.round(minE)}m</text>`+
+    `<text x="${PL}" y="${PT+iH+11}" text-anchor="start" font-size="7" fill="${COLOR.sub}">0</text>`+
+    `<text x="${PL+iW}" y="${PT+iH+11}" text-anchor="end" font-size="7" fill="${COLOR.sub}">${(totalM/1000).toFixed(1)}km</text>`+
     `<path d="${fillD}" fill="${COLOR.brand}" fill-opacity="0.18"/>`+
     `<path d="${lineD}" fill="none" stroke="${COLOR.brand}" stroke-width="1.8"/>`+
     `<line x1="${PL}" y1="${PT}" x2="${PL}" y2="${PT+iH}" stroke="#C0A882" stroke-width="0.8"/>`;
@@ -5539,13 +5540,13 @@ function _drawElevBand() {
       if (v < minE-0.5 || v > maxE+0.5) continue;
       const yy=(PT+yi(v)).toFixed(1);
       grid+=`<line x1="${PL}" y1="${yy}" x2="${PL+iW}" y2="${yy}" stroke="#E8DDD0" stroke-width="0.8"/>`+
-            `<text x="${PL-3}" y="${(parseFloat(yy)+3).toFixed(1)}" text-anchor="end" font-size="8" fill="#9A8070">${Math.round(v)}m</text>`;
+            `<text x="${PL-3}" y="${(parseFloat(yy)+3).toFixed(1)}" text-anchor="end" font-size="8" fill="${COLOR.sub}">${Math.round(v)}m</text>`;
     }
   } else {
     // 折りたたみ：最高・最低のみ
     [maxE,minE].forEach(v=>{
       const yy=(PT+yi(v)).toFixed(1);
-      grid+=`<text x="${PL-2}" y="${(parseFloat(yy)+3).toFixed(1)}" text-anchor="end" font-size="8" fill="#9A8070">${Math.round(v)}m</text>`;
+      grid+=`<text x="${PL-2}" y="${(parseFloat(yy)+3).toFixed(1)}" text-anchor="end" font-size="8" fill="${COLOR.sub}">${Math.round(v)}m</text>`;
     });
   }
 
@@ -5571,10 +5572,10 @@ function _drawElevBand() {
     });
   }
   if (expanded) {
-    extra+=`<text x="${PL}" y="${PT+iH+15}" text-anchor="start" font-size="8" fill="#9A8070">0</text>`+
-           `<text x="${PL+iW}" y="${PT+iH+15}" text-anchor="end" font-size="8" fill="#9A8070">${(totalM/1000).toFixed(1)}km</text>`;
+    extra+=`<text x="${PL}" y="${PT+iH+15}" text-anchor="start" font-size="8" fill="${COLOR.sub}">0</text>`+
+           `<text x="${PL+iW}" y="${PT+iH+15}" text-anchor="end" font-size="8" fill="${COLOR.sub}">${(totalM/1000).toFixed(1)}km</text>`;
   } else {
-    extra+=`<text x="${PL+iW}" y="${PT+iH+9}" text-anchor="end" font-size="8" fill="#9A8070">${(totalM/1000).toFixed(1)}km</text>`;
+    extra+=`<text x="${PL+iW}" y="${PT+iH+9}" text-anchor="end" font-size="8" fill="${COLOR.sub}">${(totalM/1000).toFixed(1)}km</text>`;
   }
 
   svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
@@ -5835,7 +5836,7 @@ function renderCourseList() {
   if (!notice) {
     notice = document.createElement('div');
     notice.id = 'storageNotice';
-    notice.style.cssText = 'font-size:10px;padding:4px 0 10px;line-height:1.6';
+    notice.style.cssText = 'font-size:11px;padding:4px 0 10px;line-height:1.6';
     cont.parentNode.insertBefore(notice, cont);
   }
   notice.innerHTML = lsAvail()
