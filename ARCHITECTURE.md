@@ -108,6 +108,9 @@
 
 8. **版数は3か所そろえる**（10章）。
 
+16. **画面の語と内部名は別**（v130）。画面は「スポット／通り道の点／自分で描いた道／指でなぞって描く／道に沿わせない／
+    描いた道に吸い付く／歩く人の見え方」、コードと保存データは `wps/vps/customRoads/draw/manualMode/_snapOn_/viewMode` のまま。
+    文言を足すときは画面の語を使い、内部名・キーは変えない（対応表は HANDOFF 2章）。
 15. **種別の選び方は select（隠す）＋チップ**（v128）。`saveModal` は `#mType.value` を読むだけ、`_buildTypeOptions(wp)` が
     選べる種類を select に入れ、`_renderTypeChips()` はそれを読んで描く。種類の制限（スタート／ゴールは両端だけ）を
     足すときは `_buildTypeOptions` だけ直す。地図タップは `addWp(…,'course')` で即置く（選択画面を戻さない）。

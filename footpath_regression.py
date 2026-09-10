@@ -288,7 +288,7 @@ def static_checks(src):
     chk('静的', 'GPX読み込み parseGpx 存在', 'function parseGpx' in src)
     chk('静的', '取り込み口が GPX も受け付ける', 'accept=".json,.gpx' in src and 'JSON / GPX' in src)
     chk('静的', '軌跡の間引き _thinPoints 存在', 'function _thinPoints' in src)
-    chk('静的', 'GPXは道順が引き直しになることを伝える', '調整点（道順の細かい指定）' in src)
+    chk('静的', 'GPXは道順が引き直しになることを伝える', '通り道の点（道順の細かい指定）' in src)
     chk('静的', 'スポットがあるGPXは軌跡を取り込まない（二重防止）',
         'const hadWpt = wps.length > 0;' in src and 'hadWpt ? [] : _thinPoints' in src)
     chk('静的', '取り込み点数の上限 GPX_MAX_TRKPTS 維持', 'const GPX_MAX_TRKPTS' in src)
@@ -434,6 +434,19 @@ def static_checks(src):
     chk('静的', '選べる種類の出どころは _buildTypeOptions のまま（チップは select を読む）',
         "const cur = sel.value, opts = [...sel.options].map(o => o.value);" in src and 'function _buildTypeOptions' in src)
     chk('静的', '最初の案内が「種類と名前はあとから」を伝える', '種類と名前は、○を押してあとから決められます' in src)
+    # --- v130: 言葉の言い換え（ロードマップ 段階1-5）と、コース削除の「元に戻す」---
+    _old_words = ['aria-label="調整点"', 'aria-label="WP"', 'aria-label="なぞり"', 'aria-label="細道 作成・編集"', "'スナップ ON'", '👁 閲覧モード',
+                  'ウェイポイント編集', '手動モード ON', '経路調整点', 'なぞり点（調整点）', '細道機能', 'このウェイポイントを削除', '細い道 作成・編集']
+    _left = [w for w in _old_words if w in src]
+    chk('静的', '画面に出る旧語（調整点・細道・なぞり・手動・スナップ・閲覧モード・ウェイポイント）が残っていない', not _left, str(_left)[:160])
+    chk('静的', '新しい語が入っている（通り道の点・自分で描いた道・指でなぞって描く・道に沿わせない・描いた道に吸い付く・スポット）',
+        all(w in src for w in ['aria-label="通り道の点"', 'aria-label="指でなぞって描く"', 'aria-label="自分で描いた道"', '<span class="mm-tog-l">道に沿わせない</span>',
+                               '<span class="mm-tog-l">描いた道に吸い付く</span>', '<span>スポットの編集</span>', '👁 歩く人の見え方', "l:'描いた道の点'"]))
+    chk('静的', '操作ガイドが今の画面の語で書かれている', '<h3>📍 スポットを置く・直す</h3>' in src and '<h3>↔ 通り道の点（道順を細かく指定する）</h3>' in src
+        and '<h3>💾 保存・配る</h3>' in src and 'ウェイポイントの追加・編集' not in src)
+    chk('静的', 'コースの削除は確認ダイアログではなく10秒の「元に戻す」',
+        "confirm('このコースを削除しますか？')" not in src and 'const DELETE_UNDO_MS = 10000;' in src and 'function undoDeleteCourse' in src
+        and "b.textContent = '元に戻す';" in src)
     # --- v129: 種別の追加（学校・幼稚園／公民館・集会所）と、大きく出す4つの入れ替え ---
     chk('静的', '種別に学校・幼稚園と公民館・集会所がある（○の記号つき）',
         "v:'school',  l:'学校・幼稚園'" in src and "v:'hall',    l:'公民館・集会所'" in src and "school:'学'" in src and "hall:'公'" in src)
@@ -1588,6 +1601,30 @@ def functional_checks(index_path):
             and pl.get('bigs') == ['1コースポイント', '◎ビュースポット', '碑史跡・記念碑', '★飲食店・ショップ ★'] and pl.get('restHidden')
             and pl.get('restN', 0) >= 5 and pl.get('selVal') == 'parking' and pl.get('onChip') == 'P駐車場' and pl.get('savedType') == 'parking',
             str(pl)[:260])
+
+        # v130: コースを削除すると「元に戻す」が出て、押すと同じ位置・同じ中身で戻る。10秒たつと確定
+        du = page.evaluate("""()=>{ try{
+            const keepC = getCourses(), keepP = _delPending;
+            const mk = (id, name) => ({id, name, wps: [], vps: [], customRoads: [], customPaths: [], savedAt: 'T' + id});
+            setCourses([mk(9101, 'A'), mk(9102, 'B'), mk(9103, 'C')]);
+            deleteCourse(9102);
+            const t = document.getElementById('undoToast');
+            const out = {afterDel: getCourses().map(c => c.name).join(''), toast: !!t, btn: t ? t.querySelector('button').textContent : '',
+                         msg: t ? t.querySelector('span').textContent : '', pending: !!_delPending};
+            t.querySelector('button').click();
+            out.afterUndo = getCourses().map(c => c.name).join(''); out.toastGone = !document.getElementById('undoToast'); out.pendingAfter = !!_delPending;
+            out.sameData = getCourses()[1].savedAt === 'T9102';
+            // もう一度消して、確定させる（10秒待つ代わりに確定処理を直接呼ぶ）
+            deleteCourse(9101); _finalizeDelete();
+            out.afterFinal = getCourses().map(c => c.name).join(''); out.toastGone2 = !document.getElementById('undoToast');
+            undoDeleteCourse(); out.noResurrect = getCourses().map(c => c.name).join('');
+            setCourses(keepC); _delPending = keepP; renderCourseList();
+            return out;
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        chk('機能', 'コース削除は「元に戻す」で同じ位置に戻り、確定後は戻らない',
+            isinstance(du, dict) and du.get('afterDel') == 'AC' and du.get('toast') and du.get('btn') == '元に戻す' and '「B」を削除しました' == du.get('msg')
+            and du.get('pending') and du.get('afterUndo') == 'ABC' and du.get('toastGone') and du.get('pendingAfter') is False and du.get('sameData')
+            and du.get('afterFinal') == 'BC' and du.get('toastGone2') and du.get('noResurrect') == 'BC', str(du)[:260])
 
         # v121: バックアップからの日数・未反映の保存回数で色が変わり、書き出すと戻る。iPhone の案内は1回だけ
         bk = page.evaluate("""()=>{ return (async()=>{ try{

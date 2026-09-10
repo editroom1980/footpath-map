@@ -434,6 +434,11 @@ body.viewonly #firstTip,body.embed #firstTip{display:none!important}
   font-size:15px;font-weight:800;background:var(--brand-grad);color:#fff;cursor:pointer}
 #descSheet .ds-btn.ghost{flex:0 0 96px;background:#F2EEE7;color:var(--t-sub)}
 /* 配る（v123）：画像・配布シート・リンク・GPX の4つの出口を1枚に。編集画面から2タップで届く */
+/* 削除の「元に戻す」（v130） */
+#undoToast{position:fixed;bottom:max(104px,calc(env(safe-area-inset-bottom) + 96px));left:50%;transform:translateX(-50%);background:rgba(62,42,14,.94);color:#F5EDD8;
+  padding:6px 6px 6px 16px;border-radius:24px;font-size:13px;z-index:9999;display:flex;align-items:center;gap:12px;box-shadow:0 2px 12px rgba(0,0,0,.3);max-width:calc(100vw - 24px)}
+#undoToast span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#undoToast button{border:none;border-radius:18px;background:#F5EDD8;color:#3E2A0E;font-weight:800;font-family:inherit;font-size:13px;padding:0 14px;min-height:36px;cursor:pointer;flex:none}
 #shareScrim{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:3400;display:none}
 #shareSheet{position:fixed;left:0;right:0;bottom:0;z-index:3401;display:none;background:#fff;
   border-radius:20px 20px 0 0;padding:10px 16px max(16px,env(safe-area-inset-bottom));box-shadow:0 -6px 24px rgba(0,0,0,.18);
@@ -724,6 +729,7 @@ body.viewonly .mob-share, body.embed .mob-share{display:none!important}
 .mm-adv-h i{font-style:normal;font-size:17px;line-height:1;transition:transform .15s}
 .mm-adv-h[aria-expanded="true"] i{transform:rotate(90deg)}
 #mmAdv{display:none}#mmAdv.show{display:block}
+#mobileMenuSheet #mmAdv .mm-tog-wrap{grid-template-columns:repeat(2,1fr)}   /* 語が長いので2列（v130） */
 .mm-grid.four{grid-template-columns:repeat(4,1fr)}
 .mm-sub-hd{display:flex;align-items:center;gap:12px;margin-bottom:10px}
 #mmSubT{font-size:14px;font-weight:800;color:#1C1917}
@@ -823,7 +829,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
       <button class="pp-row" onclick="closePcPops();saveMapNoText()">文字なしで画像保存</button>
       <button class="pp-row" onclick="closePcPops();openHelp()">操作ガイド</button>
       <div class="pp-sec ed">上級者向け</div>
-      <button class="pp-row ed" id="btnManual" onclick="toggleManualMode();_syncPcPops()" title="ONの間は通り道の点が道に吸い付かない（OSMにない山道・農道用）">手動モード（道に沿わせない）<span class="pp-sw"></span></button>
+      <button class="pp-row ed" id="btnManual" onclick="toggleManualMode();_syncPcPops()" title="ONの間は通り道の点が道に吸い付かない（OSMにない山道・農道用）">道に沿わせない<span class="pp-sw"></span></button>
       <button class="pp-row ed" id="btnToggleVia" onclick="toggleViaVisibility();_syncPcPops()" title="隠している間はルート線をドラッグできません（ルートは保持されます）">通り道の点を表示<span class="pp-sw"></span></button>
       <button class="pp-row ed danger" onclick="closePcPops();clearAll()">すべて消去</button>
     </div>
@@ -832,7 +838,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
     <div id="sidebar">
       <div id="wpSec">
         <div class="sec-hdr-wp">
-          <span style="display:inline-flex;align-items:center;gap:4px"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M9 11a3 3 0 1 0 6 0a3 3 0 0 0 -6 0" /> <path d="M17.657 16.657l-4.243 4.243a2 2 0 0 1 -2.827 0l-4.244 -4.243a8 8 0 1 1 11.314 0" /></svg>ウェイポイント</span>
+          <span style="display:inline-flex;align-items:center;gap:4px"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M9 11a3 3 0 1 0 6 0a3 3 0 0 0 -6 0" /> <path d="M17.657 16.657l-4.243 4.243a2 2 0 0 1 -2.827 0l-4.244 -4.243a8 8 0 1 1 11.314 0" /></svg>スポット</span>
           <span class="drag-hint" style="font-size:11px;color:var(--t-sub);font-weight:normal">ドラッグで並替</span>
         </div>
         <div id="wpList">
@@ -946,10 +952,10 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
       <div id="mobileShelf">
         <button id="mobileEditBack" class="tap" onclick="toggleViewMode()">✎ 編集にもどる</button>
                 <div class="mob-modes">
-          <button id="mobileDrawBtn" class="mob-mode tap" onclick="setMode('draw')" aria-label="なぞり"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 19a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" /> <path d="M19 7a2 2 0 1 0 0 -4a2 2 0 0 0 0 4" /> <path d="M11 19h5.5a3.5 3.5 0 0 0 0 -7h-8a3.5 3.5 0 0 1 0 -7h4.5" /></svg></button>
-          <button id="mobileWpBtn" class="mob-mode on tap" onclick="setMode('wp')" aria-label="WP"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11a3 3 0 1 0 6 0a3 3 0 0 0 -6 0" /> <path d="M17.657 16.657l-4.243 4.243a2 2 0 0 1 -2.827 0l-4.244 -4.243a8 8 0 1 1 11.314 0" /></svg></button>
-          <button id="mobileViaBtn" class="mob-mode tap" onclick="setMode('via')" aria-label="調整点"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /> <path d="M4 6l8 0" /> <path d="M16 6l4 0" /> <path d="M6 12a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /> <path d="M4 12l2 0" /> <path d="M10 12l10 0" /> <path d="M15 18a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /> <path d="M4 18l11 0" /> <path d="M19 18l1 0" /></svg></button>
-          <button id="mobileCustomBtn" class="mob-mode tap" onclick="toggleCustomMode()" aria-label="細道 作成・編集"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4"/><path d="M13.5 6.5l4 4"/></svg></button>
+          <button id="mobileDrawBtn" class="mob-mode tap" onclick="setMode('draw')" aria-label="指でなぞって描く"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 19a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" /> <path d="M19 7a2 2 0 1 0 0 -4a2 2 0 0 0 0 4" /> <path d="M11 19h5.5a3.5 3.5 0 0 0 0 -7h-8a3.5 3.5 0 0 1 0 -7h4.5" /></svg></button>
+          <button id="mobileWpBtn" class="mob-mode on tap" onclick="setMode('wp')" aria-label="スポット"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11a3 3 0 1 0 6 0a3 3 0 0 0 -6 0" /> <path d="M17.657 16.657l-4.243 4.243a2 2 0 0 1 -2.827 0l-4.244 -4.243a8 8 0 1 1 11.314 0" /></svg></button>
+          <button id="mobileViaBtn" class="mob-mode tap" onclick="setMode('via')" aria-label="通り道の点"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /> <path d="M4 6l8 0" /> <path d="M16 6l4 0" /> <path d="M6 12a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /> <path d="M4 12l2 0" /> <path d="M10 12l10 0" /> <path d="M15 18a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /> <path d="M4 18l11 0" /> <path d="M19 18l1 0" /></svg></button>
+          <button id="mobileCustomBtn" class="mob-mode tap" onclick="toggleCustomMode()" aria-label="自分で描いた道"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4"/><path d="M13.5 6.5l4 4"/></svg></button>
         </div>
         <div class="mob-sdiv"></div>
         <div class="mob-stats">
@@ -1022,7 +1028,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
         <div class="mm-sec">歩くとき</div>
         <div class="mm-tog-wrap list">
           <div class="mm-tog" onclick="toggleFollowMode();_syncMobileMenu()" title="歩きながら地図が現在地に付いてきます（電池を使います）"><span class="mm-tog-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 11a1 1 0 1 0 2 0a1 1 0 0 0 -2 0" /> <path d="M12.5 8.5l-4.5 -1.5l-4 12l12 -4l-1.5 -4.5" /> <path d="M21 3l-6 18" /></svg></span><span class="mm-tog-l">現在地を追う</span><div class="mm-sw" id="mmSwFollow"></div></div>
-          <div class="mm-tog" onclick="toggleViewMode();_syncMobileMenu()" data-view-toggle="1"><span class="mm-tog-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" /> <path d="M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6" /></svg></span><span class="mm-tog-l">歩く人の見え方を確認（閲覧モード）</span><div class="mm-sw" id="mmSwView"></div></div>
+          <div class="mm-tog" onclick="toggleViewMode();_syncMobileMenu()" data-view-toggle="1"><span class="mm-tog-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" /> <path d="M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6" /></svg></span><span class="mm-tog-l">歩く人の見え方を確認</span><div class="mm-sw" id="mmSwView"></div></div>
         </div>
         <div class="mm-sec">地図の見せ方</div>
         <div class="mm-maplist">
@@ -1034,10 +1040,10 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
         <button class="mm-adv-h" id="mmAdvBtn" onclick="toggleMmAdv()" aria-expanded="false">上級者向け<span>ふだんは触らなくて大丈夫です</span><i>›</i></button>
         <div id="mmAdv">
           <div class="mm-tog-wrap">
-          <div class="mm-tog" onclick="toggleViaVisibility();_syncMobileMenu()" data-edit="1"><span class="mm-tog-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 12a4 4 0 1 0 8 0a4 4 0 1 0 -8 0" /></svg></span><span class="mm-tog-l">調整点を表示</span><div class="mm-sw" id="mmSwVia"></div></div>
-          <div class="mm-tog" onclick="toggleManualMode();_syncMobileMenu()" data-edit="1"><span class="mm-tog-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 13v-7.5a1.5 1.5 0 0 1 3 0v6.5" /> <path d="M11 5.5v-2a1.5 1.5 0 1 1 3 0v8.5" /> <path d="M14 5.5a1.5 1.5 0 0 1 3 0v6.5" /> <path d="M17 7.5a1.5 1.5 0 0 1 3 0v8.5a6 6 0 0 1 -6 6h-2h.208a6 6 0 0 1 -5.012 -2.7a69.74 69.74 0 0 1 -.196 -.3c-.312 -.479 -1.407 -2.388 -3.286 -5.728a1.5 1.5 0 0 1 .536 -2.022a1.867 1.867 0 0 1 2.28 .28l1.47 1.47" /></svg></span><span class="mm-tog-l">手動モード（道に沿わせない）</span><div class="mm-sw" id="mmSwManual"></div></div>
-          <div class="mm-tog" onclick="toggleCustomFeature();_syncMobileMenu()" data-edit="1"><span class="mm-tog-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6 -6l4 4l8 -8"/><path d="M14 7l7 0l0 7"/></svg></span><span class="mm-tog-l">細道機能（自分で描いた道）</span><div class="mm-sw" id="mmSwCustom"></div></div>
-          <div class="mm-tog" onclick="toggleCustomSnap();_syncMobileMenu()" data-edit="1"><span class="mm-tog-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5l10 -10"/></svg></span><span class="mm-tog-l">スナップ（描いた道に吸い付く）</span><div class="mm-sw" id="mmSwSnap"></div></div>
+          <div class="mm-tog" onclick="toggleViaVisibility();_syncMobileMenu()" data-edit="1"><span class="mm-tog-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 12a4 4 0 1 0 8 0a4 4 0 1 0 -8 0" /></svg></span><span class="mm-tog-l">通り道の点を表示</span><div class="mm-sw" id="mmSwVia"></div></div>
+          <div class="mm-tog" onclick="toggleManualMode();_syncMobileMenu()" data-edit="1"><span class="mm-tog-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 13v-7.5a1.5 1.5 0 0 1 3 0v6.5" /> <path d="M11 5.5v-2a1.5 1.5 0 1 1 3 0v8.5" /> <path d="M14 5.5a1.5 1.5 0 0 1 3 0v6.5" /> <path d="M17 7.5a1.5 1.5 0 0 1 3 0v8.5a6 6 0 0 1 -6 6h-2h.208a6 6 0 0 1 -5.012 -2.7a69.74 69.74 0 0 1 -.196 -.3c-.312 -.479 -1.407 -2.388 -3.286 -5.728a1.5 1.5 0 0 1 .536 -2.022a1.867 1.867 0 0 1 2.28 .28l1.47 1.47" /></svg></span><span class="mm-tog-l">道に沿わせない</span><div class="mm-sw" id="mmSwManual"></div></div>
+          <div class="mm-tog" onclick="toggleCustomFeature();_syncMobileMenu()" data-edit="1"><span class="mm-tog-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6 -6l4 4l8 -8"/><path d="M14 7l7 0l0 7"/></svg></span><span class="mm-tog-l">自分で描いた道を使う</span><div class="mm-sw" id="mmSwCustom"></div></div>
+          <div class="mm-tog" onclick="toggleCustomSnap();_syncMobileMenu()" data-edit="1"><span class="mm-tog-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5l10 -10"/></svg></span><span class="mm-tog-l">描いた道に吸い付く</span><div class="mm-sw" id="mmSwSnap"></div></div>
           </div>
           <div class="mm-grid four">
           <button class="mm-act" onclick="closeMobileMenu();saveMapNoText()"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 8h.01" /> <path d="M7 3h11a3 3 0 0 1 3 3v11m-.856 3.099a2.991 2.991 0 0 1 -2.144 .901h-12a3 3 0 0 1 -3 -3v-12c0 -.845 .349 -1.608 .91 -2.153" /> <path d="M3 16l5 -5c.928 -.893 2.072 -.893 3 0l5 5" /> <path d="M16.33 12.338c.574 -.054 1.155 .166 1.67 .662l3 3" /> <path d="M3 3l18 18" /></svg><span>文字なし保存</span></button>
@@ -1094,7 +1100,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
 <div id="mOver" class="m-over">
   <div class="m-box">
     <div class="m-hdr">
-      <span>ウェイポイント編集</span>
+      <span>スポットの編集</span>
       <div class="m-hdr-acts">
         <button class="m-hbtn del" onclick="deleteEditing()">削除</button>
         <button class="m-hbtn save" onclick="saveModal()">保存</button>
@@ -1112,7 +1118,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
       <div style="font-size:11px;font-weight:bold;color:var(--t-sub);margin-bottom:4px">前後の接続設定</div>
       <label style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:normal;cursor:pointer;margin-bottom:5px">
         <input type="checkbox" id="mOnRoute" style="width:auto;padding:0;margin:0">
-        このウェイポイントをルートに含める
+        このスポットをコースに含める
       </label>
       <div style="height:6px"></div>
       <label style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:normal;cursor:pointer;margin-bottom:5px">
@@ -1147,7 +1153,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
 
 <!-- View Mode Info Panel -->
 <div id="viewInfoPanel"></div>
-<div id="viewBadge">👁 閲覧モード</div>
+<div id="viewBadge">👁 歩く人の見え方</div>
 <div id="offlineBadge">📴 オフライン（保存した地図を表示中）</div>
 
 <!-- WPタイプピッカー -->
@@ -1166,54 +1172,45 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
       <button onclick="closeHelp()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#666;padding:0 4px;line-height:1">✕</button>
     </div>
     <div class="help-section">
-      <h3>📍 ウェイポイントの追加・編集</h3>
+      <h3>📍 スポットを置く・直す</h3>
       <ul>
-        <li>地図をクリック/タップ → ウェイポイントを追加</li>
-        <li>マーカーをクリック → 名称・種別・滞在時間などを編集</li>
-        <li>スマホ：マーカーを長押し（約0.7秒）→ 編集画面を開く（削除ボタンあり）</li>
-        <li>サイドバーのリストをドラッグ → 順番を変更（コースラインも連動）</li>
+        <li>地図をクリック／タップ → その場に「コースポイント」が置かれます（番号は自動）</li>
+        <li>○をクリック／タップ → 種類・名前・説明・写真・滞在時間を直します（削除もここ）</li>
+        <li>左の一覧（PC）や「スポットの並べ替え」（スマホ）で順番を変えると、道順も付いてきます</li>
       </ul>
     </div>
     <div class="help-section">
-      <h3>↔ 経路調整点の使い方</h3>
+      <h3>↔ 通り道の点（道順を細かく指定する）</h3>
       <ul>
-        <li>「↔ 調整点」モードで地図をクリック → 経路調整点を追加</li>
-        <li>調整点がある区間は直線で引かれます（OSRM自動ルートより優先）</li>
-        <li>農道・山道など細い道の上に調整点を密に置いてください</li>
-        <li>PC：調整点を右クリック → 削除</li>
-        <li>スマホ：調整点を長押し（約0.7秒）→ 削除</li>
-        <li>「● 調整点表示」ボタンで表示/非表示を切替（ルートは保持）</li>
+        <li>「通り道」を選んで地図をクリック → そこを通るように道順が変わります</li>
+        <li>赤い破線をドラッグしても、そこに通り道の点が置かれます</li>
+        <li>通り道の点がある区間は、点を直線でつなぎます（自動の道順より優先）</li>
+        <li>農道・山道など地図に無い道は、通り道の点を細かく置くか、「自分で描いた道」を使ってください</li>
+        <li>PC：点を右クリック → 削除／スマホ：点を長押し（約0.7秒）→ 削除</li>
+        <li>「通り道の点を表示」をOFFにすると点が隠れ、赤い線のドラッグも効かなくなります（道順は残ります）</li>
       </ul>
     </div>
     <div class="help-section">
-      <h3>🔴 ルート線の編集</h3>
+      <h3>✏️ 自分で描いた道・道に沿わせない（上級者向け）</h3>
       <ul>
-        <li>赤い破線をドラッグ → そこに調整点が追加されルートが変形</li>
-        <li>調整点がない区間 → OSRMが道路に沿って自動ルーティング</li>
-        <li>調整点がある区間 → 調整点を直線でつないだルート（手動優先）</li>
-        <li>調整点を非表示中はルート線のドラッグは無効になります</li>
+        <li>「自分で描いた道」：地図に無い道を指でなぞって描き、その道に沿って道順を引けます（スマホ）</li>
+        <li>「描いた道に吸い付く」：置いた点を、描いた道の上にそろえます</li>
+        <li>「道に沿わせない」：ONの間、通り道の点を道に吸い付けず、置いた場所そのままにします</li>
       </ul>
     </div>
     <div class="help-section">
-      <h3>💾 保存・読み込み</h3>
+      <h3>💾 保存・配る</h3>
       <ul>
-        <li>「💾」ボタン → ブラウザに保存（GitHub Pages）またはメモリ保存</li>
-        <li>「📥」ボタン → JSONファイルでダウンロード（どこでも復元可能）</li>
-        <li>一覧画面の「📂 JSONから読み込む」→ JSONファイルを読み込み</li>
-      </ul>
-    </div>
-    <div class="help-section">
-      <h3>📷 マップを画像で保存</h3>
-      <ul>
-        <li>「📷」ボタン → 現在の地図表示をPNG画像でダウンロード</li>
-        <li>GitHub Pages上で動作します（プレビュー環境では地図タイルが白になる場合があります）</li>
+        <li>「保存」→ この端末のブラウザに保存されます（消える前の案内は一覧画面に出ます）</li>
+        <li>「配る」→ 画像・配布シート（A4）・リンク・GPX の4つの出口が1枚にまとまっています</li>
+        <li>「その他」→ JSONで保存（バックアップ）。一覧画面の「ファイルから読み込む」で戻せます</li>
       </ul>
     </div>
     <div class="help-section">
       <h3>⏱ 所要時間の計算</h3>
       <ul>
-        <li>距離÷歩く速さ（既定4km/h・変更可）＋ 各ウェイポイントの滞在時間。高低差を取得済みなら登り100mにつき10分を加算</li>
-        <li>滞在時間はウェイポイント編集画面で分単位で設定できます</li>
+        <li>距離÷歩く速さ（既定4km/h・変更可）＋ 各スポットの滞在時間。高低差を取得済みなら登り100mにつき10分を加算</li>
+        <li>滞在時間はスポットの編集画面で分単位で設定できます</li>
       </ul>
     </div>
   </div>
@@ -1245,7 +1242,7 @@ const WT = [
   {v:'toilet',  l:'トイレ',                      c:'#455A64'},
   {v:'parking', l:'駐車場',                      c:'#3949AB'},   // ビュースポットと同じ色だった → 藍へ
   {v:'other',   l:'その他',                      c:'#5F5F5F'},
-  {v:'node',    l:'なぞり点（調整点）',            c:'#444444'},
+  {v:'node',    l:'描いた道の点',                c:'#444444'},
 ];
 const SYM = {start:'S',goal:'G',view:'◎',shop:'★',shrine:'⛩',history:'碑',park:'🌿',school:'学',hall:'公',toilet:'WC',parking:'P',other:'●',node:''};
 const TYPE_BIG = ['course', 'view', 'history', 'shop'];   // 編集画面で大きく出す「よく使う4つ」（オーナー指定・v129）。残りは畳む
@@ -1339,6 +1336,7 @@ const LS = {
 };
 // --- サンプルコース（初回起動時に一度だけ取り込む。削除したら復活しない）---
 const SAMPLE_URL = 'sample.json';   // index.html と同じ場所に置く
+const DELETE_UNDO_MS = 10000;       // コースを削除したあと「元に戻す」を出しておく時間（v130）
 let   _dblOn = true;         // 往復ずらし表示 ON/OFF（falseで完全に従来の見た目）
 let   _labelSizeIdx = 0;     // 名称ラベルの文字サイズ段階（0=標準/1=大/2=特大）。LABEL_SIZES の添字
 let   _wpSizeIdx    = 0;     // スポット○の大きさ段階（0=標準/1=大/2=特大）。WP_SIZES の添字
@@ -1389,6 +1387,7 @@ let customRoads = [];     // カスタム道路 [{id,name,coords,visible,_line}]
 let _wpPickerLatlng = null; // WPタイプピッカー表示中の座標（現在地マーカーから置くときだけ使う）
 let _placeHintCount = 0;    // 1タップで置いたあとの案内を出した回数（このセッションで2回まで）（v128）
 let _typeMoreOpen   = false; // 編集画面の「その他の種類」を開いているか（v128）
+let _delPending     = null;  // 削除して「元に戻す」待ちのコース {course, index}（v130）
 let _showMapLabels  = true;  // 地図ラベル表示フラグ
 let _lastRouteCoords= null;  // 最後のルート座標（高低差用）
 let _elevData       = null;  // 高低差データキャッシュ
@@ -2163,7 +2162,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v129';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
+const APP_VERSION = 'v130';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
 }catch(_){} });
@@ -2258,7 +2257,7 @@ function _addVertexAt(pathId, ll){
   saveSnapshot();
   p.pts.splice(bestSeg+1, 0, [ll.lat, ll.lng]);
   _saveCustom(); _renderCustom();
-  showToast('調整点を追加しました');
+  showToast('通り道の点を置きました');
 }
 
 // 頂点(調整点)を1つだけ削除。残り2点未満になるなら確認の上で細道ごと削除。
@@ -2266,20 +2265,20 @@ function _deleteVertex(id, idx){
   if(!_customMode_) return;
   const p=customPaths.find(x=>x.id===id); if(!p||!p.pts||!p.pts[idx]) return;
   if(p.pts.length<=2){
-    if(!confirm('この点を消すと線にならないため、細道を削除します。よろしいですか？')) return;
+    if(!confirm('この点を消すと線にならないため、描いた道を削除します。よろしいですか？')) return;
     saveSnapshot(); customPaths=customPaths.filter(x=>x.id!==id);
-    _saveCustom(); _renderCustom(); showToast('細道を削除しました'); return;
+    _saveCustom(); _renderCustom(); showToast('描いた道を削除しました'); return;
   }
   saveSnapshot(); p.pts.splice(idx,1);
-  _saveCustom(); _renderCustom(); showToast('調整点を1つ削除しました');
+  _saveCustom(); _renderCustom(); showToast('通り道の点を1つ削除しました');
 }
 
 function _deleteCustom(id){
   if(!_customMode_) return;
-  if(!confirm('この細道を削除しますか？')) return;
+  if(!confirm('この描いた道を削除しますか？')) return;
   saveSnapshot();
   customPaths = customPaths.filter(p=>p.id!==id);
-  _saveCustom(); _renderCustom(); showToast('細道を削除しました');
+  _saveCustom(); _renderCustom(); showToast('描いた道を削除しました');
 }
 
 /* ---- 最近傍スナップ（線分への射影・haversine） ---- */
@@ -2328,19 +2327,19 @@ function _snapToRoute(lat,lng){
 
 /* ---- 描画モード ---- */
 function startDrawPath(){
-  if(!_customOn()){ showToast('細道機能がOFFです（メニューでON）'); return; }
+  if(!_customOn()){ showToast('「自分で描いた道」がOFFです（メニューでON）'); return; }
   if(typeof closeMobileMenu==='function') closeMobileMenu();
   _customSession=[];
   _customTraceMode=true;
   enterDrawMode();           // 既存のなぞり捕捉を流用
   _showDrawBar(true);
-  showToast('細道をなぞって描く：指でなぞる（何本でも）→ 終了');
+  showToast('道を描く：指でなぞる（何本でも）→ 終了');
 }
 function finishCustomTrace(){ if(_customMode_) toggleCustomMode(); }
 function undoLastCustom(){
   const id=_customSession.pop();
-  if(id){ customPaths=customPaths.filter(p=>p.id!==id); _saveCustom(); _renderCustom(); showToast('直前の細道を取消しました'); }
-  else { showToast('取り消す細道がありません'); }
+  if(id){ customPaths=customPaths.filter(p=>p.id!==id); _saveCustom(); _renderCustom(); showToast('直前に描いた道を取り消しました'); }
+  else { showToast('取り消す道がありません'); }
 }
 // なぞり軌跡 → 補正(画面座標で間引き＋角を丸める) → 細道として保存
 function _saveCustomFromTrace(rawPts){
@@ -2351,8 +2350,8 @@ function _saveCustomFromTrace(rawPts){
     saveSnapshot();
     customPaths.push({id, pts:ll}); _customSession.push(id);
     _saveCustom(); _renderCustom();
-    showToast('細道を追加（つづけて描けます／終了で確定）');
-  }catch(_){ showToast('細道の追加に失敗しました'); }
+    showToast('道を描きました（つづけて描けます／終了で確定）');
+  }catch(_){ showToast('道を描けませんでした'); }
 }
 function _simplifySmooth(rawPts){
   const cpts=rawPts.map(p=>leafMap.latLngToContainerPoint(L.latLng(p[0],p[1])));
@@ -2390,9 +2389,9 @@ function toggleCustomFeature(){
   _customOn_=!_customOn_; _savePrefsCustom();
   if(!_customOn_){ if(_customMode_){ _customMode_=false; _customTraceMode=false; _activeHandle=null; exitDrawMode(); _setMarkersClickable(true); _showDrawBar(false); } }
   _renderCustom();
-  showToast(_customOn_ ? '細道機能 ON' : '細道機能 OFF（従来動作）');
+  showToast(_customOn_ ? '自分で描いた道：ON' : '自分で描いた道：OFF');
 }
-function toggleCustomSnap(){ _snapOn_=!_snapOn_; _savePrefsCustom(); showToast(_snapOn_?'スナップ ON':'スナップ OFF'); }
+function toggleCustomSnap(){ _snapOn_=!_snapOn_; _savePrefsCustom(); showToast(_snapOn_?'描いた道に吸い付く：ON':'描いた道に吸い付く：OFF'); }
 /* ===== 第2段階：細道に沿う経路（グラフ＋最短経路。失敗時は必ずnull＝従来動作） ===== */
 function _alongDist(aLat,aLng,bLat,bLng){ return haversine(aLat,aLng,bLat,bLng); }
 function _alongBuildGraph(){
@@ -2500,15 +2499,15 @@ function _alongSegment(from,to){
   }catch(_){ return null; }
 }
 function toggleCustomMode(){
-  if(!_customOn()){ showToast('細道機能がOFFです（設定でON）'); return; }
+  if(!_customOn()){ showToast('「自分で描いた道」がOFFです（メニューでON）'); return; }
   _customMode_=!_customMode_;
   if(typeof _closeAllPopups==='function') _closeAllPopups();
   if(_customMode_){
     _customSession=[]; _customTraceMode=true; enterDrawMode(); _setMarkersClickable(false); _showDrawBar(true); _renderCustom();
-    showToast('細い道 作成・編集：なぞって作成／長押しで削除');
+    showToast('自分で描いた道：なぞって描く／長押しで削除');
   } else {
     _activeHandle=null; _customTraceMode=false; exitDrawMode(); _setMarkersClickable(true); _showDrawBar(false); _renderCustom();
-    showToast('細い道 作成・編集を終了');
+    showToast('道を描くのを終了しました');
   }
   _syncCustomMenu();
 }
@@ -3111,7 +3110,7 @@ function deleteWp(id) {
    VIA POINTS
    ============================================================ */
 function addVp(lat, lng) {
-  if (routeWps().length < 2) { alert('ルートに含めるウェイポイントを2点以上追加してから経路調整点を追加してください。'); return; }
+  if (routeWps().length < 2) { alert('コースに含めるスポットを2つ以上置いてから、通り道の点を置いてください。'); return; }
   if (!_boundsAnchor) _setAnchor(lat, lng, false);  // 基準点未設定時のフォールバック
   saveSnapshot();
   // スナップ：細道に当たればそこへ。当たらなければ実ルート線へ（線の近くに打てば線上に乗る＝寄り道斜めを防ぐ）
@@ -3267,11 +3266,11 @@ function showNodeCtxMenu(wpId, x, y) {
   items.push({html:(fb?_ICO_ON:_ICO_OFF)+'<span>前の区間を道路に沿う</span>', fn:() => _nodeToggleFit(wpId,'before')});
   items.push({html:(fa?_ICO_ON:_ICO_OFF)+'<span>後の区間を道路に沿う</span>', fn:() => _nodeToggleFit(wpId,'after')});
   items.push(null);
-  items.push({html:_ICO_REFRESH+'<span>ウェイポイントに変換</span>', fn:() => _nodeConvertToWp(wpId), cls:'ctx-convert'});
+  items.push({html:_ICO_REFRESH+'<span>スポットに変える</span>', fn:() => _nodeConvertToWp(wpId), cls:'ctx-convert'});
   if (isFirst) items.push({html:_ICO_FLAG+'<span>スタートに設定</span>', fn:() => _promoteNode(wpId,'start'), cls:'ctx-convert'});
   if (isLast)  items.push({html:_ICO_FLAG+'<span>ゴールに設定</span>',   fn:() => _promoteNode(wpId,'goal'),  cls:'ctx-convert'});
   items.push(null);
-  items.push({html:_ICO_TRASH+'<span>この調整点を削除</span>', fn:() => _deleteNode(wpId), cls:'ctx-del'});
+  items.push({html:_ICO_TRASH+'<span>この通り道の点を削除</span>', fn:() => _deleteNode(wpId), cls:'ctx-del'});
 
   items.forEach(item => {
     if (item === null) { const sep=document.createElement('div'); sep.className='ctx-sep'; menu.appendChild(sep); }
@@ -3311,7 +3310,7 @@ function _nodeConvertToWp(wpId) {
   saveSnapshot();
   wp.type = 'course';
   refreshIcons(); redrawStraight(); redrawList(); scheduleRouting();
-  showToast('ウェイポイントに変換しました');
+  showToast('スポットに変えました');
 }
 
 // 端点nodeをスタート/ゴールに昇格
@@ -3392,7 +3391,7 @@ function showViaCtxMenu(vpId, x, y) {
 
   const hdr = document.createElement('div');
   hdr.className = 'ctx-hdr';
-  hdr.innerHTML = '<span>経路調整点の設定</span>';
+  hdr.innerHTML = '<span>通り道の点の設定</span>';
   const _hx = document.createElement('button');
   _hx.className = 'ctx-hx';
   _hx.setAttribute('aria-label','閉じる');
@@ -3407,9 +3406,9 @@ function showViaCtxMenu(vpId, x, y) {
     {html: (fb?_ICO_ON:_ICO_OFF) + '<span>前の区間を道路に沿う</span>',  fn: () => ctxDoToggleFit('before')},
     {html: (fa?_ICO_ON:_ICO_OFF) + '<span>後の区間を道路に沿う</span>',  fn: () => ctxDoToggleFit('after')},
     null,
-    {html: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;vertical-align:middle"><path d="M20 11a8.1 8.1 0 0 0 -15.5 -2m-.5 -4v4h4" /> <path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4" /></svg><span>ウェイポイントに変換</span>', fn: ctxConvertToWp, cls: 'ctx-convert'},
+    {html: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;vertical-align:middle"><path d="M20 11a8.1 8.1 0 0 0 -15.5 -2m-.5 -4v4h4" /> <path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4" /></svg><span>スポットに変える</span>', fn: ctxConvertToWp, cls: 'ctx-convert'},
     null,
-    {html: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;vertical-align:middle"><path d="M4 7l16 0" /> <path d="M10 11l0 6" /> <path d="M14 11l0 6" /> <path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12" /> <path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3" /></svg><span>この調整点を削除</span>', fn: ctxDoDeleteVp, cls: 'ctx-del'},
+    {html: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;vertical-align:middle"><path d="M4 7l16 0" /> <path d="M10 11l0 6" /> <path d="M14 11l0 6" /> <path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12" /> <path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3" /></svg><span>この通り道の点を削除</span>', fn: ctxDoDeleteVp, cls: 'ctx-del'},
   ];
 
   items.forEach(item => {
@@ -3445,8 +3444,8 @@ function toggleManualMode() {
   if (btn) btn.classList.toggle('on', manualMode);
   document.getElementById('mobileManBtn')?.classList.toggle('on', manualMode);
   showToast(manualMode
-    ? '✋ 手動モード ON：以降の調整点は白い道にフィットしません'
-    : '手動モード OFF：以降の調整点は白い道にフィットします');
+    ? '✋ 道に沿わせない：ON（これから置く通り道の点は道に吸い付きません）'
+    : '道に沿わせない：OFF（通り道の点は道に沿います）');
 }
 
 function toggleViewMode() {
@@ -3465,8 +3464,8 @@ function toggleViewMode() {
   _applyViewLock();                                  // 編集の操作を隠し、印を動かせなくする
   redrawList();                                      // 一覧の並べ替え可否を作り直す
   showToast(viewMode
-    ? '👁 閲覧モード ON：ウェイポイントをタップで写真・解説を表示'
-    : '閲覧モード OFF：ウェイポイントをタップで編集できます');
+    ? '👁 歩く人の見え方：スポットをタップすると写真・解説が出ます'
+    : '編集にもどりました：スポットをタップすると編集できます');
 }
 
 /* 閲覧中は編集の操作をすべて止める。CSS（body.viewing）で隠し、印は動かせなくする。
@@ -3793,7 +3792,7 @@ function enterDrawMode() {
   _drawHandlers = h;
   document.getElementById('map')?.classList.add('draw-cursor');
   document.body.classList.add('drawing-active');
-  showToast('✏️ なぞり描き：地図を指でなぞってコースを描けます');
+  showToast('✏️ 指でなぞって描く：地図を指でなぞるとコースになります');
 }
 
 function exitDrawMode() {
@@ -3920,7 +3919,7 @@ function _drawMove(ev) {
 }
 
 function _drawEnd(ev) {
-  if (_activeHandle) { if(_vtxDelTimer){ clearTimeout(_vtxDelTimer); _vtxDelTimer=null; } _vtxDelTarget=null; _vtxPressP=null; if(ev.cancelable)ev.preventDefault(); _activeHandle=null; if(_handleSnapTaken){ try{_saveCustom();}catch(_){} showToast('細道を調整しました'); } _handleSnapTaken=false; return; }
+  if (_activeHandle) { if(_vtxDelTimer){ clearTimeout(_vtxDelTimer); _vtxDelTimer=null; } _vtxDelTarget=null; _vtxPressP=null; if(ev.cancelable)ev.preventDefault(); _activeHandle=null; if(_handleSnapTaken){ try{_saveCustom();}catch(_){} showToast('描いた道を直しました'); } _handleSnapTaken=false; return; }
   const _tapNearId = _customDelId;                                  // タップ追加判定用に退避
   const _tapQuick  = (_pressStartT && (Date.now()-_pressStartT) < 500);
   if (_customDelTimer) { clearTimeout(_customDelTimer); _customDelTimer=null; _customDelId=null; }
@@ -4041,7 +4040,7 @@ function ctxDoDeleteVp() {
   const id = ctxVpId;
   hideCtxMenu();
   deleteVp(id);
-  showToast('経路調整点を削除しました');
+  showToast('通り道の点を削除しました');
 }
 
 function deleteVp(id) {
@@ -5290,7 +5289,7 @@ function saveModal() {
 
 function deleteEditing() {
   if (editId===null) return;
-  if (!confirm('このウェイポイントを削除しますか？')) return;
+  if (!confirm('このスポットを削除しますか？')) return;
   const id = editId;
   closeModal();
   deleteWp(id);
@@ -5772,7 +5771,7 @@ function setMode(m) {
   const msgs = {
     'wp':       'クリックでスポットを追加',
     'via':      'ルート線の上をクリックして道順を変える',
-    'draw':     'なぞり描き：地図をなぞってコースを描く',
+    'draw':     '指でなぞって描く：地図をなぞるとコースになる',
     'road':     '道を描いています：クリックで点を追加',
     'road-edit':'道を編集中：点をドラッグで移動／右クリックで削除',
   };
@@ -5854,7 +5853,7 @@ function updateUndoRedoBtns() {
 function clearAll() {
   if (viewMode) return;
   if (wps.length===0 && vps.length===0) return;
-  if (!confirm('すべてのウェイポイントと経路調整点を消去しますか？')) return;
+  if (!confirm('すべてのスポットと通り道の点を消しますか？')) return;
   saveSnapshot();
   _clearAllMarkers();
   wps=[]; vps=[]; segCache={};
@@ -5909,7 +5908,7 @@ function ctxConvertToWp() {
   vps = vps.filter(v=>v.id!==vp.id);
 
   clearCache(); redrawStraight(); scheduleRouting(); redrawList(); refreshIcons();
-  showToast('調整点をウェイポイントに変換しました');
+  showToast('通り道の点をスポットに変えました');
 }
 
 /* ============================================================
@@ -6548,10 +6547,36 @@ async function saveCourse() {
   return true;
 }
 
+/* コースの削除（v130）：確認ダイアログの代わりに、すぐ消して10秒間「元に戻す」を出す。
+   戻すときは同じ位置・同じ中身で戻る。10秒たったら確定（この時点で何かを追加で消すことはない） */
 function deleteCourse(id) {
-  if (!confirm('このコースを削除しますか？')) return;
-  setCourses(getCourses().filter(c=>c.id!==id));
+  const list = getCourses();
+  const idx  = list.findIndex(c => c && c.id === id);
+  if (idx < 0) return;
+  _finalizeDelete();                                   // 前の「元に戻す」待ちがあれば確定
+  const course = list[idx];
+  setCourses(list.filter(c => c.id !== id));
   renderCourseList();
+  _delPending = {course, index: idx};
+  _showUndoToast('「' + (course.name || '(名称未設定)') + '」を削除しました', undoDeleteCourse, DELETE_UNDO_MS);
+}
+function undoDeleteCourse() {
+  if (!_delPending) return;
+  const {course, index} = _delPending; _delPending = null;
+  const list = getCourses();
+  if (!list.some(c => c && c.id === course.id)) { list.splice(Math.min(index, list.length), 0, course); setCourses(list); }
+  renderCourseList();
+  showToast('元に戻しました');
+}
+function _finalizeDelete() { _delPending = null; const t = document.getElementById('undoToast'); if (t) t.remove(); }
+function _showUndoToast(msg, onUndo, ms) {
+  const old = document.getElementById('undoToast'); if (old) old.remove();
+  const t = document.createElement('div'); t.id = 'undoToast'; t.setAttribute('role', 'status');
+  const sp = document.createElement('span'); sp.textContent = msg;
+  const b  = document.createElement('button'); b.type = 'button'; b.className = 'tap'; b.textContent = '元に戻す';
+  b.onclick = () => { clearTimeout(t._timer); t.remove(); onUndo(); };
+  t.appendChild(sp); t.appendChild(b); document.body.appendChild(t);
+  t._timer = setTimeout(() => { t.remove(); _finalizeDelete(); }, ms);
 }
 
 // コース全体を画面にフィット（保存状態に依存せず毎回・全体の中心を画面中央に）
@@ -7119,7 +7144,7 @@ function importCourseFromFile(input) {
         // GPXには「調整点」が入らない＝道順は引き直しになる。黙って違う道順にしない。
         if (isGpx && !trkPts.length) {
           alert('GPXを読み込みました（スポット' + data.wps.length + '件）。\n\n'
-              + 'GPXには「調整点（道順の細かい指定）」が含まれないため、'
+              + 'GPXには「通り道の点（道順の細かい指定）」が含まれないため、'
               + '道順はこのアプリが引き直します。元の道順をそのまま残したいときは、'
               + 'JSONでの書き出し・読み込みをお使いください。');
         }
