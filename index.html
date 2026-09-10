@@ -212,6 +212,16 @@ html,body{min-height:calc(100% + env(safe-area-inset-top));font-family:'Hiragino
 .m-body label{display:block;font-size:11px;font-weight:bold;color:var(--t-sub);margin-bottom:2px}
 .m-body input,.m-body select,.m-body textarea{width:100%;padding:7px 9px;border:1px solid #D4C4A8;border-radius:5px;font-size:13px;font-family:inherit;background:#fff;outline:none;margin-bottom:10px}
 .m-body input[type=number]{width:120px}
+/* 種別の選び方（v128）：select は隠して値の置き場にし、見た目はチップで */
+#mType{display:none}
+#mTypeChips{margin-bottom:10px}
+.tc-row{display:flex;flex-wrap:wrap;gap:6px}
+.tc-row.rest{margin-top:6px}
+.tc-chip{display:inline-flex;align-items:center;gap:6px;border:1px solid #D4C4A8;border-radius:10px;background:#fff;font-family:inherit;font-size:12px;color:#2C2620;padding:6px 9px;cursor:pointer;min-height:var(--tap)}
+.tc-chip.big{font-size:13px;font-weight:700;padding:8px 11px;flex:1 1 calc(50% - 6px)}
+.tc-chip.on{border-color:var(--brand);background:var(--brand-soft);color:var(--brand)}
+.tc-dot{width:20px;height:20px;border-radius:50%;color:#fff;font-size:10px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;flex:none}
+.tc-more{display:inline-flex;align-items:center;gap:6px;margin-top:6px;border:none;background:none;font-family:inherit;font-size:12px;font-weight:700;color:var(--t-sub);cursor:pointer;padding:6px 2px;min-height:var(--tap)}
 .m-body textarea{resize:vertical;min-height:55px}
 .m-ftr{padding:10px 14px;border-top:1px solid #EEE;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-shrink:0;background:#fff}
 /* Help modal */
@@ -918,7 +928,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
       <div id="firstTip">
         <div class="ft-ic">📍</div>
         <div class="ft-t">地図をタップして<br>最初の場所を置いてみましょう</div>
-        <div class="ft-d">置いた場所は、自動で道に沿ってつながります。<br>順番はあとから変えられます。</div>
+        <div class="ft-d">置いた場所は、自動で道に沿ってつながります。<br>種類と名前は、○を押してあとから決められます。</div>
         <button class="ft-b" onclick="dismissFirstTip()">はじめる</button>
         <div class="ft-n">この案内は最初の1回だけ出ます</div>
       </div>
@@ -1092,6 +1102,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
     </div>
     <div class="m-body">
       <label>種別</label><select id="mType"></select>
+      <div id="mTypeChips"></div>   <!-- 種別の選び方（v128）：よく使う4つを大きく、残りは畳む。値は上の select に入れる -->
       <label>名称 1行目（地図上に表示）</label><input id="mName" placeholder="スポット名">
       <label>名称 2行目（任意）</label><input id="mName2" placeholder="補足・カッコ書きなど">
       <label>説明・補足</label><textarea id="mDesc2" placeholder="例：農水省認定・171枚の棚田が広がる"></textarea>
@@ -1235,6 +1246,7 @@ const WT = [
   {v:'node',    l:'なぞり点（調整点）',            c:'#444444'},
 ];
 const SYM = {start:'S',goal:'G',view:'◎',shop:'★',shrine:'⛩',history:'碑',park:'🌿',toilet:'WC',parking:'P',other:'●',node:''};
+const TYPE_BIG = ['course', 'view', 'shrine', 'toilet'];   // 編集画面で大きく出す「よく使う4つ」。残りは畳む（v128）
 const LINE_STYLE = {color:'#E84040', weight:4, dashArray:'8,5', opacity:.9, lineJoin:'round', lineCap:'round', smoothFactor:0};
 const DBL_GAP_PX = 2;        // 往復で重なる区間：2本の線の間隔(px)
 const ROUTE_CASING_ADD = 3;  // ルート線の白いふちの太さ（赤い線に足すpx）。表示専用
@@ -1372,7 +1384,9 @@ let viewMode    = false;   // 閲覧専用モード
 let _routeCoordMap = [];   // OSRM座標→セグメントID対応表（クリック判定用）
 let _segCoordCache = {};   // wpId→区間座標 の事前グループ化（_vpPosAlong等の高速化）
 let customRoads = [];     // カスタム道路 [{id,name,coords,visible,_line}]
-let _wpPickerLatlng = null; // WPタイプピッカー表示中の座標
+let _wpPickerLatlng = null; // WPタイプピッカー表示中の座標（現在地マーカーから置くときだけ使う）
+let _placeHintCount = 0;    // 1タップで置いたあとの案内を出した回数（このセッションで2回まで）（v128）
+let _typeMoreOpen   = false; // 編集画面の「その他の種類」を開いているか（v128）
 let _showMapLabels  = true;  // 地図ラベル表示フラグ
 let _lastRouteCoords= null;  // 最後のルート座標（高低差用）
 let _elevData       = null;  // 高低差データキャッシュ
@@ -2147,7 +2161,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v127';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
+const APP_VERSION = 'v128';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
 }catch(_){} });
@@ -2691,7 +2705,9 @@ function onMapClick(e) {
   if (document.getElementById('mOver')?.classList.contains('show')) return;
   if (mode==='wp') {
     if (_wpPickerLatlng !== null) { hideWpPicker(); return; } // ピッカー表示中は閉じて終了
-    showWpTypePicker(e.latlng.lat, e.latlng.lng, e);
+    // 1タップで置く（v128）：まず「コースポイント」として置く。種類と名前は○を押してあとから
+    addWp(e.latlng.lat, e.latlng.lng, 'course');
+    if (_placeHintCount < 2) { _placeHintCount++; showToast('置きました。○を押すと種類と名前を変えられます'); }
     return;
   }
   if (mode==='via')  addVp(e.latlng.lat, e.latlng.lng);
@@ -5103,6 +5119,29 @@ function flyEdit(id) {
 /* ============================================================
    MODAL
    ============================================================ */
+/* 種別のチップ（v128）：選べる種類は _buildTypeOptions が select に入れたものだけ（出どころ1つ）。
+   よく使う4つ（TYPE_BIG）を大きく、残りは「その他の種類」に畳む。いまの種類が畳んだ側なら開いておく */
+function _renderTypeChips() {
+  const sel = document.getElementById('mType'), box = document.getElementById('mTypeChips');
+  if (!sel || !box) return;
+  const cur = sel.value, opts = [...sel.options].map(o => o.value);
+  const chip = (v, big) => {
+    const t = WT.find(x => x.v === v) || {l: v, c: '#888'};
+    const sym = v === 'course' ? '1' : (SYM[v] || '●');
+    return `<button type="button" class="tc-chip${big ? ' big' : ''}${v === cur ? ' on' : ''}" onclick="_pickType('${v}')">`
+         + `<span class="tc-dot" style="background:${t.c}">${escHtml(sym)}</span>${escHtml(t.l)}</button>`;
+  };
+  const bigs = TYPE_BIG.filter(v => opts.includes(v));
+  const rest = opts.filter(v => !TYPE_BIG.includes(v));
+  const open = rest.includes(cur) || _typeMoreOpen;
+  box.innerHTML = '<div class="tc-row">' + bigs.map(v => chip(v, true)).join('') + '</div>'
+    + (rest.length ? `<button type="button" class="tc-more" onclick="_typeMoreOpen=!_typeMoreOpen;_renderTypeChips()" aria-expanded="${open}">その他の種類（${rest.length}）<i>${open ? '▴' : '▾'}</i></button>` : '')
+    + (open && rest.length ? '<div class="tc-row rest">' + rest.map(v => chip(v, false)).join('') + '</div>' : '');
+}
+function _pickType(v) {
+  const sel = document.getElementById('mType'); if (!sel) return;
+  sel.value = v; _renderTypeChips();
+}
 // 種別ドロップダウンを動的生成：スタート/ゴールはコースラインの先頭/末尾の点のみ選択可能
 function _buildTypeOptions(wp) {
   const sel = document.getElementById('mType');
@@ -5193,6 +5232,7 @@ function openModal(id) {
   if (!wp) return;
   _buildTypeOptions(wp);   // スタート/ゴールはコース両端の点のみ選択可
   document.getElementById('mType').value   = wp.type;
+  _typeMoreOpen = false; _renderTypeChips();   // よく使う4つを大きく、残りは畳む（v128）
   const _nameParts = (wp.name||'').split('\n');
   document.getElementById('mName').value   = _nameParts[0] || '';
   const mN2el = document.getElementById('mName2');

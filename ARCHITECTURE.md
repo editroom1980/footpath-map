@@ -108,6 +108,9 @@
 
 8. **版数は3か所そろえる**（10章）。
 
+15. **種別の選び方は select（隠す）＋チップ**（v128）。`saveModal` は `#mType.value` を読むだけ、`_buildTypeOptions(wp)` が
+    選べる種類を select に入れ、`_renderTypeChips()` はそれを読んで描く。種類の制限（スタート／ゴールは両端だけ）を
+    足すときは `_buildTypeOptions` だけ直す。地図タップは `addWp(…,'course')` で即置く（選択画面を戻さない）。
 14. **PCの道具は3群で、id は据え置き**（v126）。左の縦の道具＝`#tbar`（`btnWp/btnVia/btnUndo/btnRedo`）、右上＝`#pcTr`
     （`btnBaseMap`→`#popMap`、`btnLegend`→`#popLegend`）、下＝`#pcBl`（`btnElev`）、上バー＝`#hdr`（`btnView/btnMore`→`#popMore`）。
     どれも `#mapWrap` の上に浮かせているだけで、`#map` の外なので保存画像には写らない。状態の反映は `_syncPcPops()`
