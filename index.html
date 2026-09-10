@@ -280,6 +280,8 @@ html,body{min-height:calc(100% + env(safe-area-inset-top));font-family:'Hiragino
 .vip-dot{width:34px;height:34px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:bold;font-size:14px}
 .vip-name{font-size:16px;font-weight:bold;color:#2C1B0E;flex:1;line-height:1.3}
 .vip-close{width:28px;height:28px;background:#EEE8DE;border:none;border-radius:50%;font-size:14px;cursor:pointer;flex-shrink:0}
+.vip-say{flex-shrink:0;min-height:36px;padding:0 12px;border:1.5px solid #E3DCD1;border-radius:18px;background:#fff;font-family:inherit;font-size:12.5px;font-weight:700;color:#2C2620;cursor:pointer}
+.vip-say.on{background:var(--brand-soft);border-color:var(--brand);color:var(--brand)}
 .vip-desc{font-size:13px;color:#444;line-height:1.7;margin-bottom:8px;white-space:pre-wrap}
 .vip-tel a{font-size:13px;color:#1a6fc4;display:block;margin-bottom:10px}
 .vip-photos{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
@@ -1429,6 +1431,7 @@ let _delPending     = null;  // 削除して「元に戻す」待ちのコース
 let _walkPos        = null;  // 歩く人のいまの位置 {lat,lng,acc}。◎か追従で入る（v132）
 let _walkHeading    = null;  // 端末のコンパスの向き（度・北=0）。許可が取れたときだけ（v132）
 let _routeCumRef    = null, _routeCum = null;   // _lastRouteCoords ごとの累積距離（v132）
+let _speaking       = false; // 解説を読み上げ中か（v134）
 let _showMapLabels  = true;  // 地図ラベル表示フラグ
 let _lastRouteCoords= null;  // 最後のルート座標（高低差用）
 let _elevData       = null;  // 高低差データキャッシュ
@@ -2203,7 +2206,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v133';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
+const APP_VERSION = 'v134';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
 }catch(_){} });
@@ -6240,6 +6243,7 @@ function showViewInfo(wpId) {
   let html2 = `<div class="vip-handle"></div><div class="vip-hdr">
     <div class="vip-dot" style="background:${t.c}">${escHtml(String(sym))}</div>
     <div class="vip-name">${escHtml(wp.name || t.l)}</div>
+    ${_canSpeak() ? `<button class="vip-say tap" id="vipSay" onclick="speakSpot(${wp.id})" aria-label="読み上げ">🔊 読み上げ</button>` : ''}
     <button class="vip-close" onclick="closeViewInfo()">✕</button>
   </div>`;
   if (wp.photos && wp.photos.length) {
@@ -6258,6 +6262,43 @@ function showViewInfo(wpId) {
 
 function closeViewInfo() {
   document.getElementById('viewInfoPanel').classList.remove('show');
+  _stopSpeaking();                                   // カードを閉じたら読み上げも止める（v134）
+}
+
+/* ===== 解説の読み上げ（v134・段階2-2）=====
+   端末の音声合成（Web Speech）を使う。サーバも通信も要らない。iPhone は押したときだけ鳴らせるので、ボタンから呼ぶ */
+function _canSpeak() { return typeof window !== 'undefined' && 'speechSynthesis' in window && typeof SpeechSynthesisUtterance !== 'undefined'; }
+function _spotSpeechText(wp) {
+  const t = WT.find(x => x.v === wp.type) || WT[0];
+  const name = (wp.name || t.l).replace(/\n/g, '、');
+  const desc = (wp.desc || '').trim();
+  return desc ? name + '。' + desc : name + '。';
+}
+function _syncSayBtn() {
+  const b = document.getElementById('vipSay'); if (!b) return;
+  b.textContent = _speaking ? '⏹ 止める' : '🔊 読み上げ';
+  b.classList.toggle('on', _speaking);
+  b.setAttribute('aria-label', _speaking ? '読み上げを止める' : '読み上げ');
+}
+function _stopSpeaking() {
+  if (_canSpeak()) { try { window.speechSynthesis.cancel(); } catch(_) {} }
+  _speaking = false; _syncSayBtn();
+}
+function speakSpot(wpId) {
+  if (!_canSpeak()) { showToast('この端末では読み上げを使えません'); return; }
+  if (_speaking) { _stopSpeaking(); return; }
+  const wp = wps.find(w => w.id === wpId); if (!wp) return;
+  try {
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(_spotSpeechText(wp));
+    u.lang = 'ja-JP'; u.rate = 1.0;
+    const vs = window.speechSynthesis.getVoices ? (window.speechSynthesis.getVoices() || []) : [];
+    const ja = vs.find(v => (v.lang || '').toLowerCase().startsWith('ja'));
+    try { if (ja) u.voice = ja; } catch(_) {}          // 声の指定に失敗しても既定の声で読む
+    u.onend = u.onerror = () => { _speaking = false; _syncSayBtn(); };
+    _speaking = true; _syncSayBtn();
+    window.speechSynthesis.speak(u);
+  } catch(_) { _speaking = false; _syncSayBtn(); showToast('読み上げを始められませんでした'); }
 }
 
 function openFullPhoto(src) {

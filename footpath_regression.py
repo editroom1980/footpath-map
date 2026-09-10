@@ -434,6 +434,11 @@ def static_checks(src):
     chk('静的', '選べる種類の出どころは _buildTypeOptions のまま（チップは select を読む）',
         "const cur = sel.value, opts = [...sel.options].map(o => o.value);" in src and 'function _buildTypeOptions' in src)
     chk('静的', '最初の案内が「種類と名前はあとから」を伝える', '種類と名前は、○を押してあとから決められます' in src)
+    # --- v134: 解説の読み上げ（ロードマップ 段階2-2）---
+    chk('静的', 'スポットのカードに「読み上げ」がある（端末の音声・サーバ不要・日本語）',
+        'class="vip-say tap" id="vipSay"' in src and 'function speakSpot' in src and "u.lang = 'ja-JP'" in src and 'function _spotSpeechText' in src)
+    chk('静的', 'カードを閉じると読み上げも止まる', "_stopSpeaking();                                   // カードを閉じたら読み上げも止める" in src
+        and 'window.speechSynthesis.cancel()' in src)
     # --- v133: 高低差グラフに「いまここ」（ロードマップ 段階2-4）---
     chk('静的', '高低差の帯に「いまここ」の丸がある（位置が入ったときだけ・一番上に描く）',
         'class="ev-here"' in src and 'function _elevHerePoint' in src and 'function _drawElevHere' in src
@@ -1703,8 +1708,12 @@ def functional_checks(index_path):
             isinstance(pb, dict) and pb.get('n') == 4 and pb.get('ok') and pb.get('svgH', 0) >= 100, str(pb)[:160])
 
         # v132: 位置を差し替えると「次のスポット」の距離が更新され、ゴールに着くと変わる。向きは矢印＋方角
+        #（前の検査の経路計算が途中で終わると _lastRouteCoords が差し替わるので、落ち着くのを待ち、検査中は固定の線を使う）
+        try: page.wait_for_function("() => !routingTimer && getComputedStyle(document.getElementById('rtMsg')).display === 'none'", timeout=15000)
+        except Exception: pass
         nb = page.evaluate("""()=>{ try{
-            const keepV = viewMode, keepCls = document.body.className, keepPos = _walkPos, keepH = _walkHeading;
+            const keepV = viewMode, keepCls = document.body.className, keepPos = _walkPos, keepH = _walkHeading, keepLRC = _lastRouteCoords;
+            _lastRouteCoords = [[35.152, 134.440], [35.152, 134.445], [35.152, 134.450], [35.152, 134.455], [35.152, 134.460]];   // 西→東の直線 約1.8km
             viewMode = true; document.body.classList.add('viewing');
             _walkPos = null; renderNextBar();
             const bar = document.getElementById('nextBar'), tx = document.getElementById('nbText'), ar = bar.querySelector('.nb-arrow');
@@ -1729,7 +1738,7 @@ def functional_checks(index_path):
             out.dirOk = /(北|南|東|西)/.test(out.t1) && /次：/.test(out.t1) && /まで/.test(out.t1);
             // 埋め込みでは出さない
             document.body.classList.add('embed'); renderNextBar(); out.embedHidden = bar.hidden; document.body.classList.remove('embed');
-            viewMode = keepV; document.body.className = keepCls; _walkPos = keepPos; _walkHeading = keepH; renderNextBar();
+            viewMode = keepV; document.body.className = keepCls; _walkPos = keepPos; _walkHeading = keepH; _lastRouteCoords = keepLRC; renderNextBar();
             out.hiddenAfter = bar.hidden;
             return out;
           }catch(e){ return 'ERR:'+e.message; } }""")
@@ -1739,9 +1748,13 @@ def functional_checks(index_path):
             and nb.get('rotWithHeading') == 'rotate(0deg)' and nb.get('embedHidden') and nb.get('hiddenAfter'), str(nb)[:300])
 
         # v133: 位置を動かすと、高低差グラフの「いまここ」の丸が動く（30%→60%で右へ）。位置が無ければ出ない
+        try: page.wait_for_function("() => !routingTimer && getComputedStyle(document.getElementById('rtMsg')).display === 'none'", timeout=15000)
+        except Exception: pass
         eh = page.evaluate("""()=>{ try{
-            const keepV = viewMode, keepCls = document.body.className, keepPos = _walkPos, keepE = _elevData;
-            if (!_elevData) { const pts = _sampleCoords(_lastRouteCoords, 50); _elevData = {pts, elevs: pts.map((p, i) => 300 + (i % 7) * 3)}; }
+            const keepV = viewMode, keepCls = document.body.className, keepPos = _walkPos, keepE = _elevData, keepLRC = _lastRouteCoords;
+            _lastRouteCoords = [];
+            for (let i = 0; i <= 40; i++) _lastRouteCoords.push([35.152 + Math.sin(i / 4) * 0.0004, 134.440 + i * 0.0005]);   // 東へ進む波線 約1.8km
+            { const pts = _sampleCoords(_lastRouteCoords, 50); _elevData = {pts, elevs: pts.map((p, i) => 300 + (i % 7) * 3)}; }
             viewMode = true; document.body.classList.add('viewing');
             _walkPos = null; _drawElevBand();
             const svg = document.getElementById('mobileElevSvg');
@@ -1759,12 +1772,31 @@ def functional_checks(index_path):
             out.x30 = walkTo(0.3); out.a30 = _walkPos.along / tot; out.x60 = walkTo(0.6); out.a60 = _walkPos.along / tot;
             const vb = (svg.getAttribute('viewBox') || '0 0 360 46').split(' ').map(Number); const W = vb[2], PL = 34, PR = 10;
             out.inside = out.x30 > PL && out.x60 < W - PR + 0.5; out.moved = out.x60 > out.x30 + (W - PL - PR) * 0.15;
-            viewMode = keepV; document.body.className = keepCls; _walkPos = keepPos; _elevData = keepE; _drawElevBand(); renderNextBar();
+            viewMode = keepV; document.body.className = keepCls; _walkPos = keepPos; _elevData = keepE; _lastRouteCoords = keepLRC; _drawElevBand(); renderNextBar();
             return out;
           }catch(e){ return 'ERR:'+e.message; } }""")
         chk('機能', '高低差グラフの「いまここ」は位置と一緒に動き、位置が無ければ出ない',
             isinstance(eh, dict) and eh.get('none') and eh.get('x30') is not None and eh.get('inside') and eh.get('moved')
             and abs(eh.get('a30', 0) - 0.3) < 0.06 and abs(eh.get('a60', 0) - 0.6) < 0.06, str(eh)[:220])
+
+        # v134: 読み上げ：押すと名前＋解説を日本語で読み、もう一度で止まり、カードを閉じても止まる（音声は差し替えて数える）
+        sp2 = page.evaluate("""()=>{ try{
+            const keepSS = window.speechSynthesis, keepV = viewMode, calls = [], out = {};
+            let cancels = 0;
+            Object.defineProperty(window, 'speechSynthesis', {configurable: true, value: {speak: u => calls.push({t: u.text, l: u.lang}), cancel: () => cancels++, getVoices: () => [{lang: 'ja-JP', name: 'テスト'}]}});
+            const wp = wps.find(w => w.type !== 'node'); const keepD = wp.desc; wp.desc = '検査用の解説です';
+            viewMode = true; showViewInfo(wp.id);
+            const b = document.getElementById('vipSay'); out.hasBtn = !!b && b.textContent.trim() === '🔊 読み上げ';
+            b.click(); out.spoke = calls.length === 1 && calls[0].l === 'ja-JP' && calls[0].t.indexOf('検査用の解説です') >= 0 && calls[0].t.indexOf((wp.name || '').split('\\n')[0] || 'x') >= 0;
+            out.stopLabel = b.textContent.trim() === '⏹ 止める' && _speaking === true;
+            b.click(); out.stopped = _speaking === false && cancels >= 1 && b.textContent.trim() === '🔊 読み上げ';
+            b.click(); const c2 = cancels; closeViewInfo(); out.closeStops = _speaking === false && cancels > c2;
+            wp.desc = keepD; viewMode = keepV;
+            Object.defineProperty(window, 'speechSynthesis', {configurable: true, value: keepSS});
+            return out;
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        chk('機能', '読み上げ：名前＋解説を日本語で読み、もう一度で止まり、カードを閉じても止まる',
+            isinstance(sp2, dict) and sp2.get('hasBtn') and sp2.get('spoke') and sp2.get('stopLabel') and sp2.get('stopped') and sp2.get('closeStops'), str(sp2)[:220])
 
         # v121: バックアップからの日数・未反映の保存回数で色が変わり、書き出すと戻る。iPhone の案内は1回だけ
         bk = page.evaluate("""()=>{ return (async()=>{ try{
