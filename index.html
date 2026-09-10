@@ -288,6 +288,7 @@ body.viewonly #descSec.view-desc textarea{background:#F9F7F4;border-color:#E6DCC
 .sh-lg{display:flex;align-items:center;gap:7px;font-size:11.5px}
 .sh-lgm{width:19px;height:19px;border-radius:50%;color:#fff;font-size:9.5px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:none}
 .sh-lgline{width:19px;border-top:3px dashed #E84040;flex:none}
+.sh-lgtri{flex:none;display:inline-flex;width:19px;justify-content:center}
 .sh-desc{font-size:11.5px;line-height:1.7;white-space:pre-wrap;margin-bottom:12px}
 .sh-spots{columns:2;column-gap:12px;font-size:11px;line-height:1.6}
 .sh-spot{break-inside:avoid;display:flex;gap:5px;margin-bottom:1px}
@@ -990,6 +991,16 @@ const SYM = {start:'S',goal:'G',view:'◎',shop:'★',shrine:'⛩',history:'碑'
 const LINE_STYLE = {color:'#E84040', weight:4, dashArray:'8,5', opacity:.9, lineJoin:'round', lineCap:'round', smoothFactor:0};
 const DBL_GAP_PX = 2;        // 往復で重なる区間：2本の線の間隔(px)
 const ROUTE_CASING_ADD = 3;  // ルート線の白いふちの太さ（赤い線に足すpx）。表示専用
+// 曲がり角の三角（進行方向）— 自転車ルートの世界標準「ダン・ヘンリー方式」にならい、
+// 直線には何も置かず、曲がる所だけに印を出す＝「印が無い＝そのまま進む」
+const TURN_MIN_ANGLE = 25;   // これ以上向きが変わったら「曲がり角」とみなす(度)
+const TURN_LOOK_PX   = 22;   // 向きを測るときに前後を見る距離(px)。点の細かさに左右されないため
+const TURN_STEP_PX   = 6;    // 何pxおきに角かどうかを調べるか
+const TURN_MIN_GAP_PX = 55;  // 三角どうしを近づけすぎない(px)。ゆるい曲線で固まるのを防ぐ
+const TURN_TRI_PX    = 11;   // 三角の大きさ(px, 基準ズーム16)
+const TURN_CLEAR_PX  = 18;   // 角から三角までの距離(px)。角がスポットのとき○の下に隠れるのを防ぐ
+const TURN_MAX_K     = 1.6;  // 拡大しても三角が大きくなりすぎないための上限倍率
+const TURN_MAX       = 300;  // 一度に描く三角の上限（保険）
 // --- ルート表示チューニング（往復ずらし表示の間隔調整はここ1か所）---
 const OFF_GEO_M  = 1.0;      // 片側オフセットの地理基準(m)。中ズームで従来同等・拡大で広がる。広げたいなら上げる
 const OFF_MAX_PX = 20;       // 広がりの上限(px)。窮屈な箇所での過剰拡大による交差を防ぐ保険
@@ -1085,6 +1096,7 @@ let wps         = [];
 let vps         = [];
 let routeLine   = null;
 let routeCasing = null;    // ルート線の白いふち（表示専用。データ・当たり判定には一切関与しない）
+let routeTurns  = null;    // 曲がり角の三角（表示専用）
 let hitOverlays = [];      // per-segment hit overlays — prevents segment misattribution
 let viaVisible  = true;
 let _vpDragged  = false;   // 調整点ドラッグ直後フラグ（クリックでメニューを開かないため）
@@ -1702,6 +1714,9 @@ function initMap() {
   leafMap.on('zoomend', _customScaleWeights);
   leafMap.on('zoomend', () => { if (typeof scheduleAutoLabels === 'function') scheduleAutoLabels(); });
   leafMap.on('zoomend', _redrawRouteOffset);   // 往復ずらし表示をズームに追従して再計算
+  leafMap.on('moveend', () => {               // 三角は画面内だけ作るので、動かしたら作り直す
+    if (routeLine && _routeLineBase) _drawTurnMarks(_buildDisplayCoords(_routeLineBase));
+  });
   canvasRenderer = L.canvas({padding: 0.5}); // Canvas renderer for polylines
 
   // 画面回転・リサイズ時に地図サイズを再計算（横向きで地図がずれるのを防ぐ）
@@ -1816,7 +1831,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v110';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
+const APP_VERSION = 'v111';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
 }catch(_){} });
@@ -3857,6 +3872,7 @@ function haversine(lat1,lng1,lat2,lng2) {
    POLYLINE
    ============================================================ */
 function removeLines() {
+  if (routeTurns)  { if(leafMap) leafMap.removeLayer(routeTurns);  routeTurns=null; }
   if (routeCasing) { if(leafMap) leafMap.removeLayer(routeCasing); routeCasing=null; }
   if (routeLine) { if(leafMap) leafMap.removeLayer(routeLine); routeLine=null; }
   _routeLineBase = null;
@@ -3965,13 +3981,80 @@ function _buildDisplayCoords(coords){
   }
   return out;
 }
+/* 曲がり角に置く小さな三角（進行方向）。
+   ・直線には置かない。「印が無い＝そのまま進む」という自転車ルートの標準的な考え方
+   ・画面に入っている所だけ作る（拡大すると線の長さが画面上で数万pxになるため）
+   ・完全に表示専用。データ・当たり判定・高低差には一切関与しない */
+function _buildTurnMarks(disp){
+  if (!leafMap || !disp || disp.length < 3) return [];
+  const P = disp.map(c => leafMap.latLngToLayerPoint(L.latLng(c[0], c[1])));
+  const k = Math.min(_routeK(), TURN_MAX_K);
+  const size = TURN_TRI_PX * k;
+  const sz = leafMap.getSize(), MG = 60;
+  const inView = q => { const c = leafMap.layerPointToContainerPoint(q);
+    return c.x > -MG && c.x < sz.x + MG && c.y > -MG && c.y < sz.y + MG; };
+  // 線に沿った距離の表をつくる。ルートの点の細かさ（OSRMは数mおき）に左右されず、
+  // 「前後 TURN_LOOK_PX の向きの違い」で角かどうかを決めるため。
+  const cum = [0];
+  for (let i = 1; i < P.length; i++) cum.push(cum[i-1] + Math.hypot(P[i].x - P[i-1].x, P[i].y - P[i-1].y));
+  const total = cum[cum.length - 1];
+  if (total < TURN_LOOK_PX * 2.5) return [];
+  let seek = 1;
+  const at = d => {                                   // 線に沿って d px 進んだ位置
+    d = Math.max(0, Math.min(total, d));
+    while (seek < cum.length - 1 && cum[seek] < d) seek++;
+    while (seek > 1 && cum[seek-1] > d) seek--;
+    const s0 = cum[seek-1], s1 = cum[seek];
+    const t = (s1 - s0) < 1e-9 ? 0 : (d - s0) / (s1 - s0);
+    return {x: P[seek-1].x + (P[seek].x - P[seek-1].x) * t,
+            y: P[seek-1].y + (P[seek].y - P[seek-1].y) * t};
+  };
+  const out = [];
+  let lastD = -1e9;
+  for (let d = TURN_LOOK_PX; d <= total - TURN_LOOK_PX && out.length < TURN_MAX; d += TURN_STEP_PX) {
+    if (d - lastD < TURN_MIN_GAP_PX) continue;
+    const p0 = at(d - TURN_LOOK_PX), p1 = at(d), p2 = at(d + TURN_LOOK_PX);
+    const v1x = p1.x - p0.x, v1y = p1.y - p0.y, v2x = p2.x - p1.x, v2y = p2.y - p1.y;
+    const l1 = Math.hypot(v1x, v1y), l2 = Math.hypot(v2x, v2y);
+    if (l1 < 1 || l2 < 1) continue;
+    const cosA = (v1x*v2x + v1y*v2y) / (l1*l2);
+    const ang = Math.acos(Math.max(-1, Math.min(1, cosA))) * 180 / Math.PI;
+    if (ang < TURN_MIN_ANGLE) continue;                       // ゆるい曲がりは角ではない
+    lastD = d;
+    // 置く場所は「角の少し先の線の上」。角がスポットのとき○の下に隠れないよう離す。
+    // 向きもその場所の線の向きに合わせる（角の途中の向きだと三角が線に対して傾いて見える）
+    const off = size * 1.2 + TURN_CLEAR_PX;
+    const pA = at(Math.min(total, d + off));
+    const pB = at(Math.min(total, d + off + TURN_LOOK_PX));
+    let dx = pB.x - pA.x, dy = pB.y - pA.y;
+    const fl = Math.hypot(dx, dy);
+    if (fl < 1) { dx = v2x / l2; dy = v2y / l2; } else { dx /= fl; dy /= fl; }
+    const px = pA.x, py = pA.y;
+    if (!inView(L.point(px, py))) continue;
+    const nx = -dy, ny = dx, back = size * 0.5, side = size * 0.62;
+    out.push([[px + dx*back, py + dy*back],
+              [px - dx*back + nx*side, py - dy*back + ny*side],
+              [px - dx*back - nx*side, py - dy*back - ny*side]]
+      .map(q => { const ll = leafMap.layerPointToLatLng(L.point(q[0], q[1])); return [ll.lat, ll.lng]; }));
+  }
+  return out;
+}
+function _drawTurnMarks(disp){
+  if (routeTurns) { leafMap.removeLayer(routeTurns); routeTurns = null; }
+  const shapes = _buildTurnMarks(disp);
+  if (!shapes.length) return;
+  routeTurns = L.polygon(shapes, {color:'#fff', weight:2.2, fillColor:LINE_STYLE.color,
+    fillOpacity:1, opacity:1, lineJoin:'round', interactive:false, renderer: canvasRenderer}).addTo(leafMap);
+}
+
 function _redrawRouteOffset(){
   if(!routeLine) return;
   try{
     routeLine.setStyle({weight:_routeWeight(), dashArray:_routeDash()});                 // 線太さ・破線をズームに追従
     if (routeCasing) routeCasing.setStyle({weight:_routeWeight()+ROUTE_CASING_ADD});      // 白いふちも同じだけ太くする
-    if(_dblOn && _routeLineBase){ const d=_buildDisplayCoords(_routeLineBase);            // 間隔をズームに追従
-      routeLine.setLatLngs(d); if (routeCasing) routeCasing.setLatLngs(d); }
+    if(_routeLineBase){ const d=_buildDisplayCoords(_routeLineBase);                     // 間隔をズームに追従
+      if (_dblOn) { routeLine.setLatLngs(d); if (routeCasing) routeCasing.setLatLngs(d); }
+      _drawTurnMarks(d); }                     // 三角は画面上の大きさで置くので作り直す
   }catch(_){ }
 }
 
@@ -3984,6 +4067,7 @@ function drawLines(allCoords, segList) {
   routeCasing = L.polyline(_disp, {color:'#fff', weight:_routeWeight()+ROUTE_CASING_ADD, opacity:.95,
     lineJoin:'round', lineCap:'round', smoothFactor:0, interactive:false, renderer: canvasRenderer}).addTo(leafMap);
   routeLine = L.polyline(_disp, {...LINE_STYLE, weight:_routeWeight(), dashArray:_routeDash(), renderer: canvasRenderer}).addTo(leafMap);
+  _drawTurnMarks(_disp);                     // 曲がり角の三角（線の上に重ねる）
 
   // 単一オーバーレイ + findNearestSegment方式:
   // per-segmentオーバーレイはWP境界付近でZ-order上位のものが優先され誤反応する
@@ -4920,6 +5004,10 @@ function _sheetLegend() {
          + '<span>' + escHtml(t.l) + '</span></div>';
   });
   rows.push('<div class="sh-lg"><span class="sh-lgline"></span><span>歩くコース</span></div>');
+  rows.push('<div class="sh-lg"><span class="sh-lgtri">'
+    + '<svg width="14" height="12" viewBox="0 0 14 12"><path d="M12.5 6 L3 11 L3 1 Z" '
+    +   'fill="#E84040" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/></svg>'
+    + '</span><span>曲がり角（三角の向きに進む）</span></div>');
   return rows.join('');
 }
 

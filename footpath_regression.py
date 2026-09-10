@@ -342,6 +342,14 @@ def static_checks(src):
     chk('静的', '白いふちは当たり判定に使わない', "interactive:false, renderer: canvasRenderer}).addTo(leafMap)" in src)
     chk('静的', '白いふちも後片付けする', 'if (routeCasing) { if(leafMap) leafMap.removeLayer(routeCasing); routeCasing=null; }' in src)
     chk('静的', 'スポットの○の白いふちがはっきりしている', 'border:2.5px solid #fff' in src)
+    # --- v111: 曲がり角の三角（進行方向）---
+    chk('静的', '曲がり角の三角を作る仕組みがある',
+        'function _buildTurnMarks' in src and 'const TURN_MIN_ANGLE' in src)
+    chk('静的', '角の判定は点の細かさに左右されない（前後の距離で見る）', 'TURN_LOOK_PX' in src)
+    chk('静的', '三角も当たり判定に使わず、後片付けもする',
+        'interactive:false, renderer: canvasRenderer}).addTo(leafMap);' in src
+        and 'if (routeTurns)  { if(leafMap) leafMap.removeLayer(routeTurns);' in src)
+    chk('静的', '配布シートの凡例に曲がり角の説明がある', '曲がり角（三角の向きに進む）' in src)
     # --- v99: ラベルの自動配置 ---
     chk('静的', 'ラベル自動配置 autoPlaceLabels 存在', 'function autoPlaceLabels' in src)
     chk('静的', 'まとめて実行する scheduleAutoLabels 存在', 'function scheduleAutoLabels' in src)
@@ -745,7 +753,7 @@ def functional_checks(index_path):
                      title:(s.querySelector('.sh-title')||{}).textContent||'' };
           }catch(e){ return 'ERR:'+e.message; } })(); }""")
         ok_sh = (isinstance(sh, dict) and sh.get('shown') == 'block' and sh.get('img') and sh.get('north')
-                 and sh.get('legend') == sh.get('used', 0) + 1          # 種別ぶん＋「歩くコース」
+                 and sh.get('legend') == sh.get('used', 0) + 2          # 種別ぶん＋「歩くコース」＋「曲がり角」
                  and sh.get('meters', 0) > 0 and 0 < sh.get('ratio', 0) <= 0.6)
         chk('機能', '配布シートに凡例・縮尺・方位が入る', ok_sh, str(sh)[:180])
 
@@ -1099,6 +1107,23 @@ def functional_checks(index_path):
                     baseLen: (_routeLineBase||[]).length,
                     lastLen: (_lastRouteCoords||[]).length};
           }catch(e){ return 'ERR:'+e.message; } }""")
+        # v111: 曲がる所にだけ三角が出て、まっすぐな所には出ない。向きは曲がったあとの進行方向
+        trn = page.evaluate("""()=>{ try{
+            const keepC = leafMap.getCenter(), keepZ = leafMap.getZoom();
+            const bendLine = [[35.150,134.440],[35.150,134.450],[35.158,134.450]];   // 東へ→北へ
+            leafMap.fitBounds(L.latLngBounds(bendLine.map(c => L.latLng(c[0], c[1]))),
+                              {animate:false, padding:[30,30]});
+            const bent = _buildTurnMarks(bendLine);
+            const straight = _buildTurnMarks([[35.150,134.440],[35.150,134.450],[35.150,134.460]]);
+            const P = bent.map(sh => sh.map(c => leafMap.latLngToLayerPoint(L.latLng(c[0], c[1]))));
+            const up = P.length > 0 && P.every(q => q[0].y < (q[1].y + q[2].y) / 2 - 0.5);
+            leafMap.setView(keepC, keepZ, {animate:false});
+            return {bent:bent.length, straight:straight.length, up:up};
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        chk('機能', '曲がる所にだけ三角が出て、進行方向を向く',
+            isinstance(trn, dict) and trn.get('bent', 0) >= 1 and trn.get('straight', 1) == 0
+            and trn.get('up') is True, str(trn)[:170])
+
         ok_cas = (isinstance(cas, dict) and cas.get('has') and cas.get('same')
                   and cas.get('thicker') and cas.get('white') and cas.get('notHit')
                   and cas.get('baseLen', 0) > 1 and cas.get('lastLen', 0) > 1)
