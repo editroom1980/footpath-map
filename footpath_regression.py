@@ -434,6 +434,15 @@ def static_checks(src):
     chk('静的', '選べる種類の出どころは _buildTypeOptions のまま（チップは select を読む）',
         "const cur = sel.value, opts = [...sel.options].map(o => o.value);" in src and 'function _buildTypeOptions' in src)
     chk('静的', '最初の案内が「種類と名前はあとから」を伝える', '種類と名前は、○を押してあとから決められます' in src)
+    # --- v132: 次のスポットまでの距離と向き（ロードマップ 段階2-1）---
+    chk('静的', '歩く人の画面に「次のスポット」の帯がある', 'id="nextBar"' in src and 'function renderNextBar' in src and 'function nextSpotInfo' in src
+        and 'body.viewing #nextBar:not([hidden]){display:flex}' in src and 'body.embed #nextBar{display:none!important}' in src)
+    chk('静的', '位置の入口は _onWalkerPos の1つ（◎と追従の両方から）',
+        src.count('_onWalkerPos(lat, lng, acc);') == 1 and src.count('_onWalkerPos(lat, lng, pos.coords.accuracy || 0);') == 1
+        and 'function _routeProgress' in src and 'function _bearing' in src)
+    chk('静的', '歩く人の画面では ◎ が追いかける（1回きりでは距離が更新されないため）',
+        "if (document.body.classList.contains('viewonly')) { toggleFollowMode(); return; }" in src and '次のスポットまでの距離が出ます（もう一度押すと止まります）' in src)
+    chk('静的', 'コンパスは押したときだけ許可を求める', 'function enableCompass' in src and 'DeviceOrientationEvent.requestPermission' in src)
     # --- v131: PC・スマホの機能を揃える（ロードマップ 段階1-6）---
     def _region(a, b):
         i = src.index(a); j = src.index(b, i); return src[i:j]
@@ -1685,6 +1694,42 @@ def functional_checks(index_path):
             str(pa)[:260])
         chk('機能', 'スマホ：高低差の帯を開くと詳細（最高・最低・上り・下り）が出る',
             isinstance(pb, dict) and pb.get('n') == 4 and pb.get('ok') and pb.get('svgH', 0) >= 100, str(pb)[:160])
+
+        # v132: 位置を差し替えると「次のスポット」の距離が更新され、ゴールに着くと変わる。向きは矢印＋方角
+        nb = page.evaluate("""()=>{ try{
+            const keepV = viewMode, keepCls = document.body.className, keepPos = _walkPos, keepH = _walkHeading;
+            viewMode = true; document.body.classList.add('viewing');
+            _walkPos = null; renderNextBar();
+            const bar = document.getElementById('nextBar'), tx = document.getElementById('nbText'), ar = bar.querySelector('.nb-arrow');
+            const out = {shown0: !bar.hidden && getComputedStyle(bar).display !== 'none', hint: tx.textContent};
+            const c = _lastRouteCoords; const n = c.length;
+            const num = s => parseFloat((s.match(/([\\d.]+)(km|m)/) || [])[1]) * ((s.match(/([\\d.]+)(km|m)/) || [])[2] === 'km' ? 1000 : 1);
+            _onWalkerPos(c[0][0], c[0][1], 5);                        // 出発点
+            out.t1 = tx.textContent; out.d1 = num(tx.textContent); out.rot1 = ar.style.transform;
+            const i2 = Math.floor(n * 0.25);
+            _onWalkerPos(c[i2][0], c[i2][1], 5);                      // 少し進む
+            out.t2 = tx.textContent; out.d2 = num(tx.textContent);
+            const p1 = _routeProgress(c[0][0], c[0][1]).along, p2 = _routeProgress(c[i2][0], c[i2][1]).along;
+            out.advanced = p2 > p1 + 50;
+            const sameNext = out.t1.split(' まで')[0] === out.t2.split(' まで')[0];
+            out.closer = !sameNext || out.d2 < out.d1;
+            _onWalkerPos(c[n-1][0], c[n-1][1], 5);                    // ゴール
+            out.t3 = tx.textContent; out.done = bar.classList.contains('done');
+            // 向き：コンパスが無ければ北=0の矢印。あれば体の向き基準
+            _onWalkerPos(c[0][0], c[0][1], 5); const info = nextSpotInfo();
+            _walkHeading = info.rot; renderNextBar(); out.rotWithHeading = ar.style.transform;
+            _walkHeading = null;
+            out.dirOk = /(北|南|東|西)/.test(out.t1) && /次：/.test(out.t1) && /まで/.test(out.t1);
+            // 埋め込みでは出さない
+            document.body.classList.add('embed'); renderNextBar(); out.embedHidden = bar.hidden; document.body.classList.remove('embed');
+            viewMode = keepV; document.body.className = keepCls; _walkPos = keepPos; _walkHeading = keepH; renderNextBar();
+            out.hiddenAfter = bar.hidden;
+            return out;
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        chk('機能', '次のスポット：位置を差し替えると距離が更新され、ゴールで「着きました」、向きは矢印＋方角',
+            isinstance(nb, dict) and nb.get('shown0') and '◎' in nb.get('hint', '') and nb.get('dirOk') and nb.get('d1', 0) > 0
+            and nb.get('advanced') and nb.get('closer') and nb.get('t3') == 'ゴールに着きました' and nb.get('done')
+            and nb.get('rotWithHeading') == 'rotate(0deg)' and nb.get('embedHidden') and nb.get('hiddenAfter'), str(nb)[:300])
 
         # v121: バックアップからの日数・未反映の保存回数で色が変わり、書き出すと戻る。iPhone の案内は1回だけ
         bk = page.evaluate("""()=>{ return (async()=>{ try{

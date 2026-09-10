@@ -434,6 +434,25 @@ body.viewonly #firstTip,body.embed #firstTip{display:none!important}
   font-size:15px;font-weight:800;background:var(--brand-grad);color:#fff;cursor:pointer}
 #descSheet .ds-btn.ghost{flex:0 0 96px;background:#F2EEE7;color:var(--t-sub)}
 /* 配る（v123）：画像・配布シート・リンク・GPX の4つの出口を1枚に。編集画面から2タップで届く */
+/* 次のスポット（v132）：歩く人の画面の上。矢印は北=0で回す（コンパス許可後は体の向き基準） */
+#nextBar{display:none;position:absolute;left:64px;right:12px;top:max(8px,env(safe-area-inset-top));z-index:1001;background:rgba(255,255,255,.96);
+  border-radius:14px;box-shadow:0 2px 10px rgba(0,0,0,.18);padding:7px 8px 7px 10px;align-items:center;gap:9px;min-height:var(--tap)}
+body.viewing #nextBar:not([hidden]){display:flex}
+body.embed #nextBar{display:none!important}
+#nextBar .nb-arrow{flex:none;width:30px;height:30px;border-radius:50%;background:var(--brand);color:#fff;display:flex;align-items:center;justify-content:center;transition:transform .3s}
+#nextBar .nb-main{flex:1;min-width:0}
+#nextBar .nb-l{font-size:10px;font-weight:700;color:var(--t-sub);letter-spacing:.04em}
+#nextBar .nb-t{font-size:13px;color:#231C14;line-height:1.3}
+#nextBar .nb-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#nextBar .nb-dist{white-space:nowrap;font-size:14px}
+#nextBar .nb-t b{font-weight:800}
+#nextBar .nb-dir{color:var(--brand);font-weight:800;margin-left:4px}
+#nextBar.done .nb-arrow{background:var(--ok)}
+#nextBar .nb-cmp{flex:none;width:36px;height:36px;border-radius:50%;border:none;background:#F2EEE7;font-size:17px;cursor:pointer}
+#nextBar .nb-cmp.on{background:var(--brand-soft)}
+#nextBar .nb-cmp[hidden]{display:none}
+body.viewonly #viewBadge{display:none!important}   /* 歩く人には「歩く人の見え方」の札は要らない（v132） */
+@media (min-width:769px){#nextBar{left:12px;right:auto;top:12px;width:380px}}
 /* 削除の「元に戻す」（v130） */
 #undoToast{position:fixed;bottom:max(104px,calc(env(safe-area-inset-bottom) + 96px));left:50%;transform:translateX(-50%);background:rgba(62,42,14,.94);color:#F5EDD8;
   padding:6px 6px 6px 16px;border-radius:24px;font-size:13px;z-index:9999;display:flex;align-items:center;gap:12px;box-shadow:0 2px 12px rgba(0,0,0,.3);max-width:calc(100vw - 24px)}
@@ -916,6 +935,12 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
           </div>
           <div class="pc-pop" id="popLegend"><div class="pp-sec">このコースの凡例</div><div class="sh-legend" id="pcLegendBody"></div></div>
         </div>
+        <!-- 歩く人の画面（v132）：次のスポットまでの距離と向き。◎か追従で位置が入ると出る -->
+        <div id="nextBar" hidden>
+          <div class="nb-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M12 2 L19 21 L12 17 L5 21 Z"/></svg></div>
+          <div class="nb-main"><div class="nb-l">次のスポット</div><div class="nb-t" id="nbText"></div></div>
+          <button class="nb-cmp tap" id="nbCompass" onclick="enableCompass()" aria-label="コンパスを使う" title="コンパスを使う（向きの矢印が体の向き基準になります）">🧭</button>
+        </div>
         <!-- PC（v126）：下＝高低差 -->
         <div id="pcBl"><button class="pc-pill" id="btnGps" onclick="gotoCurrentLocation()" title="現在地へ移動（位置情報の許可が要ります）"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12a3 3 0 1 0 6 0a3 3 0 1 0 -6 0" /> <path d="M4 12a8 8 0 1 0 16 0a8 8 0 1 0 -16 0" /> <path d="M12 2l0 2" /> <path d="M12 20l0 2" /> <path d="M20 12l2 0" /> <path d="M2 12l2 0" /></svg><span>現在地</span></button><button class="pc-pill" id="btnElev" onclick="toggleElevPanel()" title="高低差グラフ"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M4 19l16 0" /> <path d="M4 15l4 -6l4 2l4 -5l4 4" /></svg><span>高低差</span></button></div>
         <div id="mapMsg">⚠️ プレビュー環境では地図タイルは表示されません<br><span style="font-size:11px">GitHub Pagesに公開すると正常に表示されます</span></div>
@@ -950,7 +975,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
       <div id="walkTip">
         <div class="ft-ic">🚶</div>
         <div class="ft-t">この地図の使いかた</div>
-        <div class="ft-d">・○をタップすると、写真と解説が見られます<br>・スポットに近づくと、スタンプが付きます<br>・◎ボタンで、いまの場所に地図が付いてきます</div>
+        <div class="ft-d">・○をタップすると、写真と解説が見られます<br>・スポットに近づくと、スタンプが付きます<br>・◎を押すと、いまの場所を追いかけて、次のスポットまでの距離が出ます（もう一度押すと止まります）</div>
         <button class="ft-b" onclick="dismissWalkTip()">わかった</button>
         <div class="ft-n">この案内は最初の1回だけ出ます</div>
       </div>
@@ -1301,6 +1326,8 @@ const LABEL_GAP_PX = 2;                                   // ラベル同士の�
 // --- 現在地追従（歩きながら使う）---
 const FOLLOW_MIN_MOVE_M = 4;      // これ以上動いたときだけ地図を寄せる（小刻みな揺れで動かさない）
 const FOLLOW_MIN_ZOOM   = 16;     // 追従を始めるときの最低倍率
+const NEXT_MIN_AHEAD_M  = 15;     // 「次のスポット」は、いまの地点よりこれ以上先にあるもの（v132）
+const NEXT_OFFROUTE_M   = 60;     // コースからこれ以上離れていたら、道なりでなく直線の距離を出す（v132）
 // --- GPX読み込み（歩いた記録・他アプリのルートを取り込む）---
 const GPX_MAX_TRKPTS = 2000;   // 細道として取り込む点の上限（多すぎると重くなる）
 const GPX_THIN_M     = 5;      // これより近い点は間引く(m)
@@ -1395,6 +1422,9 @@ let _wpPickerLatlng = null; // WPタイプピッカー表示中の座標（現�
 let _placeHintCount = 0;    // 1タップで置いたあとの案内を出した回数（このセッションで2回まで）（v128）
 let _typeMoreOpen   = false; // 編集画面の「その他の種類」を開いているか（v128）
 let _delPending     = null;  // 削除して「元に戻す」待ちのコース {course, index}（v130）
+let _walkPos        = null;  // 歩く人のいまの位置 {lat,lng,acc}。◎か追従で入る（v132）
+let _walkHeading    = null;  // 端末のコンパスの向き（度・北=0）。許可が取れたときだけ（v132）
+let _routeCumRef    = null, _routeCum = null;   // _lastRouteCoords ごとの累積距離（v132）
 let _showMapLabels  = true;  // 地図ラベル表示フラグ
 let _lastRouteCoords= null;  // 最後のルート座標（高低差用）
 let _elevData       = null;  // 高低差データキャッシュ
@@ -2169,7 +2199,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v131';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
+const APP_VERSION = 'v132';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
 }catch(_){} });
@@ -3487,6 +3517,94 @@ function _applyViewLock() {
   const b = document.getElementById('btnView');
   if (b) { b.title = on ? '編集にもどる' : '歩く人の見え方\nONの間はスポットをクリックで写真・解説を表示';
            b.setAttribute('aria-label', on ? '編集にもどる' : '歩く人の見え方'); }
+  renderNextBar();
+}
+
+/* ===== 次のスポットまでの距離と向き（v132・段階2-1）=====
+   位置は ◎（歩く人の画面では追従）か追従から _onWalkerPos に入る。距離はコース沿い（コースから
+   NEXT_OFFROUTE_M 以上離れていれば直線）。向きは北=0の矢印＋方角の文字。コンパス許可後は矢印が体の向き基準 */
+function _onWalkerPos(lat, lng, acc) {
+  _walkPos = {lat, lng, acc: acc || 0};
+  renderNextBar();
+  if (typeof _drawElevHere === 'function') _drawElevHere();
+}
+function _routeProgress(lat, lng) {
+  const c = _lastRouteCoords;
+  if (!c || c.length < 2) return {along: 0, off: Infinity};
+  if (_routeCumRef !== c) { _routeCum = [0]; for (let i = 1; i < c.length; i++) _routeCum[i] = _routeCum[i-1] + _distM(c[i-1], c[i]); _routeCumRef = c; }
+  const kx = 111320 * Math.cos(lat * Math.PI / 180), ky = 111320;
+  let best = {along: 0, off: Infinity};
+  for (let i = 1; i < c.length; i++) {
+    const ax = (c[i-1][1] - lng) * kx, ay = (c[i-1][0] - lat) * ky, bx = (c[i][1] - lng) * kx, by = (c[i][0] - lat) * ky;
+    const dx = bx - ax, dy = by - ay, l2 = dx * dx + dy * dy || 1e-9;
+    let tt = (-ax * dx - ay * dy) / l2; tt = Math.max(0, Math.min(1, tt));
+    const d = Math.hypot(ax + tt * dx, ay + tt * dy);
+    if (d < best.off) best = {along: _routeCum[i-1] + tt * Math.sqrt(l2), off: d};
+  }
+  return best;
+}
+function _bearing(lat1, lng1, lat2, lng2) {
+  const toR = Math.PI / 180, dL = (lng2 - lng1) * toR;
+  const y = Math.sin(dL) * Math.cos(lat2 * toR);
+  const x = Math.cos(lat1 * toR) * Math.sin(lat2 * toR) - Math.sin(lat1 * toR) * Math.cos(lat2 * toR) * Math.cos(dL);
+  return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+}
+function _dirName(brg) { return ['北', '北東', '東', '南東', '南', '南西', '西', '北西'][Math.round(brg / 45) % 8]; }
+function _fmtDistM(d) { return d >= 950 ? (d / 1000).toFixed(1) + 'km' : (d >= 100 ? Math.round(d / 10) * 10 : Math.round(d)) + 'm'; }
+function _spotLabel(wp) {
+  const t = WT.find(x => x.v === wp.type) || WT[0];
+  const n = wp.type === 'course' ? courseNum(wp) : null;
+  const mark = n ? (n >= 1 && n <= 20 ? String.fromCharCode(0x245F + n) : String(n)) : (SYM[wp.type] || '●');
+  return mark + ' ' + (wp.name || t.l).split('\n')[0];
+}
+function _spotsAlongRoute() {
+  return _stampTargets().map(wp => ({wp, along: _routeProgress(wp.lat, wp.lng).along})).sort((a, b) => a.along - b.along);
+}
+function nextSpotInfo() {
+  if (!_walkPos || !_lastRouteCoords || _lastRouteCoords.length < 2) return null;
+  const prog = _routeProgress(_walkPos.lat, _walkPos.lng);
+  const next = _spotsAlongRoute().find(sp => sp.along > prog.along + NEXT_MIN_AHEAD_M);
+  if (!next) return null;
+  const straight = prog.off > NEXT_OFFROUTE_M;
+  const d = straight ? haversine(_walkPos.lat, _walkPos.lng, next.wp.lat, next.wp.lng) : (next.along - prog.along);
+  const brg = _bearing(_walkPos.lat, _walkPos.lng, next.wp.lat, next.wp.lng);
+  return {wp: next.wp, label: _spotLabel(next.wp), distM: d, distText: _fmtDistM(d), straight, dirText: _dirName(brg),
+          rot: (_walkHeading == null) ? brg : ((brg - _walkHeading + 360) % 360)};
+}
+function renderNextBar() {
+  const bar = document.getElementById('nextBar'); if (!bar) return;
+  const on = viewMode && !document.body.classList.contains('embed') && _stampTargets().length > 0;
+  bar.hidden = !on; if (!on) return;
+  const tx = document.getElementById('nbText'), ar = bar.querySelector('.nb-arrow'), cp = document.getElementById('nbCompass');
+  if (cp) cp.hidden = !(typeof DeviceOrientationEvent !== 'undefined') || !_walkPos;
+  const info = nextSpotInfo();
+  bar.classList.toggle('done', !!_walkPos && !info);
+  if (!info) { tx.textContent = _walkPos ? 'ゴールに着きました' : '◎を押すと、次のスポットまでの距離が出ます'; ar.style.visibility = _walkPos ? 'visible' : 'hidden'; ar.style.transform = ''; return; }
+  tx.innerHTML = '<div class="nb-name">次：<b>' + escHtml(info.label) + '</b></div>'
+               + '<div class="nb-dist"> まで <b>' + info.distText + '</b>' + (info.straight ? '（直線）' : '') + '<span class="nb-dir">' + info.dirText + '</span></div>';
+  ar.style.visibility = 'visible';
+  ar.style.transform = 'rotate(' + Math.round(info.rot) + 'deg)';
+}
+/* コンパス：iPhone は許可が要る（ボタンを押したときだけ求められる）。取れたら矢印が体の向き基準になる */
+function enableCompass() {
+  const start = () => {
+    const ev = ('ondeviceorientationabsolute' in window) ? 'deviceorientationabsolute' : 'deviceorientation';
+    let last = 0;
+    window.addEventListener(ev, e => {
+      const h = (typeof e.webkitCompassHeading === 'number') ? e.webkitCompassHeading : (e.absolute && typeof e.alpha === 'number' ? (360 - e.alpha) % 360 : null);
+      if (h == null) return;
+      _walkHeading = h;
+      const now = Date.now(); if (now - last > 250) { last = now; renderNextBar(); }
+    });
+    document.getElementById('nbCompass')?.classList.add('on');
+    showToast('コンパスを使います（矢印が体の向き基準になります）');
+  };
+  try {
+    if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+      DeviceOrientationEvent.requestPermission().then(r => { if (r === 'granted') start(); else showToast('コンパスの許可が得られませんでした'); }).catch(() => showToast('コンパスを使えませんでした'));
+    } else if (typeof DeviceOrientationEvent !== 'undefined') start();
+    else showToast('この端末ではコンパスを使えません');
+  } catch(_) { showToast('コンパスを使えませんでした'); }
 }
 
 /* 配布リンクを開いた人への案内（最初の1回だけ・閲覧専用のときだけ） */
@@ -3699,6 +3817,7 @@ function toggleFollowMode(){
       if (!_maxBounds) { const ctr = leafMap.getCenter(); _setAnchor(ctr.lat, ctr.lng, true); }
       if (!_inAllowedArea(lat, lng)) return;          // 範囲外では動かさない（既存の方針と同じ）
       _showGpsHere(lat, lng, acc);
+      _onWalkerPos(lat, lng, acc);                        // 次のスポットまでの距離（v132）
       if (!_followLast || _distM(_followLast, [lat, lng]) >= FOLLOW_MIN_MOVE_M) {
         const first = !_followLast;
         _followLast = [lat, lng];
@@ -3717,6 +3836,7 @@ function toggleFollowMode(){
 function gotoCurrentLocation() {
   if (!navigator.geolocation) { showToast('この端末では位置情報を利用できません'); return; }
   if (!leafMap) return;
+  if (document.body.classList.contains('viewonly')) { toggleFollowMode(); return; }   // 歩く人は追いかける（v132）
   showToast('現在地を取得中...');
   navigator.geolocation.getCurrentPosition(
     function(pos) {
@@ -3745,6 +3865,7 @@ function gotoCurrentLocation() {
         });
       }
       leafMap.setView(ll, Math.max(leafMap.getZoom(), 16));
+      _onWalkerPos(lat, lng, pos.coords.accuracy || 0);   // 次のスポットまでの距離（v132）
     },
     function() { showToast('現在地を取得できませんでした'); },
     {enableHighAccuracy:true, timeout:8000, maximumAge:10000}
@@ -4703,6 +4824,7 @@ async function doRouting() {
       drawLines(combined, buildSegCoordsList());
       updateDistanceAndTime(combined);
       _persistDerivedQuietly();                   // 次に開くとき経路サーバを呼ばずに済むように（v127）
+      renderNextBar();                            // 道順が決まったら「次のスポット」も描き直す（v132）
     }
   } catch(_) { /* keep straight lines on error */ }
   finally { showRtMsg(false); }
