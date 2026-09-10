@@ -295,6 +295,12 @@ body.embed #s2, body.embed #mapArea, body.embed #mapWrap{height:100%!important;m
   color:#4A2E0E;font-size:12px;font-weight:700;padding:6px 11px;border-radius:14px;
   box-shadow:0 2px 10px rgba(0,0,0,.18);cursor:pointer}
 #stampBar.done{background:var(--ok);color:#fff}
+/* シール（v142）：写真を地図の印にする。角丸の写真＋左上に種別の小さな○、束ねたら右下に +n */
+.wp-sticker{position:relative;border-radius:10px;border:2.5px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.45);background:#E8E2D8 center/cover no-repeat;cursor:pointer}
+.wp-stk-badge{position:absolute;left:-7px;top:-7px;border-radius:50%;color:#fff;font-weight:bold;text-align:center;border:1.5px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.4)}
+.wp-sticker .wp-visited{right:-5px;top:-5px}
+.wp-stk-more{position:absolute;right:-6px;bottom:-6px;min-width:18px;height:18px;padding:0 4px;border-radius:9px;background:#231C14;color:#fff;font-size:10px;font-weight:700;line-height:18px;text-align:center;border:1.5px solid #fff;box-sizing:border-box}
+.wp-ph{font-size:10px;color:var(--t-sub);margin-right:4px;flex-shrink:0}
 .wp-visited{position:absolute;right:-3px;top:-3px;width:14px;height:14px;border-radius:50%;background:var(--ok);
   color:#fff;font-size:9px;line-height:14px;text-align:center;border:1.5px solid #fff;font-weight:700}
 #embedBar{position:absolute;top:0;left:0;right:0;z-index:1200;display:none;align-items:center;gap:8px;
@@ -1031,6 +1037,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
       <button class="pp-row pick" data-bm="osm_hot" onclick="setBaseMap('osm_hot');_syncPcPops()">色違いOSM（HOT）<span class="pp-ck">✓</span></button>
       <div class="pp-sec">地図の見せ方</div>
       <button class="pp-row" id="btnMapLabels" onclick="toggleMapLabels();_syncPcPops()">地名とスポットを表示<span class="pp-sw"></span></button>
+      <button class="pp-row ed" id="btnStickers" onclick="toggleStickers();_syncPcPops()" title="写真のあるスポットの印を、写真そのもの（シール）にする。歩く人の画面と配布シートにも同じに出る">写真をシールで見せる<span class="pp-sw"></span></button>
       <div class="pp-row static">文字の大きさ<span class="pp-seg" id="btnLabelSize"><button data-lsz="0" onclick="setLabelSize(0);_syncPcPops()">標準</button><button data-lsz="1" onclick="setLabelSize(1);_syncPcPops()">大</button><button data-lsz="2" onclick="setLabelSize(2);_syncPcPops()">特大</button><button data-lsz="3" hidden onclick="setLabelSize(3);_syncPcPops()">極大</button><button data-lsz="4" hidden onclick="setLabelSize(4);_syncPcPops()">最大</button></span></div>
       <div class="pp-row static">スポットの○<span class="pp-seg"><button data-wsz="0" onclick="setWpSize(0);_syncPcPops()">標準</button><button data-wsz="1" onclick="setWpSize(1);_syncPcPops()">大</button><button data-wsz="2" onclick="setWpSize(2);_syncPcPops()">特大</button></span></div>
       <span id="lblSizeTxt" hidden></span>
@@ -1233,6 +1240,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
         <div class="mm-maplist">
           <div class="mm-map" onclick="openMmSub('map')"><span class="mm-map-l">背景地図</span><span class="mm-v" id="mmValMap">›</span></div>
           <div class="mm-tog" onclick="toggleMapLabels();_syncMobileMenu()"><span class="mm-tog-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 7.5a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" /> <path d="M3 6v5.172a2 2 0 0 0 .586 1.414l7.71 7.71a2.41 2.41 0 0 0 3.408 0l5.592 -5.592a2.41 2.41 0 0 0 0 -3.408l-7.71 -7.71a2 2 0 0 0 -1.414 -.586h-5.172a3 3 0 0 0 -3 3" /></svg></span><span class="mm-tog-l">地名とスポットを表示</span><div class="mm-sw" id="mmSwLabels"></div></div>
+          <div class="mm-tog" onclick="toggleStickers();_syncMobileMenu()" data-edit="1"><span class="mm-tog-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 8h.01" /><path d="M4 6a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2z" /><path d="M4 15l4 -4a3 5 0 0 1 3 0l5 5" /><path d="M14 14l1 -1a3 5 0 0 1 3 0l2 2" /></svg></span><span class="mm-tog-l">写真をシールで見せる</span><div class="mm-sw" id="mmSwStickers"></div></div>
           <div class="mm-map" onclick="openMmSub('size')"><span class="mm-map-l">文字・印の大きさ</span><span class="mm-v" id="mmValSize">›</span></div>
           <div class="mm-map" onclick="openMmSub('spd')"><span class="mm-map-l">歩く速さ（所要時間の計算）</span><span class="mm-v" id="mmValSpd">›</span></div>
         </div>
@@ -1332,7 +1340,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
         <span style="font-size:11px;font-weight:bold;color:var(--t-sub)">名称ラベル表示位置</span>
         <select id="mLabelDir" style="font-size:11px;padding:2px 4px;border:1px solid #C4B89A;border-radius:4px;background:#FAF6EE;width:auto;margin:0"><option value="auto">自動（おすすめ）</option><option value="top">上</option><option value="bottom">下</option><option value="left">左</option><option value="right">右</option></select>
       </div>
-      <div style="font-size:11px;font-weight:bold;color:var(--t-sub);margin-bottom:5px">写真（最大5枚）</div>
+      <div style="font-size:11px;font-weight:bold;color:var(--t-sub);margin-bottom:5px">写真（最大12枚・写真のある印は「シール」で見せられます）</div>
       <div id="mPhotoStrip" class="photo-strip"></div>
       <div style="display:flex;gap:8px;margin-bottom:10px">
         <input type="file" accept="image/*" id="mPhotoFile" style="display:none" multiple>
@@ -1467,6 +1475,10 @@ const GUIDE_CAUTIONS = {car:'車が多い', slip:'滑りやすい', nosignal:'�
 const GUIDE_AHEAD_M  = 120;   // 帯で知らせ始める距離
 const GUIDE_HERE_M   = 20;    // これ以内で「ここを左」
 const GUIDE_PASSED_M = 25;    // これだけ過ぎたら「この道で合っています」
+/* 写真（v142）：保存は長辺 PHOTO_MAX_PX の JPEG（描き直して保存するので EXIF＝撮影場所などの情報は残らない）。
+   シール＝スポットの1枚目の写真を STICKER_PX 角に切り出した地図の印。近いシールは STICKER_CLUSTER_PX 以内で束ねる */
+const PHOTO_MAX_PX = 1024, PHOTO_QUALITY = 0.66, PHOTO_MAX_PER_SPOT = 12;
+const STICKER_PX = 96, STICKER_QUALITY = 0.72, STICKER_CLUSTER_PX = 46;
 const TYPE_BIG = ['course', 'view', 'history', 'shop'];   // 編集画面で大きく出す「よく使う4つ」（オーナー指定・v129）。残りは畳む
 const LINE_STYLE = {color:'#E84040', weight:4, dashArray:'8,5', opacity:.9, lineJoin:'round', lineCap:'round', smoothFactor:0};
 const DBL_GAP_PX = 2;        // 往復で重なる区間：2本の線の間隔(px)
@@ -1968,7 +1980,7 @@ async function gcPhotos(){
   if (!keys || !keys.length) return 0;
   const used = new Set();
   getCourses().forEach(c => (c && c.wps || []).forEach(w => (w.photos || []).forEach(p => {
-    if (_isPhotoRef(p)) used.add(p.slice(PHOTO_REF.length));
+    if (_isPhotoRef(p)) { const id = p.slice(PHOTO_REF.length); used.add(id); used.add('s:' + id); }   // s:＝シール（v142）
   })));
   let del = 0;
   for (const k of keys) if (!used.has(k)) { await _photoDel(k); del++; }
@@ -2338,6 +2350,7 @@ function initMap() {
     _dsc.addEventListener('input', () => { _dirty = true; });
   }
   leafMap.on('zoomend', _redrawRouteOffset);   // 往復ずらし表示をズームに追従して再計算
+  leafMap.on('zoomend', _clusterStickers);      // シールの束ねをズームごとに作り直す（v142）
   leafMap.on('moveend', () => {               // 三角は画面内だけ作るので、動かしたら作り直す
     if (routeLine && _routeLineBase) _drawRouteBody(_buildDisplayCoords(_routeLineBase));
   });
@@ -2455,7 +2468,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v141';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
+const APP_VERSION = 'v142';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
 }catch(_){} });
@@ -3055,6 +3068,7 @@ function _applyMapLabelState(show) {
     wps.forEach(wp => { if (wp.marker) { wp.marker.setOpacity(1); const el=wp.marker.getElement(); if(el)el.style.pointerEvents=''; } });
     // ツールチップを全て表示
     document.querySelectorAll('.leaflet-tooltip').forEach(el => el.style.visibility = '');
+    _clusterStickers();                                   // 束ねて隠したシールは隠したまま（v142）
   } else {
     // ── 非表示にする ───────────────────────────────────────────
     // 航空写真は地名文字が無いので差し替えず保持（差し替えるとOSMになり背景が消える）
@@ -3240,6 +3254,7 @@ function buildWpMarker(wp) {
   m.on('dragend', () => { const _s=_snapCustom(m.getLatLng().lat, m.getLatLng().lng); wp.lat=_s[0]; wp.lng=_s[1]; m.setLatLng(_s); clearCache(); scheduleRouting(); });
   m.on('click', e => {
     L.DomEvent.stopPropagation(e);
+    if (wp._clusterN > 1) { leafMap.setView(m.getLatLng(), Math.min(leafMap.getMaxZoom() || 19, leafMap.getZoom() + 2)); return; }   // 束ねたシールは寄って開く（v142）
     if (viewMode) { showViewInfo(wp.id); return; }
     if (wp.type === 'node') {
       const oe = e.originalEvent || {};
@@ -3276,6 +3291,17 @@ function wpIcon(wp, sz, anc) {
   const sym = wp.type==='course' ? (courseNum(wp)||'?') : (SYM[wp.type]||'●');
   // 閲覧モードで訪問済みなら、○の右上に小さなチェックを付ける（スタンプラリー）
   const stamp = (viewMode && _visits && _visits[wp.id]) ? '<span class="wp-visited">✓</span>' : '';
+  if (_stickerOn() && wp.photos && wp.photos[0]) {                       // シール（v142）
+    const stk = _stickerOf(wp.photos[0]);
+    if (!stk) _ensureSticker(wp);                                        // できたら setIcon で置き換わる
+    else {
+      const d = _stickerSize()[0], b = Math.max(16, Math.round(d * 0.42));
+      const more = wp._clusterN > 1 ? `<span class="wp-stk-more">+${wp._clusterN - 1}</span>` : '';
+      return L.divIcon({className:'',
+        html:`<div class="wp-sticker" data-sticker="1" style="width:${d}px;height:${d}px;background-image:url(${stk})"><div class="wp-stk-badge" data-wtype="${wp.type||'course'}" style="background:${t.c};width:${b}px;height:${b}px;line-height:${b-3}px;font-size:${_wpFont(b, sym)}px">${sym}</div>${stamp}${more}</div>`,
+        iconSize:[d,d], iconAnchor:[d/2,d/2]});
+    }
+  }
   return L.divIcon({
     className:'',
     html:`<div data-wtype="${wp.type||'course'}" style="position:relative;width:${sz[0]}px;height:${sz[1]}px;border-radius:50%;background:${t.c};color:#fff;text-align:center;line-height:${sz[1]-4}px;font-size:${_wpFont(sz[0], sym)}px;font-weight:bold;border:2.5px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.45);cursor:pointer">${sym}${stamp}</div>`,
@@ -3299,6 +3325,7 @@ function courseNum(wp) {
 
 function refreshIcons() {
   wps.forEach(wp => { if(wp.marker) wp.marker.setIcon(wpIcon(wp)); });
+  _clusterStickers();
 }
 
 function updateTooltip(wp) {
@@ -3307,7 +3334,7 @@ function updateTooltip(wp) {
   if (wp.name && wp.name.trim()) {
     // 利用者が「上」以外を選んでいればそれを尊重。既定(上)のままなら自動配置に任せる
     const dir  = (!wp.labelDir || wp.labelDir === 'auto') ? (wp._autoDir || 'top') : wp.labelDir;
-    const offV = Math.round(_wpSize()[1] / 2 + 4);   // ○の半径+4px。標準サイズでは従来と同じ(スマホ22/PC19)
+    const offV = Math.round(_wpIconSize(wp)[1] / 2 + 4);   // ○（かシール）の半径+4px。標準サイズでは従来と同じ(スマホ22/PC19)
     const off  = dir==='top'    ? [0,-offV] :
                  dir==='bottom' ? [0, offV] :
                  dir==='left'   ? [-offV, 0] : [offV, 0];
@@ -3315,6 +3342,7 @@ function updateTooltip(wp) {
     // \nを<br>に変換してHTML表示（2行入力対応）
     const html_content = wp.name.split('\n').map(l=>escHtml(l)).join('<br>');
     wp.marker.bindTooltip(html_content, {permanent:true, direction:dir, offset:off, className:cls, opacity:1});
+    if (wp._clusterHidden) { const _te = wp.marker.getTooltip()?.getElement?.(); if (_te) _te.style.display = 'none'; }   // 束ねて隠した印の名札も隠す（v142）
     // ── インラインスタイルで背景色を強制設定 ──────────────────────────
     // html2canvasはCSS !importantの競合を正しく解決できないため、
     // CSSクラスではなくインラインスタイルで色を直接指定する
@@ -3978,6 +4006,7 @@ function closeMobileMenu() {
 }
 function _syncMobileMenu() {
   document.getElementById('mmSwLabels')?.classList.toggle('on', _showMapLabels !== false);
+  document.getElementById('mmSwStickers')?.classList.toggle('on', _stickerOn());
   document.getElementById('mmSwVia')?.classList.toggle('on', viaVisible !== false);
   document.getElementById('mmSwManual')?.classList.toggle('on', manualMode === true);
   document.getElementById('mmSwView')?.classList.toggle('on', viewMode === true);
@@ -5543,7 +5572,7 @@ function redrawList() {
     const row = document.createElement('div');
     row.className = 'wp-row';
     row.draggable  = !viewMode;                       // 閲覧中は並べ替えない
-    row.innerHTML  = `<div class="wp-dot" style="background:${t.c}">${sym}</div><div class="wp-nm">${escHtml(lbl)}</div><div class="wp-ed">✏</div>`;
+    row.innerHTML  = `<div class="wp-dot" style="background:${t.c}">${sym}</div><div class="wp-nm">${escHtml(lbl)}</div>${wp.photos && wp.photos.length ? '<span class="wp-ph" title="写真">📷' + wp.photos.length + '</span>' : ''}<div class="wp-ed">✏</div>`;
 
     row.addEventListener('click', ()=>flyEdit(wp.id));
     row.querySelector('.wp-ed').addEventListener('click', e=>{e.stopPropagation();openModal(wp.id);});
@@ -5671,6 +5700,7 @@ function _syncPcPops(){
     });
     document.querySelectorAll('#popMap [data-wsz]').forEach(el => el.classList.toggle('on', Number(el.getAttribute('data-wsz')) === _wpSizeIdx));
     document.getElementById('btnMapLabels')?.classList.toggle('on', _showMapLabels !== false);
+    document.getElementById('btnStickers')?.classList.toggle('on', _stickerOn());
     document.getElementById('btnManual')?.classList.toggle('on', manualMode === true);
     document.getElementById('btnToggleVia')?.classList.toggle('on', viaVisible !== false);
     document.getElementById('btnCustomFeat')?.classList.toggle('on', _customOn_ === true);
@@ -6412,7 +6442,7 @@ function compressImage(file) {
     reader.onload = e => {
       const img = new Image();
       img.onload = () => {
-        const MAX = 800;
+        const MAX = PHOTO_MAX_PX;
         let w=img.width, h=img.height;
         if (w>MAX || h>MAX) {
           if (w>=h) { h=Math.round(h*MAX/w); w=MAX; }
@@ -6421,7 +6451,7 @@ function compressImage(file) {
         const cv = document.createElement('canvas');
         cv.width=w; cv.height=h;
         cv.getContext('2d').drawImage(img, 0, 0, w, h);
-        resolve(cv.toDataURL('image/jpeg', 0.65));
+        resolve(cv.toDataURL('image/jpeg', PHOTO_QUALITY));
       };
       img.onerror = reject;
       img.src = e.target.result;
@@ -6434,8 +6464,8 @@ function compressImage(file) {
 function handlePhotoFile(input) {
   const files = Array.from(input.files || []);
   input.value = '';  // reset for repeated selection
-  const remaining = 5 - _modalPhotos.length;
-  if (remaining <= 0) { showToast('写真は最大5枚です'); return; }
+  const remaining = PHOTO_MAX_PER_SPOT - _modalPhotos.length;
+  if (remaining <= 0) { showToast('写真は1つのスポットに最大' + PHOTO_MAX_PER_SPOT + '枚です'); return; }
   const toAdd = files.slice(0, remaining);
   Promise.all(toAdd.map(compressImage))
     .then(dataUrls => {
@@ -6650,6 +6680,73 @@ function saveKokoroeSheet() {
   showToast(v ? 'この地域からのお願いを書き込みました（保存はまだです）' : '標準の心得だけを載せます');
 }
 function speakKokoroe() { _speakText(_kokoroeSpeechText((courseInfo.kokoroe || '').trim())); }
+
+/* ===== シール（v142）：写真のあるスポットの印を、写真そのものにする =====
+   1枚目の写真を STICKER_PX 角に切り出して divIcon の背景にする。作るのは非同期なので、できるまでは○の印。
+   参照写真（idb:）のシールは 's:'+id で IndexedDB にも置き、次回は作り直さない。実体写真（配布ファイル）は都度作る（96px なので速い） */
+const _stickerMem = new Map();   // 鍵→シールの実体。''＝作成中、null＝作れなかった
+const _stickerWait = new Map();  // 作成中の鍵→できたら印を置き換えるスポット（同じ写真を複数のスポットが使うことがある）
+function _stickerOn(){ return !!(courseInfo && courseInfo.stickers); }
+function _stickerKey(p){ return _isPhotoRef(p) ? 's:' + p.slice(PHOTO_REF.length) : p; }
+function _stickerOf(p){ return _stickerMem.get(_stickerKey(p)) || ''; }
+function _stickerSize(){ const base = isMobile() ? 46 : 40; const d = Math.round(base * (WP_SIZES[_wpSizeIdx] || WP_SIZES[0])); return [d, d]; }
+function _wpIconSize(wp){ return (_stickerOn() && wp.type !== 'node' && wp.photos && wp.photos[0] && _stickerOf(wp.photos[0])) ? _stickerSize() : _wpSize(); }
+function _makeSticker(dataUrl){
+  return new Promise(res => {
+    const img = new Image();
+    img.onload = () => { try {
+      const sz = STICKER_PX, cv = document.createElement('canvas'); cv.width = sz; cv.height = sz;
+      const w = img.width, h = img.height, m = Math.min(w, h);
+      cv.getContext('2d').drawImage(img, (w - m) / 2, (h - m) / 2, m, m, 0, 0, sz, sz);
+      res(cv.toDataURL('image/jpeg', STICKER_QUALITY));
+    } catch(_) { res(''); } };
+    img.onerror = () => res('');
+    img.src = dataUrl;
+  });
+}
+async function _ensureSticker(wp){
+  const p = wp.photos && wp.photos[0]; if (!p) return '';
+  const key = _stickerKey(p);
+  if (_stickerMem.has(key)) {
+    if (_stickerMem.get(key) === '') { const l = _stickerWait.get(key) || []; if (!l.includes(wp)) l.push(wp); _stickerWait.set(key, l); }   // 作成中なら順番待ち
+    return _stickerMem.get(key) || '';
+  }
+  _stickerMem.set(key, ''); _stickerWait.set(key, [wp]);
+  let st = '';
+  try {
+    if (_isPhotoRef(p)) st = (await _photoGet(key)) || '';
+    if (!st) { const src = await _photoSrc(p); if (src) st = await _makeSticker(src); if (st && _isPhotoRef(p)) { try { await _photoPut(key, st); } catch(_) {} } }
+  } catch(_) { st = ''; }
+  _stickerMem.set(key, st || null);
+  const waiting = _stickerWait.get(key) || []; _stickerWait.delete(key);
+  if (st) { let any = false; waiting.forEach(w => { if (w.marker && wps.includes(w)) { w.marker.setIcon(wpIcon(w)); updateTooltip(w); any = true; } }); if (any) _clusterStickers(); }
+  return st;
+}
+function toggleStickers(){
+  courseInfo.stickers = !courseInfo.stickers; _dirty = true;
+  refreshIcons(); _syncPcPops(); _syncMobileMenu();
+  showToast(courseInfo.stickers ? '写真のあるスポットをシールで見せます。歩く人の画面と配布シートにも同じに出ます' : 'スポットの印を○に戻しました');
+}
+/* 近いシールは束ねる（先頭の1つに「+n」を付け、残りは隠す。ズームすると開く）。○の印は束ねない */
+function _clusterStickers(){
+  if (!leafMap) return;
+  const list = wps.filter(w => w.marker && w.type !== 'node');
+  const show = (w, on) => {
+    const el = w.marker.getElement(); if (el) { el.style.opacity = on ? '' : '0'; el.style.pointerEvents = on ? '' : 'none'; }
+    const tt = w.marker.getTooltip && w.marker.getTooltip(); const te = tt && tt.getElement && tt.getElement(); if (te) te.style.display = on ? '' : 'none';
+    w._clusterHidden = !on;
+  };
+  list.forEach(w => { if (w._clusterHidden || w._clusterN > 1) { const n = w._clusterN; w._clusterN = 0; show(w, true); if (n > 1) w.marker.setIcon(wpIcon(w)); } });
+  if (!_stickerOn()) return;
+  const stk = list.filter(w => w.photos && w.photos[0] && _stickerOf(w.photos[0]));
+  const leaders = [];
+  stk.forEach(w => {
+    const pt = leafMap.latLngToLayerPoint([w.lat, w.lng]);
+    const near = leaders.find(l => l.pt.distanceTo(pt) < STICKER_CLUSTER_PX);
+    if (near) { near.n++; show(w, false); } else leaders.push({w, pt, n: 1});
+  });
+  leaders.forEach(l => { if (l.n > 1) { l.w._clusterN = l.n; l.w.marker.setIcon(wpIcon(l.w)); } });
+}
 
 /* ===== 分岐・注意の案内（v141）===== */
 let _gEdit = null;   // 編集中 {vpId, kind, dir, ctype, note, photos}
@@ -7266,6 +7363,7 @@ function buildCurrentSaveData() {
     desc:    document.getElementById('iDesc')?.value||'',
     kokoroe: courseInfo.kokoroe || '',   // 歩く人の心得の「地域の追記」（標準の文は KOKOROE）（v137）
     info:    _courseInfoClean(),         // アクセス・駐車場・トイレ・休憩・季節・注意・問い合わせ・難易度（v139）
+    stickers: courseInfo.stickers ? true : undefined,   // 写真のある印をシールで見せる（v142）。OFF のときは書かない
     center:  leafMap ? {lat:leafMap.getCenter().lat, lng:leafMap.getCenter().lng} : null,
     zoom:    leafMap ? leafMap.getZoom() : 14,
     wps:     wps.map(w=>({id:w.id,type:w.type,name:w.name,desc:w.desc,tel:w.tel,dwell:w.dwell||0,fitBefore:w.fitBefore!==false,fitAfter:w.fitAfter!==false,onRoute:w.onRoute!==undefined?w.onRoute!==false:(w.type==='course'),lat:w.lat,lng:w.lng,labelDir:w.labelDir||'auto',photos:w.photos||[]})),
@@ -7356,7 +7454,7 @@ function _fitCourseToScreen(data){
   }
 }
 function loadCourseData(data) {
-  courseInfo = {name:data.name, area:data.area, start:data.start||'', goal:data.goal||'', kokoroe:data.kokoroe||'', info:(data.info && typeof data.info === 'object') ? Object.assign({}, data.info) : {}};
+  courseInfo = {name:data.name, area:data.area, start:data.start||'', goal:data.goal||'', kokoroe:data.kokoroe||'', info:(data.info && typeof data.info === 'object') ? Object.assign({}, data.info) : {}, stickers: data.stickers === true};
   currentCourseId = data.id;
   _dirty = false;             // 読み込み直後は未保存の変更なし
 

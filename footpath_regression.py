@@ -126,7 +126,7 @@ def static_checks(src):
         re.search(r"labelSize:\s*'fp_labelsize'", src) is not None and
         re.search(r"wpSize:\s*'fp_wpsize'", src) is not None)
     chk('静的', '起動時にサイズ設定を復元 restoreSizePrefs', 'restoreSizePrefs();' in src)
-    chk('静的', 'ラベル位置が○の大きさに追従', '_wpSize()[1] / 2 + 4' in src)
+    chk('静的', 'ラベル位置が○（かシール）の大きさに追従', '_wpIconSize(wp)[1] / 2 + 4' in src and 'function _wpIconSize(wp){ return (_stickerOn() &&' in src)
     _mmsrc = src[src.index('id="mobileMenuSheet"'):]          # v126: PCの右上にも同じ属性があるので、スマホメニュー以降だけ数える
     chk('静的', 'スマホメニューに文字サイズ5段階', len(re.findall(r'data-lsz="\d"', _mmsrc)) == 5)
     chk('静的', 'スマホメニューに○サイズ3段階', len(re.findall(r'data-wsz="\d"', _mmsrc)) == 3)
@@ -435,6 +435,16 @@ def static_checks(src):
     chk('静的', '選べる種類の出どころは _buildTypeOptions のまま（チップは select を読む）',
         "const cur = sel.value, opts = [...sel.options].map(o => o.value);" in src and 'function _buildTypeOptions' in src)
     chk('静的', '最初の案内が「種類と名前はあとから」を伝える', '種類と名前は、○を押してあとから決められます' in src)
+    # --- v142: 写真を軽く多く・シール（A）---
+    chk('静的', '写真は長辺1024px・1スポット12枚まで。シールは96px角、46px以内で束ねる',
+        'const PHOTO_MAX_PX = 1024, PHOTO_QUALITY = 0.66, PHOTO_MAX_PER_SPOT = 12;' in src and 'const STICKER_PX = 96, STICKER_QUALITY = 0.72, STICKER_CLUSTER_PX = 46;' in src
+        and 'const MAX = PHOTO_MAX_PX;' in src and 'PHOTO_MAX_PER_SPOT - _modalPhotos.length' in src)
+    chk('静的', 'シールは wpIcon の枝で描き、名札の位置はシールの大きさに合わせ、束ねた印を押すと寄る',
+        'class="wp-sticker" data-sticker="1"' in src and '_wpIconSize(wp)[1] / 2 + 4' in src and 'if (wp._clusterN > 1) { leafMap.setView(' in src
+        and "leafMap.on('zoomend', _clusterStickers);" in src)
+    chk('静的', 'シールの ON/OFF はコースに保存され（stickers）、PC・スマホの「地図の見せ方」に行がある',
+        'stickers: courseInfo.stickers ? true : undefined' in src and 'stickers: data.stickers === true' in src and 'id="btnStickers"' in src and 'id="mmSwStickers"' in src)
+    chk('静的', 'シールの鍵（s:）は片づけで消さない・一覧に写真の枚数', "used.add('s:' + id)" in src and 'class="wp-ph"' in src)
     # --- v141: 分岐・注意の案内（フットパス特化 F4/F11）---
     chk('静的', '通り道の点に分岐（←↑→）と注意（車・滑る・圏外・獣）の案内を付けられ、保存・スナップショット・写真の同梱に入る',
         'const GUIDE_DIRS' in src and 'const GUIDE_CAUTIONS' in src and 'guide:v.guide||undefined' in src and 'guide:v.guide?JSON.parse' in src
@@ -2003,6 +2013,35 @@ def functional_checks(index_path):
           }catch(e){ return 'ERR:'+e.message; } }""")
         chk('機能', 'スポット削除の「元に戻す」が戻し、別の操作の後は案内し、通知は重ならず、種別はこのコースで使った順',
             isinstance(b1, dict) and all(b1.get(k) for k in ('gone', 'toast', 'back', 'guarded', 'stacked', 'order')), str(b1)[:220])
+
+        # v142: シール：写真のある印が写真になり、名札がずれず、近い2つは束ねて「+1」、保存に stickers、写真は1024pxへ（検査用のスポット2つを置いて片づける）
+        st = page.evaluate("""async ()=>{ try{
+            const cv0 = document.createElement('canvas'); cv0.width = 40; cv0.height = 30; const g0 = cv0.getContext('2d'); g0.fillStyle = '#c33'; g0.fillRect(0,0,40,30);
+            const url0 = cv0.toDataURL('image/png'); const n0 = wps.length, c = leafMap.getCenter(), keepD = _dirty;
+            const mk = (id, lat, lng) => { const w = {id, type:'view', name:'シール検査' + id, desc:'', tel:'', dwell:0, fitBefore:true, fitAfter:true, onRoute:false, lat, lng, photos:[url0], labelDir:'auto', marker:null}; wps.push(w); buildWpMarker(w); return w; };
+            const a = mk(-9001, c.lat, c.lng), b = mk(-9002, c.lat + 0.0006, c.lng + 0.0006);
+            courseInfo.stickers = true; refreshIcons();
+            const t0 = Date.now(); while (Date.now() - t0 < 8000 && !(a.marker.getElement().querySelector('.wp-sticker') && b.marker.getElement().querySelector('.wp-sticker'))) await new Promise(r => setTimeout(r, 100));
+            const out = {sticker: !!a.marker.getElement().querySelector('.wp-sticker .wp-stk-badge') && !!b.marker.getElement().querySelector('.wp-sticker'), saved: buildCurrentSaveData().stickers === true,
+                         mem: [..._stickerMem.entries()].filter(([k]) => k === url0).map(([k, v]) => v === null ? 'null' : (v || '').length)};
+            const tt = a.marker.getTooltip(); const want = Math.round(_stickerSize()[1] / 2 + 4); out.offset = !!tt && (Math.abs(tt.options.offset[1]) === want || Math.abs(tt.options.offset[0]) === want);
+            b.lat = a.lat + 0.00002; b.lng = a.lng + 0.00002; b.marker.setLatLng([b.lat, b.lng]); _clusterStickers();
+            out.clustered = b.marker.getElement().style.opacity === '0' && /\\+\\d+/.test((a.marker.getElement().querySelector('.wp-stk-more') || {}).textContent || '');
+            b.lat = c.lat + 0.0006; b.lng = c.lng + 0.0006; b.marker.setLatLng([b.lat, b.lng]); _clusterStickers();
+            out.opened = b.marker.getElement().style.opacity !== '0' && !a.marker.getElement().querySelector('.wp-stk-more');
+            // 写真の縮小：2000×1000 → 長辺1024
+            const cv = document.createElement('canvas'); cv.width = 2000; cv.height = 1000; cv.getContext('2d').fillStyle = '#4a4'; cv.getContext('2d').fillRect(0,0,2000,1000);
+            const blob = await new Promise(r => cv.toBlob(r, 'image/jpeg', 0.9)); const url = await compressImage(new File([blob], 'x.jpg', {type:'image/jpeg'}));
+            const im = new Image(); await new Promise((r, j) => { im.onload = r; im.onerror = j; im.src = url; }); out.px = im.width === 1024 && im.height === 512;
+            // 後片付け
+            courseInfo.stickers = false;
+            [a, b].forEach(w => { try { leafMap.removeLayer(w.marker); } catch(_) {} const i = wps.indexOf(w); if (i >= 0) wps.splice(i, 1); });
+            _stickerMem.clear(); _stickerWait.clear(); refreshIcons(); redrawList(); _dirty = keepD;
+            out.back = wps.length === n0 && buildCurrentSaveData().stickers === undefined;
+            return out;
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        chk('機能', 'シール：写真の印・名札の位置・近い2つを束ねて開く・保存に stickers・写真は長辺1024pxに',
+            isinstance(st, dict) and all(st.get(k) for k in ('sticker', 'saved', 'offset', 'clustered', 'opened', 'px', 'back')), str(st)[:240])
 
         # v141: 案内：保存に入り、印が変わり、帯が手前で知らせ・ここで示し・過ぎたら確認、シートに載る、閲覧中はカード
         gd = page.evaluate("""()=>{ try{
