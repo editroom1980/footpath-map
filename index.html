@@ -301,6 +301,44 @@ body.embed #s2, body.embed #mapArea, body.embed #mapWrap{height:100%!important;m
 .wp-sticker .wp-visited{right:-5px;top:-5px}
 .wp-stk-more{position:absolute;right:-6px;bottom:-6px;min-width:18px;height:18px;padding:0 4px;border-radius:9px;background:#231C14;color:#fff;font-size:10px;font-weight:700;line-height:18px;text-align:center;border:1.5px solid #fff;box-sizing:border-box}
 .wp-ph{font-size:10px;color:var(--t-sub);margin-right:4px;flex-shrink:0}
+/* 発見（v143） */
+.wp-sticker.find{border-color:#E8F5E9}
+.find-dot{border-radius:50%;color:#fff;font-weight:bold;text-align:center;border:2.5px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.45);cursor:pointer}
+#mobileFindBtn[hidden],#btnFind[hidden],#mmFindsRow[hidden]{display:none!important}
+.mrb.find{color:#2E7D32}
+.fsh-scrim{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:3400;display:none}
+.fsh{position:fixed;left:0;right:0;bottom:0;z-index:3401;display:none;background:#fff;border-radius:20px 20px 0 0;padding:10px 16px max(16px,env(safe-area-inset-bottom));box-shadow:0 -6px 24px rgba(0,0,0,.18);max-height:90vh;overflow-y:auto}
+.fsh .ds-dh{width:38px;height:4px;border-radius:2px;background:#D9D1C4;margin:0 auto 12px}
+.fsh .ds-t{font-size:17px;font-weight:800;color:#231C14;margin-bottom:3px;display:flex;align-items:center;gap:8px}
+.fsh .ds-n{font-size:11.5px;color:var(--t-sub);margin-bottom:10px;line-height:1.7}
+.fsh .kk-l{display:block;font-size:12px;font-weight:700;color:var(--t-sub);margin:10px 0 4px}
+.fsh input[type=text]{width:100%;padding:9px 11px;border:1px solid #D4C4A8;border-radius:10px;font-size:16px;font-family:inherit;box-sizing:border-box;outline:none}
+.fsh input[type=text]:focus{border-color:var(--brand)}
+.fsh .ds-row{display:flex;gap:9px;margin-top:14px}
+.fsh .ds-btn{flex:1;min-height:var(--tap);border:none;border-radius:12px;font-family:inherit;font-size:14px;font-weight:700;background:var(--brand-grad);color:#fff;cursor:pointer}
+.fsh .ds-btn:disabled{opacity:.45;cursor:default}
+.fsh .ds-btn.ghost{flex:0 0 84px;background:#F2EEE7;color:var(--t-sub)}
+.fsh .ds-btn.danger{flex:0 0 96px;background:#FDECEC;color:#B71C1C}
+.f-photo{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.f-photo img{width:120px;height:90px;object-fit:cover;border-radius:10px;border:1px solid #D4C4A8}
+.f-pick{flex:1;min-width:120px;border:1.5px dashed #9CCC65;background:#F1F8E9;color:#2E7D32;border-radius:12px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;min-height:var(--tap);display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.f-ghost{border:none;background:#F2EEE7;border-radius:10px;padding:8px 12px;font-family:inherit;font-size:13px;cursor:pointer;color:#3D3835}
+.f-where{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:12px;font-size:12.5px;color:var(--t-sub);background:#F9F7F4;border-radius:10px;padding:8px 10px}
+.fl-n{font-size:12px;font-weight:700;color:#2E7D32;background:#E8F5E9;border-radius:10px;padding:2px 8px}
+.fl-list{display:flex;flex-direction:column;gap:6px;max-height:44vh;overflow-y:auto}
+.fl-row{display:flex;align-items:center;gap:10px;border:1px solid #EFE7DA;border-radius:12px;background:#fff;padding:6px 8px;font-family:inherit;text-align:left;cursor:pointer;min-height:var(--tap)}
+.fl-row img,.fl-noimg{width:52px;height:40px;object-fit:cover;border-radius:8px;flex-shrink:0}
+.fl-noimg{display:inline-flex;align-items:center;justify-content:center;background:#2E7D32;color:#fff;font-weight:800}
+.fl-t{display:flex;flex-direction:column;gap:2px;min-width:0}
+.fl-t b{font-size:14px;color:#231C14;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fl-t small{font-size:11px;color:var(--t-sub)}
+.fl-empty{font-size:13px;color:var(--t-sub);line-height:1.7;padding:14px 6px;text-align:center}
+.fl-add{width:100%;margin-top:10px;min-height:var(--tap);border:1.5px dashed #9CCC65;background:#F1F8E9;color:#2E7D32;border-radius:12px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer}
+.vip-acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.vip-acts button{border:none;background:#F2EEE7;border-radius:10px;padding:10px 12px;font-family:inherit;font-size:13px;font-weight:700;color:#3D3835;cursor:pointer;min-height:var(--tap)}
+.vip-acts button.danger{background:#FDECEC;color:#B71C1C}
+.vip-note{font-size:11px;color:#8A8078;margin-top:8px;line-height:1.6}
+@media (min-width:769px){.fsh{left:50%;right:auto;bottom:auto;top:50%;transform:translate(-50%,-50%);width:460px;max-width:calc(100vw - 32px);border-radius:16px;padding:18px 20px 20px}.fsh .ds-dh{display:none}}
 .wp-visited{position:absolute;right:-3px;top:-3px;width:14px;height:14px;border-radius:50%;background:var(--ok);
   color:#fff;font-size:9px;line-height:14px;text-align:center;border:1.5px solid #fff;font-weight:700}
 #embedBar{position:absolute;top:0;left:0;right:0;z-index:1200;display:none;align-items:center;gap:8px;
@@ -1051,7 +1089,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
           <button class="nb-cmp tap" id="nbCompass" onclick="enableCompass()" aria-label="コンパスを使う" title="コンパスを使う（向きの矢印が体の向き基準になります）">🧭</button>
         </div>
         <!-- PC（v126）：下＝高低差 -->
-        <div id="pcBl"><button class="pc-pill" id="btnGps" onclick="gotoCurrentLocation()" title="現在地へ移動（位置情報の許可が要ります）"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12a3 3 0 1 0 6 0a3 3 0 1 0 -6 0" /> <path d="M4 12a8 8 0 1 0 16 0a8 8 0 1 0 -16 0" /> <path d="M12 2l0 2" /> <path d="M12 20l0 2" /> <path d="M20 12l2 0" /> <path d="M2 12l2 0" /></svg><span>現在地</span></button><button class="pc-pill" id="btnKokoroe" onclick="openKokoroeSheet(viewMode ? 'view' : 'edit')" title="歩く人の心得（配布シートと配布リンクに載ります）">🙏<span>心得</span></button><button class="pc-pill" id="btnElev" onclick="toggleElevPanel()" title="高低差グラフ"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M4 19l16 0" /> <path d="M4 15l4 -6l4 2l4 -5l4 4" /></svg><span>高低差</span></button></div>
+        <div id="pcBl"><button class="pc-pill" id="btnGps" onclick="gotoCurrentLocation()" title="現在地へ移動（位置情報の許可が要ります）"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12a3 3 0 1 0 6 0a3 3 0 1 0 -6 0" /> <path d="M4 12a8 8 0 1 0 16 0a8 8 0 1 0 -16 0" /> <path d="M12 2l0 2" /> <path d="M12 20l0 2" /> <path d="M20 12l2 0" /> <path d="M2 12l2 0" /></svg><span>現在地</span></button><button class="pc-pill" id="btnKokoroe" onclick="openKokoroeSheet(viewMode ? 'view' : 'edit')" title="歩く人の心得（配布シートと配布リンクに載ります）">🙏<span>心得</span></button><button class="pc-pill" id="btnFind" onclick="openFindsSheet()" title="見つけたものを貼る・作者に送る" hidden>📷<span>発見</span></button><button class="pc-pill" id="btnElev" onclick="toggleElevPanel()" title="高低差グラフ"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M4 19l16 0" /> <path d="M4 15l4 -6l4 2l4 -5l4 4" /></svg><span>高低差</span></button></div>
         <div id="mapMsg">⚠️ プレビュー環境では地図タイルは表示されません<br><span style="font-size:11px">GitHub Pagesに公開すると正常に表示されます</span></div>
         <div id="rtMsg">🔄 ルートを計算中...</div>
         <!-- 埋め込み表示のときだけ出る帯（コース名・距離・大きな地図で開く） -->
@@ -1067,6 +1105,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
           <button class="mrb tap" id="mobileUndoBtn" onclick="undoLast()" disabled aria-label="取り消し"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14l-4 -4l4 -4" /> <path d="M5 10h11a4 4 0 1 1 0 8h-1" /></svg></button>
           <button class="mrb tap" id="mobileRedoBtn" onclick="redoAction()" disabled aria-label="やり直し"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14l4 -4l-4 -4" /> <path d="M19 10h-11a4 4 0 1 0 0 8h1" /></svg></button>
           <button class="mrb gps mt tap" onclick="gotoCurrentLocation()" aria-label="現在地"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12a3 3 0 1 0 6 0a3 3 0 1 0 -6 0" /> <path d="M4 12a8 8 0 1 0 16 0a8 8 0 1 0 -16 0" /> <path d="M12 2l0 2" /> <path d="M12 20l0 2" /> <path d="M20 12l2 0" /> <path d="M2 12l2 0" /></svg></button>
+          <button class="mrb mt tap find" id="mobileFindBtn" onclick="openFindSheet()" aria-label="発見を貼る" hidden><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h1a2 2 0 0 0 2 -2a1 1 0 0 1 1 -1h6a1 1 0 0 1 1 1a2 2 0 0 0 2 2h1a2 2 0 0 1 2 2v9a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-9a2 2 0 0 1 2 -2" /><path d="M9 13a3 3 0 1 0 6 0a3 3 0 0 0 -6 0" /></svg></button>
           <button class="mrb mt tap" onclick="leafMap&&leafMap.zoomIn()" aria-label="拡大"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5l0 14" /> <path d="M5 12l14 0" /></svg></button>
           <button class="mrb tap" onclick="leafMap&&leafMap.zoomOut()" aria-label="縮小"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l14 0" /></svg></button>
         </div>
@@ -1084,7 +1123,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
       <div id="walkTip">
         <div class="ft-ic">🚶</div>
         <div class="ft-t">この地図の使いかた</div>
-        <div class="ft-d">・○をタップすると、写真と解説が見られます<br>・スポットに近づくと、スタンプが付きます<br>・◎を押すと、いまの場所を追いかけて、次のスポットまでの距離が出ます（もう一度押すと止まります）<br>・田畑や私有地には入らない、ゴミは持ち帰る、動植物や農作物は採らない（心得）</div>
+        <div class="ft-d">・○をタップすると、写真と解説が見られます<br>・スポットに近づくと、スタンプが付きます<br>・◎を押すと、いまの場所を追いかけて、次のスポットまでの距離が出ます（もう一度押すと止まります）<br>・田畑や私有地には入らない、ゴミは持ち帰る、動植物や農作物は採らない（心得）<br>・見つけたもの（植物・マンホールの蓋…）は 📷 で写真とひとことを貼れます。作者に送ると地図に載ることも</div>
         <button class="ft-b ghost" onclick="dismissWalkTip();openKokoroeSheet('view')">心得を読む</button>
         <button class="ft-b" onclick="dismissWalkTip()">わかった</button>
         <div class="ft-n">この案内は最初の1回だけ出ます</div>
@@ -1167,6 +1206,37 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
         </div>
       </div>
 
+      <!-- 発見（v143）：歩く人が貼る／一覧と作者へ送る -->
+      <div id="findScrim" class="fsh-scrim" onclick="closeFindSheet()"></div>
+      <div id="findSheet" class="fsh" role="dialog" aria-label="発見を貼る">
+        <div class="ds-dh"></div>
+        <div class="ds-t">発見を貼る</div>
+        <div class="ds-n">見つけたもの（植物・マンホールの蓋・オブジェ…）を写真とひとことで。この端末に残り、「作者に送る」と地図に載せてもらえます。</div>
+        <div class="f-photo" id="fPhoto"></div>
+        <label class="kk-l" for="fWord">ひとこと（30字まで）</label>
+        <input type="text" id="fWord" maxlength="30" placeholder="例：マンホールの蓋に鮎の絵">
+        <label class="kk-l" for="fBy">名前（任意・12字まで）</label>
+        <input type="text" id="fBy" maxlength="12" placeholder="例：はなこ">
+        <div class="f-where"><span id="fWhere">場所：地図の中心</span><button type="button" class="tap f-ghost" onclick="_fUseGps(false)">現在地にする</button></div>
+        <div class="ds-row">
+          <button class="ds-btn ghost" onclick="closeFindSheet()">閉じる</button>
+          <button class="ds-btn" onclick="saveFindSheet()">貼る</button>
+        </div>
+      </div>
+      <div id="findsScrim" class="fsh-scrim" onclick="closeFindsSheet()"></div>
+      <div id="findsSheet" class="fsh" role="dialog" aria-label="見つけたもの">
+        <div class="ds-dh"></div>
+        <div class="ds-t">見つけたもの（発見）<span class="fl-n" id="findsN">0 件</span></div>
+        <div class="ds-n">この端末に貼ったものです。「作者に送る」で LINE・メール・AirDrop などから作者へ渡せます。</div>
+        <div id="findsList" class="fl-list"></div>
+        <div class="ds-row">
+          <button class="ds-btn ghost" onclick="closeFindsSheet()">閉じる</button>
+          <button class="ds-btn danger" id="findsClear" onclick="clearFinds()" hidden>全部消す</button>
+          <button class="ds-btn" id="findsSend" onclick="sendFinds()">📤 作者に送る</button>
+        </div>
+        <button class="fl-add tap" onclick="closeFindsSheet();openFindSheet()">＋ いま見つけたものを貼る</button>
+      </div>
+
       <!-- 分岐・注意の案内（v141）：通り道の点に付ける -->
       <div id="guideScrim" onclick="closeGuideSheet()"></div>
       <div id="guideSheet" role="dialog" aria-label="分岐・注意の案内">
@@ -1229,6 +1299,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
           <div class="mm-map" onclick="closeMobileMenu();openReorderSheet()" data-edit="1"><span class="mm-map-l">スポットの並べ替え</span><span class="mm-v" id="mmReorderN">›</span></div>
           <div class="mm-map" onclick="closeMobileMenu();saveMapOffline()" title="このコースの範囲の地図を端末に保存します（圏外でも表示できます）"><span class="mm-map-l">地図を持ち歩く（圏外用）</span><span class="mm-v">›</span></div>
           <div class="mm-map" onclick="closeMobileMenu();openKokoroeSheet(viewMode ? 'view' : 'edit')"><span class="mm-map-l">歩く人の心得</span><span class="mm-v" id="mmKokoroe">›</span></div>
+          <div class="mm-map" id="mmFindsRow" onclick="closeMobileMenu();openFindsSheet()" hidden><span class="mm-map-l">見つけたもの（発見）</span><span class="mm-v" id="mmFinds">0 件 ›</span></div>
           <div class="mm-map" onclick="closeMobileMenu();openInfoSheet(viewMode ? 'view' : 'edit')"><span class="mm-map-l">コースの情報（アクセス・トイレ…）</span><span class="mm-v" id="mmInfo">›</span></div>
         </div>
         <div class="mm-sec">歩くとき</div>
@@ -1479,6 +1550,8 @@ const GUIDE_PASSED_M = 25;    // これだけ過ぎたら「この道で合っ�
    シール＝スポットの1枚目の写真を STICKER_PX 角に切り出した地図の印。近いシールは STICKER_CLUSTER_PX 以内で束ねる */
 const PHOTO_MAX_PX = 1024, PHOTO_QUALITY = 0.66, PHOTO_MAX_PER_SPOT = 12;
 const STICKER_PX = 96, STICKER_QUALITY = 0.72, STICKER_CLUSTER_PX = 46;
+/* 発見（v143・構想「参加者が見つけたものを貼って共有」の端末側）。歩く人がその端末に貼る。作者へはファイル（Web Share／保存）で送る */
+const FIND_COLOR = '#2E7D32', FIND_WORD_MAX = 30, FIND_BY_MAX = 12, FIND_POS_FRESH_MS = 120000;
 const TYPE_BIG = ['course', 'view', 'history', 'shop'];   // 編集画面で大きく出す「よく使う4つ」（オーナー指定・v129）。残りは畳む
 const LINE_STYLE = {color:'#E84040', weight:4, dashArray:'8,5', opacity:.9, lineJoin:'round', lineCap:'round', smoothFactor:0};
 const DBL_GAP_PX = 2;        // 往復で重なる区間：2本の線の間隔(px)
@@ -1579,6 +1652,8 @@ const LS = {
   firstSaveAt: 'fp_first_save',   // 最初の保存の日時（一度もバックアップが無いときの起点）
   homeTipSeen: 'fp_hometip_seen', // iPhone のホーム画面追加の案内を見たかどうか
   offAuto:     'fp_offauto',      // 配布リンクを開いた端末で地図を自動で持ち歩いた記録（コースごと・v135）
+  finds:       'fp_finds',        // 歩く人が貼った「発見」（コースIDごと・この端末だけ・v143）
+  findBy:      'fp_find_by',      // 発見に添える名前（前回の入力を覚える・v143）
 };
 // --- サンプルコース（初回起動時に一度だけ取り込む。削除したら復活しない）---
 const SAMPLE_URL = 'sample.json';   // index.html と同じ場所に置く
@@ -1979,9 +2054,10 @@ async function gcPhotos(){
   const keys = await _photoKeys();
   if (!keys || !keys.length) return 0;
   const used = new Set();
-  getCourses().forEach(c => (c && c.wps || []).forEach(w => (w.photos || []).forEach(p => {
-    if (_isPhotoRef(p)) { const id = p.slice(PHOTO_REF.length); used.add(id); used.add('s:' + id); }   // s:＝シール（v142）
-  })));
+  const keep = p => { if (_isPhotoRef(p)) { const id = p.slice(PHOTO_REF.length); used.add(id); used.add('s:' + id); } };   // s:＝シール（v142）
+  getCourses().forEach(c => (c && c.wps || []).forEach(w => (w.photos || []).forEach(keep)));
+  getCourses().forEach(c => (c && c.vps || []).forEach(v => (v && v.guide && v.guide.photos || []).forEach(keep)));   // 分岐の写真（v141）
+  Object.values(_allFinds()).forEach(list => (list || []).forEach(f => (f && f.photos || []).forEach(keep)));           // 発見の写真（v143）
   let del = 0;
   for (const k of keys) if (!used.has(k)) { await _photoDel(k); del++; }
   return del;
@@ -2187,6 +2263,7 @@ async function newCourse() {
   if (!name || !area) { alert('コース名とエリアを入力してください。'); return; }
   courseInfo  = {name, area, start:document.getElementById('s1Start').value.trim(), goal:document.getElementById('s1Goal').value.trim(), kokoroe:'', info:{}};
   currentCourseId = null;
+  if (typeof loadFinds === 'function') loadFinds();   // 発見の印を片づける（v143）
 
   const btn = document.getElementById('s1Btn');
   btn.disabled = true; btn.textContent = '⏳ マップを読み込み中...';
@@ -2468,7 +2545,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v142';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
+const APP_VERSION = 'v143';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
 }catch(_){} });
@@ -3804,6 +3881,7 @@ function toggleViewMode() {
     closeViewInfo();           // 閲覧パネルを閉じて編集に復帰
   }
   loadVisits(); renderStampBar(); refreshIcons();    // 閲覧モードの切替でスタンプ表示も切り替える
+  loadFinds();                                        // 発見は歩く人の画面でだけ出す（v143）
   if (viewMode) hideWpPicker();
   _applyViewLock();                                  // 編集の操作を隠し、印を動かせなくする
   redrawList();                                      // 一覧の並べ替え可否を作り直す
@@ -4015,6 +4093,7 @@ function _syncMobileMenu() {
   _syncCustomMenu();
   _syncSizeMenu();
   _syncMmValues();
+  _syncFindUi();
 }
 /* ---- メニューの2階層目（v125）：背景地図・文字と印の大きさ・歩く速さ。選択肢の行は以前のまま（同期関数が data-bm 等を見る）---- */
 function openMmSub(kind){
@@ -6704,14 +6783,14 @@ function _makeSticker(dataUrl){
     img.src = dataUrl;
   });
 }
-async function _ensureSticker(wp){
-  const p = wp.photos && wp.photos[0]; if (!p) return '';
+async function _ensureStickerSrc(p, onDone){   // p＝写真（参照か実体）。できたら onDone(シール)。同じ写真を待つ側は順番待ち
   const key = _stickerKey(p);
   if (_stickerMem.has(key)) {
-    if (_stickerMem.get(key) === '') { const l = _stickerWait.get(key) || []; if (!l.includes(wp)) l.push(wp); _stickerWait.set(key, l); }   // 作成中なら順番待ち
-    return _stickerMem.get(key) || '';
+    const v = _stickerMem.get(key);
+    if (v === '') { const l = _stickerWait.get(key) || []; if (onDone) l.push(onDone); _stickerWait.set(key, l); }
+    return v || '';
   }
-  _stickerMem.set(key, ''); _stickerWait.set(key, [wp]);
+  _stickerMem.set(key, ''); _stickerWait.set(key, onDone ? [onDone] : []);
   let st = '';
   try {
     if (_isPhotoRef(p)) st = (await _photoGet(key)) || '';
@@ -6719,8 +6798,12 @@ async function _ensureSticker(wp){
   } catch(_) { st = ''; }
   _stickerMem.set(key, st || null);
   const waiting = _stickerWait.get(key) || []; _stickerWait.delete(key);
-  if (st) { let any = false; waiting.forEach(w => { if (w.marker && wps.includes(w)) { w.marker.setIcon(wpIcon(w)); updateTooltip(w); any = true; } }); if (any) _clusterStickers(); }
+  if (st) waiting.forEach(fn => { try { fn(st); } catch(_) {} });
   return st;
+}
+async function _ensureSticker(wp){
+  const p = wp.photos && wp.photos[0]; if (!p) return '';
+  return _ensureStickerSrc(p, () => { if (wp.marker && wps.includes(wp)) { wp.marker.setIcon(wpIcon(wp)); updateTooltip(wp); _clusterStickers(); } });
 }
 function toggleStickers(){
   courseInfo.stickers = !courseInfo.stickers; _dirty = true;
@@ -6746,6 +6829,195 @@ function _clusterStickers(){
     if (near) { near.n++; show(w, false); } else leaders.push({w, pt, n: 1});
   });
   leaders.forEach(l => { if (l.n > 1) { l.w._clusterN = l.n; l.w.marker.setIcon(wpIcon(l.w)); } });
+}
+
+/* ===== 発見（v143）：歩く人が見つけたものを、写真とひとことで地図に貼る =====
+   ・コースの中身は変えない。貼った端末の localStorage（LS.finds、コースIDごと）と IndexedDB（写真）に残る
+   ・作者へは「作者に送る」でファイル（fpFinds）を Web Share（LINE・メール・AirDrop）か保存で渡す。作者は一覧画面の「読み込む」で取り込む
+   ・印は写真のシール（左上に緑の「発」）。長押しで動かせる。歩く人の画面（viewMode）でだけ出す */
+let finds = [];          // いま開いているコースの発見 {id, lat, lng, word, by, at, photos[], marker}
+let _fEdit = null, _findUndo = null, _findsFile = null, _findsFileFor = '';
+function _allFinds(){ if (!lsAvail()) return {}; try { return JSON.parse(localStorage.getItem(LS.finds) || '{}') || {}; } catch(_) { return {}; } }
+function _saveFinds(){
+  if (!lsAvail() || currentCourseId == null) return;
+  try { const all = _allFinds(); all[String(currentCourseId)] = finds.map(f => ({id:f.id, lat:f.lat, lng:f.lng, word:f.word, by:f.by, at:f.at, photos:f.photos})); localStorage.setItem(LS.finds, JSON.stringify(all)); }
+  catch(_) { showToast('発見を保存できませんでした（保存容量がいっぱいかもしれません）'); }
+}
+function loadFinds(){
+  finds.forEach(f => { if (f.marker) { try { leafMap.removeLayer(f.marker); } catch(_) {} f.marker = null; } });
+  finds = (currentCourseId == null) ? [] : ((_allFinds()[String(currentCourseId)] || []).map(f => Object.assign({}, f, {marker:null})));
+  renderFinds();
+}
+function renderFinds(){
+  if (!leafMap) return;
+  finds.forEach(f => {
+    if (!viewMode) { if (f.marker) { try { leafMap.removeLayer(f.marker); } catch(_) {} f.marker = null; } return; }
+    if (!f.marker) f.marker = _buildFindMarker(f); else f.marker.setIcon(findIcon(f));
+  });
+  _syncFindUi();
+}
+function _fmtFindDate(iso){ const d = new Date(iso || ''); return isNaN(d) ? '' : (d.getMonth() + 1) + '/' + d.getDate() + ' ' + d.getHours() + ':' + String(d.getMinutes()).padStart(2, '0'); }
+function findIcon(f){
+  const p = f.photos && f.photos[0], stk = p ? _stickerOf(p) : '';
+  if (p && !stk) _ensureStickerSrc(p, () => { if (f.marker && finds.includes(f)) f.marker.setIcon(findIcon(f)); });
+  if (stk) {
+    const d = _stickerSize()[0], b = Math.max(16, Math.round(d * 0.42));
+    return L.divIcon({className:'', html:`<div class="wp-sticker find" style="width:${d}px;height:${d}px;background-image:url(${stk})"><div class="wp-stk-badge" style="background:${FIND_COLOR};width:${b}px;height:${b}px;line-height:${b-3}px;font-size:${_wpFont(b, '発')}px">発</div></div>`, iconSize:[d,d], iconAnchor:[d/2,d/2]});
+  }
+  const sz = _wpSize()[0];
+  return L.divIcon({className:'', html:`<div class="find-dot" style="width:${sz}px;height:${sz}px;line-height:${sz-4}px;font-size:${_wpFont(sz, '発')}px;background:${FIND_COLOR}">発</div>`, iconSize:[sz,sz], iconAnchor:[sz/2,sz/2]});
+}
+function _buildFindMarker(f){
+  const m = L.marker([f.lat, f.lng], {draggable:true, icon:findIcon(f), zIndexOffset:1200}).addTo(leafMap);
+  m.on('click', e => { L.DomEvent.stopPropagation(e); showFindInfo(f.id); });
+  m.on('dragend', () => { const ll = m.getLatLng(); f.lat = ll.lat; f.lng = ll.lng; _saveFinds(); _findsFile = null; showToast('場所を直しました'); });
+  return m;
+}
+function _syncFindUi(){
+  const n = finds.length, on = !!viewMode;
+  const b = document.getElementById('btnFind'); if (b) { b.hidden = !on; const sp = b.querySelector('span'); if (sp) sp.textContent = n ? '発見 ' + n : '発見'; }
+  const mb = document.getElementById('mobileFindBtn'); if (mb) mb.hidden = !on;
+  const row = document.getElementById('mmFindsRow'); if (row) row.hidden = !on;
+  const v = document.getElementById('mmFinds'); if (v) v.textContent = n + ' 件 ›';
+}
+/* 貼る（シート） */
+function openFindSheet(){
+  if (!viewMode) { showToast('発見は「歩く人の見え方」のときに貼れます'); return; }
+  if (currentCourseId == null) { showToast('保存していないコースには貼れません'); return; }
+  const fresh = _walkPos && (Date.now() - (_walkPos.at || 0)) < FIND_POS_FRESH_MS;
+  _fEdit = {photos:[], where: fresh ? 'gps' : 'center', pos: fresh ? {lat:_walkPos.lat, lng:_walkPos.lng, acc:_walkPos.acc} : null};
+  document.getElementById('fWord').value = '';
+  document.getElementById('fBy').value = (lsAvail() && localStorage.getItem(LS.findBy)) || '';
+  _fRender();
+  document.getElementById('findScrim').style.display = 'block'; document.getElementById('findSheet').style.display = 'block';
+  if (!fresh) _fUseGps(true);                                  // 位置が古ければ取り直す（取れなければ地図の中心）
+}
+function _fRender(){
+  if (!_fEdit) return;
+  const box = document.getElementById('fPhoto'), ph = _fEdit.photos[0];
+  box.innerHTML = ph ? '<img src="' + ph + '" alt="写真"><button type="button" class="tap f-ghost" onclick="_fEdit.photos=[];_fRender()">写真を外す</button>'
+                     : '<label class="f-pick tap">📷 撮る<input type="file" accept="image/*" capture="environment" style="display:none" onchange="_fAddPhoto(this)"></label><label class="f-pick tap">🖼 写真から選ぶ<input type="file" accept="image/*" style="display:none" onchange="_fAddPhoto(this)"></label>';
+  const w = document.getElementById('fWhere');
+  w.textContent = (_fEdit.where === 'gps' && _fEdit.pos) ? ('場所：いまの位置' + (_fEdit.pos.acc ? '（精度 ±' + Math.round(_fEdit.pos.acc) + 'm）' : '')) : '場所：地図の中心（あとで印を長押しして動かせます）';
+}
+async function _fAddPhoto(input){
+  const f = input.files && input.files[0]; input.value = ''; if (!f || !_fEdit) return;
+  try { _fEdit.photos = [await compressImage(f)]; _fRender(); } catch(_) { showToast('写真を読み込めませんでした'); }
+}
+function _fUseGps(quiet){
+  if (!navigator.geolocation) { if (!quiet) showToast('この端末では位置情報を使えません'); return; }
+  if (!quiet) showToast('現在地を取得中…');
+  navigator.geolocation.getCurrentPosition(pos => { if (!_fEdit) return; _fEdit.where = 'gps'; _fEdit.pos = {lat:pos.coords.latitude, lng:pos.coords.longitude, acc:pos.coords.accuracy}; _fRender(); },
+    () => { if (!quiet) showToast('現在地が取れませんでした。地図の中心に貼ります'); }, {enableHighAccuracy:true, timeout:8000, maximumAge:15000});
+}
+function closeFindSheet(){ document.getElementById('findScrim').style.display = 'none'; document.getElementById('findSheet').style.display = 'none'; _fEdit = null; }
+async function saveFindSheet(){
+  if (!_fEdit) return;
+  const word = (document.getElementById('fWord').value || '').trim().slice(0, FIND_WORD_MAX), by = (document.getElementById('fBy').value || '').trim().slice(0, FIND_BY_MAX);
+  if (!word && !_fEdit.photos.length) { showToast('写真かひとことを入れてください'); return; }
+  const c = (_fEdit.where === 'gps' && _fEdit.pos) ? _fEdit.pos : leafMap.getCenter();
+  const f = await _addFind({lat:c.lat, lng:c.lng, word, by, photos:_fEdit.photos.slice()});
+  if (lsAvail()) { try { localStorage.setItem(LS.findBy, by); } catch(_) {} }
+  closeFindSheet();
+  if (f) { showToast('貼りました：' + (word || '写真') + '。印を押すと見られます'); try { leafMap.panTo([f.lat, f.lng]); } catch(_) {} }
+}
+async function _addFind(o){
+  if (currentCourseId == null) return null;
+  const f = {id:'f' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), lat:o.lat, lng:o.lng, word:o.word || '', by:o.by || '', at:new Date().toISOString(), photos:(o.photos || []).slice(), marker:null};
+  await _stashPhotoArray(f.photos);
+  finds.push(f); _saveFinds(); _findsFile = null;
+  if (viewMode && leafMap) f.marker = _buildFindMarker(f);
+  _syncFindUi();
+  return f;
+}
+/* 見る（歩く人のカードと同じ置き場） */
+function showFindInfo(id){
+  const f = finds.find(x => x.id === id); if (!f) return;
+  const panel = document.getElementById('viewInfoPanel'); if (!panel) return;
+  let h = '<div class="vip-handle"></div><div class="vip-hdr"><div class="vip-dot" style="background:' + FIND_COLOR + '">発</div>'
+        + '<div class="vip-name">' + escHtml(f.word || '発見') + '<div style="font-size:12px;font-weight:500;color:#666;margin-top:2px">' + escHtml((f.by ? f.by + '・' : '') + _fmtFindDate(f.at)) + '</div></div>'
+        + '<button class="vip-close" onclick="closeViewInfo()">✕</button></div>';
+  if (f.photos && f.photos[0]) h += '<div class="vip-photos"><img ' + _photoAttr(f.photos[0]) + ' onclick="openFullPhoto(this.src)" alt="発見の写真"></div>';
+  h += '<div class="vip-acts"><button class="tap" onclick="closeViewInfo();openFindsSheet()">📤 作者に送る</button><button class="tap danger" onclick="deleteFind(\'' + f.id + '\')">🗑 この発見を消す</button></div>'
+     + '<div class="vip-note">印を長押しして動かすと、場所を直せます。発見はこの端末にだけ残ります</div>';
+  panel.innerHTML = h; _fillPhotoImgs(panel); panel.classList.add('show');
+}
+function deleteFind(id){
+  const i = finds.findIndex(f => f.id === id); if (i < 0) return;
+  const f = finds[i]; if (f.marker) { try { leafMap.removeLayer(f.marker); } catch(_) {} f.marker = null; }
+  finds.splice(i, 1); _saveFinds(); _findsFile = null; closeViewInfo(); _syncFindUi(); _renderFindsList();
+  _findUndo = f;
+  _showUndoToast('「' + (f.word || '写真') + '」を消しました', () => { if (!_findUndo) return; const g = _findUndo; _findUndo = null; finds.push(g); _saveFinds(); _findsFile = null; if (viewMode) g.marker = _buildFindMarker(g); _syncFindUi(); _renderFindsList(); }, DELETE_UNDO_MS);
+}
+function clearFinds(){
+  if (!finds.length) return;
+  if (!confirm('この端末の発見 ' + finds.length + ' 件を全部消しますか？（送ったファイルは残ります）')) return;
+  finds.forEach(f => { if (f.marker) { try { leafMap.removeLayer(f.marker); } catch(_) {} } });
+  finds = []; _saveFinds(); _findsFile = null; _syncFindUi(); _renderFindsList(); showToast('全部消しました');
+}
+/* 一覧と「作者に送る」 */
+function openFindsSheet(){ document.getElementById('findsScrim').style.display = 'block'; document.getElementById('findsSheet').style.display = 'block'; _renderFindsList(); _prepareFindsFile(); }
+function closeFindsSheet(){ document.getElementById('findsScrim').style.display = 'none'; document.getElementById('findsSheet').style.display = 'none'; }
+function _renderFindsList(){
+  const box = document.getElementById('findsList'); if (!box) return;
+  if (!finds.length) box.innerHTML = '<div class="fl-empty">まだありません。地図の 📷 から、見つけたもの（植物・マンホールの蓋・オブジェ…）を写真とひとことで貼れます。</div>';
+  else box.innerHTML = finds.slice().sort((a, b) => (b.at || '').localeCompare(a.at || '')).map(f =>
+    '<button class="fl-row tap" onclick="closeFindsSheet();leafMap.setView([' + f.lat + ',' + f.lng + '],Math.max(leafMap.getZoom(),17));showFindInfo(\'' + f.id + '\')">'
+    + (f.photos && f.photos[0] ? '<img ' + _photoAttr(f.photos[0]) + ' alt="">' : '<span class="fl-noimg">発</span>')
+    + '<span class="fl-t"><b>' + escHtml(f.word || '（ひとことなし）') + '</b><small>' + escHtml((f.by ? f.by + '・' : '') + _fmtFindDate(f.at)) + '</small></span></button>').join('');
+  _fillPhotoImgs(box);
+  const n = document.getElementById('findsN'); if (n) n.textContent = finds.length + ' 件';
+  const sb = document.getElementById('findsSend'); if (sb) sb.disabled = !finds.length;
+  const cb = document.getElementById('findsClear'); if (cb) cb.hidden = !finds.length;
+}
+async function _buildFindsPayload(){
+  const out = {fpFinds:1, app:'footpath-map', courseId: currentCourseId, courseName: courseInfo.name || '', sentAt: new Date().toISOString(), finds: []};
+  for (const f of finds) {
+    const ph = []; for (const p of (f.photos || [])) { const src = await _photoSrc(p); if (src) ph.push(src); }
+    out.finds.push({id:f.id, lat:f.lat, lng:f.lng, word:f.word || '', by:f.by || '', at:f.at || '', photos:ph});
+  }
+  return out;
+}
+function _findsFileName(){ const d = new Date(); return 'hakken_' + _safeFileBase(courseInfo.name) + '_' + d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0') + '.json'; }   // 端末の日付（UTCだと前日になることがある）
+async function _prepareFindsFile(){   // 送る前に作っておく（iPhone の共有は、押した直後に呼ばないと開けないため）
+  if (!finds.length) { _findsFile = null; return; }
+  const sig = finds.map(f => f.id + f.lat + f.lng + f.word).join('|');
+  if (_findsFile && _findsFileFor === sig) return;
+  _findsFileFor = sig;
+  const text = JSON.stringify(await _buildFindsPayload());
+  _findsFile = new File([text], _findsFileName(), {type:'application/json'});
+}
+async function sendFinds(){
+  if (!finds.length) { showToast('まだ発見がありません'); return; }
+  if (!_findsFile) await _prepareFindsFile();
+  const file = _findsFile;
+  if (file && navigator.share && navigator.canShare && navigator.canShare({files:[file]})) {
+    try { await navigator.share({files:[file], title:'発見（' + (courseInfo.name || '') + '）', text:'フットパスマップの「発見」' + finds.length + '件です。一覧画面の「読み込む」で取り込めます'}); showToast('送りました'); return; }
+    catch(e) { if (e && e.name === 'AbortError') return; }
+  }
+  const text = file ? await file.text() : JSON.stringify(await _buildFindsPayload());
+  _downloadText(text, _findsFileName(), 'application/json');
+  showToast('ファイルを保存しました。作者にメールや LINE で送ってください');
+}
+/* 作者側：発見ファイルを「その他」のスポットとして取り込む（道順には入れない） */
+async function _importFinds(data){
+  const courses = getCourses();
+  const c = courses.find(x => x && String(x.id) === String(data.courseId)) || courses.find(x => x && x.name && x.name === data.courseName);
+  if (!c) { alert('この発見は「' + (data.courseName || '?') + '」のものですが、このアプリの一覧にそのコースがありません。'); return false; }
+  const list = (data.finds || []).filter(f => f && isFinite(f.lat) && isFinite(f.lng));
+  if (!list.length) { alert('発見が入っていません'); return false; }
+  const words = list.slice(0, 5).map(f => '・' + (f.word || '（ひとことなし）') + (f.by ? '（' + f.by + '）' : '')).join('\n');
+  if (!confirm('「' + c.name + '」に発見 ' + list.length + ' 件を「その他」のスポットとして取り込みます。\n' + words + (list.length > 5 ? '\n…ほか' : '') + '\n\n取り込んだあと、コースを開いて種類や場所を整えてください。')) return false;
+  let maxId = Math.max(0, Number(c.maxWpId) || 0, ...(c.wps || []).map(w => Number(w.id) || 0));
+  c.wps = c.wps || [];
+  list.forEach(f => { maxId++; c.wps.push({id:maxId, type:'other', name:String(f.word || '発見').slice(0, FIND_WORD_MAX), desc:'発見' + (f.by ? '：' + f.by : '') + (f.at ? '（' + _fmtFindDate(f.at) + '）' : ''), tel:'', dwell:0, fitBefore:true, fitAfter:true, onRoute:false, lat:Number(f.lat), lng:Number(f.lng), photos:(f.photos || []).filter(x => typeof x === 'string' && x.indexOf('data:image') === 0).slice(0, 3), labelDir:'auto'}); });
+  c.maxWpId = maxId; c.savedAt = new Date().toISOString();
+  await _stashPhotos([c]);
+  const ok = setCourses(courses);
+  if (typeof renderCourseList === 'function') renderCourseList();
+  if (ok) showToast('発見 ' + list.length + ' 件を「' + c.name + '」に取り込みました'); else alert('取り込みましたが保存できませんでした（保存容量がいっぱいです）');
+  if (currentCourseId != null && String(currentCourseId) === String(c.id)) loadCourseData(c);
+  return true;
 }
 
 /* ===== 分岐・注意の案内（v141）===== */
@@ -7533,6 +7805,7 @@ function loadCourseData(data) {
     _applyViewDesc();   // 配布リンクで開いているときだけ、説明文を読み取り専用で表示する
     _fillEmbedBar();    // 埋め込み表示の帯（コース名・距離・大きな地図で開く）
     loadVisits(); renderStampBar(); refreshIcons();   // スタンプ（この端末に残っている記録）
+    loadFinds();                                       // 発見（この端末に残っているもの・v143）
 
     // カスタム道路: 機能廃止につき読み込まない
     customRoads = [];
@@ -7979,6 +8252,7 @@ function importCourseFromFile(input) {
         if (data && data.error) { alert('GPXを読み込めませんでした：' + data.error); return; }
       } else {
         data = JSON.parse(e.target.result);
+        if (data && data.fpFinds === 1 && Array.isArray(data.finds)) { await _importFinds(data); return; }   // 歩く人から届いた「発見」（v143）
       }
       if (!data.name || !Array.isArray(data.wps)) { alert('無効なコースファイルです'); return; }
       data.id = Date.now();

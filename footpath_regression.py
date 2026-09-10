@@ -435,6 +435,16 @@ def static_checks(src):
     chk('静的', '選べる種類の出どころは _buildTypeOptions のまま（チップは select を読む）',
         "const cur = sel.value, opts = [...sel.options].map(o => o.value);" in src and 'function _buildTypeOptions' in src)
     chk('静的', '最初の案内が「種類と名前はあとから」を伝える', '種類と名前は、○を押してあとから決められます' in src)
+    # --- v143: 発見（歩く人が貼る・作者に送る・作者が取り込む）---
+    chk('静的', '発見はコースIDごとに端末に残り（LS.finds）、写真は IndexedDB、片づけで消さない',
+        "finds:       'fp_finds'" in src and 'function _saveFinds' in src and 'await _stashPhotoArray(f.photos);' in src and "Object.values(_allFinds()).forEach(list =>" in src)
+    chk('静的', '貼る入口はスマホの📷・PCの「発見」ピル・メニューの行。歩く人の画面でだけ出す',
+        'id="mobileFindBtn"' in src and 'id="btnFind"' in src and 'id="mmFindsRow"' in src and 'function _syncFindUi' in src and "showToast('発見は「歩く人の見え方」のときに貼れます')" in src)
+    chk('静的', '作者へは Web Share（ファイル）か保存で送り、押した直後に開けるよう先にファイルを作る',
+        'navigator.canShare({files:[file]})' in src and 'function _prepareFindsFile' in src and "fpFinds:1" in src)
+    chk('静的', '作者側は読み込みで発見ファイルを見分け、「その他」の道順に入らないスポットとして取り込む',
+        "data.fpFinds === 1 && Array.isArray(data.finds)" in src and "type:'other'" in src and 'onRoute:false, lat:Number(f.lat)' in src)
+    chk('静的', '歩く人の最初の案内に発見の一言', '見つけたもの（植物・マンホールの蓋…）は 📷 で' in src)
     # --- v142: 写真を軽く多く・シール（A）---
     chk('静的', '写真は長辺1024px・1スポット12枚まで。シールは96px角、46px以内で束ねる',
         'const PHOTO_MAX_PX = 1024, PHOTO_QUALITY = 0.66, PHOTO_MAX_PER_SPOT = 12;' in src and 'const STICKER_PX = 96, STICKER_QUALITY = 0.72, STICKER_CLUSTER_PX = 46;' in src
@@ -2014,20 +2024,55 @@ def functional_checks(index_path):
         chk('機能', 'スポット削除の「元に戻す」が戻し、別の操作の後は案内し、通知は重ならず、種別はこのコースで使った順',
             isinstance(b1, dict) and all(b1.get(k) for k in ('gone', 'toast', 'back', 'guarded', 'stacked', 'order')), str(b1)[:220])
 
+        # v143: 発見：貼る→端末に残る→印とカード→送るファイル→作者が取り込む→消す。編集画面では印を出さない
+        fd = page.evaluate("""async ()=>{ try{
+            const keepV = viewMode, keepCls = document.body.className, keepId = currentCourseId, keepD = _dirty, keepLS = lsAvail() ? localStorage.getItem(LS.finds) : null;
+            const cv = document.createElement('canvas'); cv.width = 60; cv.height = 40; const g = cv.getContext('2d'); g.fillStyle = '#396'; g.fillRect(0,0,60,40); const url = cv.toDataURL('image/png');
+            viewMode = true; document.body.classList.add('viewing'); currentCourseId = 424242; loadFinds();
+            const c = leafMap.getCenter();
+            const f = await _addFind({lat:c.lat, lng:c.lng, word:'マンホールの蓋に鮎', by:'はなこ', photos:[url]});
+            const out = {added: !!f && finds.length === 1 && !!f.marker && !!f.marker.getElement()};
+            out.saved = ((_allFinds()['424242'] || []).length === 1) && (_allFinds()['424242'][0].word === 'マンホールの蓋に鮎');
+            const t0 = Date.now(); while (Date.now() - t0 < 6000 && !f.marker.getElement().querySelector('.wp-sticker.find')) await new Promise(r => setTimeout(r, 100));
+            out.sticker = !!f.marker.getElement().querySelector('.wp-sticker.find');
+            showFindInfo(f.id); const panel = document.getElementById('viewInfoPanel'); out.card = panel.classList.contains('show') && panel.textContent.indexOf('マンホールの蓋に鮎') >= 0 && panel.textContent.indexOf('はなこ') >= 0; closeViewInfo();
+            _syncFindUi(); out.ui = !document.getElementById('mobileFindBtn').hidden && document.getElementById('mmFinds').textContent.indexOf('1 件') >= 0;
+            const payload = await _buildFindsPayload(); out.payload = payload.fpFinds === 1 && payload.finds.length === 1 && payload.finds[0].photos[0].indexOf('data:image') === 0 && payload.courseId === 424242;
+            // 作者側：一覧に同じIDのコースを置いて取り込む（確認は自動で OK）
+            const keepCourses = getCourses(); const keepConfirm = window.confirm; window.confirm = () => true;
+            setCourses(keepCourses.concat([{id:424242, name:'発見検査', area:'', wps:[{id:1, type:'start', name:'S', lat:c.lat, lng:c.lng, photos:[]}], vps:[], maxWpId:1}]));
+            currentCourseId = null; const imported = await _importFinds(JSON.parse(JSON.stringify(payload))); currentCourseId = 424242;
+            const cc = getCourses().find(x => x.id === 424242); const nw = cc && cc.wps[cc.wps.length - 1];
+            out.imported = imported === true && cc.wps.length === 2 && nw.type === 'other' && nw.name === 'マンホールの蓋に鮎' && nw.onRoute === false && nw.photos.length === 1 && cc.maxWpId === 2;
+            window.confirm = keepConfirm; setCourses(keepCourses);
+            // 編集画面に戻すと印は消える。消す→元に戻す
+            viewMode = false; loadFinds(); out.hiddenInEdit = finds.length === 1 && !finds[0].marker;
+            viewMode = true; loadFinds(); deleteFind(finds[0].id); out.deleted = finds.length === 0 && (_allFinds()['424242'] || []).length === 0;
+            // 後片付け
+            document.querySelectorAll('#toastBox .toast').forEach(e => e.remove()); _findUndo = null;
+            finds.forEach(x => { if (x.marker) leafMap.removeLayer(x.marker); }); finds = [];
+            if (lsAvail()) { if (keepLS === null) localStorage.removeItem(LS.finds); else localStorage.setItem(LS.finds, keepLS); }
+            viewMode = keepV; document.body.className = keepCls; currentCourseId = keepId; _dirty = keepD; loadFinds(); closeViewInfo();
+            return out;
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        chk('機能', '発見：貼る・残る・シールの印・カード・送るファイル・作者が取り込む・編集画面では出ない・消す',
+            isinstance(fd, dict) and all(fd.get(k) for k in ('added', 'saved', 'sticker', 'card', 'ui', 'payload', 'imported', 'hiddenInEdit', 'deleted')), str(fd)[:260])
+
         # v142: シール：写真のある印が写真になり、名札がずれず、近い2つは束ねて「+1」、保存に stickers、写真は1024pxへ（検査用のスポット2つを置いて片づける）
         st = page.evaluate("""async ()=>{ try{
             const cv0 = document.createElement('canvas'); cv0.width = 40; cv0.height = 30; const g0 = cv0.getContext('2d'); g0.fillStyle = '#c33'; g0.fillRect(0,0,40,30);
             const url0 = cv0.toDataURL('image/png'); const n0 = wps.length, c = leafMap.getCenter(), keepD = _dirty;
             const mk = (id, lat, lng) => { const w = {id, type:'view', name:'シール検査' + id, desc:'', tel:'', dwell:0, fitBefore:true, fitAfter:true, onRoute:false, lat, lng, photos:[url0], labelDir:'auto', marker:null}; wps.push(w); buildWpMarker(w); return w; };
-            const a = mk(-9001, c.lat, c.lng), b = mk(-9002, c.lat + 0.0006, c.lng + 0.0006);
+            const px = (lat, lng, dx, dy) => leafMap.layerPointToLatLng(leafMap.latLngToLayerPoint([lat, lng]).add([dx, dy]));
+            const far = px(c.lat, c.lng, 120, 120); const a = mk(-9001, c.lat, c.lng), b = mk(-9002, far.lat, far.lng);
             courseInfo.stickers = true; refreshIcons();
             const t0 = Date.now(); while (Date.now() - t0 < 8000 && !(a.marker.getElement().querySelector('.wp-sticker') && b.marker.getElement().querySelector('.wp-sticker'))) await new Promise(r => setTimeout(r, 100));
             const out = {sticker: !!a.marker.getElement().querySelector('.wp-sticker .wp-stk-badge') && !!b.marker.getElement().querySelector('.wp-sticker'), saved: buildCurrentSaveData().stickers === true,
                          mem: [..._stickerMem.entries()].filter(([k]) => k === url0).map(([k, v]) => v === null ? 'null' : (v || '').length)};
             const tt = a.marker.getTooltip(); const want = Math.round(_stickerSize()[1] / 2 + 4); out.offset = !!tt && (Math.abs(tt.options.offset[1]) === want || Math.abs(tt.options.offset[0]) === want);
-            b.lat = a.lat + 0.00002; b.lng = a.lng + 0.00002; b.marker.setLatLng([b.lat, b.lng]); _clusterStickers();
+            const near = px(a.lat, a.lng, 10, 10); b.lat = near.lat; b.lng = near.lng; b.marker.setLatLng([b.lat, b.lng]); _clusterStickers();
             out.clustered = b.marker.getElement().style.opacity === '0' && /\\+\\d+/.test((a.marker.getElement().querySelector('.wp-stk-more') || {}).textContent || '');
-            b.lat = c.lat + 0.0006; b.lng = c.lng + 0.0006; b.marker.setLatLng([b.lat, b.lng]); _clusterStickers();
+            b.lat = far.lat; b.lng = far.lng; b.marker.setLatLng([b.lat, b.lng]); _clusterStickers();
             out.opened = b.marker.getElement().style.opacity !== '0' && !a.marker.getElement().querySelector('.wp-stk-more');
             // 写真の縮小：2000×1000 → 長辺1024
             const cv = document.createElement('canvas'); cv.width = 2000; cv.height = 1000; cv.getContext('2d').fillStyle = '#4a4'; cv.getContext('2d').fillRect(0,0,2000,1000);
