@@ -336,6 +336,12 @@ def static_checks(src):
              if c in src]
     chk('静的', '読みにくい薄い文字色が残っていない', not faint, str(faint))
     chk('静的', '補足の文字色を1か所にまとめている', '--t-sub:' in src, '')
+    # --- v103: 地図の上の見え方（白いふち）---
+    chk('静的', 'ルート線の白いふちがある（表示専用）',
+        'routeCasing' in src and 'const ROUTE_CASING_ADD' in src)
+    chk('静的', '白いふちは当たり判定に使わない', "interactive:false, renderer: canvasRenderer}).addTo(leafMap)" in src)
+    chk('静的', '白いふちも後片付けする', 'if (routeCasing) { if(leafMap) leafMap.removeLayer(routeCasing); routeCasing=null; }' in src)
+    chk('静的', 'スポットの○の白いふちがはっきりしている', 'border:2.5px solid #fff' in src)
     # --- v99: ラベルの自動配置 ---
     chk('静的', 'ラベル自動配置 autoPlaceLabels 存在', 'function autoPlaceLabels' in src)
     chk('静的', 'まとめて実行する scheduleAutoLabels 存在', 'function scheduleAutoLabels' in src)
@@ -975,6 +981,25 @@ def functional_checks(index_path):
             str(small) if small else f'{len(txt)}か所 OK')
         chk('機能', '補足の文字の濃さが 4.5:1 以上', not faint2,
             str(faint2) if faint2 else str([t['cr'] for t in txt]))
+
+        # v103: 白いふちが赤い線と同じ形で敷かれ、データ側は何も変わっていない
+        cas = page.evaluate("""()=>{ try{
+            if (!routeCasing || !routeLine) return {has:false};
+            const a = routeCasing.getLatLngs(), b = routeLine.getLatLngs();
+            const same = a.length === b.length && a.every((p,i)=>
+                Math.abs(p.lat-b[i].lat) < 1e-9 && Math.abs(p.lng-b[i].lng) < 1e-9);
+            return {has:true, same:same,
+                    thicker: routeCasing.options.weight > routeLine.options.weight,
+                    white: routeCasing.options.color === '#fff',
+                    notHit: routeCasing.options.interactive === false,
+                    hitCount: hitOverlays.length,
+                    baseLen: (_routeLineBase||[]).length,
+                    lastLen: (_lastRouteCoords||[]).length};
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        ok_cas = (isinstance(cas, dict) and cas.get('has') and cas.get('same')
+                  and cas.get('thicker') and cas.get('white') and cas.get('notHit')
+                  and cas.get('baseLen', 0) > 1 and cas.get('lastLen', 0) > 1)
+        chk('機能', 'ルート線の白いふちが同じ形で下に敷かれる', ok_cas, str(cas)[:190])
 
         # INV-AK: 現在地追従（位置情報を差し替えて動きを確かめる）
         fo = page.evaluate("""()=>{ return (async()=>{ try{

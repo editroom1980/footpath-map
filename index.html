@@ -957,6 +957,7 @@ const WT = [
 const SYM = {start:'S',goal:'G',view:'◎',shop:'★',shrine:'⛩',history:'碑',park:'🌿',toilet:'WC',parking:'P',other:'●',node:''};
 const LINE_STYLE = {color:'#E84040', weight:4, dashArray:'8,5', opacity:.9, lineJoin:'round', lineCap:'round', smoothFactor:0};
 const DBL_GAP_PX = 2;        // 往復で重なる区間：2本の線の間隔(px)
+const ROUTE_CASING_ADD = 3;  // ルート線の白いふちの太さ（赤い線に足すpx）。表示専用
 // --- ルート表示チューニング（往復ずらし表示の間隔調整はここ1か所）---
 const OFF_GEO_M  = 1.0;      // 片側オフセットの地理基準(m)。中ズームで従来同等・拡大で広がる。広げたいなら上げる
 const OFF_MAX_PX = 20;       // 広がりの上限(px)。窮屈な箇所での過剰拡大による交差を防ぐ保険
@@ -1050,6 +1051,7 @@ let leafMap     = null;
 let wps         = [];
 let vps         = [];
 let routeLine   = null;
+let routeCasing = null;    // ルート線の白いふち（表示専用。データ・当たり判定には一切関与しない）
 let hitOverlays = [];      // per-segment hit overlays — prevents segment misattribution
 let viaVisible  = true;
 let _vpDragged  = false;   // 調整点ドラッグ直後フラグ（クリックでメニューを開かないため）
@@ -1780,7 +1782,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v102';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
+const APP_VERSION = 'v103';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
 }catch(_){} });
@@ -2487,7 +2489,7 @@ function wpIcon(wp, sz, anc) {
   const stamp = (viewMode && _visits && _visits[wp.id]) ? '<span class="wp-visited">✓</span>' : '';
   return L.divIcon({
     className:'',
-    html:`<div data-wtype="${wp.type||'course'}" style="position:relative;width:${sz[0]}px;height:${sz[1]}px;border-radius:50%;background:${t.c};color:#fff;text-align:center;line-height:${sz[1]-4}px;font-size:${_wpFont(sz[0], sym)}px;font-weight:bold;border:2px solid rgba(255,255,255,.85);box-shadow:0 2px 6px rgba(0,0,0,.45);cursor:pointer">${sym}${stamp}</div>`,
+    html:`<div data-wtype="${wp.type||'course'}" style="position:relative;width:${sz[0]}px;height:${sz[1]}px;border-radius:50%;background:${t.c};color:#fff;text-align:center;line-height:${sz[1]-4}px;font-size:${_wpFont(sz[0], sym)}px;font-weight:bold;border:2.5px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.45);cursor:pointer">${sym}${stamp}</div>`,
     iconSize:sz, iconAnchor:anc
   });
 }
@@ -3800,6 +3802,7 @@ function haversine(lat1,lng1,lat2,lng2) {
    POLYLINE
    ============================================================ */
 function removeLines() {
+  if (routeCasing) { if(leafMap) leafMap.removeLayer(routeCasing); routeCasing=null; }
   if (routeLine) { if(leafMap) leafMap.removeLayer(routeLine); routeLine=null; }
   _routeLineBase = null;
   hitOverlays.forEach(o => { if(leafMap) leafMap.removeLayer(o); });
@@ -3911,14 +3914,21 @@ function _redrawRouteOffset(){
   if(!routeLine) return;
   try{
     routeLine.setStyle({weight:_routeWeight(), dashArray:_routeDash()});                 // 線太さ・破線をズームに追従
-    if(_dblOn && _routeLineBase) routeLine.setLatLngs(_buildDisplayCoords(_routeLineBase)); // 間隔をズームに追従
+    if (routeCasing) routeCasing.setStyle({weight:_routeWeight()+ROUTE_CASING_ADD});      // 白いふちも同じだけ太くする
+    if(_dblOn && _routeLineBase){ const d=_buildDisplayCoords(_routeLineBase);            // 間隔をズームに追従
+      routeLine.setLatLngs(d); if (routeCasing) routeCasing.setLatLngs(d); }
   }catch(_){ }
 }
 
 function drawLines(allCoords, segList) {
   if (!allCoords || allCoords.length < 2 || !leafMap) return;
   _routeLineBase = allCoords;                                    // 素の座標を保持（ズーム再計算・データ準拠）
-  routeLine = L.polyline(_buildDisplayCoords(allCoords), {...LINE_STYLE, weight:_routeWeight(), dashArray:_routeDash(), renderer: canvasRenderer}).addTo(leafMap);
+  // 白いふち（表示専用）：航空写真・地形図・淡色地図の上でも赤い破線が沈まないようにする。
+  // 赤い線と同じ表示座標を使うので、往復ずらし表示ともズレない。当たり判定はこの線に付けない。
+  const _disp = _buildDisplayCoords(allCoords);
+  routeCasing = L.polyline(_disp, {color:'#fff', weight:_routeWeight()+ROUTE_CASING_ADD, opacity:.95,
+    lineJoin:'round', lineCap:'round', smoothFactor:0, interactive:false, renderer: canvasRenderer}).addTo(leafMap);
+  routeLine = L.polyline(_disp, {...LINE_STYLE, weight:_routeWeight(), dashArray:_routeDash(), renderer: canvasRenderer}).addTo(leafMap);
 
   // 単一オーバーレイ + findNearestSegment方式:
   // per-segmentオーバーレイはWP境界付近でZ-order上位のものが優先され誤反応する
