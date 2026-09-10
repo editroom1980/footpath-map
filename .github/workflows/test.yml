@@ -37,5 +37,8 @@ jobs:
       - name: Chromium を入れる
         run: python -m playwright install --with-deps chromium
 
+      - name: WebKit を入れる（iPhone の Safari と同じエンジン・v146）
+        run: python -m playwright install --with-deps webkit
+
       - name: 回帰テストを実行
         run: npm test

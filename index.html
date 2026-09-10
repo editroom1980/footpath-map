@@ -626,6 +626,12 @@ body.viewonly #viewBadge{display:none!important}   /* 歩く人には「歩く�
 #shareSheet .ss-li:last-child{border-bottom:none}
 #shareSheet .ss-li .ch{margin-left:auto;color:var(--t-sub);font-size:13px;font-weight:700;white-space:nowrap}
 #shareSheet .ss-li .ch.warn{color:var(--brand)}
+#shareSheet .ss-li.ck{gap:10px;text-align:left}
+#shareSheet .ck-box{width:22px;height:22px;border-radius:6px;border:1.5px solid #C4B89A;display:inline-flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;color:#fff;background:#fff;flex-shrink:0}
+#shareSheet .ss-li.ck.on .ck-box{background:var(--ok);border-color:var(--ok)}
+#shareSheet .ck-l{font-size:13px;line-height:1.35;flex:1;color:#2C2620}
+#shareSheet .ss-n2{margin-left:8px;font-size:12px;color:var(--t-sub);font-weight:500}
+#shareSheet .ss-n2.warn{color:var(--brand)}
 #shareSheet .ss-hint{margin-top:14px;font-size:11.5px;color:var(--t-sub);text-align:center;line-height:1.6}
 @media (min-width:769px){
   #shareSheet{left:50%;right:auto;bottom:auto;top:50%;transform:translate(-50%,-50%);width:440px;max-width:calc(100vw - 32px);
@@ -1359,6 +1365,9 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
           <button class="ss-li" onclick="closeShareSheet();openInfoSheet('edit')">コースの情報<span class="ch" id="ssInfo">—</span></button>
         </div>
         <div class="ss-hint">リンクと配布シートには、上の内容がそのまま載ります</div>
+        <div class="ss-sec">配る前の確認<span class="ss-n2" id="ssCheckN"></span></div>
+        <div class="ss-list" id="ssChecks"></div>
+        <div class="ss-hint">歩く権利と私有地への配慮、安全の確認は、フットパスを続けるための土台です。✓はコースに保存されます</div>
       </div>
 
       <!-- モバイル: …メニューシート -->
@@ -1663,6 +1672,16 @@ const THEMES = [
 ];
 const THEME_ROUTE_COLORS = ['#E84040', '#D84315', '#F57F17', '#2E7D32', '#1976D2', '#6A1B9A', '#AD1457', '#222222'];
 const THEME_WIDTHS = {thin:0.75, std:1, thick:1.4};
+/* 配る前の確認（v146・フットパス特化 F9）。英国のフットパス運営（歩く権利・私有地・安全）に倣い、配る前に作者が確かめること。
+   own＝手で✓する（コースに保存 courseInfo.check）。auto＝コースの中身から自動で見る（押すと書く画面へ） */
+const SHARE_CHECKS = [
+  {k:'walked',  l:'実際に歩いて確かめた（通れる・危ない所がない）', own:true},
+  {k:'private', l:'私有地・田畑・里道は、持ち主や地域に断ってある（通らないなら✓）', own:true},
+  {k:'guide',   l:'迷いそうな分岐に案内を付けた', auto:'guide'},
+  {k:'caution', l:'車・滑る・圏外・獣の区間に注意を付けた', auto:'caution'},
+  {k:'info',    l:'トイレ・駐車場・アクセスを書いた', auto:'info'},
+  {k:'contact', l:'問い合わせ先を書いた（困ったときの連絡先）', auto:'contact'},
+];
 const TYPE_BIG = ['course', 'view', 'history', 'shop'];   // 編集画面で大きく出す「よく使う4つ」（オーナー指定・v129）。残りは畳む
 const LINE_STYLE = {color:'#E84040', weight:4, dashArray:'8,5', opacity:.9, lineJoin:'round', lineCap:'round', smoothFactor:0};
 const DBL_GAP_PX = 2;        // 往復で重なる区間：2本の線の間隔(px)
@@ -2657,7 +2676,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v145';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
+const APP_VERSION = 'v146';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
 }catch(_){} });
@@ -3091,6 +3110,7 @@ function renderShareInfo(){
   if (kEl) kEl.textContent = (courseInfo.kokoroe || '').trim() ? '標準＋この地域の追記 ›' : '標準の文 ›';
   const iEl = document.getElementById('ssInfo');
   if (iEl) { const n = _courseInfoCount(); iEl.textContent = `${n} / ${COURSE_INFO_FIELDS.length} 記入 ›`; iEl.classList.toggle('warn', n === 0); }
+  _renderShareChecks();                                    // 配る前の確認（v146）
 }
 async function shareExit(kind){
   if (kind === 'link') {
@@ -6944,6 +6964,32 @@ function _clusterStickers(){
   leaders.forEach(l => { if (l.n > 1) { l.w._clusterN = l.n; l.w.marker.setIcon(wpIcon(l.w)); } });
 }
 
+/* ===== 配る前の確認（v146）===== */
+function _shareCheckState(k){
+  const own = courseInfo.check || {}, info = courseInfo.info || {};
+  switch (k) {
+    case 'guide':   return vps.some(v => v.guide && v.guide.kind !== 'caution');
+    case 'caution': return vps.some(v => v.guide && v.guide.kind === 'caution');
+    case 'info':    return !!((info.toilet || '').trim() || (info.car || '').trim() || (info.access || '').trim());
+    case 'contact': return !!(info.contact || '').trim();
+    default:        return own[k] === true;
+  }
+}
+function _renderShareChecks(){
+  const box = document.getElementById('ssChecks'); if (!box) return;
+  let done = 0;
+  box.innerHTML = SHARE_CHECKS.map(c => { const on = _shareCheckState(c.k); if (on) done++;
+    return '<button class="ss-li ck' + (on ? ' on' : '') + '" onclick="shareCheckTap(\'' + c.k + '\')"><span class="ck-box">' + (on ? '✓' : '') + '</span><span class="ck-l">' + escHtml(c.l) + '</span>' + (c.own ? '' : '<span class="ch">' + (on ? '' : '書く ›') + '</span>') + '</button>'; }).join('');
+  const n = document.getElementById('ssCheckN'); if (n) { n.textContent = done + ' / ' + SHARE_CHECKS.length; n.classList.toggle('warn', done < SHARE_CHECKS.length); }
+}
+function shareCheckTap(k){
+  const c = SHARE_CHECKS.find(x => x.k === k); if (!c) return;
+  if (c.own) { courseInfo.check = courseInfo.check || {}; if (courseInfo.check[k]) delete courseInfo.check[k]; else courseInfo.check[k] = true; _dirty = true; _renderShareChecks(); return; }
+  if (k === 'guide' || k === 'caution') { closeShareSheet(); showToast(k === 'guide' ? '道順の線の上の「通り道の点」を押して「分岐・注意の案内を付ける」→ 分岐' : '「通り道の点」を押して「分岐・注意の案内を付ける」→ 注意'); return; }
+  closeShareSheet(); openInfoSheet('edit');
+}
+function _courseCheckClean(){ const o = {}; SHARE_CHECKS.forEach(c => { if (c.own && courseInfo.check && courseInfo.check[c.k] === true) o[c.k] = true; }); return Object.keys(o).length ? o : undefined; }
+
 /* ===== 地図の色（テーマ・v145）===== */
 const WT_BASE = {}; WT.forEach(t => { WT_BASE[t.v] = t.c; });     // 標準の色（テーマを外すときに戻す）
 const ROUTE_BASE = LINE_STYLE.color;
@@ -7976,6 +8022,7 @@ function buildCurrentSaveData() {
     info:    _courseInfoClean(),         // アクセス・駐車場・トイレ・休憩・季節・注意・問い合わせ・難易度（v139）
     stickers: courseInfo.stickers ? true : undefined,   // 写真のある印をシールで見せる（v142）。OFF のときは書かない
     theme:    courseInfo.theme || undefined,            // 地図の色（v145）。標準のときは書かない
+    check:    _courseCheckClean(),                      // 配る前の確認の✓（手で付けるものだけ・v146）
     center:  leafMap ? {lat:leafMap.getCenter().lat, lng:leafMap.getCenter().lng} : null,
     zoom:    leafMap ? leafMap.getZoom() : 14,
     wps:     wps.map(w=>({id:w.id,type:w.type,name:w.name,desc:w.desc,tel:w.tel,dwell:w.dwell||0,fitBefore:w.fitBefore!==false,fitAfter:w.fitAfter!==false,onRoute:w.onRoute!==undefined?w.onRoute!==false:(w.type==='course'),lat:w.lat,lng:w.lng,labelDir:w.labelDir||'auto',photos:w.photos||[]})),
@@ -8066,7 +8113,7 @@ function _fitCourseToScreen(data){
   }
 }
 function loadCourseData(data) {
-  courseInfo = {name:data.name, area:data.area, start:data.start||'', goal:data.goal||'', kokoroe:data.kokoroe||'', info:(data.info && typeof data.info === 'object') ? Object.assign({}, data.info) : {}, stickers: data.stickers === true, theme:(data.theme && typeof data.theme === 'object') ? Object.assign({}, data.theme) : null};
+  courseInfo = {name:data.name, area:data.area, start:data.start||'', goal:data.goal||'', kokoroe:data.kokoroe||'', info:(data.info && typeof data.info === 'object') ? Object.assign({}, data.info) : {}, stickers: data.stickers === true, theme:(data.theme && typeof data.theme === 'object') ? Object.assign({}, data.theme) : null, check:(data.check && typeof data.check === 'object') ? Object.assign({}, data.check) : {}};
   applyTheme(courseInfo.theme, {quiet:true});   // 印と線を作る前に色を決める（v145）
   currentCourseId = data.id;
   _dirty = false;             // 読み込み直後は未保存の変更なし

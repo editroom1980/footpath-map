@@ -435,6 +435,10 @@ def static_checks(src):
     chk('静的', '選べる種類の出どころは _buildTypeOptions のまま（チップは select を読む）',
         "const cur = sel.value, opts = [...sel.options].map(o => o.value);" in src and 'function _buildTypeOptions' in src)
     chk('静的', '最初の案内が「種類と名前はあとから」を伝える', '種類と名前は、○を押してあとから決められます' in src)
+    # --- v146: 配る前の確認（F9）＋ WebKit の検査 ---
+    chk('静的', '配る前の確認は6項目（歩いた・私有地・分岐・注意・トイレ等・問い合わせ）。手の✓はコースに保存（check）',
+        "const SHARE_CHECKS = [" in src and src.count("{k:'") >= 6 and 'check:    _courseCheckClean(),' in src and "check:(data.check && typeof data.check === 'object')" in src
+        and 'id="ssChecks"' in src and '_renderShareChecks();' in src)
     # --- v145: 地図の色（テーマ）---
     chk('静的', 'テーマは5つの組み合わせ＋線の色・点線／実線・太さ。コースに保存（theme）され、読み込み時に印を作る前に適用',
         "const THEMES = [" in src and src.count("{id:'") >= 5 and 'function applyTheme' in src and 'theme:    courseInfo.theme || undefined' in src
@@ -2038,6 +2042,22 @@ def functional_checks(index_path):
         chk('機能', 'スポット削除の「元に戻す」が戻し、別の操作の後は案内し、通知は重ならず、種別はこのコースで使った順',
             isinstance(b1, dict) and all(b1.get(k) for k in ('gone', 'toast', 'back', 'guarded', 'stacked', 'order')), str(b1)[:220])
 
+        # v146: 配る前の確認：手の✓が付いて保存に入る／自動の項目はコースの中身で決まる
+        ck = page.evaluate("""()=>{ try{
+            const keepC = JSON.stringify(courseInfo.check || {}), keepI = JSON.stringify(courseInfo.info || {}), keepD = _dirty;
+            courseInfo.check = {}; courseInfo.info = {};
+            openShareSheet();
+            const out = {rows: document.querySelectorAll('#ssChecks .ss-li.ck').length === SHARE_CHECKS.length, none: document.getElementById('ssCheckN').textContent.indexOf('0 /') === 0 || !_shareCheckState('walked')};
+            shareCheckTap('walked'); out.own = courseInfo.check.walked === true && document.querySelector('#ssChecks .ss-li.ck').classList.contains('on') && buildCurrentSaveData().check.walked === true;
+            shareCheckTap('walked'); out.off = !courseInfo.check.walked && buildCurrentSaveData().check === undefined;
+            out.auto0 = !_shareCheckState('info') && !_shareCheckState('contact');
+            courseInfo.info = {toilet:'公民館', contact:'090'}; _renderShareChecks(); out.auto1 = _shareCheckState('info') && _shareCheckState('contact') && document.querySelectorAll('#ssChecks .ss-li.ck.on').length >= 2;
+            closeShareSheet(); courseInfo.check = JSON.parse(keepC); courseInfo.info = JSON.parse(keepI); _dirty = keepD;
+            return out;
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        chk('機能', '配る前の確認：6行・手の✓が保存に入る・外すと消える・自動の項目はコースの中身で決まる',
+            isinstance(ck, dict) and all(ck.get(k) for k in ('rows', 'none', 'own', 'off', 'auto0', 'auto1')), str(ck)[:220])
+
         # v145: テーマ：適用で印・線・凡例の色が変わり、実線・太さも効き、保存に入り、標準に戻る
         th = page.evaluate("""()=>{ try{
             const keepT = courseInfo.theme || null, keepD = _dirty, keepLRC = _lastRouteCoords;
@@ -2702,6 +2722,71 @@ def _compare_png(cur_bytes, base_path, name):
     ok = ratio <= VISUAL_DIFF_MAX
     return ok, f'食い違い {ratio*100:.2f}%（許容 {VISUAL_DIFF_MAX*100:.0f}%）'
 
+# ----------------------------------------------------------------------
+# 3.5) WebKit（iPhone の Safari と同じエンジン）での見た目の検査（v146・見直し帳 C1）
+#   Chromium で通っても iPhone ではみ出すことがあった（v135）。配布リンクと編集画面を 390×812 で開き、
+#   横にはみ出す部品が無いこと・歩く人の帯が出ることを確かめる。WebKit が入っていない環境では見送り（失敗にしない）
+# ----------------------------------------------------------------------
+def webkit_checks(index_path):
+    try:
+        from playwright.sync_api import sync_playwright
+    except Exception:
+        return
+    import threading, functools, http.server, socketserver
+    here = os.path.dirname(os.path.abspath(index_path))
+    handler = functools.partial(http.server.SimpleHTTPRequestHandler, directory=here)
+    socketserver.TCPServer.allow_reuse_address = True
+    try:
+        httpd = socketserver.TCPServer(('127.0.0.1', 0), handler)
+    except Exception as e:
+        chk('WebKit', 'ローカル配信を起動できる', False, str(e)); return
+    port = httpd.server_address[1]
+    threading.Thread(target=httpd.serve_forever, daemon=True).start()
+    url = f'http://127.0.0.1:{port}/index.html'
+    OVERFLOW = """() => { const bad = [];
+        document.querySelectorAll('button, .mrb, .pc-pill, #nextBar, #stampBar').forEach(b => { const s = getComputedStyle(b); if (s.display === 'none' || s.visibility === 'hidden') return;
+          const r = b.getBoundingClientRect(); if (r.width === 0 || r.height === 0) return;
+          if (r.right > innerWidth + 1 || r.left < -1 || r.bottom > innerHeight + 1) bad.push((b.id || b.textContent.trim().slice(0, 10)) + ':' + Math.round(r.right) + ',' + Math.round(r.bottom)); });
+        return {bad: bad.slice(0, 6), sw: document.scrollingElement.scrollWidth, iw: innerWidth, wps: (typeof wps !== 'undefined') ? wps.length : -1}; }"""
+    try:
+        with sync_playwright() as pw:
+            try:
+                b = pw.webkit.launch()
+            except Exception as e:
+                chk('WebKit', 'WebKit（iPhone と同じエンジン）で開ける', True, '未導入のため見送り: ' + str(e).splitlines()[0][:90]); return
+            ctx = b.new_context(viewport={'width': 390, 'height': 812}, is_mobile=True, has_touch=True, device_scale_factor=2)
+            page = ctx.new_page()
+            errs = []
+            page.on('pageerror', lambda e: errs.append(str(e)))
+            page.on('dialog', lambda d: d.accept())
+            # 配布リンク（歩く人の画面）
+            page.goto(url + '?nosw=1&course=sample.json&offauto=0', wait_until='domcontentloaded')
+            page.wait_for_function("() => document.body.classList.contains('viewonly') && typeof wps !== 'undefined' && wps.length > 5", timeout=30000)
+            try: page.wait_for_function("() => _lastRouteCoords && _lastRouteCoords.length > 50", timeout=20000)
+            except Exception: pass
+            page.wait_for_timeout(800)
+            page.evaluate("() => { try { dismissWalkTip(); } catch(e){} const c = _lastRouteCoords; if (c && c.length > 2) { const i = Math.floor(c.length * 0.3); _onWalkerPos(c[i][0], c[i][1], 6); } }")
+            page.wait_for_timeout(300)
+            r = page.evaluate(OVERFLOW)
+            r['bar'] = page.evaluate("() => !document.getElementById('nextBar').hidden && /次/.test(document.getElementById('nbText').textContent)")
+            chk('WebKit', 'iPhone と同じエンジンで配布リンクが開き、はみ出す部品がなく、歩く人の帯が出る',
+                r['wps'] > 5 and not r['bad'] and r['sw'] <= r['iw'] + 1 and r['bar'] and not errs, str(r)[:200] + (' err:' + errs[0][:80] if errs else ''))
+            # 編集画面（サンプルを開く）＋メニュー
+            page.goto(url + '?nosw=1', wait_until='domcontentloaded')
+            page.wait_for_function("() => { try { return getCourses().length > 0; } catch(e){ return false; } }", timeout=30000)
+            page.evaluate("() => loadCourseData(getCourses()[0])"); page.wait_for_timeout(1200)
+            r2 = page.evaluate(OVERFLOW)
+            page.evaluate("() => openMobileMenu()"); page.wait_for_timeout(400)
+            r2['menu'] = page.evaluate("() => { const sh = document.getElementById('mobileMenuSheet'); const r = sh.getBoundingClientRect(); return sh.classList.contains('show') && r.right <= innerWidth + 1 && r.left >= -1; }")
+            page.evaluate("() => closeMobileMenu()")
+            chk('WebKit', 'iPhone と同じエンジンで編集画面とメニューが開き、横にはみ出さない',
+                r2['wps'] > 5 and not r2['bad'] and r2['sw'] <= r2['iw'] + 1 and r2['menu'] and not errs, str(r2)[:200] + (' err:' + errs[0][:80] if errs else ''))
+            b.close()
+    except Exception as e:
+        chk('WebKit', 'WebKit の検査が最後まで走る', False, str(e).splitlines()[0][:160])
+    finally:
+        httpd.shutdown()
+
 def visual_checks(index_path):
     try:
         from playwright.sync_api import sync_playwright
@@ -2859,6 +2944,7 @@ def main():
     static_checks(src)
     functional_checks(INDEX)
     offline_checks(INDEX)
+    webkit_checks(INDEX)
     visual_checks(INDEX)
 
     # 結果出力

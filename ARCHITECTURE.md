@@ -64,6 +64,7 @@
   vps[].guide: { kind:"turn"|"caution", dir, ctype, note, photos[] }, // 分岐・注意の案内（v141）。写真は idb: 参照
   stickers: true,                      // 写真のある印をシールで見せる（v142）。OFF のときは書かない
   theme: { preset, route, dash, width }, // 地図の色（v145）。標準のときは書かない。印の色は WT[].c を書き換えて一本化
+  check: { walked:true, private:true },  // 配る前の確認の手の✓（v146）。無ければ書かない
   // 周辺の情報（v144）は OpenStreetMap（Overpass）と Wikipedia だけ。Google Places/Maps の情報は規約で使えない（載せない・取りに行かない）
   // 発見（v143）はコースの保存データには入らない。端末の LS.finds = { [courseId]: [{id, lat, lng, word, by, at, photos[]}] }。送るファイルは {fpFinds:1, courseId, courseName, finds:[…写真は実体]}
   maxWpId, maxVpNum, savedAt, version }
