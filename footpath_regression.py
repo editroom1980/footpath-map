@@ -353,6 +353,13 @@ def static_checks(src):
         "src.value = ta.value; _dirty = true;" in src)
     chk('静的', 'メニューに「書かれています／未記入」を出す', 'function _syncDescState' in src)
     chk('静的', '説明を書き換えたら未保存になる', "_dsc.addEventListener('input'" in src)
+    # --- v119: 配布リンクに道順を同梱（開くときに経路サーバを呼ばない）---
+    chk('静的', '保存データに区間ごとの道順が入る', 'routes:  _routesInUse(),' in src and 'function _routesInUse' in src)
+    chk('静的', '読み込み時に道順を先に入れる', "if (data.routes && typeof data.routes === 'object')" in src)
+    chk('静的', '直線に逃げた区間は覚えない・保存しない',
+        's.fallback = true' in src and 'if (!coords.fallback) segCache[key] = coords;' in src and 'c.fallback' in src)
+    chk('静的', '区間キーの式は1か所（_segKey）', 'function _segKey' in src and src.count('toFixed(6)};${') == 1)
+    chk('静的', '出発点・到着点のつなぎ区間も同梱する', 'if (startWp && startWp.id !== rw[0].id) pairs.push' in src)
     chk('静的', '近すぎる「ふつうの三角」を飛ばすきまりがある', 'const DIR_MIN_DASHES' in src)
     chk('静的', '置き場所と向きは線に沿った距離で決める（点の細かさに左右されない）', 'DIR_LOOK_PX' in src)
     chk('静的', 'スポットの○の下に隠れる位置は避ける', 'DIR_AVOID_PX' in src)
@@ -1170,6 +1177,42 @@ def functional_checks(index_path):
                     justBefore:justBefore.length, tooClose:tooClose.length,
                     clear:Math.round(clear), per:Math.round(PER)};
           }catch(e){ return 'ERR:'+e.message; } }""")
+        # v119: 保存データの道順を読み戻すと、経路サーバを1回も呼ばずに同じ道順が出る
+        rt = page.evaluate("""()=>{ return (async()=>{ try{
+            const snapshot = buildCurrentSaveData();                 // あとで元に戻すため
+            const origFetch = window.fetch; let calls = 0;
+            window.fetch = (u, o) => { const url = String((u && u.url) ? u.url : u);
+              if (url.indexOf('/route/v1/') < 0) return origFetch(u, o);
+              calls++;
+              const m = url.match(/([\d.]+),([\d.]+);([\d.]+),([\d.]+)\?/);   // lng,lat;lng,lat
+              const geo = {code:'Ok', routes:[{geometry:{coordinates:[[+m[1],+m[2]],
+                [(+m[1]+ +m[3])/2 + 0.0004, (+m[2]+ +m[4])/2], [+m[3],+m[4]]]}}]};
+              return Promise.resolve({ok:true, json:()=>Promise.resolve(geo)}); };
+            _clearAllMarkers(); wps.length = 0; vps.length = 0; segCache = {};
+            _routerDeadUntil = 0; _routerDead = []; _routerIdx = 0;
+            courseInfo = {name:'道順同梱テスト', area:'', start:'', goal:''};
+            addWp(35.1512,134.4440,'start'); addWp(35.1520,134.4450,'course');
+            addWp(35.1535,134.4462,'course'); addWp(35.1548,134.4448,'goal');
+            wps[0].onRoute = false; wps[3].onRoute = false;   // 出発点・到着点はルートの外＝つなぎ区間が要る
+            await doRouting();
+            const calls1 = calls, pts1 = (_lastRouteCoords||[]).length;
+            const saved = buildCurrentSaveData();
+            const keys = Object.keys(saved.routes || {});
+            const shape = keys.every(k => Array.isArray(saved.routes[k]) && saved.routes[k].length === 3);
+            calls = 0;
+            loadCourseData(saved);
+            await new Promise(r => setTimeout(r, 2500));                  // 60ms + 700ms の予約 + 計算
+            const calls2 = calls, pts2 = (_lastRouteCoords||[]).length;
+            window.fetch = origFetch;
+            loadCourseData(snapshot);                                    // 元のコースへ戻す
+            await new Promise(r => setTimeout(r, 2500));
+            return {calls1, pts1, keys:keys.length, shape, calls2, pts2};
+          }catch(e){ return 'ERR:'+e.message; } })(); }""")
+        chk('機能', '保存した道順を読み戻すと経路サーバを呼ばずに同じ道順になる',
+            isinstance(rt, dict) and rt.get('calls1', 0) >= 3 and rt.get('keys') == 3 and rt.get('shape') is True
+            and rt.get('calls2', 99) == 0 and rt.get('pts2') == rt.get('pts1') and rt.get('pts1', 0) >= 7,
+            str(rt)[:190])
+
         # v118: スマホの説明画面と、パソコンの欄が同じ中身になる
         dsc = page.evaluate("""()=>{ try{
             const src = document.getElementById('iDesc');

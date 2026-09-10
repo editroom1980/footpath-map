@@ -57,6 +57,7 @@
   wps:[{id,type,name,desc,tel,dwell,fitBefore,fitAfter,onRoute,lat,lng,labelDir,photos[]}],
   vps:[{id,segAfter,fitBefore,fitAfter,lat,lng,order}],
   customPaths:[{id,pts:[[lat,lng],…]}],      // 細道（手描きの道）
+  routes:{ "lng,lat;lng,lat": [[lat,lng],…] }, // 区間ごとの道順（v119）。読み込み時に segCache へ戻す
   maxWpId, maxVpNum, savedAt, version }
 ```
 
@@ -101,6 +102,9 @@
 
 8. **版数は3か所そろえる**（10章）。
 
+10. **配布リンク・保存データを開くとき、経路サーバを呼ばない**（v119）。`routes` を `segCache` に戻してから
+    道なり計算に入るので、計算はすべてキャッシュに当たる。**直線に逃げた結果（`fallback`）は覚えない・保存しない**
+    （保存すると、サーバ復旧後も直線のまま固まる）。区間のキーは `_segKey()` の1か所で作る。
 9. **スポットの色は `WT` の1か所だけ**。`.wp-tt-<種別>` のCSSは起動時に `_injectWpStyles()` が
    WTから作り、画像保存の色も WT から引く。**CSSや画像保存側に色を直書きしない**
    （v98以前は3か所に同じ色が書かれ、ビュースポットと駐車場が同色になっていた）。

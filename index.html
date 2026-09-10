@@ -1868,7 +1868,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v118';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
+const APP_VERSION = 'v119';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
 }catch(_){} });
@@ -4243,7 +4243,7 @@ async function doRouting() {
       const firstRw  = rw_[0];
       let startCoords = [];
       if (startWp && firstRw && startWp.id !== firstRw.id) {
-        const k = `${startWp.lng.toFixed(6)},${startWp.lat.toFixed(6)};${firstRw.lng.toFixed(6)},${firstRw.lat.toFixed(6)}`;
+        const k = _segKey(startWp.lat, startWp.lng, firstRw.lat, firstRw.lng);
         try {
           startCoords = await getCachedRoute(k, [{lat:startWp.lat,lng:startWp.lng},{lat:firstRw.lat,lng:firstRw.lng}]);
         } catch(_) {
@@ -4256,7 +4256,7 @@ async function doRouting() {
       const lastRw   = rw_[rw_.length - 1];
       let goalCoords = [];
       if (goalWp && lastRw && goalWp.id !== lastRw.id) {
-        const k = `${lastRw.lng.toFixed(6)},${lastRw.lat.toFixed(6)};${goalWp.lng.toFixed(6)},${goalWp.lat.toFixed(6)}`;
+        const k = _segKey(lastRw.lat, lastRw.lng, goalWp.lat, goalWp.lng);
         try {
           goalCoords = await getCachedRoute(k, [{lat:lastRw.lat,lng:lastRw.lng},{lat:goalWp.lat,lng:goalWp.lng}]);
         } catch(_) {
@@ -4305,10 +4305,8 @@ async function _prefetchOsrm() {
       const fitOut = (from.fitAfter  !== false);
       const fitIn  = (to.fitBefore   !== false);
       if (fitOut || fitIn) {
-        addTask(
-          `${from.lng.toFixed(6)},${from.lat.toFixed(6)};${to.lng.toFixed(6)},${to.lat.toFixed(6)}`,
-          [{lat:from.lat,lng:from.lng},{lat:to.lat,lng:to.lng}]
-        );
+        addTask(_segKey(from.lat, from.lng, to.lat, to.lng),
+                [{lat:from.lat,lng:from.lng},{lat:to.lat,lng:to.lng}]);
       }
     }
   }
@@ -4356,11 +4354,51 @@ async function _roadFitTrace(orderedPoints) {
   if (changed) { clearCache(); scheduleRouting(); }
 }
 
+/* 区間の道順を覚えておくキー。座標だけで決まるので、保存して読み戻してもそのまま当たる */
+function _segKey(fromLat, fromLng, toLat, toLng) {
+  return `${fromLng.toFixed(6)},${fromLat.toFixed(6)};${toLng.toFixed(6)},${toLat.toFixed(6)}`;
+}
+
+/* いま使っている区間の道順（経路サーバから取った座標）を、保存用にまとめる。
+   ・配布リンクや保存データに同梱し、開くときは経路サーバを呼ばずに済ませる
+     （イベント当日に大勢が一斉に開いても、無償の経路サーバへ問い合わせが飛ばない）
+   ・直線に逃げた区間（fallback）は入れない＝サーバ復旧後に道なりへ戻れるように
+   ・座標は小数6桁に丸めて容量を抑える（経路サーバの精度と同じ） */
+function _routesInUse() {
+  const out = {};
+  const rw = (typeof routeWps === 'function') ? routeWps() : [];
+  for (let i = 0; i < rw.length - 1; i++) {
+    const a = rw[i], b = rw[i+1];
+    const pts = [a, ...segVpsOf(a.id, a, b), b];
+    for (let j = 0; j < pts.length - 1; j++) {
+      const from = pts[j], to = pts[j+1];
+      if (from.fitAfter === false && to.fitBefore === false) continue;   // 直線区間は計算していない
+      const k = _segKey(from.lat, from.lng, to.lat, to.lng);
+      const c = segCache[k];
+      if (!c || c.fallback || c.length < 2) continue;
+      out[k] = c.map(q => [+(+q[0]).toFixed(6), +(+q[1]).toFixed(6)]);
+    }
+  }
+  // 出発点／到着点がルートの外にあるとき、doRouting はルートの端とつなぐ区間も経路サーバに聞く。
+  // その2区間も同梱しないと、配布リンクを開いたときにそこだけサーバを呼んでしまう（doRouting と同じ条件）
+  if (rw.length) {
+    const startWp = wps.find(w => w.type === 'start'), goalWp = wps.find(w => w.type === 'goal');
+    const pairs = [];
+    if (startWp && startWp.id !== rw[0].id) pairs.push([startWp, rw[0]]);
+    if (goalWp && goalWp.id !== rw[rw.length - 1].id) pairs.push([rw[rw.length - 1], goalWp]);
+    pairs.forEach(([f, t]) => {
+      const k = _segKey(f.lat, f.lng, t.lat, t.lng), c = segCache[k];
+      if (c && !c.fallback && c.length >= 2) out[k] = c.map(q => [+(+q[0]).toFixed(6), +(+q[1]).toFixed(6)]);
+    });
+  }
+  return out;
+}
+
 async function buildAnySegment(fromLat, fromLng, toLat, toLng, fitOut, fitIn) {
   // 両方フィットOFF → 直線（手動モード区間）
   if (!fitOut && !fitIn) return [[fromLat,fromLng],[toLat,toLng]];
   // OSRMで道路に沿ってルーティング
-  const k = `${fromLng.toFixed(6)},${fromLat.toFixed(6)};${toLng.toFixed(6)},${toLat.toFixed(6)}`;
+  const k = _segKey(fromLat, fromLng, toLat, toLng);
   try { return await getCachedRoute(k, [{lat:fromLat,lng:fromLng},{lat:toLat,lng:toLng}]); }
   catch(_) { return [[fromLat,fromLng],[toLat,toLng]]; }
 }
@@ -4426,7 +4464,7 @@ async function buildRoutedCoords() {
 async function getCachedRoute(key, pts) {
   if (segCache[key]) return segCache[key];
   const coords = await fetchOSRM(key, pts);
-  segCache[key] = coords;
+  if (!coords.fallback) segCache[key] = coords;   // 直線に逃げた結果は覚えない（復旧後に道なりへ戻すため）
   return coords;
 }
 
@@ -4476,7 +4514,7 @@ async function fetchOSRM(coordStr, pts) {
   finally { _routeRelease(); }
 }
 async function _fetchRoute(coordStr, pts) {
-  const straight = () => pts.map(p => [p.lat, p.lng]);
+  const straight = () => { const s = pts.map(p => [p.lat, p.lng]); s.fallback = true; return s; };  // 直線の印
   if (Date.now() < _routerDeadUntil) { _warnRouteFallback(); return straight(); }
   for (let n = 0; n < ROUTERS.length; n++) {
     const i = (_routerIdx + n) % ROUTERS.length;
@@ -5962,6 +6000,7 @@ function buildCurrentSaveData() {
     vps:     vps.map(v=>({id:v.id,segAfter:v.segAfter,fitBefore:v.fitBefore!==false,fitAfter:v.fitAfter!==false,lat:v.lat,lng:v.lng,order:v.order||0})),
     customRoads: customRoads.map(r=>({id:r.id,name:r.name,coords:r.coords})),
     customPaths: (customPaths||[]).map(p=>({id:p.id, pts:(p.pts||[]).map(pt=>pt.slice())})),
+    routes:  _routesInUse(),   // 区間ごとの道順。開くときに経路サーバを呼ばずに済ませる（v119）
     maxWpId: idW,
     maxVpNum:idV,
     savedAt: new Date().toISOString(),
@@ -6103,6 +6142,15 @@ function loadCourseData(data) {
     refreshIcons();
     redrawStraight();
     redrawList();
+    // 保存してある道順を先に入れておく。このあとの道なり計算はキャッシュに当たるので、
+    // 経路サーバを呼ばない＝配布リンクを開いた人の端末から一斉に問い合わせが飛ばない
+    segCache = {};
+    if (data.routes && typeof data.routes === 'object') {
+      Object.keys(data.routes).forEach(k => {
+        const c = data.routes[k];
+        if (Array.isArray(c) && c.length >= 2) segCache[k] = c.map(q => [+q[0], +q[1]]);
+      });
+    }
     _healPending=true;   // 読込データの誤順序を初回ルーティング時に自動修復
     scheduleRouting();
   }, 60);
