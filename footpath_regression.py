@@ -435,6 +435,11 @@ def static_checks(src):
     chk('静的', '選べる種類の出どころは _buildTypeOptions のまま（チップは select を読む）',
         "const cur = sel.value, opts = [...sel.options].map(o => o.value);" in src and 'function _buildTypeOptions' in src)
     chk('静的', '最初の案内が「種類と名前はあとから」を伝える', '種類と名前は、○を押してあとから決められます' in src)
+    # --- v150: 手数を減らす③（配布用リンクの画面を3手順に・置き場所へ1回で・操作ガイドを今の画面に）---
+    chk('静的', '配布用リンクの画面は 書き出す→置く→配る の3手順。埋め込みは畳む。GitHub Pages なら置き場所（アップロード画面）を開くボタン',
+        'id="shGh"' in src and 'function _ghUploadUrlFor' in src and "<details class=\"sd-more\">" in src and src.index('class="sd-more"') < src.index('id="shEmbed"'))
+    chk('静的', '操作ガイドが今の画面に合っている（線を引っぱる・自動保存・歩く人の画面）',
+        '赤い線を指（マウス）で引っぱる' in src and '保存は自動です' in src and '<h3>🚶 歩く人の画面でできること（配布リンク）</h3>' in src and '「通り道」を選んで地図をクリック' not in src)
     # --- v149: 手数を減らす②（新しいコースは名前だけ・道具とカードに文字・案内に線の引っぱり）---
     chk('静的', '新しいコースはコース名だけ必須。エリアが空なら現在地、取れなければ今の地図の場所。スタート・ゴール地点の欄は無い',
         "if (!name) { alert('コース名を入れてください。');" in src and 'function _herePos' in src and 'const c = area ? await geocode(area) : await _herePos();' in src
@@ -2065,6 +2070,11 @@ def functional_checks(index_path):
           }catch(e){ return 'ERR:'+e.message; } }""")
         chk('機能', 'スポット削除の「元に戻す」が戻し、別の操作の後は案内し、通知は重ならず、種別はこのコースで使った順',
             isinstance(b1, dict) and all(b1.get(k) for k in ('gone', 'toast', 'back', 'guarded', 'stacked', 'order')), str(b1)[:220])
+
+        # v150: 置き場所の URL は GitHub Pages のときだけ組み立てる
+        gh = page.evaluate("""()=>[_ghUploadUrlFor('editroom1980.github.io','/footpath-map/index.html'), _ghUploadUrlFor('editroom1980.github.io','/footpath-map/'), _ghUploadUrlFor('user.github.io','/index.html'), _ghUploadUrlFor('example.com','/a/index.html')]""")
+        chk('機能', '置き場所（GitHub のアップロード画面）の URL：<user>.github.io/<repo>/ のときだけ',
+            gh == ['https://github.com/editroom1980/footpath-map/upload/main', 'https://github.com/editroom1980/footpath-map/upload/main', None, None], str(gh)[:200])
 
         # v148: 自動保存：変更→1.5秒で保存され、ボタンが「保存済み」になる。くわしい設定は中身があるときだけ開く
         asv = page.evaluate("""async ()=>{ try{

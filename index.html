@@ -646,6 +646,19 @@ body.viewonly #viewBadge{display:none!important}   /* 歩く人には「歩く�
 #shareSheet .ck-l{font-size:13px;line-height:1.35;flex:1;color:#2C2620}
 #shareSheet .ss-n2{margin-left:8px;font-size:12px;color:var(--t-sub);font-weight:500}
 #shareSheet .ss-n2.warn{color:var(--brand)}
+/* 配布用リンクの画面（v150） */
+.sd-step{display:flex;gap:10px;margin-bottom:14px}
+.sd-step>b{flex:0 0 24px;height:24px;border-radius:50%;background:var(--brand);color:#fff;font-size:13px;display:inline-flex;align-items:center;justify-content:center}
+.sd-step>div{flex:1;min-width:0}
+.sd-t{font-size:13px;font-weight:700;color:#4A2E0E}
+.sd-n{font-size:11px;color:#6A645E;line-height:1.6;margin-top:6px}
+.sd-btn{border:none;border-radius:10px;padding:11px;font-size:14px;font-weight:700;background:var(--brand-grad);color:#fff;font-family:inherit;cursor:pointer;min-height:var(--tap);width:100%}
+.sd-btn.ghost{background:#EEE5D8;color:#4A2E0E}
+.sd-btn[hidden]{display:none!important}
+.sd-more{border:1px solid #E6DCCB;border-radius:10px;padding:0 10px;margin-top:4px;background:#FCFAF6}
+.sd-more summary{cursor:pointer;min-height:var(--tap);display:flex;align-items:center;font-size:13px;font-weight:700;color:#4A2E0E}
+.sd-more[open] summary{border-bottom:1px solid #EFE7DA;margin-bottom:6px}
+.sd-more>*:last-child{margin-bottom:10px}
 #shareSheet .ss-hint{margin-top:14px;font-size:11.5px;color:var(--t-sub);text-align:center;line-height:1.6}
 @media (min-width:769px){
   #shareSheet{left:50%;right:auto;bottom:auto;top:50%;transform:translate(-50%,-50%);width:440px;max-width:calc(100vw - 32px);
@@ -1567,16 +1580,18 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
     <div class="help-section">
       <h3>📍 スポットを置く・直す</h3>
       <ul>
-        <li>地図をクリック／タップ → その場に「コースポイント」が置かれます（番号は自動）</li>
-        <li>○をクリック／タップ → 種類・名前・説明・写真・滞在時間を直します（削除もここ）</li>
+        <li>地図をクリック／タップ → その場に「コースポイント」が置かれます（番号は自動・道順も自動）</li>
+        <li>○をクリック／タップ → 種類・名前・写真・説明を直します（電話・滞在時間などは「くわしい設定」。削除もここ）</li>
         <li>左の一覧（PC）や「スポットの並べ替え」（スマホ）で順番を変えると、道順も付いてきます</li>
+        <li>「周辺の情報を取り込む」（PC：その他／スマホ：メニュー）で、お店・史跡・学校などを地図から探して置けます</li>
       </ul>
     </div>
     <div class="help-section">
       <h3>↔ 通り道の点（道順を細かく指定する）</h3>
       <ul>
-        <li>「通り道」を選んで地図をクリック → そこを通るように道順が変わります</li>
-        <li>赤い破線をドラッグしても、そこに通り道の点が置かれます</li>
+        <li>赤い線を指（マウス）で引っぱる → そこを通るように道順が変わります（通り道の点が置かれます）</li>
+        <li>上級者向けの「通り道の点を置く」をONにすると、地図を押した所にも置けます</li>
+        <li>通り道の点を押すと、分岐（←↑→）や注意（車・滑る・圏外・獣）の案内を付けられます。歩く人の画面と配布シートに出ます</li>
         <li>通り道の点がある区間は、点を直線でつなぎます（自動の道順より優先）</li>
         <li>農道・山道など地図に無い道は、通り道の点を細かく置くか、「自分で描いた道」を使ってください</li>
         <li>PC：点を右クリック → 削除／スマホ：点を長押し（約0.7秒）→ 削除</li>
@@ -1586,7 +1601,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
     <div class="help-section">
       <h3>✏️ 自分で描いた道・道に沿わせない（上級者向け）</h3>
       <ul>
-        <li>「自分で描いた道」：地図に無い道を指でなぞって描き、その道に沿って道順を引けます（スマホ）</li>
+        <li>上級者向けの「道を描く」：地図に無い道を指でなぞって描き、その道に沿って道順を引けます</li>
         <li>「描いた道に吸い付く」：置いた点を、描いた道の上にそろえます</li>
         <li>「道に沿わせない」：ONの間、通り道の点を道に吸い付けず、置いた場所そのままにします</li>
       </ul>
@@ -1594,9 +1609,18 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
     <div class="help-section">
       <h3>💾 保存・配る</h3>
       <ul>
-        <li>「保存」→ この端末のブラウザに保存されます（消える前の案内は一覧画面に出ます）</li>
-        <li>「配る」→ 画像・配布シート（A4）・リンク・GPX の4つの出口が1枚にまとまっています</li>
-        <li>「その他」→ JSONで保存（バックアップ）。一覧画面の「ファイルから読み込む」で戻せます</li>
+        <li>保存は自動です。変えると1〜2秒後に保存され、上に「保存済み」と出ます（押せばすぐ保存）。この端末のブラウザに残ります</li>
+        <li>「配る」→ 画像・配布シート（A4）・リンク・GPX の4つの出口と、配る前の確認（歩いた・私有地・分岐・注意…）が1枚にまとまっています</li>
+        <li>「見た目 › 地図の色」で線と印の色を選べます。歩く人の画面と配布シートも同じ色になります</li>
+        <li>「その他」→ JSONで保存（バックアップ）。一覧画面の「ファイルから読み込む」で戻せます。歩く人から届いた「発見」のファイルも同じ所から取り込めます</li>
+      </ul>
+    </div>
+    <div class="help-section">
+      <h3>🚶 歩く人の画面でできること（配布リンク）</h3>
+      <ul>
+        <li>○を押すと写真と解説。◎を押すと現在地を追いかけ、次のスポットまでの距離と向き、分岐の案内が出ます</li>
+        <li>スポットに近づくとスタンプ。📷 で見つけたもの（発見）を貼り、作者に送れます</li>
+        <li>ゴールに着くと記念の1枚（コース名・日付・スタンプ入り）を作れます。「心得」も読めます</li>
       </ul>
     </div>
     <div class="help-section">
@@ -2714,7 +2738,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v149';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
+const APP_VERSION = 'v150';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
 }catch(_){} });
@@ -8632,29 +8656,25 @@ function openShareDialog(course) {
     ov = document.createElement('div'); ov.id = 'shareDlg';
     ov.style.cssText = 'position:fixed;inset:0;z-index:6000;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.45);padding:20px';
     ov.innerHTML =
-      '<div style="background:#fff;border-radius:16px;max-width:420px;width:100%;padding:20px 18px;box-shadow:0 10px 40px rgba(0,0,0,.3);max-height:86vh;overflow-y:auto">'
-      + '<div style="font-size:16px;font-weight:700;color:#4A2E0E;margin-bottom:3px">配布用リンクを作る</div>'
+      '<div style="background:#fff;border-radius:16px;max-width:440px;width:100%;padding:20px 18px;box-shadow:0 10px 40px rgba(0,0,0,.3);max-height:86vh;overflow-y:auto">'
+      + '<div style="font-size:16px;font-weight:700;color:#4A2E0E;margin-bottom:3px">スマホで見てもらうリンクを作る</div>'
       + '<div id="shName" style="font-size:12px;color:#6A645E;margin-bottom:14px"></div>'
-      + '<div style="font-size:12px;font-weight:700;color:#4A2E0E;margin-bottom:5px">① ファイル名を決める（英数字）</div>'
-      + '<div style="display:flex;align-items:center;gap:6px;margin-bottom:12px">'
-      +   '<input id="shFile" style="flex:1;min-width:0;border:1px solid #DED5C8;border-radius:8px;padding:9px 10px;font-size:14px" placeholder="course-01">'
-      +   '<span style="font-size:13px;color:#6A645E">.json</span>'
-      + '</div>'
-      + '<div style="font-size:12px;font-weight:700;color:#4A2E0E;margin-bottom:5px">② この名前で書き出す</div>'
-      + '<button id="shExport" style="width:100%;border:none;border-radius:10px;padding:11px;font-size:14px;font-weight:700;background:var(--brand-grad);color:#fff;margin-bottom:12px">JSONを書き出す</button>'
-      + '<div style="font-size:12px;color:#6A645E;line-height:1.7;margin-bottom:12px">③ 書き出したファイルを、アプリ（index.html）と同じ場所に置いて公開します。</div>'
-      + '<div style="font-size:12px;font-weight:700;color:#4A2E0E;margin-bottom:5px">④ このリンクを配る</div>'
-      + '<div style="font-size:11px;color:#6A645E;line-height:1.6;margin-bottom:6px">このリンクは「配布シート」のQRコードにも使われます（紙の地図から、スマホの地図へ）。</div>'
-      + '<input id="shUrl" readonly style="width:100%;border:1px solid #DED5C8;border-radius:8px;padding:9px 10px;font-size:12px;background:#F9F7F4;margin-bottom:8px">'
-      + '<div style="font-size:12px;font-weight:700;color:#4A2E0E;margin:12px 0 5px">⑤ ホームページに貼る（埋め込み）</div>'
-      + '<div style="font-size:11px;color:#6A645E;line-height:1.6;margin-bottom:6px">市のホームページなどに、この地図をそのまま置けます。下のコードをコピーして貼り付けてください。</div>'
-      + '<textarea id="shEmbed" readonly rows="3" style="width:100%;border:1px solid #DED5C8;border-radius:8px;padding:8px 10px;font-size:11px;background:#F9F7F4;font-family:ui-monospace,monospace;resize:vertical;margin-bottom:8px"></textarea>'
-      + '<div style="display:flex;flex-direction:column;gap:8px">'
-      +   '<button id="shCopyEmbed" style="border:none;border-radius:10px;padding:11px;font-size:14px;font-weight:700;background:#EEE5D8;color:#4A2E0E">埋め込みコードをコピー</button>'
-      +   '<button id="shCopy" style="border:none;border-radius:10px;padding:11px;font-size:14px;font-weight:700;background:#EEE5D8;color:#4A2E0E">リンクをコピー</button>'
-      +   '<button id="shPreview" style="border:none;border-radius:10px;padding:11px;font-size:14px;font-weight:700;background:#EEE5D8;color:#4A2E0E">この端末で見え方を確認</button>'
-      +   '<button id="shClose" style="border:none;border-radius:10px;padding:11px;font-size:14px;font-weight:700;background:#F5F1EA;color:#6A645E">閉じる</button>'
-      + '</div></div>';
+      + '<div class="sd-step"><b>1</b><div><div class="sd-t">ファイルを書き出す</div>'
+      +   '<div style="display:flex;align-items:center;gap:6px;margin:6px 0 8px"><input id="shFile" style="flex:1;min-width:0;border:1px solid #DED5C8;border-radius:8px;padding:9px 10px;font-size:14px" placeholder="course-01"><span style="font-size:13px;color:#6A645E">.json</span></div>'
+      +   '<button id="shExport" class="sd-btn">このファイルを書き出す</button>'
+      +   '<div class="sd-n">名前は英数字だけ（リンクの一部になります）。写真も入った1つのファイルになります</div></div></div>'
+      + '<div class="sd-step"><b>2</b><div><div class="sd-t">書き出したファイルを、アプリと同じ場所に置く</div>'
+      +   '<button id="shGh" class="sd-btn ghost" hidden>置き場所（GitHub）を開く</button>'
+      +   '<div class="sd-n" id="shGhNote">アプリ（index.html）と同じフォルダに置いて公開すると、下のリンクで開けるようになります</div></div></div>'
+      + '<div class="sd-step"><b>3</b><div><div class="sd-t">このリンクを配る（QRコードは配布シートに載ります）</div>'
+      +   '<input id="shUrl" readonly style="width:100%;border:1px solid #DED5C8;border-radius:8px;padding:9px 10px;font-size:12px;background:#F9F7F4;margin:6px 0 8px">'
+      +   '<div style="display:flex;gap:8px"><button id="shCopy" class="sd-btn" style="flex:1">リンクをコピー</button><button id="shPreview" class="sd-btn ghost" style="flex:1">見え方を確認</button></div></div></div>'
+      + '<details class="sd-more"><summary>ホームページに貼る（埋め込みコード）</summary>'
+      +   '<div class="sd-n" style="margin:6px 0">市のホームページなどに、この地図をそのまま置けます。下のコードをコピーして貼り付けてください。</div>'
+      +   '<textarea id="shEmbed" readonly rows="3" style="width:100%;border:1px solid #DED5C8;border-radius:8px;padding:8px 10px;font-size:11px;background:#F9F7F4;font-family:ui-monospace,monospace;resize:vertical;margin-bottom:8px"></textarea>'
+      +   '<button id="shCopyEmbed" class="sd-btn ghost" style="width:100%">埋め込みコードをコピー</button></details>'
+      + '<button id="shClose" class="sd-btn ghost" style="width:100%;margin-top:12px;background:#F5F1EA;color:#6A645E">閉じる</button>'
+      + '</div>';
     document.body.appendChild(ov);
     ov.addEventListener('click', e => { if (e.target === ov) ov.style.display = 'none'; });
   }
@@ -8668,7 +8688,10 @@ function openShareDialog(course) {
       + 'title="' + escHtml(course.name || 'コース地図') + '"></iframe>';
   };
   ov.querySelector('#shName').textContent = course.name || '(名称未設定)';
-  fileEl.value = _shareFileName('course-' + (course.id || Date.now()));
+  const gh = _ghUploadUrl(), ghBtn = ov.querySelector('#shGh'), ghNote = ov.querySelector('#shGhNote');   // GitHub Pages なら置き場所へ1回で行ける（v150）
+  if (ghBtn) { ghBtn.hidden = !gh; ghBtn.onclick = () => window.open(gh, '_blank'); }
+  if (ghNote && gh) ghNote.textContent = '開いた画面で「Add file › Upload files」→ 書き出したファイルを入れて「Commit changes」。1〜2分で公開され、下のリンクで開けます';
+  fileEl.value = _shareFileName('course-' + (course.id || Date.now())).replace(/\.json$/, '');   // 欄の右に「.json」を出すので、中には付けない（v150）
   fileEl.oninput = sync; sync();
   ov.querySelector('#shExport').onclick = async () => {
     _downloadJsonAs(await _embedPhotos(Object.assign({}, course, {shared:true})), _shareFileName(fileEl.value));   // 配布ファイルは写真も入れる。shared:true＝配布物の印（改変の可否はこれに効く・v147）
@@ -8727,6 +8750,14 @@ function _setShareLink(courseId, url){
 function _shareLinkOf(courseId){ return _getShareLinks()[String(courseId)] || ''; }
 
 // 配布リンクの土台URL（index.html と同じ場所）。末尾のファイル名だけ落とす。
+/* GitHub Pages（<user>.github.io/<repo>/…）で配信しているときだけ、置き場所＝リポジトリのアップロード画面を組み立てる（v150） */
+function _ghUploadUrlFor(hostname, pathname){
+  const m = /^([a-z0-9-]+)\.github\.io$/i.exec(hostname || ''); if (!m) return null;
+  const seg = String(pathname || '').split('/').filter(Boolean);
+  if (!seg.length || /\.html?$/i.test(seg[0])) return null;
+  return 'https://github.com/' + m[1] + '/' + seg[0] + '/upload/main';
+}
+function _ghUploadUrl(){ try { return _ghUploadUrlFor(location.hostname, location.pathname); } catch(_) { return null; } }
 function _shareBaseUrl() {
   return location.origin + location.pathname.replace(/[^/]*$/, '');
 }
