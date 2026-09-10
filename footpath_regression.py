@@ -434,6 +434,13 @@ def static_checks(src):
     chk('静的', '選べる種類の出どころは _buildTypeOptions のまま（チップは select を読む）',
         "const cur = sel.value, opts = [...sel.options].map(o => o.value);" in src and 'function _buildTypeOptions' in src)
     chk('静的', '最初の案内が「種類と名前はあとから」を伝える', '種類と名前は、○を押してあとから決められます' in src)
+    # --- v133: 高低差グラフに「いまここ」（ロードマップ 段階2-4）---
+    chk('静的', '高低差の帯に「いまここ」の丸がある（位置が入ったときだけ・一番上に描く）',
+        'class="ev-here"' in src and 'function _elevHerePoint' in src and 'function _drawElevHere' in src
+        and src.index('stroke="#C0A882" stroke-width="0.8"/>`+\n    here;') > 0)
+    chk('静的', 'スタンプの札は次のスポットの帯の下', '#nextBar:not([hidden]) ~ #stampBar{top:' in src)
+    chk('静的', '往復コースでも進みを取り違えない（候補を束ね、前回の進みに近いものを選ぶ）',
+        'function _routeCandidates' in src and 'const ROUTE_AMBIG_M' in src and "_routeProgress(lat, lng, _walkPos ? _walkPos.along : null)" in src)
     # --- v132: 次のスポットまでの距離と向き（ロードマップ 段階2-1）---
     chk('静的', '歩く人の画面に「次のスポット」の帯がある', 'id="nextBar"' in src and 'function renderNextBar' in src and 'function nextSpotInfo' in src
         and 'body.viewing #nextBar:not([hidden]){display:flex}' in src and 'body.embed #nextBar{display:none!important}' in src)
@@ -1730,6 +1737,34 @@ def functional_checks(index_path):
             isinstance(nb, dict) and nb.get('shown0') and '◎' in nb.get('hint', '') and nb.get('dirOk') and nb.get('d1', 0) > 0
             and nb.get('advanced') and nb.get('closer') and nb.get('t3') == 'ゴールに着きました' and nb.get('done')
             and nb.get('rotWithHeading') == 'rotate(0deg)' and nb.get('embedHidden') and nb.get('hiddenAfter'), str(nb)[:300])
+
+        # v133: 位置を動かすと、高低差グラフの「いまここ」の丸が動く（30%→60%で右へ）。位置が無ければ出ない
+        eh = page.evaluate("""()=>{ try{
+            const keepV = viewMode, keepCls = document.body.className, keepPos = _walkPos, keepE = _elevData;
+            if (!_elevData) { const pts = _sampleCoords(_lastRouteCoords, 50); _elevData = {pts, elevs: pts.map((p, i) => 300 + (i % 7) * 3)}; }
+            viewMode = true; document.body.classList.add('viewing');
+            _walkPos = null; _drawElevBand();
+            const svg = document.getElementById('mobileElevSvg');
+            const out = {none: !svg.querySelector('.ev-here')};
+            const c = _lastRouteCoords, n = c.length;
+            _routeProgress(c[0][0], c[0][1]);                          // 累積距離を作る
+            const tot = _routeCum[n - 1];
+            const at = f => { let i = 0; while (i < n - 1 && _routeCum[i] < tot * f) i++; return c[i]; };   // 距離で選ぶ（点の間隔は均一でない）
+            // 実際の歩きと同じく、点を順にたどる（往復コースでは飛ぶと行きと帰りを取り違えるため）
+            const ptAt = d => { let i = 1; while (i < n - 1 && _routeCum[i] < d) i++; const a = _routeCum[i-1], b = _routeCum[i], t = b > a ? Math.max(0, Math.min(1, (d - a) / (b - a))) : 0;
+                                return [c[i-1][0] + (c[i][0] - c[i-1][0]) * t, c[i-1][1] + (c[i][1] - c[i-1][1]) * t]; };
+            let walked = 0;
+            const walkTo = f => { for (let d = walked; d <= tot * f; d += tot / 100) { const q = ptAt(d); _onWalkerPos(q[0], q[1], 5); walked = d; }
+                                  const q = ptAt(tot * f); _onWalkerPos(q[0], q[1], 5); const e = svg.querySelector('.ev-here'); return e ? parseFloat(e.getAttribute('cx')) : null; };
+            out.x30 = walkTo(0.3); out.a30 = _walkPos.along / tot; out.x60 = walkTo(0.6); out.a60 = _walkPos.along / tot;
+            const vb = (svg.getAttribute('viewBox') || '0 0 360 46').split(' ').map(Number); const W = vb[2], PL = 34, PR = 10;
+            out.inside = out.x30 > PL && out.x60 < W - PR + 0.5; out.moved = out.x60 > out.x30 + (W - PL - PR) * 0.15;
+            viewMode = keepV; document.body.className = keepCls; _walkPos = keepPos; _elevData = keepE; _drawElevBand(); renderNextBar();
+            return out;
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        chk('機能', '高低差グラフの「いまここ」は位置と一緒に動き、位置が無ければ出ない',
+            isinstance(eh, dict) and eh.get('none') and eh.get('x30') is not None and eh.get('inside') and eh.get('moved')
+            and abs(eh.get('a30', 0) - 0.3) < 0.06 and abs(eh.get('a60', 0) - 0.6) < 0.06, str(eh)[:220])
 
         # v121: バックアップからの日数・未反映の保存回数で色が変わり、書き出すと戻る。iPhone の案内は1回だけ
         bk = page.evaluate("""()=>{ return (async()=>{ try{
