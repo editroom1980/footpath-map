@@ -286,7 +286,7 @@ def static_checks(src):
     chk('静的', '配布シートに難易度を載せる', "'難易度<b style=\"color:'" in src or '難易度<b' in src)
     # --- v96: GPX読み込み ---
     chk('静的', 'GPX読み込み parseGpx 存在', 'function parseGpx' in src)
-    chk('静的', '取り込み口が GPX も受け付ける', 'accept=".json,.gpx' in src and 'JSON / GPX' in src)
+    chk('静的', '取り込み口が GPX も受け付ける', 'accept=".json,.gpx' in src and 'コース・GPX・発見' in src)   # v149: 文言を平易に
     chk('静的', '軌跡の間引き _thinPoints 存在', 'function _thinPoints' in src)
     chk('静的', 'GPXは道順が引き直しになることを伝える', '通り道の点（道順の細かい指定）' in src)
     chk('静的', 'スポットがあるGPXは軌跡を取り込まない（二重防止）',
@@ -435,6 +435,13 @@ def static_checks(src):
     chk('静的', '選べる種類の出どころは _buildTypeOptions のまま（チップは select を読む）',
         "const cur = sel.value, opts = [...sel.options].map(o => o.value);" in src and 'function _buildTypeOptions' in src)
     chk('静的', '最初の案内が「種類と名前はあとから」を伝える', '種類と名前は、○を押してあとから決められます' in src)
+    # --- v149: 手数を減らす②（新しいコースは名前だけ・道具とカードに文字・案内に線の引っぱり）---
+    chk('静的', '新しいコースはコース名だけ必須。エリアが空なら現在地、取れなければ今の地図の場所。スタート・ゴール地点の欄は無い',
+        "if (!name) { alert('コース名を入れてください。');" in src and 'function _herePos' in src and 'const c = area ? await geocode(area) : await _herePos();' in src
+        and 'id="s1Start"' not in src and 'id="s1Goal"' not in src)
+    chk('静的', 'スマホの下の道具と一覧のカードのボタンに文字が付いている（アイコンだけにしない）',
+        src.count('class="mob-mode-l"') == 2 and src.count('class="cc-act-l"') == 3 and 'ファイルから読み込む（コース・GPX・発見）' in src)
+    chk('静的', '最初の案内に「赤い線を引っぱると道順が変わる」がある', '道順を変えたいときは、赤い線を指で引っぱります。' in src)
     # --- v148: 手数を減らす（自動保存・道具の整理・スポット編集の畳み込み）---
     chk('静的', '未保存フラグは _markDirty() だけが立て、自動保存を予約する（直接 _dirty = true は無い）',
         src.count('_dirty = true') == 1 and 'function _markDirty(){ _dirty = true; scheduleAutoSave(); }' in src and 'const AUTOSAVE_MS = 1500;' in src and "saveCourse({quiet:true})" in src)

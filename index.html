@@ -93,7 +93,8 @@ html,body{touch-action:manipulation;min-height:calc(100% + env(safe-area-inset-t
 .cc-st .svgi{font-size:13px;color:#CBB89E}
 .cc-st b{font-family:'Plus Jakarta Sans','Hiragino Sans',sans-serif;font-weight:800;color:#3D3835}
 .cc-acts{display:flex;flex-direction:column;gap:5px;flex-shrink:0}
-.cc-act{width:40px;height:40px;border-radius:9px;border:0.5px solid #F0EBE2;background:#FAF8F4;display:flex;align-items:center;justify-content:center;color:#8A8077;font-size:14px;cursor:pointer}
+.cc-act{width:48px;height:44px;border-radius:9px;border:0.5px solid #F0EBE2;background:#FAF8F4;display:flex;flex-direction:column;gap:2px;align-items:center;justify-content:center;color:#8A8077;font-size:14px;cursor:pointer;font-family:inherit}
+.cc-act-l{font-size:9px;line-height:1;font-weight:700}   /* v149：アイコンだけでは分からないので文字を添える */
 .cc-act.rd{color:#DC2626}
 .cc-act .svgi{font-size:14px}
 .no-courses{font-size:12px;color:var(--t-sub);text-align:center;padding:30px 0}
@@ -111,6 +112,7 @@ html,body{touch-action:manipulation;min-height:calc(100% + env(safe-area-inset-t
 .s1-input{width:100%;padding:12px 14px;border-radius:12px;border:1.5px solid #EDE8E0;background:#F9F7F4;font-size:14px;color:#1C1917;font-family:inherit;-webkit-appearance:none;appearance:none;box-shadow:none;outline:none}
 .s1-input:focus{border-color:var(--brand);background:#fff}
 .s1-hint{font-size:11px;color:var(--t-sub);margin-top:5px}
+.ncs-l .req.opt{background:#EEE9E1;color:var(--t-sub)}   /* 任意の印（v149） */
 .ncs-btn{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:15px;border-radius:15px;background:var(--brand-grad);color:#fff;border:none;font-family:'Plus Jakarta Sans','Hiragino Sans',sans-serif;font-size:15px;font-weight:800;margin-top:6px;cursor:pointer}
 .ncs-btn .svgi{font-size:18px}
 
@@ -822,7 +824,8 @@ body.viewonly .mob-share, body.embed .mob-share{display:none!important}
 .mrb.mt{margin-top:8px}
 #mobileShelf{background:#fff;border-top:0.5px solid rgba(0,0,0,0.07);height:54px;flex-shrink:0;padding:0 12px;gap:6px;align-items:center}
 .mob-modes{display:flex;gap:2px;align-items:center;flex-shrink:0}
-.mob-mode{height:44px;min-width:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;border:none;background:transparent;color:var(--t-sub);font-size:14px;padding:0 8px}
+.mob-mode{height:44px;min-width:44px;border-radius:10px;display:flex;flex-direction:column;gap:1px;align-items:center;justify-content:center;cursor:pointer;border:none;background:transparent;color:var(--t-sub);font-size:14px;padding:0 8px;font-family:inherit}
+.mob-mode-l{font-size:9.5px;line-height:1;font-weight:700;letter-spacing:.02em}   /* 道具の名前（v149） */
 .mob-mode.lbl{font-size:10px;font-weight:700;gap:4px}
 .mob-mode.lbl span{font-size:10px;font-weight:700}
 .mob-mode.on{background:var(--brand-soft);color:var(--brand)}
@@ -986,7 +989,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
     <div class="s1-sec-h"><span>保存済みコース</span><span class="s1-count" id="s1Count">0件</span></div>
     <div id="courseList"><div class="no-courses">保存されたコースはありません</div></div>
     <label class="s1-import">
-      <svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v4a1 1 0 0 0 1 1h4" /> <path d="M5 13v-8a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2h-5.5m-9.5 -2h7m-3 -3l3 3l-3 3" /></svg>ファイルから読み込む（JSON / GPX）
+      <svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v4a1 1 0 0 0 1 1h4" /> <path d="M5 13v-8a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2h-5.5m-9.5 -2h7m-3 -3l3 3l-3 3" /></svg>ファイルから読み込む（コース・GPX・発見）
       <input type="file" accept=".json,.gpx,application/gpx+xml" style="display:none" onchange="importCourseFromFile(this)">
     </label>
     <div class="s1-tools">
@@ -1014,17 +1017,9 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
       <input class="s1-input" id="s1Name" placeholder="例：飯見の棚田おにぎりウォーク">
     </div>
     <div class="ncs-fld">
-      <div class="ncs-l"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 18.5l-3 -1.5l-6 3v-13l6 -3l6 3l6 -3v7.5" /> <path d="M9 4v13" /> <path d="M15 7v5.5" /> <path d="M21.121 20.121a3 3 0 1 0 -4.242 0c.418 .419 1.125 1.045 2.121 1.879c1.051 -.89 1.759 -1.516 2.121 -1.879" /> <path d="M19 18v.01" /></svg>エリア（住所・地名）<span class="req">必須</span></div>
-      <input class="s1-input" id="s1Area" placeholder="例：兵庫県宍粟市波賀町飯見">
-      <div class="s1-hint">この地点を中心にマップが表示されます</div>
-    </div>
-    <div class="ncs-fld">
-      <div class="ncs-l"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5a5 5 0 0 1 7 0a5 5 0 0 0 7 0v9a5 5 0 0 1 -7 0a5 5 0 0 0 -7 0v-9" /> <path d="M5 21v-7" /></svg>スタート地点</div>
-      <input class="s1-input" id="s1Start" placeholder="例：波賀B&G海洋センター">
-    </div>
-    <div class="ncs-fld">
-      <div class="ncs-l"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5a5 5 0 0 1 7 0a5 5 0 0 0 7 0v9a5 5 0 0 1 -7 0a5 5 0 0 0 -7 0v-9" /> <path d="M5 21v-7" /></svg>ゴール地点</div>
-      <input class="s1-input" id="s1Goal" placeholder="例：同（周回コース）">
+      <div class="ncs-l"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 18.5l-3 -1.5l-6 3v-13l6 -3l6 3l6 -3v7.5" /> <path d="M9 4v13" /> <path d="M15 7v5.5" /> <path d="M21.121 20.121a3 3 0 1 0 -4.242 0c.418 .419 1.125 1.045 2.121 1.879c1.051 -.89 1.759 -1.516 2.121 -1.879" /> <path d="M19 18v.01" /></svg>エリア（住所・地名）<span class="req opt">任意</span></div>
+      <input class="s1-input" id="s1Area" placeholder="例：宍粟市波賀町飯見（空欄なら現在地）">
+      <div class="s1-hint">ここを中心に地図が開きます。空欄なら現在地（位置情報の許可が要ります）。地図はあとで自由に動かせます</div>
     </div>
     <button class="ncs-btn" id="s1Btn" onclick="newCourse()"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5l0 14" /> <path d="M5 12l14 0" /></svg>作成してマップへ</button>
   </div>
@@ -1168,7 +1163,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
       <div id="firstTip">
         <div class="ft-ic">📍</div>
         <div class="ft-t">地図をタップして<br>最初の場所を置いてみましょう</div>
-        <div class="ft-d">置いた場所は、自動で道に沿ってつながります。<br>種類と名前は、○を押してあとから決められます。</div>
+        <div class="ft-d">置いた場所は、自動で道に沿ってつながります。<br>種類と名前は、○を押してあとから決められます。<br>道順を変えたいときは、赤い線を指で引っぱります。</div>
         <button class="ft-b" onclick="dismissFirstTip()">はじめる</button>
         <div class="ft-n">この案内は最初の1回だけ出ます</div>
       </div>
@@ -1187,8 +1182,8 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
       <div id="mobileShelf">
         <button id="mobileEditBack" class="tap" onclick="toggleViewMode()">✎ 編集にもどる</button>
                 <div class="mob-modes">
-          <button id="mobileDrawBtn" class="mob-mode tap" onclick="setMode('draw')" aria-label="指でなぞって描く"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 19a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" /> <path d="M19 7a2 2 0 1 0 0 -4a2 2 0 0 0 0 4" /> <path d="M11 19h5.5a3.5 3.5 0 0 0 0 -7h-8a3.5 3.5 0 0 1 0 -7h4.5" /></svg></button>
-          <button id="mobileWpBtn" class="mob-mode on tap" onclick="setMode('wp')" aria-label="スポット"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11a3 3 0 1 0 6 0a3 3 0 0 0 -6 0" /> <path d="M17.657 16.657l-4.243 4.243a2 2 0 0 1 -2.827 0l-4.244 -4.243a8 8 0 1 1 11.314 0" /></svg></button>
+          <button id="mobileDrawBtn" class="mob-mode tap" onclick="setMode('draw')" aria-label="指でなぞって描く"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 19a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" /> <path d="M19 7a2 2 0 1 0 0 -4a2 2 0 0 0 0 4" /> <path d="M11 19h5.5a3.5 3.5 0 0 0 0 -7h-8a3.5 3.5 0 0 1 0 -7h4.5" /></svg><span class="mob-mode-l">なぞる</span></button>
+          <button id="mobileWpBtn" class="mob-mode on tap" onclick="setMode('wp')" aria-label="スポット"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11a3 3 0 1 0 6 0a3 3 0 0 0 -6 0" /> <path d="M17.657 16.657l-4.243 4.243a2 2 0 0 1 -2.827 0l-4.244 -4.243a8 8 0 1 1 11.314 0" /></svg><span class="mob-mode-l">スポット</span></button>
         </div>
         <div class="mob-sdiv"></div>
         <div class="mob-stats">
@@ -2423,8 +2418,8 @@ window.addEventListener('DOMContentLoaded', () => {
 async function newCourse() {
   const name  = document.getElementById('s1Name').value.trim();
   const area  = document.getElementById('s1Area').value.trim();
-  if (!name || !area) { alert('コース名とエリアを入力してください。'); return; }
-  courseInfo  = {name, area, start:document.getElementById('s1Start').value.trim(), goal:document.getElementById('s1Goal').value.trim(), kokoroe:'', info:{}};
+  if (!name) { alert('コース名を入れてください。'); document.getElementById('s1Name').focus(); return; }   // v149：必須はコース名だけ
+  courseInfo  = {name, area, start:'', goal:'', kokoroe:'', info:{}};
   currentCourseId = null;
   clearTimeout(_autoSaveT); _autoSaveT = null; _setSaveState('dirty');   // 新しいコース＝まだ保存されていない（v148）
   if (typeof loadFinds === 'function') loadFinds();   // 発見の印を片づける（v143）
@@ -2448,9 +2443,9 @@ async function newCourse() {
 
   setTimeout(async () => {
     if (!leafMap) initMap(); else leafMap.invalidateSize();
-    const c = await geocode(area);
+    const c = area ? await geocode(area) : await _herePos();   // エリアが空なら現在地（v149）
     if (c && leafMap) { leafMap.setView([c.lat, c.lng], 15); _setAnchor(c.lat, c.lng, false); }
-    else if (leafMap) { const ctr = leafMap.getCenter(); _setAnchor(ctr.lat, ctr.lng, false); }  // 失敗時も範囲を必ず確定
+    else if (leafMap) { const ctr = leafMap.getCenter(); _setAnchor(ctr.lat, ctr.lng, false); if (!area) showToast('現在地が取れなかったので、今の地図の場所から始めます'); }  // 失敗時も範囲を必ず確定
     btn.disabled = false; btn.textContent = 'コース設定画面へ →';
     maybeShowFirstTip();                  // まだ何も置いていない人に、最初の一歩を示す
   }, 60);
@@ -2506,6 +2501,13 @@ function _clearAllMarkers() {
 /* ============================================================
    GEOCODING
    ============================================================ */
+/* 現在地を1回だけ取る（v149・新しいコースでエリアが空のとき）。取れなければ null */
+function _herePos(){
+  return new Promise(res => {
+    if (!navigator.geolocation) return res(null);
+    navigator.geolocation.getCurrentPosition(p => res({lat:p.coords.latitude, lng:p.coords.longitude}), () => res(null), {enableHighAccuracy:false, timeout:8000, maximumAge:60000});
+  });
+}
 async function geocode(address) {
   try {
     const res  = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1&accept-language=ja`);
@@ -2712,7 +2714,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v148';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
+const APP_VERSION = 'v149';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
 }catch(_){} });
@@ -8408,9 +8410,9 @@ function renderCourseList() {
         </div>
       </div>
       <div class="cc-acts">
-        <button class="cc-act tap" title="JSONで書き出し" aria-label="JSONで書き出し"><svg class=\"svgi\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d="M14 3v4a1 1 0 0 0 1 1h4" /> <path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2" /> <path d="M12 17v-6" /> <path d="M9.5 14.5l2.5 2.5l2.5 -2.5" /></svg></button>
-        <button class="cc-act tap" title="配布用リンクを作る" aria-label="配布用リンクを作る"><svg class=\"svgi\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d="M9 15l6 -6" /> <path d="M11 6l.463 -.536a5 5 0 0 1 7.071 7.072l-.534 .464" /> <path d="M13 18l-.397 .534a5.068 5.068 0 0 1 -7.127 0a4.972 4.972 0 0 1 0 -7.071l.524 -.463" /></svg></button>
-        <button class="cc-act rd tap" title="削除" aria-label="削除"><svg class=\"svgi\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d="M4 7l16 0" /> <path d="M10 11l0 6" /> <path d="M14 11l0 6" /> <path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12" /> <path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3" /></svg></button>
+        <button class="cc-act tap" title="ファイルに書き出す（JSON）" aria-label="ファイルに書き出す"><svg class=\"svgi\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d="M14 3v4a1 1 0 0 0 1 1h4" /> <path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2" /> <path d="M12 17v-6" /> <path d="M9.5 14.5l2.5 2.5l2.5 -2.5" /></svg><span class="cc-act-l">書き出す</span></button>
+        <button class="cc-act tap" title="配布用リンクを作る" aria-label="配布用リンクを作る"><svg class=\"svgi\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d="M9 15l6 -6" /> <path d="M11 6l.463 -.536a5 5 0 0 1 7.071 7.072l-.534 .464" /> <path d="M13 18l-.397 .534a5.068 5.068 0 0 1 -7.127 0a4.972 4.972 0 0 1 0 -7.071l.524 -.463" /></svg><span class="cc-act-l">リンク</span></button>
+        <button class="cc-act rd tap" title="削除" aria-label="削除"><svg class=\"svgi\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d="M4 7l16 0" /> <path d="M10 11l0 6" /> <path d="M14 11l0 6" /> <path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12" /> <path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3" /></svg><span class="cc-act-l">削除</span></button>
       </div>`;
     const [expBtn,shareBtn,delBtn] = card.querySelectorAll('.cc-act');
     card.querySelector('.cc-info').addEventListener('click', ()=>loadCourseData(c));
