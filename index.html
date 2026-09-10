@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -44,7 +44,7 @@
 /* ページ全体の拡大は許す（文字を大きくして読む人のため・v122）。地図の上だけはブラウザの拡大を止め、
    ピンチや二本指の操作を Leaflet に渡す＝地図の拡大縮小と二重にならない */
 #map{touch-action:none}
-html,body{min-height:calc(100% + env(safe-area-inset-top));font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:13px;color:#2C1B0E;overflow:hidden;background:#E8D8B8}
+html,body{touch-action:manipulation;min-height:calc(100% + env(safe-area-inset-top));font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:13px;color:#2C1B0E;overflow:hidden;background:#E8D8B8}
 
 /* ====== SCREEN 1 ====== */
 #s1{height:100vh;height:100dvh;overflow-y:auto;background:linear-gradient(135deg,#F5EDD8,#E8D8B8);display:flex;flex-direction:column;align-items:center;padding:max(20px,env(safe-area-inset-top)) 12px max(40px,env(safe-area-inset-bottom))}
@@ -1305,6 +1305,9 @@ const IMG_SCALE  = 3;        // 画像保存の目標倍率(実機の高解像�
 // --- オフライン用の地図保存（1回に保存するタイル数の上限）---
 const OFFLINE_MAX_TILES = 600;   // 端末の容量と待ち時間の兼ね合い。超える範囲は縮尺を落として収める
 const OFFLINE_ZOOMS     = 2;     // 現在の縮尺から何段階ぶん保存するか（近づいた表示ぶんも用意する）
+const OFFLINE_AUTO_TILES      = 500;   // 配布リンクを開いたとき自動で持ち歩く枚数の上限（回線の種類が分からないとき・v135）
+const OFFLINE_AUTO_WIFI_TILES = 1200;  // 同・Wi-Fi と分かるとき
+const OFFLINE_AUTO_DELAY_MS   = 4000;  // 道順・標高が落ち着いてから始める
 // --- 経路サーバ（道なりのルート計算）---
 // 同じ形式(OSRM API)のサーバを並べておき、止まっていたら順に次へ切り替える。
 // 1台目が使えるうちは1台目だけを使う（予備サーバへ余計な負荷をかけない）。
@@ -1373,6 +1376,7 @@ const LS = {
   saveCount:   'fp_save_count',   // その後の保存回数（＝バックアップに入っていない回数）
   firstSaveAt: 'fp_first_save',   // 最初の保存の日時（一度もバックアップが無いときの起点）
   homeTipSeen: 'fp_hometip_seen', // iPhone のホーム画面追加の案内を見たかどうか
+  offAuto:     'fp_offauto',      // 配布リンクを開いた端末で地図を自動で持ち歩いた記録（コースごと・v135）
 };
 // --- サンプルコース（初回起動時に一度だけ取り込む。削除したら復活しない）---
 const SAMPLE_URL = 'sample.json';   // index.html と同じ場所に置く
@@ -1601,6 +1605,43 @@ async function saveMapOffline(){
   }
   showToast('📥 地図を保存しました（' + done + '枚）圏外でもこの範囲は表示できます');
   return done;
+}
+
+/* 配布リンクを開いた人の端末に、コース範囲の地図を自動で持ち歩かせる（v135・段階2-3）。
+   作る人がメニューから押さなくても、歩く人が圏外に入る前に地図が入っている状態にする。
+   ・Wi-Fi と分かれば上限 OFFLINE_AUTO_WIFI_TILES、分からなければ OFFLINE_AUTO_TILES（iPhone は回線の種類が取れない）
+   ・モバイル回線・通信節約モードと分かれば見送る。?offauto=0 でも見送る（検査用）
+   ・コースごとに1回（LS.offAuto）。道順・標高が落ち着いてから、少しずつ取る */
+function _offAutoDone(file){ try { return !!((JSON.parse(localStorage.getItem(LS.offAuto) || '{}') || {})[file]); } catch(_) { return false; } }
+function _offAutoMark(file, n){ try { const m = JSON.parse(localStorage.getItem(LS.offAuto) || '{}') || {}; m[file] = {at: Date.now(), n}; localStorage.setItem(LS.offAuto, JSON.stringify(m)); } catch(_) {} }
+async function _autoOfflineForLink(file, opts) {
+  opts = opts || {};
+  try {
+    if (!file) return 0;
+    if (new URLSearchParams(location.search).get('offauto') === '0') return 0;
+    if (!opts.redo && _offAutoDone(file)) return 0;
+    const nc = navigator.connection;
+    if (!opts.force) {
+      if (document.body.classList.contains('embed')) return 0;
+      if (!_swSupported() || navigator.onLine === false) return 0;
+      if (nc && (nc.saveData || nc.type === 'cellular')) return 0;
+      for (let i = 0; i < 12 && !navigator.serviceWorker.controller; i++) await new Promise(r => setTimeout(r, 500));
+      if (!navigator.serviceWorker.controller) return 0;
+    }
+    if (!leafMap || !wps.length) return 0;
+    const cap = (nc && nc.type === 'wifi') ? OFFLINE_AUTO_WIFI_TILES : OFFLINE_AUTO_TILES;
+    const bounds = L.latLngBounds(wps.map(w => [w.lat, w.lng])).pad(0.25);
+    let urls = [];
+    for (let z = Math.max(10, Math.min(leafMap.getZoom(), 16)); z >= 11 && !urls.length; z--) urls = offlineTileUrls(bounds, z, z + OFFLINE_ZOOMS - 1, cap);   // 広いコースは縮尺を落として収める
+    let done = 0;
+    const BATCH = 4;                                  // 提供元サーバへの配慮（手動保存の6より控えめ）
+    for (let i = 0; i < urls.length; i += BATCH) {
+      await Promise.all(urls.slice(i, i + BATCH).map(u => fetch(u, {mode:'cors', cache:'no-cache'}).then(r => { if (r && r.ok) done++; }).catch(() => {})));
+      if (i % 40 === 0) await new Promise(r => setTimeout(r, 50));
+    }
+    if (done > 0) { _offAutoMark(file, done); if (!opts.quiet) showToast('圏外でもこの地図を見られるようにしました（' + done + '枚）'); }
+    return done;
+  } catch(_) { return 0; }
 }
 
 /* ============================================================
@@ -1873,6 +1914,17 @@ async function ensureSampleCourse() {
 /* ============================================================
    SCREEN 1
    ============================================================ */
+/* ページ全体が拡大されると、固定の帯やボタンが画面の外へ出る（v135・オーナーのiPhoneで発生）。
+   Safariのブラウザ表示は user-scalable=no を無視するので、拡大を検知したら viewport を入れ直して 1.0 に戻す */
+function _unzoomPage() {
+  try {
+    const vv = window.visualViewport; if (!vv || vv.scale <= 1.02) return;
+    const m = document.querySelector('meta[name="viewport"]'); if (!m) return;
+    const c = m.getAttribute('content'); m.setAttribute('content', c.replace('maximum-scale=1.0', 'maximum-scale=1.01')); 
+    setTimeout(() => m.setAttribute('content', c), 50);
+  } catch(_) {}
+}
+if (window.visualViewport) window.visualViewport.addEventListener('resize', () => { if (document.body && document.body.classList.contains('viewonly') || (typeof leafMap !== 'undefined' && leafMap)) _unzoomPage(); });
 window.addEventListener('DOMContentLoaded', () => {
   renderCourseList();
   // 配布リンクで開いた人のブラウザにサンプルを入れない（見に来ただけの人の保存領域を汚さない）
@@ -2206,7 +2258,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v134';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
+const APP_VERSION = 'v135';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
 }catch(_){} });
@@ -6225,7 +6277,8 @@ function initViewMode() {
     if (v.file) {                                   // ① 配布リンク：同じ場所のJSONを読む（誰の端末でも開ける）
       const ok = await loadCourseFromFile(v.file);
       if (!ok) _showViewError('コースのファイルを読み込めませんでした。\nリンクが正しいか、ファイルが公開されているかご確認ください。');
-      else maybeShowWalkTip();                      // 歩く人への最初の1回の案内
+      else { maybeShowWalkTip();                    // 歩く人への最初の1回の案内
+             if (!v.embed) setTimeout(() => _autoOfflineForLink(v.file), OFFLINE_AUTO_DELAY_MS); }   // 圏外に備えて地図を持ち歩く（v135）
       return;
     }
     const course = getCourses().find(c => String(c.id) === String(v.id));   // ② 同じ端末での確認用

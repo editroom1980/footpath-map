@@ -381,7 +381,8 @@ def static_checks(src):
         _t = _html.unescape(re.sub(r'\$\{[^}]*\}', '', re.sub(r'<[^>]+>', '', _m.group(2)))).strip()
         if not _t and 'aria-label' not in _m.group(1): _miss.append(_m.group(1)[:50])
     chk('静的', '文字の無いボタンすべてに読み上げ名がある（HTMLとJSの雛形）', not _miss, str(_miss)[:160])
-    chk('静的', 'ページの拡大を禁止していない', 'user-scalable=no' not in src)
+    chk('静的', 'ページ全体の拡大は止める（ホーム画面アプリでボタンがはみ出したため・v135）。文字の大きさはアプリ内の設定で',
+        'maximum-scale=1.0, user-scalable=no, viewport-fit=cover' in src and 'html,body{touch-action:manipulation;' in src and 'function _unzoomPage' in src)
     chk('静的', '地図の上だけは指の操作を Leaflet に渡す', '#map{touch-action:none}' in src)
     chk('静的', '出発点・到着点のつなぎ区間も同梱する', 'if (startWp && startWp.id !== rw[0].id) pairs.push' in src)
     chk('静的', '近すぎる「ふつうの三角」を飛ばすきまりがある', 'const DIR_MIN_DASHES' in src)
@@ -434,6 +435,12 @@ def static_checks(src):
     chk('静的', '選べる種類の出どころは _buildTypeOptions のまま（チップは select を読む）',
         "const cur = sel.value, opts = [...sel.options].map(o => o.value);" in src and 'function _buildTypeOptions' in src)
     chk('静的', '最初の案内が「種類と名前はあとから」を伝える', '種類と名前は、○を押してあとから決められます' in src)
+    # --- v135: 圏外でも配布リンクが開く（ロードマップ 段階2-3）---
+    chk('静的', '配布リンクを開くと、道順が落ち着いてから地図を自動で持ち歩く',
+        'function _autoOfflineForLink' in src and "setTimeout(() => _autoOfflineForLink(v.file), OFFLINE_AUTO_DELAY_MS)" in src and "offAuto:     'fp_offauto'" in src)
+    chk('静的', 'モバイル回線・節約モード・埋め込みでは見送り、Wi-Fi なら上限1,200枚',
+        "if (nc && (nc.saveData || nc.type === 'cellular')) return 0;" in src and 'const OFFLINE_AUTO_WIFI_TILES = 1200;' in src
+        and "if (document.body.classList.contains('embed')) return 0;" in src and "get('offauto') === '0'" in src)
     # --- v134: 解説の読み上げ（ロードマップ 段階2-2）---
     chk('静的', 'スポットのカードに「読み上げ」がある（端末の音声・サーバ不要・日本語）',
         'class="vip-say tap" id="vipSay"' in src and 'function speakSpot' in src and "u.lang = 'ja-JP'" in src and 'function _spotSpeechText' in src)
@@ -1351,11 +1358,11 @@ def functional_checks(index_path):
               .map(b => (b.id || b.className || '?').slice(0, 30));
             const meta = (document.querySelector('meta[name="viewport"]') || {}).content || '';
             return {miss, total: document.querySelectorAll('button').length,
-                    zoomAllowed: meta.indexOf('user-scalable=no') < 0,
+                    zoomAllowed: meta.indexOf('user-scalable=no') >= 0,   // v135: ページ全体の拡大は止める
                     mapTouch: getComputedStyle(document.getElementById('map')).touchAction,
                     leafletPinch: !!(leafMap && leafMap.touchZoom && leafMap.touchZoom.enabled())};
           }catch(e){ return 'ERR:'+e.message; } }""")
-        chk('機能', '読み上げ名の無いボタンが0、ページは拡大でき、地図の指操作は Leaflet が受ける',
+        chk('機能', '読み上げ名の無いボタンが0、ページ全体は拡大させず、地図の指操作は Leaflet が受ける',
             isinstance(a11y, dict) and a11y.get('miss') == [] and a11y.get('total', 0) >= 40
             and a11y.get('zoomAllowed') is True and a11y.get('mapTouch') == 'none'
             and a11y.get('leafletPinch') is True, str(a11y)[:190])
@@ -1798,6 +1805,38 @@ def functional_checks(index_path):
         chk('機能', '読み上げ：名前＋解説を日本語で読み、もう一度で止まり、カードを閉じても止まる',
             isinstance(sp2, dict) and sp2.get('hasBtn') and sp2.get('spoke') and sp2.get('stopLabel') and sp2.get('stopped') and sp2.get('closeStops'), str(sp2)[:220])
 
+        # v135: 自動の持ち歩きは、コース範囲のタイルを上限内で取り、コースごとに1回（取得先は差し替えて数える）
+        oa = page.evaluate("""()=>{ return (async()=>{ try{
+            const keepFetch = window.fetch, keepLS = localStorage.getItem(LS.offAuto); localStorage.removeItem(LS.offAuto);
+            let tiles = 0;
+            window.fetch = (u, o) => { if (/tile\\.openstreetmap|cyberjapandata|opentopomap|cartocdn|openstreetmap\\.fr/.test(String(u))) { tiles++; return Promise.resolve({ok: true}); } return keepFetch(u, o); };
+            const n1 = await _autoOfflineForLink('kensa.json', {force: true, quiet: true}); const t1 = tiles;
+            const n2 = await _autoOfflineForLink('kensa.json', {force: true, quiet: true}); const t2 = tiles - t1;
+            const n3 = await _autoOfflineForLink('kensa.json', {force: true, quiet: true, redo: true}); const t3 = tiles - t1 - t2;
+            const rec = JSON.parse(localStorage.getItem(LS.offAuto) || '{}');
+            window.fetch = keepFetch; if (keepLS === null) localStorage.removeItem(LS.offAuto); else localStorage.setItem(LS.offAuto, keepLS);
+            return {n1, t1, n2, t2, n3, t3, recorded: !!(rec['kensa.json'] && rec['kensa.json'].n === n1), cap: n1 <= OFFLINE_AUTO_WIFI_TILES};
+          }catch(e){ return 'ERR:'+e.message; } })(); }""")
+        chk('機能', '自動の持ち歩き：コース範囲のタイルを上限内で取り、コースごとに1回（やり直し指定で再取得）',
+            isinstance(oa, dict) and oa.get('n1', 0) > 0 and oa.get('t1') == oa.get('n1') and oa.get('n2') == 0 and oa.get('t2') == 0
+            and oa.get('n3') == oa.get('n1') and oa.get('recorded') and oa.get('cap'), str(oa)[:200])
+
+        # v135: iPhone の幅（402×874・375×812）で、見えている要素が画面からはみ出さない（ボタン・帯・札を含む）
+        _ov = {}
+        for _w, _h in ((402, 874), (375, 812)):
+            page.set_viewport_size({'width': _w, 'height': _h})
+            _ov[_w] = page.evaluate("""()=>{ try{
+                leafMap.invalidateSize(); closeMobileMenu(); closeShareSheet(); closePcPops();
+                const vw = innerWidth, bad = [];
+                document.querySelectorAll('body *').forEach(el => { const cs = getComputedStyle(el); if (cs.display === 'none' || cs.visibility === 'hidden') return;
+                  if (el.closest('.leaflet-pane') || el.closest('.leaflet-control-container') || el.closest('#map')) return;
+                  const r = el.getBoundingClientRect(); if (r.width > 0 && (r.right > vw + 1 || r.left < -1)) bad.push((el.id || el.className.toString().slice(0, 24)) + ':' + Math.round(r.left) + '-' + Math.round(r.right)); });
+                return {vw, sw: document.documentElement.scrollWidth, bad: bad.slice(0, 8)};
+              }catch(e){ return 'ERR:'+e.message; } }""")
+        page.set_viewport_size({'width': 390, 'height': 812}); page.evaluate("()=>{ leafMap.invalidateSize(); }")
+        chk('機能', 'iPhone の幅（402・375）で、見えている要素が画面からはみ出さない',
+            all(isinstance(v, dict) and v.get('sw') == v.get('vw') and v.get('bad') == [] for v in _ov.values()), str(_ov)[:220])
+
         # v121: バックアップからの日数・未反映の保存回数で色が変わり、書き出すと戻る。iPhone の案内は1回だけ
         bk = page.evaluate("""()=>{ return (async()=>{ try{
             const keepC = getCourses();
@@ -2239,6 +2278,26 @@ def offline_checks(index_path):
                 badge_ok = isinstance(boot, dict) and (boot.get('badge') is True if boot.get('online') is False else True)
                 chk('オフライン', '圏外の表示（バッジ）が出る', badge_ok, str(boot)[:150])
                 ctx.set_offline(False)
+
+                # ── 配布リンク（v135）：オンラインで開く（同じ場所のJSONがキャッシュに入る）→ 圏外で開き直してもコースが出る ──
+                page.goto(url + '?course=sample.json&offauto=0', wait_until='domcontentloaded')
+                try:
+                    page.wait_for_function("() => document.body.classList.contains('viewonly') && typeof wps !== 'undefined' && wps.length > 10", timeout=30000)
+                except Exception:
+                    pass
+                page.wait_for_timeout(800)
+                ctx.set_offline(True)
+                try:
+                    page.goto(url + '?course=sample.json&offauto=0', wait_until='domcontentloaded')
+                    page.wait_for_function("() => document.body.classList.contains('viewonly') && typeof wps !== 'undefined' && wps.length > 10", timeout=20000)
+                    page.wait_for_timeout(1500)
+                    link_off = page.evaluate("() => ({viewonly: document.body.classList.contains('viewonly'), wps: wps.length,"
+                                             " route: !!(_lastRouteCoords && _lastRouteCoords.length > 50), name: courseInfo.name})")
+                except Exception as e:
+                    link_off = str(e)[:140]
+                ctx.set_offline(False)
+                chk('オフライン', '圏外で配布リンクを開いてもコースが出る（道順は同梱ぶんで引ける）',
+                    isinstance(link_off, dict) and link_off.get('viewonly') and link_off.get('wps', 0) > 10 and link_off.get('route'), str(link_off)[:160])
 
                 # ── 解除スイッチ（?nosw=1）──
                 page.goto(url + '?nosw=1', wait_until='domcontentloaded')

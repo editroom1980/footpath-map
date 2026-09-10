@@ -122,8 +122,10 @@
     複製しない。出口を足すときは `.ss-card` を1枚増やして `shareExit` に1行足す。「この地図に載る情報」は `renderShareInfo()`
     が開くたびに実データから数える（保存しない）。
 12. **文字の無いボタンには必ず `aria-label`**（v122）。読み上げで「ボタン」としか聞こえないのを防ぐ。JSで作る雛形も同じ。
-    検査が HTML・雛形・実画面の3か所で数えるので、付け忘れると落ちる。ページの拡大は禁止しない
-    （`user-scalable=no` を戻さない）。地図だけ `#map{touch-action:none}` でピンチを Leaflet に渡す。
+    検査が HTML・雛形・実画面の3か所で数えるので、付け忘れると落ちる。**ページ全体の拡大は止める**（v135・`user-scalable=no`
+    ＋ `touch-action:manipulation`）。v122 で一度許したが、iPhone のホーム画面アプリで地図の外を二本指で触るとページごと拡大され、
+    固定の帯やボタンが画面の外へ出た（オーナー報告）。文字の大きさはアプリ内の設定で変える。地図は `#map{touch-action:none}` で
+    ピンチを Leaflet に渡す。
 11. **閲覧中（`viewMode`）は編集の操作を一切受け付けない**（v120）。見た目は `body.viewing`（配布リンクは `body.viewonly` も）で
     隠し、動きは `onMapClick`／`openModal`／`undoLast`／`redoAction`／`clearAll`／一覧のドラッグの `if (viewMode) return;` と
     `_applyViewLock()`（印の `dragging.disable()`）で止める。**編集の入口を足したら、この門も足すこと。**
@@ -263,6 +265,8 @@ routeLine.setLatLngs(...)           ← 画面に出る赤い破線
 ---
 
 ## 9. オフライン（`sw.js`）
+
+配布リンクを開いた端末では、`_autoOfflineForLink()`（v135）がコース範囲のタイルを自動で持ち歩く（回線の種類・節約モード・埋め込みで見送り、コースごとに1回、`?offauto=0` で無効）。手動の「地図を持ち歩く」（`saveMapOffline`）はそのまま。
 
 **方針は「古い版のまま固まらないこと」を最優先。**
 
