@@ -435,6 +435,12 @@ def static_checks(src):
     chk('静的', '選べる種類の出どころは _buildTypeOptions のまま（チップは select を読む）',
         "const cur = sel.value, opts = [...sel.options].map(o => o.value);" in src and 'function _buildTypeOptions' in src)
     chk('静的', '最初の案内が「種類と名前はあとから」を伝える', '種類と名前は、○を押してあとから決められます' in src)
+    # --- v147: 改変の可否（noEdit）＋ゴールの1枚（F7）---
+    chk('静的', '改変の可否は配布ファイル（shared:true）にだけ効き、読み込みで断る。バックアップは常に取り込める',
+        'function _isLockedShare' in src and "data.shared === true && data.noEdit === true" in src and 'Object.assign({}, course, {shared:true})' in src
+        and 'noEdit:   courseInfo.noEdit ? true : undefined' in src and 'noEdit: data.noEdit === true' in src and 'id="ssEdit"' in src)
+    chk('静的', 'ゴールの1枚：帯を押すと記念写真、コース名・日付・距離・スタンプを焼き込み、共有か保存',
+        'function openGoalCard' in src and 'function _goalCompose' in src and "_nb.classList.contains('done')) { openGoalCard(); return; }" in src and 'id="goalSheet"' in src and 'id="mmGoalRow"' in src and 'id="btnGoal"' in src)
     # --- v146: 配る前の確認（F9）＋ WebKit の検査 ---
     chk('静的', '配る前の確認は6項目（歩いた・私有地・分岐・注意・トイレ等・問い合わせ）。手の✓はコースに保存（check）',
         "const SHARE_CHECKS = [" in src and src.count("{k:'") >= 6 and 'check:    _courseCheckClean(),' in src and "check:(data.check && typeof data.check === 'object')" in src
@@ -2041,6 +2047,22 @@ def functional_checks(index_path):
           }catch(e){ return 'ERR:'+e.message; } }""")
         chk('機能', 'スポット削除の「元に戻す」が戻し、別の操作の後は案内し、通知は重ならず、種別はこのコースで使った順',
             isinstance(b1, dict) and all(b1.get(k) for k in ('gone', 'toast', 'back', 'guarded', 'stacked', 'order')), str(b1)[:220])
+
+        # v147: 改変の可否の門と保存／ゴールの1枚の合成
+        ge = page.evaluate("""async ()=>{ try{
+            const keepN = courseInfo.noEdit, keepD = _dirty;
+            const out = {lock: _isLockedShare({shared:true, noEdit:true}) === true && _isLockedShare({noEdit:true}) === false && _isLockedShare({shared:true}) === false};
+            courseInfo.noEdit = true; out.saved = buildCurrentSaveData().noEdit === true; courseInfo.noEdit = false; out.omit = buildCurrentSaveData().noEdit === undefined;
+            openShareSheet(); toggleNoEdit(); out.row = courseInfo.noEdit === true && document.getElementById('ssEdit').textContent.indexOf('そのまま') >= 0; toggleNoEdit(); closeShareSheet();
+            const cv0 = document.createElement('canvas'); cv0.width = 400; cv0.height = 300; const g0 = cv0.getContext('2d'); g0.fillStyle = '#99ccff'; g0.fillRect(0, 0, 400, 300);
+            const cv = await _goalCompose(cv0.toDataURL('image/png'));
+            const px = cv.getContext('2d').getImageData(10, 295, 1, 1).data, top = cv.getContext('2d').getImageData(10, 5, 1, 1).data;
+            out.compose = cv.width === 400 && cv.height === 300 && (px[0] + px[1] + px[2]) < (top[0] + top[1] + top[2]) - 100;   // 下は帯で暗く、上は元の色のまま
+            courseInfo.noEdit = keepN; _dirty = keepD; document.querySelectorAll('#toastBox .toast').forEach(e => e.remove());
+            return out;
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        chk('機能', '改変の可否：配布ファイルにだけ効く門・保存に入る・配るの行で切り替え／ゴールの1枚：帯を焼き込む',
+            isinstance(ge, dict) and all(ge.get(k) for k in ('lock', 'saved', 'omit', 'row', 'compose')), str(ge)[:220])
 
         # v146: 配る前の確認：手の✓が付いて保存に入る／自動の項目はコースの中身で決まる
         ck = page.evaluate("""()=>{ try{

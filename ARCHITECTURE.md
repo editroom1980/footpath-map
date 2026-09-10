@@ -65,6 +65,8 @@
   stickers: true,                      // 写真のある印をシールで見せる（v142）。OFF のときは書かない
   theme: { preset, route, dash, width }, // 地図の色（v145）。標準のときは書かない。印の色は WT[].c を書き換えて一本化
   check: { walked:true, private:true },  // 配る前の確認の手の✓（v146）。無ければ書かない
+  noEdit: true,                        // 他の人による改変を断る（v147）。配布ファイル（shared:true）にだけ効く。無ければ書かない
+  shared: true,                        // 「リンクを作る」で書き出した配布ファイルの印（v147）。保存データには入れない
   // 周辺の情報（v144）は OpenStreetMap（Overpass）と Wikipedia だけ。Google Places/Maps の情報は規約で使えない（載せない・取りに行かない）
   // 発見（v143）はコースの保存データには入らない。端末の LS.finds = { [courseId]: [{id, lat, lng, word, by, at, photos[]}] }。送るファイルは {fpFinds:1, courseId, courseName, finds:[…写真は実体]}
   maxWpId, maxVpNum, savedAt, version }

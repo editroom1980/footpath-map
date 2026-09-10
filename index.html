@@ -304,7 +304,7 @@ body.embed #s2, body.embed #mapArea, body.embed #mapWrap{height:100%!important;m
 /* 発見（v143） */
 .wp-sticker.find{border-color:#E8F5E9}
 .find-dot{border-radius:50%;color:#fff;font-weight:bold;text-align:center;border:2.5px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.45);cursor:pointer}
-#mobileFindBtn[hidden],#btnFind[hidden],#mmFindsRow[hidden]{display:none!important}
+#mobileFindBtn[hidden],#btnFind[hidden],#mmFindsRow[hidden],#btnGoal[hidden],#mmGoalRow[hidden]{display:none!important}
 .mrb.find{color:#2E7D32}
 .fsh-scrim{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:3400;display:none}
 .fsh{position:fixed;left:0;right:0;bottom:0;z-index:3401;display:none;background:#fff;border-radius:20px 20px 0 0;padding:10px 16px max(16px,env(safe-area-inset-bottom));box-shadow:0 -6px 24px rgba(0,0,0,.18);max-height:90vh;overflow-y:auto}
@@ -321,6 +321,7 @@ body.embed #s2, body.embed #mapArea, body.embed #mapWrap{height:100%!important;m
 .fsh .ds-btn.danger{flex:0 0 96px;background:#FDECEC;color:#B71C1C}
 .f-photo{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .f-photo img{width:120px;height:90px;object-fit:cover;border-radius:10px;border:1px solid #D4C4A8}
+.f-photo.goal img{width:100%;height:auto;max-height:52vh;object-fit:contain;border-radius:12px}
 .f-pick{flex:1;min-width:120px;border:1.5px dashed #9CCC65;background:#F1F8E9;color:#2E7D32;border-radius:12px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;min-height:var(--tap);display:inline-flex;align-items:center;justify-content:center;gap:6px}
 .f-ghost{border:none;background:#F2EEE7;border-radius:10px;padding:8px 12px;font-family:inherit;font-size:13px;cursor:pointer;color:#3D3835}
 .f-where{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:12px;font-size:12.5px;color:var(--t-sub);background:#F9F7F4;border-radius:10px;padding:8px 10px}
@@ -1130,7 +1131,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
           <button class="nb-cmp tap" id="nbCompass" onclick="enableCompass()" aria-label="コンパスを使う" title="コンパスを使う（向きの矢印が体の向き基準になります）">🧭</button>
         </div>
         <!-- PC（v126）：下＝高低差 -->
-        <div id="pcBl"><button class="pc-pill" id="btnGps" onclick="gotoCurrentLocation()" title="現在地へ移動（位置情報の許可が要ります）"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12a3 3 0 1 0 6 0a3 3 0 1 0 -6 0" /> <path d="M4 12a8 8 0 1 0 16 0a8 8 0 1 0 -16 0" /> <path d="M12 2l0 2" /> <path d="M12 20l0 2" /> <path d="M20 12l2 0" /> <path d="M2 12l2 0" /></svg><span>現在地</span></button><button class="pc-pill" id="btnKokoroe" onclick="openKokoroeSheet(viewMode ? 'view' : 'edit')" title="歩く人の心得（配布シートと配布リンクに載ります）">🙏<span>心得</span></button><button class="pc-pill" id="btnFind" onclick="openFindsSheet()" title="見つけたものを貼る・作者に送る" hidden>📷<span>発見</span></button><button class="pc-pill" id="btnElev" onclick="toggleElevPanel()" title="高低差グラフ"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M4 19l16 0" /> <path d="M4 15l4 -6l4 2l4 -5l4 4" /></svg><span>高低差</span></button></div>
+        <div id="pcBl"><button class="pc-pill" id="btnGps" onclick="gotoCurrentLocation()" title="現在地へ移動（位置情報の許可が要ります）"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12a3 3 0 1 0 6 0a3 3 0 1 0 -6 0" /> <path d="M4 12a8 8 0 1 0 16 0a8 8 0 1 0 -16 0" /> <path d="M12 2l0 2" /> <path d="M12 20l0 2" /> <path d="M20 12l2 0" /> <path d="M2 12l2 0" /></svg><span>現在地</span></button><button class="pc-pill" id="btnKokoroe" onclick="openKokoroeSheet(viewMode ? 'view' : 'edit')" title="歩く人の心得（配布シートと配布リンクに載ります）">🙏<span>心得</span></button><button class="pc-pill" id="btnFind" onclick="openFindsSheet()" title="見つけたものを貼る・作者に送る" hidden>📷<span>発見</span></button><button class="pc-pill" id="btnGoal" onclick="openGoalCard()" title="ゴールの記念写真（コース名・日付・スタンプを焼き込む）" hidden>🏁<span>ゴール</span></button><button class="pc-pill" id="btnElev" onclick="toggleElevPanel()" title="高低差グラフ"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M4 19l16 0" /> <path d="M4 15l4 -6l4 2l4 -5l4 4" /></svg><span>高低差</span></button></div>
         <div id="mapMsg">⚠️ プレビュー環境では地図タイルは表示されません<br><span style="font-size:11px">GitHub Pagesに公開すると正常に表示されます</span></div>
         <div id="rtMsg">🔄 ルートを計算中...</div>
         <!-- 埋め込み表示のときだけ出る帯（コース名・距離・大きな地図で開く） -->
@@ -1244,6 +1245,21 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
         <div class="ds-row">
           <button class="ds-btn ghost" onclick="closeInfoSheet()">閉じる</button>
           <button class="ds-btn" id="ciSave" onclick="saveInfoSheet()" hidden>この内容にする</button>
+        </div>
+      </div>
+
+      <!-- ゴールの1枚（v147） -->
+      <div id="goalScrim" class="fsh-scrim" onclick="closeGoalCard()"></div>
+      <div id="goalSheet" class="fsh" role="dialog" aria-label="ゴールの記念写真">
+        <div class="ds-dh"></div>
+        <div class="ds-t">🏁 ゴール！おつかれさまでした</div>
+        <div class="ds-n" id="goalStats"></div>
+        <div class="ds-n">記念の1枚に、コース名・日付・距離・スタンプを焼き込みます。できた写真は共有や保存ができます。</div>
+        <div class="f-photo goal" id="goalPhoto"></div>
+        <div class="ds-row">
+          <button class="ds-btn ghost" onclick="closeGoalCard()">閉じる</button>
+          <button class="ds-btn ghost" id="goalRetake" style="flex:0 0 96px" onclick="_goalImg=null;_goalFile=null;_goalRender()" hidden>撮り直す</button>
+          <button class="ds-btn" id="goalShare" onclick="shareGoalPhoto()" hidden>📤 共有・保存</button>
         </div>
       </div>
 
@@ -1363,6 +1379,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
           <div class="ss-li">スタンプラリーの対象<span class="ch" id="ssStamp">—</span></div>
           <button class="ss-li" onclick="closeShareSheet();openKokoroeSheet('edit')">歩く人の心得<span class="ch" id="ssKokoroe">—</span></button>
           <button class="ss-li" onclick="closeShareSheet();openInfoSheet('edit')">コースの情報<span class="ch" id="ssInfo">—</span></button>
+          <button class="ss-li" onclick="toggleNoEdit()" title="配布ファイルを、他の人が自分のアプリに取り込んで直せるかどうか">他の人による改変<span class="ch" id="ssEdit">—</span></button>
         </div>
         <div class="ss-hint">リンクと配布シートには、上の内容がそのまま載ります</div>
         <div class="ss-sec">配る前の確認<span class="ss-n2" id="ssCheckN"></span></div>
@@ -1385,6 +1402,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
           <div class="mm-map" onclick="closeMobileMenu();saveMapOffline()" title="このコースの範囲の地図を端末に保存します（圏外でも表示できます）"><span class="mm-map-l">地図を持ち歩く（圏外用）</span><span class="mm-v">›</span></div>
           <div class="mm-map" onclick="closeMobileMenu();openKokoroeSheet(viewMode ? 'view' : 'edit')"><span class="mm-map-l">歩く人の心得</span><span class="mm-v" id="mmKokoroe">›</span></div>
           <div class="mm-map" id="mmFindsRow" onclick="closeMobileMenu();openFindsSheet()" hidden><span class="mm-map-l">見つけたもの（発見）</span><span class="mm-v" id="mmFinds">0 件 ›</span></div>
+          <div class="mm-map" id="mmGoalRow" onclick="closeMobileMenu();openGoalCard()" hidden><span class="mm-map-l">ゴールの記念写真</span><span class="mm-v">›</span></div>
           <div class="mm-map" onclick="closeMobileMenu();openInfoSheet(viewMode ? 'view' : 'edit')"><span class="mm-map-l">コースの情報（アクセス・トイレ…）</span><span class="mm-v" id="mmInfo">›</span></div>
         </div>
         <div class="mm-sec">歩くとき</div>
@@ -1682,6 +1700,7 @@ const SHARE_CHECKS = [
   {k:'info',    l:'トイレ・駐車場・アクセスを書いた', auto:'info'},
   {k:'contact', l:'問い合わせ先を書いた（困ったときの連絡先）', auto:'contact'},
 ];
+const GOAL_IMG_MAX = 1280;   // ゴールの1枚（記念写真）の長辺（v147）
 const TYPE_BIG = ['course', 'view', 'history', 'shop'];   // 編集画面で大きく出す「よく使う4つ」（オーナー指定・v129）。残りは畳む
 const LINE_STYLE = {color:'#E84040', weight:4, dashArray:'8,5', opacity:.9, lineJoin:'round', lineCap:'round', smoothFactor:0};
 const DBL_GAP_PX = 2;        // 往復で重なる区間：2本の線の間隔(px)
@@ -2676,7 +2695,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v146';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
+const APP_VERSION = 'v147';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
 }catch(_){} });
@@ -3110,6 +3129,7 @@ function renderShareInfo(){
   if (kEl) kEl.textContent = (courseInfo.kokoroe || '').trim() ? '標準＋この地域の追記 ›' : '標準の文 ›';
   const iEl = document.getElementById('ssInfo');
   if (iEl) { const n = _courseInfoCount(); iEl.textContent = `${n} / ${COURSE_INFO_FIELDS.length} 記入 ›`; iEl.classList.toggle('warn', n === 0); }
+  const eEl = document.getElementById('ssEdit'); if (eEl) eEl.textContent = courseInfo.noEdit ? 'そのまま使ってもらう ›' : '取り込んで直してよい ›';   // v147
   _renderShareChecks();                                    // 配る前の確認（v146）
 }
 async function shareExit(kind){
@@ -4133,6 +4153,7 @@ function _segmentMinutes() {
 let _nextWpId = null, _activeGuideId = null;
 function nextBarTap() {
   if (_activeGuideId != null) { showGuideInfo(_activeGuideId); return; }   // 分岐・注意を出している間はその案内（v141）
+  const _nb = document.getElementById('nextBar'); if (_nb && _nb.classList.contains('done')) { openGoalCard(); return; }   // ゴールで押すと記念の1枚（v147）
   const id = _nextWpId; if (id == null) return;
   if (typeof showViewInfo === 'function') showViewInfo(id);
 }
@@ -4153,7 +4174,9 @@ function renderNextBar() {
   const gi = _nextGuideInfo(info ? (info.along != null ? info.along : null) : null);
   _guidePassCheck();
   if (gi) { _guideShown[gi.vp.id] = true; _activeGuideId = gi.vp.id; } else _activeGuideId = null;
-  if (!info) { tx.textContent = _walkPos ? (here ? _spotLabel(here) + '　ゴールに着きました' : 'ゴールに着きました') : '◎を押すと、次のスポットまでの距離が出ます'; ar.style.visibility = _walkPos ? 'visible' : 'hidden'; ar.style.transform = ''; return; }
+  if (!info) { tx.textContent = _walkPos ? (here ? _spotLabel(here) + '　ゴールに着きました' : 'ゴールに着きました') : '◎を押すと、次のスポットまでの距離が出ます'; ar.style.visibility = _walkPos ? 'visible' : 'hidden'; ar.style.transform = '';
+    if (_walkPos && !_goalToastShown) { _goalToastShown = true; showToast('ゴール！おつかれさまでした。帯を押すと記念の1枚を作れます'); }   // v147
+    return; }
   tx.innerHTML = (here ? '<div class="nb-name"><b>' + escHtml(_spotLabel(here)) + '</b>　次：' + escHtml(info.label) + '</div>'
                        : '<div class="nb-name">次：<b>' + escHtml(info.label) + '</b></div>')
                + (gi ? '<div class="nb-guide' + (gi.g.kind === 'caution' ? ' caution' : '') + '">' + escHtml(_guideGlyph(gi.g)) + ' <b>' + (gi.here ? escHtml(_guideText(gi.g)) : (gi.g.kind === 'caution' ? 'この先' + Math.round(gi.dist / 10) * 10 + 'm ' + escHtml(_guideText(gi.g)) : Math.round(gi.dist / 10) * 10 + 'm先 ' + escHtml(GUIDE_DIRS[gi.g.dir] || 'まっすぐ'))) + '</b>' + (gi.g.note ? '：' + escHtml(gi.g.note) : '') + '</div>'
@@ -6964,6 +6987,73 @@ function _clusterStickers(){
   leaders.forEach(l => { if (l.n > 1) { l.w._clusterN = l.n; l.w.marker.setIcon(wpIcon(l.w)); } });
 }
 
+/* ===== 他の人による改変の可否（v147・構想「改変可能かどうかを作者が決める」）=====
+   配布用ファイル（「リンクを作る」で書き出したもの）に shared:true と noEdit:true が入っていれば、このアプリは取り込みを断る。
+   技術的な保護ではない（ファイルの中身は見える）。作者の意思表示＋アプリでの取り込み拒否。作者自身のバックアップ（shared 無し）は常に取り込める */
+function _isLockedShare(data){ return !!(data && data.shared === true && data.noEdit === true); }
+function toggleNoEdit(){
+  courseInfo.noEdit = !courseInfo.noEdit; _dirty = true; renderShareInfo();
+  showToast(courseInfo.noEdit ? 'そのまま使ってもらう：配布ファイルを他の人がこのアプリに取り込んで直すことを断ります（技術的な保護ではありません）' : '取り込んで直してよい：他の人が自分のアプリに取り込んで手を加えられます');
+}
+/* ===== ゴールの1枚（v147・フットパス特化 F7）：ゴールで記念写真に コース名・日付・距離・スタンプ を焼き込む ===== */
+let _goalImg = null, _goalFile = null, _goalToastShown = false;
+function openGoalCard(){
+  if (!viewMode) { showToast('ゴールの記念写真は「歩く人の見え方」で作れます'); return; }
+  _goalImg = null; _goalFile = null; _goalRender();
+  document.getElementById('goalScrim').style.display = 'block'; document.getElementById('goalSheet').style.display = 'block';
+}
+function closeGoalCard(){ document.getElementById('goalScrim').style.display = 'none'; document.getElementById('goalSheet').style.display = 'none'; }
+function _goalStatsText(){
+  const vc = visitCount();
+  return (courseInfo.name || '') + (_lastRouteDistM ? '　' + (_lastRouteDistM / 1000).toFixed(1) + ' km' : '') + (vc.total ? '　スタンプ ' + vc.done + ' / ' + vc.total : '');
+}
+function _goalRender(){
+  const st = document.getElementById('goalStats'); if (st) st.textContent = _goalStatsText();
+  const box = document.getElementById('goalPhoto'); if (!box) return;
+  box.innerHTML = _goalImg ? '<img src="' + _goalImg + '" alt="記念写真">'
+                           : '<label class="f-pick tap">📷 撮る<input type="file" accept="image/*" capture="environment" style="display:none" onchange="_goalAddPhoto(this)"></label><label class="f-pick tap">🖼 写真から選ぶ<input type="file" accept="image/*" style="display:none" onchange="_goalAddPhoto(this)"></label>';
+  const sh = document.getElementById('goalShare'); if (sh) sh.hidden = !_goalImg;
+  const rt = document.getElementById('goalRetake'); if (rt) rt.hidden = !_goalImg;
+}
+async function _goalAddPhoto(input){
+  const f = input.files && input.files[0]; input.value = ''; if (!f) return;
+  try {
+    const src = await compressImage(f); const cv = await _goalCompose(src);
+    _goalImg = cv.toDataURL('image/jpeg', 0.86);
+    _goalFile = await new Promise(res => cv.toBlob(b => res(b ? new File([b], 'goal_' + _safeFileBase(courseInfo.name) + '.jpg', {type:'image/jpeg'}) : null), 'image/jpeg', 0.86));
+    _goalRender();
+  } catch(_) { showToast('写真を読み込めませんでした'); }
+}
+async function _goalCompose(src){   // 写真の下に帯を敷き、コース名・完歩・日付・距離・スタンプを書く
+  const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = src; });
+  const k = Math.min(1, GOAL_IMG_MAX / Math.max(img.width, img.height));
+  const w = Math.max(1, Math.round(img.width * k)), h = Math.max(1, Math.round(img.height * k));
+  const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+  const g = cv.getContext('2d'); g.drawImage(img, 0, 0, w, h);
+  const band = Math.round(Math.max(56, h * 0.17)), pad = Math.round(w * 0.04);
+  const grad = g.createLinearGradient(0, h - band * 1.7, 0, h); grad.addColorStop(0, 'rgba(0,0,0,0)'); grad.addColorStop(1, 'rgba(0,0,0,.75)');
+  g.fillStyle = grad; g.fillRect(0, h - band * 1.7, w, band * 1.7);
+  const d = new Date(), vc = visitCount();
+  const line1 = (courseInfo.name || 'フットパス') + '　完歩！';
+  const line2 = d.getFullYear() + '.' + (d.getMonth() + 1) + '.' + d.getDate() + (_lastRouteDistM ? '　' + (_lastRouteDistM / 1000).toFixed(1) + ' km' : '') + (vc.total ? '　スタンプ ' + vc.done + '/' + vc.total : '');
+  g.fillStyle = '#fff'; g.textBaseline = 'alphabetic'; g.shadowColor = 'rgba(0,0,0,.55)'; g.shadowBlur = Math.round(band * 0.08);
+  let fs = Math.round(band * 0.4); g.font = 'bold ' + fs + 'px sans-serif';
+  while (g.measureText(line1).width > w - pad * 2 && fs > 10) { fs -= 2; g.font = 'bold ' + fs + 'px sans-serif'; }
+  g.fillText(line1, pad, h - band * 0.52);
+  g.font = Math.round(band * 0.26) + 'px sans-serif'; g.fillText(line2, pad, h - band * 0.16);
+  g.font = Math.round(band * 0.18) + 'px sans-serif'; g.textAlign = 'right'; g.globalAlpha = .85; g.fillText('Footpath Mapmaker', w - pad, h - band * 0.16); g.textAlign = 'left'; g.globalAlpha = 1;
+  return cv;
+}
+async function shareGoalPhoto(){
+  if (!_goalImg) return;
+  const name = 'goal_' + _safeFileBase(courseInfo.name) + '.jpg';
+  if (_goalFile && navigator.share && navigator.canShare && navigator.canShare({files:[_goalFile]})) {
+    try { await navigator.share({files:[_goalFile], title:(courseInfo.name || '') + ' 完歩'}); return; } catch(e) { if (e && e.name === 'AbortError') return; }
+  }
+  const a = document.createElement('a'); a.href = _goalImg; a.download = name; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  showToast('保存しました');
+}
+
 /* ===== 配る前の確認（v146）===== */
 function _shareCheckState(k){
   const own = courseInfo.check || {}, info = courseInfo.info || {};
@@ -7264,6 +7354,8 @@ function _syncFindUi(){
   const mb = document.getElementById('mobileFindBtn'); if (mb) mb.hidden = !on;
   const row = document.getElementById('mmFindsRow'); if (row) row.hidden = !on;
   const v = document.getElementById('mmFinds'); if (v) v.textContent = n + ' 件 ›';
+  const gr = document.getElementById('mmGoalRow'); if (gr) gr.hidden = !on;   // ゴールの記念写真（v147）
+  const gb = document.getElementById('btnGoal'); if (gb) gb.hidden = !on;
 }
 /* 貼る（シート） */
 function openFindSheet(){
@@ -8023,6 +8115,7 @@ function buildCurrentSaveData() {
     stickers: courseInfo.stickers ? true : undefined,   // 写真のある印をシールで見せる（v142）。OFF のときは書かない
     theme:    courseInfo.theme || undefined,            // 地図の色（v145）。標準のときは書かない
     check:    _courseCheckClean(),                      // 配る前の確認の✓（手で付けるものだけ・v146）
+    noEdit:   courseInfo.noEdit ? true : undefined,     // 他の人による改変を断る（配布ファイルにだけ効く・v147）
     center:  leafMap ? {lat:leafMap.getCenter().lat, lng:leafMap.getCenter().lng} : null,
     zoom:    leafMap ? leafMap.getZoom() : 14,
     wps:     wps.map(w=>({id:w.id,type:w.type,name:w.name,desc:w.desc,tel:w.tel,dwell:w.dwell||0,fitBefore:w.fitBefore!==false,fitAfter:w.fitAfter!==false,onRoute:w.onRoute!==undefined?w.onRoute!==false:(w.type==='course'),lat:w.lat,lng:w.lng,labelDir:w.labelDir||'auto',photos:w.photos||[]})),
@@ -8113,7 +8206,7 @@ function _fitCourseToScreen(data){
   }
 }
 function loadCourseData(data) {
-  courseInfo = {name:data.name, area:data.area, start:data.start||'', goal:data.goal||'', kokoroe:data.kokoroe||'', info:(data.info && typeof data.info === 'object') ? Object.assign({}, data.info) : {}, stickers: data.stickers === true, theme:(data.theme && typeof data.theme === 'object') ? Object.assign({}, data.theme) : null, check:(data.check && typeof data.check === 'object') ? Object.assign({}, data.check) : {}};
+  courseInfo = {name:data.name, area:data.area, start:data.start||'', goal:data.goal||'', kokoroe:data.kokoroe||'', info:(data.info && typeof data.info === 'object') ? Object.assign({}, data.info) : {}, stickers: data.stickers === true, theme:(data.theme && typeof data.theme === 'object') ? Object.assign({}, data.theme) : null, check:(data.check && typeof data.check === 'object') ? Object.assign({}, data.check) : {}, noEdit: data.noEdit === true};
   applyTheme(courseInfo.theme, {quiet:true});   // 印と線を作る前に色を決める（v145）
   currentCourseId = data.id;
   _dirty = false;             // 読み込み直後は未保存の変更なし
@@ -8526,7 +8619,7 @@ function openShareDialog(course) {
   fileEl.value = _shareFileName('course-' + (course.id || Date.now()));
   fileEl.oninput = sync; sync();
   ov.querySelector('#shExport').onclick = async () => {
-    _downloadJsonAs(await _embedPhotos(course), _shareFileName(fileEl.value));   // 配布ファイルは写真も入れる
+    _downloadJsonAs(await _embedPhotos(Object.assign({}, course, {shared:true})), _shareFileName(fileEl.value));   // 配布ファイルは写真も入れる。shared:true＝配布物の印（改変の可否はこれに効く・v147）
     sync();
   };
   ov.querySelector('#shCopyEmbed').onclick = () => {
@@ -8642,6 +8735,7 @@ function importCourseFromFile(input) {
       } else {
         data = JSON.parse(e.target.result);
         if (data && data.fpFinds === 1 && Array.isArray(data.finds)) { await _importFinds(data); return; }   // 歩く人から届いた「発見」（v143）
+        if (_isLockedShare(data)) { alert('このコースは、作者が「そのまま使ってもらう（取り込み不可）」にしています。\n配布リンクで開いて歩く用途にお使いください。'); return; }   // v147
       }
       if (!data.name || !Array.isArray(data.wps)) { alert('無効なコースファイルです'); return; }
       data.id = Date.now();
