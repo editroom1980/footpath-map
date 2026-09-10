@@ -435,6 +435,15 @@ def static_checks(src):
     chk('静的', '選べる種類の出どころは _buildTypeOptions のまま（チップは select を読む）',
         "const cur = sel.value, opts = [...sel.options].map(o => o.value);" in src and 'function _buildTypeOptions' in src)
     chk('静的', '最初の案内が「種類と名前はあとから」を伝える', '種類と名前は、○を押してあとから決められます' in src)
+    # --- v141: 分岐・注意の案内（フットパス特化 F4/F11）---
+    chk('静的', '通り道の点に分岐（←↑→）と注意（車・滑る・圏外・獣）の案内を付けられ、保存・スナップショット・写真の同梱に入る',
+        'const GUIDE_DIRS' in src and 'const GUIDE_CAUTIONS' in src and 'guide:v.guide||undefined' in src and 'guide:v.guide?JSON.parse' in src
+        and 'for (const v of vps) if (v.guide) moved += await _stashPhotoArray(v.guide.photos);' in src and '分岐の写真も実体に' in src)
+    chk('静的', '案内の入口は通り道の点のメニュー、閲覧中はメニューを開かず案内を見る',
+        "openGuideSheet(vpId), cls: 'ctx-guide'" in src and "if (viewMode) { const g = vps.find(v => v.id === vpId); if (g && g.guide) showGuideInfo(vpId); return; }" in src)
+    chk('静的', '歩く人の帯は手前120mから知らせ、20m以内で「ここを左」、過ぎたら「この道で合っています」',
+        'const GUIDE_AHEAD_M  = 120;' in src and 'const GUIDE_HERE_M   = 20;' in src and "showToast('✓ この道で合っています')" in src and 'function _nextGuideInfo' in src)
+    chk('静的', '配布シートに「分岐・注意の案内（歩く順）」が載り、地図画像にも矢印の印が残る', 'function _sheetGuidesHtml' in src and '<div class="sh-guides">' in src and 'vps.forEach(vp => { if (vp.guide) return;' in src)
     # --- v140: スポット削除の元に戻す（B1）・写真の無いスポットへ（B3）・並べ替えの件数（B4）・種別の並び（B7）・通知の集約（C3）---
     chk('静的', 'スポットの削除は確認ダイアログではなく10秒の「元に戻す」', "confirm('このスポットを削除しますか？')" not in src and 'function undoDeleteWp' in src
         and "if (undoStack.length !== u.len)" in src)
@@ -1994,6 +2003,41 @@ def functional_checks(index_path):
           }catch(e){ return 'ERR:'+e.message; } }""")
         chk('機能', 'スポット削除の「元に戻す」が戻し、別の操作の後は案内し、通知は重ならず、種別はこのコースで使った順',
             isinstance(b1, dict) and all(b1.get(k) for k in ('gone', 'toast', 'back', 'guarded', 'stacked', 'order')), str(b1)[:220])
+
+        # v141: 案内：保存に入り、印が変わり、帯が手前で知らせ・ここで示し・過ぎたら確認、シートに載る、閲覧中はカード
+        gd = page.evaluate("""()=>{ try{
+            const keepV = viewMode, keepCls = document.body.className, keepPos = _walkPos, keepLRC = _lastRouteCoords, keepU = undoStack.length, keepD = _dirty;
+            // 検査用の線：全スポットの南西を東へ走り、スポットの手前で終わる（＝スポットは全部「線の終わり」に写るので、案内300m地点は必ず次のスポットより手前）
+            const minLat = Math.min(...wps.map(w => w.lat)), minLng = Math.min(...wps.map(w => w.lng));
+            const la = minLat - 0.02, lo0 = minLng - 0.04;
+            const line = [0, 1, 2, 3, 4].map(i => [la, lo0 + i * 0.005]);
+            _lastRouteCoords = line; _routeCandidates(la, lo0);
+            const at = d => { const c = line; let i = 1; while (i < c.length - 1 && _routeCum[i] < d) i++; const a = _routeCum[i-1], b = _routeCum[i], t = (d - a) / (b - a); return [c[i-1][0] + (c[i][0]-c[i-1][0])*t, c[i-1][1] + (c[i][1]-c[i-1][1])*t]; };
+            const q = at(300);
+            const vp = {id:'vTest141', segAfter: wps[0].id, order:0, fitBefore:true, fitAfter:true, lat:q[0], lng:q[1], marker:null,
+                        guide:{kind:'turn', dir:'left', note:'橋を渡ってすぐ', photos:[]}};
+            vps.push(vp); buildVpMarker(vp);
+            const out = {saved: (buildCurrentSaveData().vps.find(v => v.id === vp.id).guide || {}).note === '橋を渡ってすぐ',
+                         icon: !!(vp.marker && vp.marker.getElement() && vp.marker.getElement().querySelector('.vp-guide'))};
+            const html = _sheetHtml('data:,', 800); out.sheet = html.indexOf('sh-guides') >= 0 && html.indexOf('橋を渡ってすぐ') >= 0;
+            viewMode = true; document.body.classList.add('viewing'); _walkPos = null; _guideShown = {}; _guideConfirmed = {};
+            const tx = document.getElementById('nbText');
+            let p0 = at(200); _onWalkerPos(p0[0], p0[1], 5); out.ahead = /100m先 左/.test(tx.textContent) && /橋を渡ってすぐ/.test(tx.textContent);
+            let p1 = at(295); _onWalkerPos(p1[0], p1[1], 5); out.here = /ここを左/.test(tx.textContent);
+            closeViewInfo(); nextBarTap(); out.card = document.getElementById('viewInfoPanel').classList.contains('show') && document.getElementById('viewInfoPanel').textContent.indexOf('ここを左') >= 0; closeViewInfo();
+            document.querySelectorAll('#toastBox .toast').forEach(e => e.remove());
+            let p2 = at(340); _onWalkerPos(p2[0], p2[1], 5); out.confirmed = [...document.querySelectorAll('#toastBox .toast')].some(e => /この道で合っています/.test(e.textContent)) && !/橋を渡って/.test(tx.textContent);
+            document.querySelectorAll('#toastBox .toast').forEach(e => e.remove());
+            // 閲覧中に点を押しても編集メニューは開かず、案内が出る
+            showViaCtxMenu(vp.id, 10, 10); out.viewGate = document.getElementById('ctxMenu').style.display !== 'block' && document.getElementById('viewInfoPanel').classList.contains('show'); closeViewInfo();
+            // 後片付け
+            try { leafMap.removeLayer(vp.marker); } catch(_) {}
+            vps.splice(vps.indexOf(vp), 1);
+            viewMode = keepV; document.body.className = keepCls; _walkPos = keepPos; _lastRouteCoords = keepLRC; undoStack.length = keepU; _dirty = keepD; _activeGuideId = null; renderNextBar();
+            return out;
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        chk('機能', '分岐の案内：保存・印・シート・帯（手前→ここを左→確認）・カード・閲覧中の門',
+            isinstance(gd, dict) and all(gd.get(k) for k in ('saved', 'icon', 'sheet', 'ahead', 'here', 'card', 'confirmed', 'viewGate')), str(gd)[:240])
 
         # v121: バックアップからの日数・未反映の保存回数で色が変わり、書き出すと戻る。iPhone の案内は1回だけ
         bk = page.evaluate("""()=>{ return (async()=>{ try{

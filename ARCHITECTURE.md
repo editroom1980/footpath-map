@@ -61,6 +61,7 @@
   elevs: { "lat,lng": m },                     // 点ごとの標高（v127）。読み込み時に elevCache へ戻す。routes と共に計算後に静かに書き足される
   kokoroe: "この地域からのお願い",              // 歩く人の心得の地域の追記（v137）。標準の文は KOKOROE 定数
   info: { access, car, toilet, rest, season, notes, contact, diff }, // コースの情報（v139）。空欄は入れない。diff は手で選んだ★（1〜3）だけ
+  vps[].guide: { kind:"turn"|"caution", dir, ctype, note, photos[] }, // 分岐・注意の案内（v141）。写真は idb: 参照
   maxWpId, maxVpNum, savedAt, version }
 ```
 

@@ -744,6 +744,38 @@ body.viewonly .mob-share, body.embed .mob-share{display:none!important}
 #reorderSheet .ro-row{display:flex;align-items:center;gap:8px;padding:0 4px;height:48px;box-sizing:border-box;border-bottom:0.5px solid rgba(0,0,0,.06);background:#fff;will-change:transform}
 #reorderSheet .ro-row.ro-shift{transition:transform .16s ease}
 #reorderSheet .ro-row.ro-node{opacity:.6;height:36px;font-size:12px}   /* 描いた道の点は控えめに（B4・v140） */
+/* 分岐・注意の案内（v141） */
+.vp-guide{border-radius:50%;background:var(--brand);color:#fff;font-weight:800;text-align:center;border:2px solid #fff;box-shadow:0 1px 6px rgba(0,0,0,.5);cursor:grab;font-family:inherit}
+.vp-guide.vp-caution{background:#B87503}
+#guideScrim{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:3400;display:none}
+#guideSheet{position:fixed;left:0;right:0;bottom:0;z-index:3401;display:none;background:#fff;border-radius:20px 20px 0 0;padding:10px 16px max(16px,env(safe-area-inset-bottom));box-shadow:0 -6px 24px rgba(0,0,0,.18);max-height:90vh;overflow-y:auto}
+#guideSheet .ds-dh{width:38px;height:4px;border-radius:2px;background:#D9D1C4;margin:0 auto 12px}
+#guideSheet .ds-t{font-size:17px;font-weight:800;color:#231C14;margin-bottom:3px}
+#guideSheet .ds-n{font-size:11.5px;color:var(--t-sub);margin-bottom:10px;line-height:1.7}
+#guideSheet .kk-l{display:block;font-size:12px;font-weight:700;color:var(--t-sub);margin:10px 0 4px}
+#guideSheet .g-seg{display:flex;flex-wrap:wrap;gap:6px}
+#guideSheet .g-seg button{border:1px solid #D4C4A8;border-radius:10px;background:#fff;font-family:inherit;font-size:13px;font-weight:700;color:#2C2620;padding:8px 12px;min-height:var(--tap);cursor:pointer}
+#guideSheet .g-seg button.on{border-color:var(--brand);background:var(--brand-soft);color:var(--brand)}
+#guideSheet .g-seg button.big{font-size:18px;min-width:64px}
+#guideSheet input[type=text]{width:100%;padding:9px 11px;border:1px solid #D4C4A8;border-radius:10px;font-size:14px;font-family:inherit;box-sizing:border-box;outline:none}
+#guideSheet input[type=text]:focus{border-color:var(--brand)}
+#guideSheet .g-photo{display:flex;align-items:center;gap:10px}
+#guideSheet .g-photo img{width:96px;height:72px;object-fit:cover;border-radius:8px;border:1px solid #D4C4A8}
+#guideSheet .g-photo label{border:1.5px dashed #C4B89A;background:#FAF6EE;color:#8B6C42;border-radius:10px;padding:10px 12px;font-size:13px;cursor:pointer;min-height:var(--tap);display:inline-flex;align-items:center}
+#guideSheet .ds-row{display:flex;gap:9px;margin-top:14px}
+#guideSheet .ds-btn{flex:1;min-height:var(--tap);border:none;border-radius:12px;font-family:inherit;font-size:14px;font-weight:700;background:var(--brand-grad);color:#fff;cursor:pointer}
+#guideSheet .ds-btn.ghost{flex:0 0 90px;background:#F2EEE7;color:var(--t-sub)}
+#guideSheet .ds-btn.danger{flex:0 0 90px;background:#FDECEC;color:#B71C1C}
+@media (min-width:769px){#guideSheet{left:50%;right:auto;bottom:auto;top:50%;transform:translate(-50%,-50%);width:460px;max-width:calc(100vw - 32px);border-radius:16px;padding:18px 20px 20px}#guideSheet .ds-dh{display:none}}
+#nextBar .nb-guide{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13px}
+#nextBar .nb-guide b{font-weight:800;color:var(--brand)}
+#nextBar .nb-guide.caution b{color:#B87503}
+.vip-gdir{font-size:40px;line-height:1;color:var(--brand);font-weight:800}
+.sh-guides{margin-top:10px;padding-top:8px;border-top:1px solid #EFE7DA}
+.sh-gl{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:10.5px;line-height:1.5}
+.sh-gl div{display:flex;align-items:center;gap:6px}
+.sh-gl b{color:var(--brand);font-size:13px}
+.sh-gl img{width:44px;height:33px;object-fit:cover;border-radius:4px;border:1px solid #E0D6C6}
 #reorderSheet .ro-row.ro-lift{background:var(--brand-soft);box-shadow:0 6px 16px rgba(0,0,0,.24);border-radius:10px;border-bottom:none;position:relative;z-index:5;transition:none}
 #reorderSheet .ro-badge{width:22px;height:22px;border-radius:50%;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0}
 #reorderSheet .ro-label{flex:1;font-size:13px;color:#4A2E0E;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -1128,6 +1160,29 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
         </div>
       </div>
 
+      <!-- 分岐・注意の案内（v141）：通り道の点に付ける -->
+      <div id="guideScrim" onclick="closeGuideSheet()"></div>
+      <div id="guideSheet" role="dialog" aria-label="分岐・注意の案内">
+        <div class="ds-dh"></div>
+        <div class="ds-t">分岐・注意の案内</div>
+        <div class="ds-n">迷いそうな分岐と、気をつける区間の入口に付けます。歩く人の画面で手前から知らせ、配布シートにも載ります。</div>
+        <label class="kk-l">種類</label>
+        <div class="g-seg" id="gKind"><button type="button" data-v="turn" onclick="_gPick('kind','turn')">分岐（曲がる）</button><button type="button" data-v="caution" onclick="_gPick('kind','caution')">注意（区間）</button></div>
+        <div id="gTurn"><label class="kk-l">向き</label>
+          <div class="g-seg" id="gDir"><button type="button" class="big" data-v="left" onclick="_gPick('dir','left')">←</button><button type="button" class="big" data-v="straight" onclick="_gPick('dir','straight')">↑</button><button type="button" class="big" data-v="right" onclick="_gPick('dir','right')">→</button></div></div>
+        <div id="gCaution" hidden><label class="kk-l">何に注意</label>
+          <div class="g-seg" id="gCtype"><button type="button" data-v="car" onclick="_gPick('ctype','car')">車が多い</button><button type="button" data-v="slip" onclick="_gPick('ctype','slip')">滑りやすい</button><button type="button" data-v="nosignal" onclick="_gPick('ctype','nosignal')">携帯が圏外</button><button type="button" data-v="animal" onclick="_gPick('ctype','animal')">獣に注意</button><button type="button" data-v="other" onclick="_gPick('ctype','other')">その他</button></div></div>
+        <label class="kk-l" for="gNote">ひとこと（任意・40字まで）</label>
+        <input type="text" id="gNote" maxlength="40" placeholder="例：橋を渡ってすぐ／民家の間の細い道へ">
+        <label class="kk-l">写真（分岐の見え方・1枚）</label>
+        <div class="g-photo" id="gPhoto"></div>
+        <div class="ds-row">
+          <button class="ds-btn ghost" onclick="closeGuideSheet()">閉じる</button>
+          <button class="ds-btn danger" id="gRemove" onclick="removeGuide()" hidden>外す</button>
+          <button class="ds-btn" onclick="saveGuideSheet()">この内容にする</button>
+        </div>
+      </div>
+
       <!-- 配る（v123）：4つの出口と「この地図に載る情報」を1枚に -->
       <div id="shareScrim" onclick="closeShareSheet()"></div>
       <div id="shareSheet" role="dialog" aria-label="配る">
@@ -1406,6 +1461,12 @@ const COURSE_INFO_FIELDS = [
   {k:'notes',   l:'注意',                ph:'例：国道29号沿いは車に注意。イノシシが出ることがあります'},
   {k:'contact', l:'問い合わせ先',          ph:'例：飯見自治会 090-xxxx-xxxx／メール'},
 ];
+/* 分岐と注意の案内（v141・フットパス特化 F4/F11）。通り道の点に付ける。英国の道標の原則＝迷いそうな所に・歩く人の正面に・確認の印 */
+const GUIDE_DIRS     = {left:'左', straight:'まっすぐ', right:'右'};
+const GUIDE_CAUTIONS = {car:'車が多い', slip:'滑りやすい', nosignal:'携帯が圏外', animal:'獣に注意', other:'注意'};
+const GUIDE_AHEAD_M  = 120;   // 帯で知らせ始める距離
+const GUIDE_HERE_M   = 20;    // これ以内で「ここを左」
+const GUIDE_PASSED_M = 25;    // これだけ過ぎたら「この道で合っています」
 const TYPE_BIG = ['course', 'view', 'history', 'shop'];   // 編集画面で大きく出す「よく使う4つ」（オーナー指定・v129）。残りは畳む
 const LINE_STYLE = {color:'#E84040', weight:4, dashArray:'8,5', opacity:.9, lineJoin:'round', lineCap:'round', smoothFactor:0};
 const DBL_GAP_PX = 2;        // 往復で重なる区間：2本の線の間隔(px)
@@ -1861,6 +1922,7 @@ async function _stashPhotos(courses){
   for (const c of (courses || [])) {
     if (!c || !Array.isArray(c.wps)) continue;
     for (const w of c.wps) moved += await _stashPhotoArray(w.photos);
+    for (const v of (c.vps || [])) if (v && v.guide) moved += await _stashPhotoArray(v.guide.photos);
   }
   return moved;
 }
@@ -1868,6 +1930,7 @@ async function _stashPhotos(courses){
 async function _stashLivePhotos(){
   let moved = 0;
   for (const w of wps) moved += await _stashPhotoArray(w.photos);
+  for (const v of vps) if (v.guide) moved += await _stashPhotoArray(v.guide.photos);   // 分岐の写真も（v141）
   return moved;
 }
 // 参照を実体に戻したコピーを返す（書き出し・配布用は1ファイルで完結させる）
@@ -1879,6 +1942,11 @@ async function _embedPhotos(course){
       if (_isPhotoRef(w.photos[i])) w.photos[i] = await _photoSrc(w.photos[i]) || '';
     }
     w.photos = w.photos.filter(Boolean);
+  }
+  for (const v of (c.vps || [])) {                        // 分岐の写真も実体に（v141）
+    if (!v || !v.guide || !Array.isArray(v.guide.photos)) continue;
+    for (let i = 0; i < v.guide.photos.length; i++) { if (_isPhotoRef(v.guide.photos[i])) v.guide.photos[i] = await _photoSrc(v.guide.photos[i]) || ''; }
+    v.guide.photos = v.guide.photos.filter(Boolean);
   }
   return c;
 }
@@ -2387,7 +2455,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v140';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
+const APP_VERSION = 'v141';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
 }catch(_){} });
@@ -3376,15 +3444,22 @@ function addVp(lat, lng) {
   clearCache(); redrawStraight(); scheduleRouting();
 }
 
+/* 通り道の点の印。案内（分岐・注意）が付いていれば、矢印か「!」の少し大きい印（v141） */
+function _vpIcon(vp) {
+  const sz = isMobile() ? 18 : 13;
+  const g = vp.guide;
+  if (!g) return L.divIcon({className:'', html:`<div style="width:${sz}px;height:${sz}px;border-radius:50%;background:#444;border:2px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.55);cursor:grab"></div>`, iconSize:[sz,sz], iconAnchor:[sz/2,sz/2]});
+  const big = isMobile() ? 26 : 22;
+  const turn = g.kind !== 'caution';
+  const glyph = turn ? ({left:'←', straight:'↑', right:'→'}[g.dir] || '↑') : '!';
+  return L.divIcon({className:'', html:`<div class="vp-guide${turn ? '' : ' vp-caution'}" style="width:${big}px;height:${big}px;line-height:${big-4}px;font-size:${Math.round(big*0.6)}px">${glyph}</div>`, iconSize:[big,big], iconAnchor:[big/2,big/2]});
+}
+function _syncVpIcon(vp) { if (vp && vp.marker) { try { vp.marker.setIcon(_vpIcon(vp)); } catch(_) {} } }
 function buildVpMarker(vp) {
   const sz = isMobile() ? 18 : 13;
   const m = L.marker([vp.lat, vp.lng], {
     draggable:true,
-    icon:L.divIcon({
-      className:'',
-      html:`<div style="width:${sz}px;height:${sz}px;border-radius:50%;background:#444;border:2px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.55);cursor:grab"></div>`,
-      iconSize:[sz,sz], iconAnchor:[sz/2,sz/2]
-    }),
+    icon:_vpIcon(vp),
     zIndexOffset:500
   }).addTo(leafMap);
 
@@ -3616,6 +3691,7 @@ function _deleteNode(wpId) {
 }
 
 function showViaCtxMenu(vpId, x, y) {
+  if (viewMode) { const g = vps.find(v => v.id === vpId); if (g && g.guide) showGuideInfo(vpId); return; }   // 閲覧中は案内を見るだけ（v141）
   _closeAllPopups('ctx');
   hideCtxMenu();
   const vp = vps.find(v => v.id === vpId);
@@ -3646,6 +3722,7 @@ function showViaCtxMenu(vpId, x, y) {
     {html: (fa?_ICO_ON:_ICO_OFF) + '<span>後の区間を道路に沿う</span>',  fn: () => ctxDoToggleFit('after')},
     null,
     {html: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;vertical-align:middle"><path d="M20 11a8.1 8.1 0 0 0 -15.5 -2m-.5 -4v4h4" /> <path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4" /></svg><span>スポットに変える</span>', fn: ctxConvertToWp, cls: 'ctx-convert'},
+    {html: '<span style="font-weight:800;flex-shrink:0">⤴</span><span>' + (vp.guide ? '分岐・注意の案内を直す' : '分岐・注意の案内を付ける') + '</span>', fn: () => openGuideSheet(vpId), cls: 'ctx-guide'},
     null,
     {html: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;vertical-align:middle"><path d="M4 7l16 0" /> <path d="M10 11l0 6" /> <path d="M14 11l0 6" /> <path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12" /> <path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3" /></svg><span>この通り道の点を削除</span>', fn: ctxDoDeleteVp, cls: 'ctx-del'},
   ];
@@ -3793,7 +3870,7 @@ function nextSpotInfo() {
   const min = Math.max(1, Math.round((d / 1000) / _walkSpeed() * 60));
   const about = (_walkPos.acc || 0) > NEXT_ACC_ABOUT_M;
   return {wp: next.wp, label: _spotLabel(next.wp), distM: d, distText: (about ? '約' : '') + _fmtDistM(d), straight, dirText: _dirName(brg),
-          min, rot: (_walkHeading == null) ? brg : ((brg - _walkHeading + 360) % 360)};
+          min, along: next.along, rot: (_walkHeading == null) ? brg : ((brg - _walkHeading + 360) % 360)};
 }
 /* いま居る（ARRIVE_M 以内の）スポット。到着の表示に使う（v138） */
 function _arrivedSpot() {
@@ -3815,8 +3892,9 @@ function _segmentMinutes() {
   }
   return out;
 }
-let _nextWpId = null;
+let _nextWpId = null, _activeGuideId = null;
 function nextBarTap() {
+  if (_activeGuideId != null) { showGuideInfo(_activeGuideId); return; }   // 分岐・注意を出している間はその案内（v141）
   const id = _nextWpId; if (id == null) return;
   if (typeof showViewInfo === 'function') showViewInfo(id);
 }
@@ -3834,10 +3912,14 @@ function renderNextBar() {
   bar.classList.toggle('stale', !!_walkPos && (Date.now() - (_walkPos.at || 0)) > NEXT_STALE_MS);
   _nextWpId = here ? here.id : (info ? info.wp.id : null);
   if (lb) lb.textContent = here ? '到着' : '次のスポット';
+  const gi = _nextGuideInfo(info ? (info.along != null ? info.along : null) : null);
+  _guidePassCheck();
+  if (gi) { _guideShown[gi.vp.id] = true; _activeGuideId = gi.vp.id; } else _activeGuideId = null;
   if (!info) { tx.textContent = _walkPos ? (here ? _spotLabel(here) + '　ゴールに着きました' : 'ゴールに着きました') : '◎を押すと、次のスポットまでの距離が出ます'; ar.style.visibility = _walkPos ? 'visible' : 'hidden'; ar.style.transform = ''; return; }
   tx.innerHTML = (here ? '<div class="nb-name"><b>' + escHtml(_spotLabel(here)) + '</b>　次：' + escHtml(info.label) + '</div>'
                        : '<div class="nb-name">次：<b>' + escHtml(info.label) + '</b></div>')
-               + '<div class="nb-dist"> まで <b>' + info.distText + '</b>' + (info.straight ? '（直線）' : '') + '・約' + info.min + '分<span class="nb-dir">' + info.dirText + '</span></div>';
+               + (gi ? '<div class="nb-guide' + (gi.g.kind === 'caution' ? ' caution' : '') + '">' + escHtml(_guideGlyph(gi.g)) + ' <b>' + (gi.here ? escHtml(_guideText(gi.g)) : (gi.g.kind === 'caution' ? 'この先' + Math.round(gi.dist / 10) * 10 + 'm ' + escHtml(_guideText(gi.g)) : Math.round(gi.dist / 10) * 10 + 'm先 ' + escHtml(GUIDE_DIRS[gi.g.dir] || 'まっすぐ'))) + '</b>' + (gi.g.note ? '：' + escHtml(gi.g.note) : '') + '</div>'
+                     : '<div class="nb-dist"> まで <b>' + info.distText + '</b>' + (info.straight ? '（直線）' : '') + '・約' + info.min + '分<span class="nb-dir">' + info.dirText + '</span></div>');
   ar.style.visibility = 'visible';
   ar.style.transform = 'rotate(' + Math.round(info.rot) + 'deg)';
 }
@@ -5714,7 +5796,7 @@ async function _captureMapCanvas() {
   try {
     // ── 編集要素を一時非表示（調整点・カスタム道路はマップ画像に映さない）──
     // 撮影後の復元は finally で「正しい状態を作り直す」方式（保存値の巻き戻しはしない）
-    vps.forEach(vp => { const el = vp.marker?.getElement(); if (el) el.style.opacity = '0'; });
+    vps.forEach(vp => { if (vp.guide) return; const el = vp.marker?.getElement(); if (el) el.style.opacity = '0'; });   // 分岐・注意の印は地図画像にも載せる（v141）
     customRoads.forEach(r => {
       const el = r._line?.getElement ? r._line.getElement() : null;
       if (el) el.style.opacity = '0';
@@ -6093,6 +6175,7 @@ function _sheetHtml(imgUrl, cssWidth) {
     +             '<div class="sh-qr-t">カメラでQRコードを読み取ると、<br>この地図をスマホで開けます</div></div>' : '')
     +   '</div>'
     + '</div>'
+    + _sheetGuidesHtml()
     + (function(){ const segs = _segmentMinutes(); return segs.length
         ? '<div class="sh-segs"><div class="sh-sec">区間の目安（' + _walkSpeed() + 'km/h' + (_walkSpeed() <= 3 ? '・立ち止まる前提' : '') + '）</div><div class="sh-seg-l">'
           + segs.map(g => escHtml(g.from) + '→' + escHtml(g.to) + ' <b>' + g.min + '分</b>').join('　') + '</div></div>' : ''; })()
@@ -6201,7 +6284,7 @@ function setMode(m) {
 function _makeSnapshot() {
   return {
     wps: wps.map(w=>({id:w.id,type:w.type,name:w.name,desc:w.desc,tel:w.tel,dwell:w.dwell||0,fitBefore:w.fitBefore!==false,fitAfter:w.fitAfter!==false,onRoute:w.onRoute!==undefined?w.onRoute!==false:(w.type==='course'),lat:w.lat,lng:w.lng,labelDir:w.labelDir||'auto'})),
-    vps: vps.map(v=>({id:v.id,segAfter:v.segAfter,fitBefore:v.fitBefore!==false,fitAfter:v.fitAfter!==false,lat:v.lat,lng:v.lng,order:v.order||0})),
+    vps: vps.map(v=>({id:v.id,segAfter:v.segAfter,fitBefore:v.fitBefore!==false,fitAfter:v.fitAfter!==false,lat:v.lat,lng:v.lng,order:v.order||0,guide:v.guide?JSON.parse(JSON.stringify(v.guide)):undefined})),
     idW, idV,
     customPaths: customPaths.map(p=>({id:p.id, pts:(p.pts||[]).map(pt=>pt.slice())})),
   };
@@ -6567,6 +6650,100 @@ function saveKokoroeSheet() {
   showToast(v ? 'この地域からのお願いを書き込みました（保存はまだです）' : '標準の心得だけを載せます');
 }
 function speakKokoroe() { _speakText(_kokoroeSpeechText((courseInfo.kokoroe || '').trim())); }
+
+/* ===== 分岐・注意の案内（v141）===== */
+let _gEdit = null;   // 編集中 {vpId, kind, dir, ctype, note, photos}
+function _guideText(g) {
+  if (!g) return '';
+  return g.kind === 'caution' ? (GUIDE_CAUTIONS[g.ctype] || '注意') : ('ここを' + (GUIDE_DIRS[g.dir] || 'まっすぐ'));
+}
+function _guideGlyph(g) { return g.kind === 'caution' ? '!' : ({left:'←', straight:'↑', right:'→'}[g.dir] || '↑'); }
+function _guidesAlongRoute() {
+  const out = [];
+  vps.forEach(v => { if (v.guide) _routeCandidates(v.lat, v.lng).forEach(cd => out.push({vp: v, along: cd.along})); });
+  return out.sort((a, b) => a.along - b.along);
+}
+function openGuideSheet(vpId) {
+  const vp = vps.find(v => v.id === vpId); if (!vp) return;
+  hideCtxMenu();
+  const g = vp.guide || {};
+  _gEdit = {vpId, kind: g.kind || 'turn', dir: g.dir || 'left', ctype: g.ctype || 'car', note: g.note || '', photos: (g.photos || []).slice()};
+  document.getElementById('gNote').value = _gEdit.note;
+  document.getElementById('gRemove').hidden = !vp.guide;
+  _gRender();
+  document.getElementById('guideScrim').style.display = 'block'; document.getElementById('guideSheet').style.display = 'block';
+}
+function _gPick(k, v) { if (!_gEdit) return; _gEdit[k] = v; _gRender(); }
+function _gRender() {
+  if (!_gEdit) return;
+  const on = (id, v) => document.querySelectorAll('#' + id + ' button').forEach(b => b.classList.toggle('on', b.getAttribute('data-v') === v));
+  on('gKind', _gEdit.kind); on('gDir', _gEdit.dir); on('gCtype', _gEdit.ctype);
+  document.getElementById('gTurn').hidden = _gEdit.kind === 'caution';
+  document.getElementById('gCaution').hidden = _gEdit.kind !== 'caution';
+  const box = document.getElementById('gPhoto');
+  const ph = _gEdit.photos[0];
+  box.innerHTML = ph ? '<img ' + _photoAttr(ph) + ' alt="分岐の写真"><button type="button" class="tap" style="border:none;background:#F2EEE7;border-radius:10px;padding:8px 12px;font-family:inherit;cursor:pointer" onclick="_gEdit.photos=[];_gRender()">写真を外す</button>'
+                     : '<label>📷 写真を足す<input type="file" accept="image/*" style="display:none" onchange="_gAddPhoto(this)"></label>';
+  if (ph) _fillPhotoImgs(box);
+}
+async function _gAddPhoto(input) {
+  const f = input.files && input.files[0]; if (!f || !_gEdit) return;
+  try { const url = await compressImage(f); _gEdit.photos = [url]; _gRender(); } catch(_) { showToast('写真を読み込めませんでした'); }
+}
+function closeGuideSheet() { document.getElementById('guideScrim').style.display = 'none'; document.getElementById('guideSheet').style.display = 'none'; _gEdit = null; }
+function saveGuideSheet() {
+  if (!_gEdit) return;
+  const vp = vps.find(v => v.id === _gEdit.vpId); if (!vp) { closeGuideSheet(); return; }
+  saveSnapshot();
+  const note = (document.getElementById('gNote').value || '').trim().slice(0, 40);
+  vp.guide = _gEdit.kind === 'caution' ? {kind:'caution', ctype:_gEdit.ctype, note, photos:_gEdit.photos.slice()}
+                                       : {kind:'turn', dir:_gEdit.dir, note, photos:_gEdit.photos.slice()};
+  _dirty = true; _syncVpIcon(vp); closeGuideSheet(); renderNextBar();
+  showToast('案内を付けました：' + _guideText(vp.guide) + (note ? '（' + note + '）' : ''));
+}
+function removeGuide() {
+  if (!_gEdit) return;
+  const vp = vps.find(v => v.id === _gEdit.vpId); if (!vp) { closeGuideSheet(); return; }
+  saveSnapshot(); delete vp.guide; _dirty = true; _syncVpIcon(vp); closeGuideSheet(); renderNextBar(); showToast('案内を外しました');
+}
+/* 歩く人：分岐・注意のカード（○のカードと同じ置き場に出す） */
+function showGuideInfo(vpId) {
+  const vp = vps.find(v => v.id === vpId); if (!vp || !vp.guide) return;
+  const g = vp.guide, panel = document.getElementById('viewInfoPanel'); if (!panel) return;
+  let h = '<div class="vip-handle"></div><div class="vip-hdr"><div class="vip-gdir"' + (g.kind === 'caution' ? ' style="color:#B87503"' : '') + '>' + escHtml(_guideGlyph(g)) + '</div>'
+        + '<div class="vip-name">' + escHtml(_guideText(g)) + (g.note ? '<div style="font-size:13px;font-weight:500;color:#444;margin-top:2px">' + escHtml(g.note) + '</div>' : '') + '</div>'
+        + '<button class="vip-close" onclick="closeViewInfo()">✕</button></div>';
+  if (g.photos && g.photos.length) h += '<div class="vip-photos"><img ' + _photoAttr(g.photos[0]) + ' alt="分岐の写真"></div>';
+  panel.innerHTML = h; _fillPhotoImgs(panel); panel.classList.add('show');
+}
+/* 帯に出す「次の分岐／注意」。次のスポットより手前で GUIDE_AHEAD_M 以内のものだけ */
+let _guideShown = {}, _guideConfirmed = {};
+function _nextGuideInfo(nextSpotAlong) {
+  if (!_walkPos) return null;
+  const a = _walkPos.along;
+  const here = _guidesAlongRoute().find(g => Math.abs(g.along - a) <= GUIDE_HERE_M);
+  if (here) return {vp: here.vp, g: here.vp.guide, dist: 0, here: true};
+  const ng = _guidesAlongRoute().find(g => g.along > a + GUIDE_HERE_M);
+  if (!ng) return null;
+  const d = ng.along - a;
+  if (d > GUIDE_AHEAD_M) return null;
+  if (nextSpotAlong != null && ng.along > nextSpotAlong) return null;
+  return {vp: ng.vp, g: ng.vp.guide, dist: d, here: false};
+}
+function _guidePassCheck() {   // 分岐を過ぎたら1回だけ「この道で合っています」
+  if (!_walkPos) return;
+  _guidesAlongRoute().forEach(g => {
+    const id = g.vp.id;
+    if (_walkPos.along >= g.along + GUIDE_PASSED_M && _guideShown[id] && !_guideConfirmed[id]) { _guideConfirmed[id] = true; if (g.vp.guide.kind !== 'caution') showToast('✓ この道で合っています'); }
+  });
+}
+function _sheetGuidesHtml() {
+  const rows = _guidesAlongRoute().filter((g, i, arr) => arr.findIndex(x => x.vp.id === g.vp.id) === i).map(g => {
+    const gd = g.vp.guide;
+    return '<div><b>' + escHtml(_guideGlyph(gd)) + '</b><span>' + escHtml(_guideText(gd)) + (gd.note ? '：' + escHtml(gd.note) : '') + '</span>' + (gd.photos && gd.photos[0] ? '<img ' + _photoAttr(gd.photos[0]) + ' alt="">' : '') + '</div>';
+  });
+  return rows.length ? '<div class="sh-guides"><div class="sh-sec">分岐・注意の案内（歩く順）</div><div class="sh-gl">' + rows.join('') + '</div></div>' : '';
+}
 
 /* ===== コースの情報（v139）===== */
 function _courseInfoClean() {
@@ -7092,7 +7269,7 @@ function buildCurrentSaveData() {
     center:  leafMap ? {lat:leafMap.getCenter().lat, lng:leafMap.getCenter().lng} : null,
     zoom:    leafMap ? leafMap.getZoom() : 14,
     wps:     wps.map(w=>({id:w.id,type:w.type,name:w.name,desc:w.desc,tel:w.tel,dwell:w.dwell||0,fitBefore:w.fitBefore!==false,fitAfter:w.fitAfter!==false,onRoute:w.onRoute!==undefined?w.onRoute!==false:(w.type==='course'),lat:w.lat,lng:w.lng,labelDir:w.labelDir||'auto',photos:w.photos||[]})),
-    vps:     vps.map(v=>({id:v.id,segAfter:v.segAfter,fitBefore:v.fitBefore!==false,fitAfter:v.fitAfter!==false,lat:v.lat,lng:v.lng,order:v.order||0})),
+    vps:     vps.map(v=>({id:v.id,segAfter:v.segAfter,fitBefore:v.fitBefore!==false,fitAfter:v.fitAfter!==false,lat:v.lat,lng:v.lng,order:v.order||0,guide:v.guide||undefined})),   // guide＝分岐・注意の案内（v141）
     customRoads: customRoads.map(r=>({id:r.id,name:r.name,coords:r.coords})),
     customPaths: (customPaths||[]).map(p=>({id:p.id, pts:(p.pts||[]).map(pt=>pt.slice())})),
     routes:  _routesInUse(),   // 区間ごとの道順。開くときに経路サーバを呼ばずに済ませる（v119）
