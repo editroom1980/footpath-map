@@ -344,14 +344,16 @@ def static_checks(src):
     chk('静的', 'スポットの○の白いふちがはっきりしている', 'border:2.5px solid #fff' in src)
     # --- v112: 進行方向の三角（一定間隔）---
     chk('静的', '進行方向の三角を作る仕組みがある',
-        'function _buildDirMarks' in src and 'const DIR_GAP_PX' in src)
+        'function _buildDirMarks' in src and 'const DIR_EVERY_DASHES' in src)
+    chk('静的', 'スポットの手前にも三角を出す', 'if (m >= 0 && m <= nDash) spots.push({m: m, wp: true});' in src)
+    chk('静的', '近すぎる「ふつうの三角」を飛ばすきまりがある', 'const DIR_MIN_DASHES' in src)
     chk('静的', '置き場所と向きは線に沿った距離で決める（点の細かさに左右されない）', 'DIR_LOOK_PX' in src)
     chk('静的', 'スポットの○の下に隠れる位置は避ける', 'DIR_AVOID_PX' in src)
     chk('静的', '三角も当たり判定に使わず、後片付けもする',
         'interactive:false, renderer: canvasRenderer}).addTo(leafMap);' in src
         and 'if (routeDirs)   { if(leafMap) leafMap.removeLayer(routeDirs);' in src)
     chk('静的', '配布シートの凡例に進行方向の説明がある', '歩くコース（三角の向きに歩く）' in src)
-    chk('静的', '破線の切れ目と三角の位置をそろえている', 'function _dirHolePx' in src)
+    chk('静的', '破線の切れ目と三角の位置をそろえている', 'function _dashGapCenterPx' in src)
     # --- v99: ラベルの自動配置 ---
     chk('静的', 'ラベル自動配置 autoPlaceLabels 存在', 'function autoPlaceLabels' in src)
     chk('静的', 'まとめて実行する scheduleAutoLabels 存在', 'function scheduleAutoLabels' in src)
@@ -1109,31 +1111,60 @@ def functional_checks(index_path):
                     baseLen: (_routeLineBase||[]).length,
                     lastLen: (_lastRouteCoords||[]).length};
           }catch(e){ return 'ERR:'+e.message; } }""")
-        # v112: まっすぐな線にも一定の間隔で三角が並び、進行方向を向く
+        # v115: 破線5本ごと＋スポット手前に三角が出て、進行方向を向く
         trn = page.evaluate("""()=>{ try{
-            const keepC = leafMap.getCenter(), keepZ = leafMap.getZoom();
+            const keepC = leafMap.getCenter(), keepZ = leafMap.getZoom(), keepW = wps.slice();
             const line = [[35.152,134.440],[35.152,134.462]];             // 西→東
             leafMap.fitBounds(L.latLngBounds(line.map(c => L.latLng(c[0], c[1]))),
                               {animate:false, padding:[20,20]});
+            wps.length = 0;                                   // スポット無しの素の状態で調べる
             const east = _buildDirMarks(line);
             const west = _buildDirMarks(line.slice().reverse());
             const pt = sh => sh.map(c => leafMap.latLngToLayerPoint(L.latLng(c[0], c[1])));
             const dirOk = (arr, sign) => arr.length > 0 && arr.every(q => {
               const v = pt(q); return (v[0].x - (v[1].x + v[2].x) / 2) * sign > 0.5; });
-            // 間隔が一定か。スポットの○に近い所は飛ばすので、
-            // 隣どうしの距離は「決めた間隔の整数倍」になっているはず
-            const step = DIR_GAP_PX;                      // 間隔は画面上の px で一定
+            // 破線 DIR_EVERY_DASHES 本ぶんの間隔で並んでいるか
+            const step = _dashPeriodPx() * DIR_EVERY_DASHES;
             const xs = east.map(sh => pt(sh)[0].x).sort((a,b)=>a-b);
             let even = xs.length >= 2;
-            for (let i = 1; i < xs.length; i++) {
-              const r = (xs[i] - xs[i-1]) / step;
-              if (Math.abs(r - Math.round(r)) > 0.2 || Math.round(r) < 1) even = false;
-            }
+            for (let i = 1; i < xs.length; i++)
+              if (Math.abs((xs[i] - xs[i-1]) - step) > 2) even = false;
+            wps.length = 0; keepW.forEach(w => wps.push(w));
             leafMap.setView(keepC, keepZ, {animate:false});
             return {n:east.length, eastOk:dirOk(east, 1), westOk:dirOk(west, -1), even:even,
-                    step:step, gaps:xs.slice(1).map((v,i)=>Math.round(v - xs[i]))};
+                    step:Math.round(step)};
           }catch(e){ return 'ERR:'+e.message; } }""")
-        chk('機能', '三角が一定の間隔で並び、進行方向を向く',
+        # v115: スポットの手前にも三角が出る（○に重ならない位置で）
+        wpt = page.evaluate("""()=>{ try{
+            const keepC = leafMap.getCenter(), keepZ = leafMap.getZoom(), keepW = wps.slice();
+            const line = [[35.152,134.440],[35.152,134.462]];            // 西→東のまっすぐな線
+            leafMap.fitBounds(L.latLngBounds(line.map(c => L.latLng(c[0], c[1]))),
+                              {animate:false, padding:[20,20]});
+            const cx = sh => { const v = sh.map(c => leafMap.latLngToLayerPoint(L.latLng(c[0], c[1])));
+                               return (v[0].x + v[1].x + v[2].x) / 3; };
+            wps.length = 0;
+            const before = _buildDirMarks(line).map(cx);
+            // 出発点と、線のまん中のスポットを置く（まん中のほうの「手前」に三角が出るはず）
+            wps.push({id:9000, type:'start',  lat:35.152, lng:134.440,  onRoute:true, name:'出発'});
+            wps.push({id:9001, type:'course', lat:35.152, lng:134.4512, onRoute:true, name:'検査'});
+            const after = _buildDirMarks(line).map(cx);
+            const q = leafMap.latLngToLayerPoint(L.latLng(35.152, 134.4512));
+            const size = DIR_TRI_PX * Math.min(_routeK(), DIR_MAX_K);
+            const clear = DIR_AVOID_PX + size + 4, PER = _dashPeriodPx();
+            const justBefore = after.filter(x => x <= q.x - clear + 3 && x >= q.x - clear - PER);
+            const tooClose  = after.filter(x => Math.abs(x - q.x) < DIR_AVOID_PX);
+            wps.length = 0; keepW.forEach(w => wps.push(w));
+            leafMap.setView(keepC, keepZ, {animate:false});
+            return {before:before.length, after:after.length,
+                    justBefore:justBefore.length, tooClose:tooClose.length,
+                    clear:Math.round(clear), per:Math.round(PER)};
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        chk('機能', 'スポットの手前にも三角が出て、○に重ならない',
+            isinstance(wpt, dict) and wpt.get('justBefore', 0) >= 1
+            and wpt.get('tooClose', 1) == 0,
+            str(wpt)[:190])
+
+        chk('機能', '三角が破線5本ごとに並び、進行方向を向く',
             isinstance(trn, dict) and trn.get('n', 0) >= 2 and trn.get('eastOk') is True
             and trn.get('westOk') is True and trn.get('even') is True, str(trn)[:170])
 
