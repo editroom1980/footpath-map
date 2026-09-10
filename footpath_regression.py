@@ -435,6 +435,13 @@ def static_checks(src):
     chk('静的', '選べる種類の出どころは _buildTypeOptions のまま（チップは select を読む）',
         "const cur = sel.value, opts = [...sel.options].map(o => o.value);" in src and 'function _buildTypeOptions' in src)
     chk('静的', '最初の案内が「種類と名前はあとから」を伝える', '種類と名前は、○を押してあとから決められます' in src)
+    # --- v140: スポット削除の元に戻す（B1）・写真の無いスポットへ（B3）・並べ替えの件数（B4）・種別の並び（B7）・通知の集約（C3）---
+    chk('静的', 'スポットの削除は確認ダイアログではなく10秒の「元に戻す」', "confirm('このスポットを削除しますか？')" not in src and 'function undoDeleteWp' in src
+        and "if (undoStack.length !== u.len)" in src)
+    chk('静的', '「配る」の写真つきスポットから、写真の無いスポットへ飛べる', 'function shareInfoPhoto' in src and 'onclick="shareInfoPhoto()"' in src)
+    chk('静的', '並べ替えの件数は「描いた道の点」を数えず、点の行は控えめ', "v('mmReorderN', String(_stampTargets().length));" in src and "' ro-node'" in src)
+    chk('静的', '種別チップの畳んだ側はこのコースで使った順', "(used[b] || 0) - (used[a] || 0)" in src)
+    chk('静的', '通知は1つの箱に積む（重ならない・3つまで）', "box.id = 'toastBox'" in src and "while (box.children.length > 3)" in src)
     # --- v139: 協会式のコース情報（F2）---
     chk('静的', 'コースの情報の項目は協会式の7つ（アクセス・車・トイレ・休憩・季節・注意・問い合わせ）',
         "const COURSE_INFO_FIELDS = [" in src and all(f"k:'{k}'" in src for k in ('access', 'car', 'toilet', 'rest', 'season', 'notes', 'contact')))
@@ -459,7 +466,7 @@ def static_checks(src):
     chk('静的', '心得は読み上げられる（共通の読み上げ関数）', 'function _speakText' in src and 'function speakKokoroe' in src and 'function _kokoroeSpeechText' in src)
     chk('静的', 'PCで配布リンクを開いた人に「一覧」を見せない', 'body.viewonly .hbtn-back{display:none!important}' in src)
     # --- v136: 見直しで見つけた3件（通知の折り返し／削除タイマー／圏外の縮尺10）---
-    chk('静的', '通知は折り返す（375px幅で両側にはみ出していた）', "whiteSpace:'normal', textAlign:'center'" in src and "maxWidth:'calc(100vw - 24px)'" in src)
+    chk('静的', '通知は折り返す（375px幅で両側にはみ出していた）', 'white-space:normal;text-align:center' in src and '#toastBox .toast{' in src)
     chk('静的', '削除の「元に戻す」は前のトーストのタイマーを止めてから出す', "if (old) { clearTimeout(old._timer); old.remove(); }" in src
         and "if (t) { clearTimeout(t._timer); t.remove(); }" in src)
     chk('静的', '圏外の自動保存は縮尺10でも保存する', "z >= 10 && !urls.length; z--" in src)
@@ -1869,7 +1876,7 @@ def functional_checks(index_path):
         page.set_viewport_size({'width': 375, 'height': 812})
         rv = page.evaluate("""()=>{ return (async () => { try{
             showToast('👁 歩く人の見え方：スポットをタップすると写真・解説が出ます（検査用の長い文）');
-            const t = [...document.querySelectorAll('body > div')].pop(); const r = t.getBoundingClientRect(); t.remove();
+            const t = [...document.querySelectorAll('#toastBox .toast')].pop(); const r = t.getBoundingClientRect(); t.remove();
             const out = {toastIn: r.left >= 0 && r.right <= innerWidth, w: Math.round(r.width)};
             const keepC = getCourses(), keepP = _delPending;
             const mk = (id, name) => ({id, name, wps: [], vps: [], customRoads: [], customPaths: [], savedAt: 'T'});
@@ -1954,6 +1961,39 @@ def functional_checks(index_path):
             return out;
           }catch(e){ return 'ERR:'+e.message; } }""")
         chk('機能', 'コースの情報：書く→保存→配布シートと読む画面、難易度の★', isinstance(ci, dict) and all(ci.get(k) for k in ('editShown', 'saved', 'count', 'sheet', 'view')), str(ci)[:220])
+
+        # v140: スポット削除→「元に戻す」で戻る／通知が2つ重ならない／畳んだ種別がこのコースで使った順
+        b1 = page.evaluate("""()=>{ try{
+            const keepW = wps.slice(), keepU = undoStack.length, keepR = redoStack.length, keepV = viewMode, keepP = _delWpUndo;
+            viewMode = false; closeModal();
+            const w = addWp(35.1523, 134.4453, 'course'); w.name = '削除検査'; const id = w.id, n0 = wps.length;
+            openModal(id); deleteEditing();
+            const t = document.getElementById('undoToast');
+            const out = {gone: !wps.some(x => x.id === id), toast: !!t && t.textContent.indexOf('削除検査') >= 0};
+            t.querySelector('button').click();
+            out.back = wps.some(x => x.id === id) && wps.length === n0;
+            // 別の操作をした後は戻せない案内（取消で戻せる）
+            openModal(id); deleteEditing(); addWp(35.1526, 134.4456, 'course'); const before = wps.length;
+            document.getElementById('undoToast').querySelector('button').click();
+            out.guarded = wps.length === before && !wps.some(x => x.id === id);
+            // 通知の積み重ね
+            showToast('一つ目の通知'); showToast('二つ目の通知');
+            const ts = [...document.querySelectorAll('#toastBox .toast')].slice(-2).map(e => e.getBoundingClientRect());
+            out.stacked = ts.length === 2 && (ts[0].bottom <= ts[1].top + 0.5 || ts[1].bottom <= ts[0].top + 0.5);
+            document.querySelectorAll('#toastBox .toast').forEach(e => e.remove());
+            // 種別の並び：駐車場を2つ置くと畳んだ側の先頭になる
+            const p1 = addWp(35.1529, 134.4459, 'parking'), p2 = addWp(35.1531, 134.4461, 'parking');
+            openModal(p1.id); document.querySelector('#mTypeChips .tc-more').click();
+            out.order = (document.querySelector('#mTypeChips .tc-row.rest .tc-chip') || {}).textContent.trim() === 'P駐車場';
+            closeModal();
+            // 後片付け
+            wps.slice().forEach(x => { if (!keepW.includes(x) && x.marker) leafMap.removeLayer(x.marker); });
+            wps.length = 0; keepW.forEach(x => wps.push(x)); undoStack.length = keepU; redoStack.length = keepR; viewMode = keepV; _delWpUndo = keepP;
+            _finalizeDelete(); redrawStraight(); redrawList();
+            return out;
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        chk('機能', 'スポット削除の「元に戻す」が戻し、別の操作の後は案内し、通知は重ならず、種別はこのコースで使った順',
+            isinstance(b1, dict) and all(b1.get(k) for k in ('gone', 'toast', 'back', 'guarded', 'stacked', 'order')), str(b1)[:220])
 
         # v121: バックアップからの日数・未反映の保存回数で色が変わり、書き出すと戻る。iPhone の案内は1回だけ
         bk = page.evaluate("""()=>{ return (async()=>{ try{

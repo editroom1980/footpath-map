@@ -517,6 +517,9 @@ body.embed #nextBar{display:none!important}
 #nextBar .nb-cmp[hidden]{display:none}
 body.viewonly #viewBadge{display:none!important}   /* 歩く人には「歩く人の見え方」の札は要らない（v132） */
 @media (min-width:769px){#nextBar{left:12px;right:auto;top:12px;width:380px}}
+/* 通知の箱（C3・v140） */
+#toastBox{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:9999;display:flex;flex-direction:column;gap:6px;align-items:center;width:max-content;max-width:calc(100vw - 24px);pointer-events:none}
+#toastBox .toast{background:rgba(62,42,14,.9);color:#F5EDD8;padding:8px 18px;border-radius:20px;font-size:12px;white-space:normal;text-align:center;line-height:1.5;max-width:calc(100vw - 24px);box-sizing:border-box;box-shadow:0 2px 12px rgba(0,0,0,.3);transition:opacity .5s}
 /* 削除の「元に戻す」（v130） */
 #undoToast{position:fixed;bottom:max(104px,calc(env(safe-area-inset-bottom) + 96px));left:50%;transform:translateX(-50%);background:rgba(62,42,14,.94);color:#F5EDD8;
   padding:6px 6px 6px 16px;border-radius:24px;font-size:13px;z-index:9999;display:flex;align-items:center;gap:12px;box-shadow:0 2px 12px rgba(0,0,0,.3);max-width:calc(100vw - 24px)}
@@ -740,6 +743,7 @@ body.viewonly .mob-share, body.embed .mob-share{display:none!important}
 #reorderSheet .ro-hint{font-size:11px;color:#9b948c;padding-bottom:6px}
 #reorderSheet .ro-row{display:flex;align-items:center;gap:8px;padding:0 4px;height:48px;box-sizing:border-box;border-bottom:0.5px solid rgba(0,0,0,.06);background:#fff;will-change:transform}
 #reorderSheet .ro-row.ro-shift{transition:transform .16s ease}
+#reorderSheet .ro-row.ro-node{opacity:.6;height:36px;font-size:12px}   /* 描いた道の点は控えめに（B4・v140） */
 #reorderSheet .ro-row.ro-lift{background:var(--brand-soft);box-shadow:0 6px 16px rgba(0,0,0,.24);border-radius:10px;border-bottom:none;position:relative;z-index:5;transition:none}
 #reorderSheet .ro-badge{width:22px;height:22px;border-radius:50%;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0}
 #reorderSheet .ro-label{flex:1;font-size:13px;color:#4A2E0E;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -1142,7 +1146,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
         <div class="ss-sec">この地図に載る情報</div>
         <div class="ss-list">
           <button class="ss-li" onclick="shareInfoDesc()">コースの説明<span class="ch" id="ssDesc">—</span></button>
-          <div class="ss-li">写真つきスポット<span class="ch" id="ssPhoto">—</span></div>
+          <button class="ss-li" onclick="shareInfoPhoto()">写真つきスポット<span class="ch" id="ssPhoto">—</span></button>
           <div class="ss-li">スタンプラリーの対象<span class="ch" id="ssStamp">—</span></div>
           <button class="ss-li" onclick="closeShareSheet();openKokoroeSheet('edit')">歩く人の心得<span class="ch" id="ssKokoroe">—</span></button>
           <button class="ss-li" onclick="closeShareSheet();openInfoSheet('edit')">コースの情報<span class="ch" id="ssInfo">—</span></button>
@@ -2383,7 +2387,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v139';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
+const APP_VERSION = 'v140';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
 }catch(_){} });
@@ -2831,6 +2835,15 @@ async function shareExit(kind){
   else if (kind === 'sheet') openPrintSheet();
   else if (kind === 'gpx') exportGpx();
 }
+/* 「写真つきスポット」を押したら、写真の無いスポットの編集画面へ（B3・v140） */
+function shareInfoPhoto(){
+  const missing = _stampTargets().filter(w => !(Array.isArray(w.photos) && w.photos.length));
+  closeShareSheet();
+  if (!missing.length) { showToast('写真は全部のスポットに入っています'); return; }
+  if (viewMode) { showToast('写真の無いスポット：あと ' + missing.length); return; }
+  openModal(missing[0].id);
+  showToast('写真の無いスポット：あと ' + missing.length + '（このスポットから）');
+}
 /* 「コースの説明」を押したら、その場で書ける画面へ */
 function shareInfoDesc(){
   closeShareSheet();
@@ -2854,7 +2867,7 @@ function _renderReorder(){
     const t=WT.find(x=>x.v===wp.type)||WT[0];
     const sym = wp.type==='course' ? (cn++) : (SYM[wp.type]||'\u25CF');
     const lbl = wp.name || ('\uFF08'+t.l+'\uFF09');
-    return '<div class="ro-row" data-id="'+escHtml(String(wp.id))+'" data-idx="'+idx+'">'
+    return '<div class="ro-row'+(wp.type==='node'?' ro-node':'')+'" data-id="'+escHtml(String(wp.id))+'" data-idx="'+idx+'">'
       +'<div class="ro-badge" style="background:'+t.c+'">'+escHtml(String(sym))+'</div>'
       +'<div class="ro-label">'+escHtml(lbl)+'</div>'
       +'<div class="ro-handle" aria-label="\u30C9\u30E9\u30C3\u30B0\u3057\u3066\u4E26\u3079\u66FF\u3048"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 8h16"/><path d="M4 12h16"/><path d="M4 16h16"/></svg></div>'
@@ -3923,7 +3936,7 @@ function _syncMmValues(){
     const ls = LABEL_SIZE_LABELS[_labelSizeIdx] || LABEL_SIZE_LABELS[0], ws = WP_SIZE_LABELS[_wpSizeIdx] || WP_SIZE_LABELS[0];
     v('mmValSize', ls === ws ? ls : `文字 ${ls}・印 ${ws}`);
     v('mmValSpd', (WALK_SPEEDS[_walkSpeedIdx] || 4).toFixed(1) + ' km/h');
-    v('mmReorderN', String(wps.length));
+    v('mmReorderN', String(_stampTargets().length));   // 「描いた道の点」は数えない（B4・v140）
     v('mmKokoroe', (courseInfo.kokoroe || '').trim() ? '追記あり' : '標準');
     v('mmInfo', `${_courseInfoCount()} / ${COURSE_INFO_FIELDS.length}`);
   } catch(_) {}
@@ -5509,7 +5522,8 @@ function _renderTypeChips() {
          + `<span class="tc-dot" style="background:${t.c}">${escHtml(sym)}</span>${escHtml(t.l)}</button>`;
   };
   const bigs = TYPE_BIG.filter(v => opts.includes(v));
-  const rest = opts.filter(v => !TYPE_BIG.includes(v));
+  const used = {}; wps.forEach(w => { used[w.type] = (used[w.type] || 0) + 1; });
+  const rest = opts.filter(v => !TYPE_BIG.includes(v)).sort((a, b) => (used[b] || 0) - (used[a] || 0) || opts.indexOf(a) - opts.indexOf(b));   // このコースで使った順（B7・v140）
   const open = rest.includes(cur) || _typeMoreOpen;
   box.innerHTML = '<div class="tc-row">' + bigs.map(v => chip(v, true)).join('') + '</div>'
     + (rest.length ? `<button type="button" class="tc-more" onclick="_typeMoreOpen=!_typeMoreOpen;_renderTypeChips()" aria-expanded="${open}">その他の種類（${rest.length}）<i>${open ? '▴' : '▾'}</i></button>` : '')
@@ -5665,12 +5679,23 @@ function saveModal() {
   updateDistanceAndTime();
 }
 
+/* スポットの削除（v140）：確認ダイアログの代わりに、すぐ消して10秒間「元に戻す」（コースの削除と同じ作法）。
+   戻すのはスナップショットの取消なので、その間に別の操作をしていたら「取消ボタンで」と案内する */
+let _delWpUndo = null;   // {len: 削除直後の undoStack の長さ, name}
 function deleteEditing() {
   if (editId===null) return;
-  if (!confirm('このスポットを削除しますか？')) return;
-  const id = editId;
+  const id = editId, wp = wps.find(w => w.id === id);
+  const name = wp ? ((wp.name || '').split('\n')[0] || (WT.find(x => x.v === wp.type) || WT[0]).l) : 'スポット';
   closeModal();
   deleteWp(id);
+  _delWpUndo = {len: undoStack.length, name};
+  _showUndoToast('「' + name + '」を削除しました', undoDeleteWp, DELETE_UNDO_MS);
+}
+function undoDeleteWp() {
+  if (!_delWpUndo) return;
+  const u = _delWpUndo; _delWpUndo = null;
+  if (undoStack.length !== u.len) { showToast('そのあとに別の操作をしたので、「取消」ボタンで戻してください'); return; }
+  undoLast(); showToast('「' + u.name + '」を元に戻しました');
 }
 
 /* ============================================================
@@ -7812,18 +7837,14 @@ function escHtml(s) {
   return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+/* 通知（トースト）は1つの箱に積む＝同時に出ても重ならない（C3・v140）。3つまで、古いものから消える */
 function showToast(msg) {
-  const t = document.createElement('div');
-  t.textContent = msg;
-  Object.assign(t.style, {
-    position:'fixed', bottom:'80px', left:'50%', transform:'translateX(-50%)',
-    background:'rgba(62,42,14,.9)', color:'#F5EDD8', padding:'8px 18px',
-    borderRadius:'20px', fontSize:'12px', zIndex:'9999', whiteSpace:'normal', textAlign:'center', lineHeight:'1.5',
-    maxWidth:'calc(100vw - 24px)', boxSizing:'border-box',
-    boxShadow:'0 2px 12px rgba(0,0,0,.3)', transition:'opacity .5s'
-  });
-  document.body.appendChild(t);
-  setTimeout(()=>{ t.style.opacity='0'; setTimeout(()=>t.remove(),500); }, 1800);
+  let box = document.getElementById('toastBox');
+  if (!box) { box = document.createElement('div'); box.id = 'toastBox'; document.body.appendChild(box); }
+  const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg;
+  box.appendChild(t);
+  while (box.children.length > 3) box.firstChild.remove();
+  setTimeout(()=>{ t.style.opacity='0'; setTimeout(()=>{ t.remove(); }, 500); }, 1800);
 }
 </script>
 
