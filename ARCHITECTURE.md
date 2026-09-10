@@ -38,6 +38,8 @@
 | `wps` | スポット（ウェイポイント）配列。`{id,type,name,desc,tel,dwell,lat,lng,photos[],labelDir,onRoute,marker}` |
 | `vps` | 調整点（Via Point）配列。ルートの通り道を手で決めるための点 |
 | `routeLine` / `_routeLineBase` | 画面上のルート線 / **その素の座標**（データ準拠） |
+| `routeCasing` | ルート線の下に敷く白い実線（v103）。**表示専用** |
+| `routeArrows` / `routeArrowsCasing` | 進行方向の矢印とその白いふち（v108）。**表示専用** |
 | `_lastRouteCoords` | 実際に採用されたルート座標。**GPX・距離・高低差の出どころ** |
 | `hitOverlays` | 区間ごとの当たり判定用の透明な線 |
 | `courseInfo` / `currentCourseId` | 開いているコースの名称等 / そのID |
@@ -113,8 +115,16 @@
    ↓ _despikeSeg()                  ほぼ180°の極小な折返し（ひげ）だけ除去。角は残す
 _lastRouteCoords / _routeLineBase   ← ★これが「実データ」。GPX・距離・高低差はここから
    ↓ _buildDisplayCoords()          ★表示専用：往復区間だけ右へずらす
-routeLine.setLatLngs(...)           ← 画面に出るのはこれだけ
+routeLine.setLatLngs(...)           ← 画面に出る赤い破線
+   ├ routeCasing                    ★表示専用：同じ座標の白い実線を「下」に敷く（v103）
+   └ routeArrows(+Casing)           ★表示専用：同じ座標から画面上90px間隔で矢印を作る（v108）
 ```
+
+**表示専用の3つ（`routeCasing`・`routeArrows`・`routeArrowsCasing`）の約束**
+- すべて `interactive:false`。当たり判定（`hitOverlays`）には**絶対に使わない**。
+- 座標は必ず `_buildDisplayCoords()` の結果を共有する（別々に作るとずれる）。
+- `removeLines()` で必ず消す。消し忘れると古い線が残る。
+- 矢印は**画面上の距離**で置くので、`zoomend` のたびに作り直す（`_drawArrows`）。
 
 - 当たり判定（`hitOverlays`）は**素の座標**で作る。ずらした線で作ると区間の取り違えが起きる。
 - ズームを変えると見かけの間隔が変わるため、`zoomend` で表示座標だけ作り直す。

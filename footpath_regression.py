@@ -342,6 +342,11 @@ def static_checks(src):
     chk('静的', '白いふちは当たり判定に使わない', "interactive:false, renderer: canvasRenderer}).addTo(leafMap)" in src)
     chk('静的', '白いふちも後片付けする', 'if (routeCasing) { if(leafMap) leafMap.removeLayer(routeCasing); routeCasing=null; }' in src)
     chk('静的', 'スポットの○の白いふちがはっきりしている', 'border:2.5px solid #fff' in src)
+    # --- v108: 進行方向の矢印 ---
+    chk('静的', '進行方向の矢印を作る仕組みがある',
+        'function _buildArrows' in src and 'const ARROW_GAP_PX' in src)
+    chk('静的', '矢印も当たり判定に使わない', 'routeArrows       = L.polyline(shapes' in src)
+    chk('静的', '矢印も後片付けする', 'if (routeArrows)       { if(leafMap) leafMap.removeLayer(routeArrows);' in src)
     # --- v99: ラベルの自動配置 ---
     chk('静的', 'ラベル自動配置 autoPlaceLabels 存在', 'function autoPlaceLabels' in src)
     chk('静的', 'まとめて実行する scheduleAutoLabels 存在', 'function scheduleAutoLabels' in src)
@@ -1096,6 +1101,23 @@ def functional_checks(index_path):
                     baseLen: (_routeLineBase||[]).length,
                     lastLen: (_lastRouteCoords||[]).length};
           }catch(e){ return 'ERR:'+e.message; } }""")
+        # v108: 矢印が歩く向きを指している（西→東の線なら右向き、東→西なら左向き）
+        arw = page.evaluate("""()=>{ try{
+            const mk = line => _buildArrows(line).map(sh =>
+              sh.map(c => leafMap.latLngToLayerPoint(L.latLng(c[0], c[1]))));
+            const east = mk([[35.152,134.444],[35.152,134.462]]);
+            const west = mk([[35.152,134.462],[35.152,134.444]]);
+            const tipAhead = (arr, sign) => arr.length > 0 && arr.every(q =>
+              q.length === 3 && (q[1].x - (q[0].x + q[2].x) / 2) * sign > 0.5);
+            return {n:east.length, eastOk:tipAhead(east, 1), westOk:tipAhead(west, -1),
+                    live: routeArrows ? routeArrows.getLatLngs().length : 0,
+                    hit: hitOverlays.length, baseLen:(_routeLineBase||[]).length};
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        chk('機能', '矢印が歩く向きを指している',
+            isinstance(arw, dict) and arw.get('n', 0) > 0 and arw.get('eastOk') is True
+            and arw.get('westOk') is True and arw.get('live', 0) > 0
+            and arw.get('baseLen', 0) > 1, str(arw)[:180])
+
         ok_cas = (isinstance(cas, dict) and cas.get('has') and cas.get('same')
                   and cas.get('thicker') and cas.get('white') and cas.get('notHit')
                   and cas.get('baseLen', 0) > 1 and cas.get('lastLen', 0) > 1)
