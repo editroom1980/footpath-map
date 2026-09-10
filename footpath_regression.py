@@ -429,11 +429,14 @@ def static_checks(src):
     chk('静的', '地図タップで即「コースポイント」として置く（選択画面も編集画面も開かない）',
         "addWp(e.latlng.lat, e.latlng.lng, 'course');" in _omc and 'showWpTypePicker(e.latlng' not in _omc and 'openModal(' not in _omc)
     chk('静的', '編集画面の種別は「よく使う4つを大きく、残りは畳む」',
-        "const TYPE_BIG = ['course', 'view', 'shrine', 'toilet']" in src and 'id="mTypeChips"' in src and 'function _renderTypeChips' in src
+        "const TYPE_BIG = ['course', 'view', 'history', 'shop']" in src and 'id="mTypeChips"' in src and 'function _renderTypeChips' in src
         and '#mType{display:none}' in src)
     chk('静的', '選べる種類の出どころは _buildTypeOptions のまま（チップは select を読む）',
         "const cur = sel.value, opts = [...sel.options].map(o => o.value);" in src and 'function _buildTypeOptions' in src)
     chk('静的', '最初の案内が「種類と名前はあとから」を伝える', '種類と名前は、○を押してあとから決められます' in src)
+    # --- v129: 種別の追加（学校・幼稚園／公民館・集会所）と、大きく出す4つの入れ替え ---
+    chk('静的', '種別に学校・幼稚園と公民館・集会所がある（○の記号つき）',
+        "v:'school',  l:'学校・幼稚園'" in src and "v:'hall',    l:'公民館・集会所'" in src and "school:'学'" in src and "hall:'公'" in src)
     # --- v127: 開くのを速く（道順と標高を同梱し、開くときは経路サーバも標高サーバも呼ばない）---
     chk('静的', '書き出し専用の2ライブラリは後回しで読む（Leaflet は先）',
         '<script defer src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas' in src
@@ -1582,7 +1585,7 @@ def functional_checks(index_path):
           }catch(e){ return 'ERR:'+e.message; } }""")
         chk('機能', '10個置くのに画面切替0回。編集画面は4つ大きく、残りは畳んだ中から選べる',
             isinstance(pl, dict) and pl.get('added') == 10 and pl.get('allCourse') and pl.get('switches') == 0
-            and pl.get('bigs') == ['1コースポイント', '◎ビュースポット', '⛩神社・寺院', 'WCトイレ'] and pl.get('restHidden')
+            and pl.get('bigs') == ['1コースポイント', '◎ビュースポット', '碑史跡・記念碑', '★飲食店・ショップ ★'] and pl.get('restHidden')
             and pl.get('restN', 0) >= 5 and pl.get('selVal') == 'parking' and pl.get('onChip') == 'P駐車場' and pl.get('savedType') == 'parking',
             str(pl)[:260])
 

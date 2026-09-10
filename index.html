@@ -1240,13 +1240,15 @@ const WT = [
   {v:'shrine',  l:'神社・寺院',                  c:'#6D4C41'},
   {v:'history', l:'史跡・記念碑',                c:'#8E24AA'},   // 橙茶(コースポイント)と紛らわしかった → 紫へ
   {v:'park',    l:'公園・自然',                  c:'#00796B'},   // 緑(スタート)と紛らわしかった → ティールへ
+  {v:'school',  l:'学校・幼稚園',                c:'#007A85'},   // v129 追加。既存12色と色覚シミュレーション込みで最も離れた色
+  {v:'hall',    l:'公民館・集会所',              c:'#3E2723'},   // v129 追加。同上（一番近いのは調整点の灰色で ΔE 12.8）
   {v:'toilet',  l:'トイレ',                      c:'#455A64'},
   {v:'parking', l:'駐車場',                      c:'#3949AB'},   // ビュースポットと同じ色だった → 藍へ
   {v:'other',   l:'その他',                      c:'#5F5F5F'},
   {v:'node',    l:'なぞり点（調整点）',            c:'#444444'},
 ];
-const SYM = {start:'S',goal:'G',view:'◎',shop:'★',shrine:'⛩',history:'碑',park:'🌿',toilet:'WC',parking:'P',other:'●',node:''};
-const TYPE_BIG = ['course', 'view', 'shrine', 'toilet'];   // 編集画面で大きく出す「よく使う4つ」。残りは畳む（v128）
+const SYM = {start:'S',goal:'G',view:'◎',shop:'★',shrine:'⛩',history:'碑',park:'🌿',school:'学',hall:'公',toilet:'WC',parking:'P',other:'●',node:''};
+const TYPE_BIG = ['course', 'view', 'history', 'shop'];   // 編集画面で大きく出す「よく使う4つ」（オーナー指定・v129）。残りは畳む
 const LINE_STYLE = {color:'#E84040', weight:4, dashArray:'8,5', opacity:.9, lineJoin:'round', lineCap:'round', smoothFactor:0};
 const DBL_GAP_PX = 2;        // 往復で重なる区間：2本の線の間隔(px)
 const ROUTE_CASING_ADD = 3;  // ルート線の白いふちの太さ（赤い線に足すpx）。表示専用
@@ -2161,7 +2163,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v128';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
+const APP_VERSION = 'v129';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
 }catch(_){} });
