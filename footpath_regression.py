@@ -127,8 +127,9 @@ def static_checks(src):
         re.search(r"wpSize:\s*'fp_wpsize'", src) is not None)
     chk('静的', '起動時にサイズ設定を復元 restoreSizePrefs', 'restoreSizePrefs();' in src)
     chk('静的', 'ラベル位置が○の大きさに追従', '_wpSize()[1] / 2 + 4' in src)
-    chk('静的', 'スマホメニューに文字サイズ5段階', len(re.findall(r'data-lsz="\d"', src)) == 5)
-    chk('静的', 'スマホメニューに○サイズ3段階', len(re.findall(r'data-wsz="\d"', src)) == 3)
+    _mmsrc = src[src.index('id="mobileMenuSheet"'):]          # v126: PCの右上にも同じ属性があるので、スマホメニュー以降だけ数える
+    chk('静的', 'スマホメニューに文字サイズ5段階', len(re.findall(r'data-lsz="\d"', _mmsrc)) == 5)
+    chk('静的', 'スマホメニューに○サイズ3段階', len(re.findall(r'data-wsz="\d"', _mmsrc)) == 3)
     chk('静的', 'メニュー同期に _syncSizeMenu を含む', '_syncSizeMenu();' in src)
     # --- v81: 保存失敗の通知・経路フォールバック通知・標高取得の分割・共有情報 ---
     chk('静的', '保存関数が成否を返す (setCourses)',
@@ -158,8 +159,8 @@ def static_checks(src):
     chk('静的', 'GPX書き出し exportGpx 存在', 'function exportGpx' in src)
     chk('静的', 'GPXのXMLエスケープ _escXml 存在', 'function _escXml' in src)
     chk('静的', 'GPXは表示用でなく実データを使う', '_lastRouteCoords' in src and 'buildDisplayCoords()' not in src.split('function buildGpx')[1][:900])
-    chk('静的', 'PC・スマホ両方にGPXボタン',
-        src.count('exportGpx()') >= 3, f"呼び出し={src.count('exportGpx()')}")
+    chk('静的', 'PC・スマホ両方から「配る」でGPXに届く',
+        "shareExit('gpx')" in src and 'class="hbtn hbtn-share"' in src and 'class="mob-share tap"' in src)
     chk('静的', '一括バックアップ buildBackupData/applyBackupData 存在',
         'function buildBackupData' in src and 'function applyBackupData' in src)
     chk('静的', 'バックアップUI（書き出し・復元）', 'exportAllCourses()' in src and 'importBackupFile(this)' in src)
@@ -177,8 +178,8 @@ def static_checks(src):
     chk('静的', '印刷レイアウト（A4横）', '@media print' in src and 'size:A4landscape' in src.replace(' ', ''))
     chk('静的', '印刷時は配布シートだけを出す', 'body > *:not(#sheetOver){display:none!important}' in src)
     chk('静的', '色を印刷に反映（print-color-adjust）', 'print-color-adjust:exact' in src)
-    chk('静的', 'PC・スマホ両方に配布シートボタン', src.count('openPrintSheet()') >= 3,
-        f"呼び出し={src.count('openPrintSheet()')}")
+    chk('静的', 'PC・スマホ両方から「配る」で配布シートに届く',
+        "shareExit('sheet')" in src and 'class="hbtn hbtn-share"' in src and 'class="mob-share tap"' in src)
     # --- v86: 未保存のまま閉じる前の確認 ---
     chk('静的', '未保存フラグ _dirty を持つ', 'let   _dirty' in src)
     chk('静的', '編集で未保存フラグが立つ（saveSnapshot）', '_dirty = true;' in src)
@@ -423,6 +424,26 @@ def static_checks(src):
     chk('静的', '文字の大きさは3段階だけ見せる（極大・最大は選んである時だけ）',
         ".mm-map[data-lsz='3']:not(.on),.mm-map[data-lsz='4']:not(.on){display:none}" in src)
     chk('静的', '「›」の右に今の設定を出す', 'function _syncMmValues' in src and 'id="mmValMap"' in src and 'id="mmValSize"' in src)
+    # --- v126: PCの道具を役割で3群に（ロードマップ 段階1-3／図4）---
+    chk('静的', '上バー＝一覧・コース名・歩く人の見え方・その他・保存・配る（文字つき）',
+        'class="hbtn hbtn-back" onclick="backToS1()"' in src and 'id="btnView"' in src and '<span id="btnViewTxt">歩く人の見え方</span>' in src
+        and 'id="btnMore"' in src and '<span>保存</span></button>' in src and 'class="hbtn" onclick="exportGpx()"' not in src)
+    chk('静的', '地図の左＝置く・通り道・取消（#tbar を地図の上に、id は据え置き）',
+        src.index('<div id="map"></div>') < src.index('<div id="tbar">') and all(f'id="{i}"' in src for i in ('btnWp','btnVia','btnUndo','btnRedo'))
+        and 'class="rl-btn ed on" id="btnWp"' in src)
+    chk('静的', '右上＝背景地図（5種＋地図の見せ方）と凡例、下＝高低差',
+        'id="btnBaseMap"' in src and 'id="btnLegend"' in src and 'id="pcLegendBody"' in src and src.count('#popMap [data-bm]') >= 1
+        and 'id="pcBl"><button class="pc-pill" id="btnElev"' in src)
+    chk('静的', 'その他＝JSON・座標・文字なし・操作ガイド・上級者向け（手動・通り道の点）・すべて消去',
+        all(x in src for x in ['closePcPops();exportCourse()', 'closePcPops();exportRouteCoords()', 'closePcPops();saveMapNoText()',
+                                'closePcPops();openHelp()', 'closePcPops();clearAll()', 'id="btnManual"', 'id="btnToggleVia"']))
+    chk('静的', '16個一列のツールバーは無い（cycleBaseMap／cycleLabelSize のボタンが無い）',
+        'onclick="cycleBaseMap()"' not in src and 'onclick="cycleLabelSize()"' not in src and 'class="btn ed' not in src)
+    chk('静的', '閲覧中・配布リンク・埋め込み・スマホでPCの道具を隠す',
+        'body.viewing #tbar, body.viewing #pcHint' in src and 'body.viewonly #tbar, body.viewonly #pcHint, body.viewonly #btnView' in src
+        and 'body.embed #tbar, body.embed #pcHint, body.embed #pcTr, body.embed #pcBl' in src
+        and src.count('#tbar,#pcHint,#pcTr,#pcBl{display:none!important}') == 2
+        and "t.textContent = on ? '編集にもどる' : '歩く人の見え方'" in src)
     chk('静的', '375px以上はボタン44pxのまま折り返しで収め、340px以下だけ見た目を詰める',
         '@media (max-width:399px){#mobileShelf .mob-stat-s{display:none}}' in src
         and '@media (max-width:340px){' in src and '#mobileShelf .mob-mode{min-width:40px' in src
@@ -441,9 +462,9 @@ def static_checks(src):
     chk('静的', "古いコースの'top'を自動として読み替える",
         "(w.labelDir && w.labelDir !== 'top') ? w.labelDir : 'auto'" in src)
     # --- v105: ツールバーの分かりにくさ（UI点検 01・14の一部）---
-    tbar_labels = re.findall(r'<button class="btn[^>]*id="btn(?:Via|ToggleVia)"[\s\S]*?<span>([^<]*)</span>', src)
-    chk('静的', '「調整点」と同じ文字のボタンが2つ並んでいない',
-        len(tbar_labels) == 2 and tbar_labels[0] != tbar_labels[1], str(tbar_labels))
+    rail_labels = re.findall(r'class="rl-btn[^"]*" id="btn(?:Wp|Via)"[^>]*>[\s\S]*?<span>([^<]*)</span>', src)
+    chk('静的', '「通り道」と「通り道の点を表示」の文字が別（同じ文字のボタンが並ばない）',
+        rail_labels == ['スポット', '通り道'] and 'id="btnToggleVia"' in src and '>通り道の点を表示<span class="pp-sw">' in src, str(rail_labels))
     chk('静的', '案内文にマウスを乗せると全文が出る', "el.title = long[m] || ''" in src)
     chk('静的', '画面を開いた直後の案内も短い文にそろえている',
         '<span id="tbar-st" title=' in src and 'クリックでウェイポイント追加' not in src)
@@ -1412,6 +1433,55 @@ def functional_checks(index_path):
             and mm.get('secs') == ['コース', '歩くとき', '地図の見せ方'] and mm.get('subMap') and '航空写真' in mm.get('valMap1', '')
             and mm.get('backMain') and mm.get('lsz3') == 3 and mm.get('lsz4') == 4 and mm.get('adv1') and mm.get('adv2') is False,
             str(mm)[:260])
+
+        # v126: PC（1024px）で 文字なしボタン0・同じ文字のボタン0・上バー1行、右上と「その他」のポップオーバーが動く
+        page.set_viewport_size({'width': 1024, 'height': 700})
+        pc3 = page.evaluate("""()=>{ try{
+            leafMap.invalidateSize(); closePcPops(); closeShareSheet();
+            const vis = el => { if (!el) return false; const r = el.getBoundingClientRect(), cs = getComputedStyle(el);
+                                return cs.display !== 'none' && cs.visibility !== 'hidden' && r.width > 0 && r.height > 0; };
+            const s2 = document.getElementById('s2');
+            const btns = [...s2.querySelectorAll('button')].filter(vis);
+            const noText = btns.filter(b => !b.textContent.trim()).map(b => b.id || b.className.slice(0, 20));
+            const texts = btns.map(b => b.textContent.trim().replace(/\\s+/g, ' '));
+            const dup = texts.filter((t, i) => texts.indexOf(t) !== i);
+            const hdr = document.getElementById('hdr').getBoundingClientRect();
+            const rail = document.getElementById('tbar').getBoundingClientRect(), map = document.getElementById('mapWrap').getBoundingClientRect();
+            const out = {noText, dup, nBtn: btns.length, hdrH: Math.round(hdr.height),
+                         railIn: rail.left >= map.left && rail.top >= map.top && rail.bottom < map.bottom - 60,
+                         hint: document.getElementById('tbar-st').textContent};
+            togglePcPop('popMap', document.getElementById('btnBaseMap'));
+            out.popMapOpen = vis(document.getElementById('popMap'));
+            document.querySelector('#popMap [data-bm="gsi_photo"]').click();
+            out.bm = _baseMapId; out.pill = document.getElementById('bmPillTxt').textContent;
+            setBaseMap('osm'); closePcPops();
+            togglePcPop('popLegend', document.getElementById('btnLegend'));
+            out.legendOpen = vis(document.getElementById('popLegend'));
+            out.legendRows = document.querySelectorAll('#pcLegendBody .sh-lg').length;
+            togglePcPop('popMore', document.getElementById('btnMore'));
+            out.moreOpen = vis(document.getElementById('popMore')) && !vis(document.getElementById('popLegend'));
+            out.moreRows = [...document.querySelectorAll('#popMore .pp-row')].filter(vis).length;
+            const keepM = manualMode; document.getElementById('btnManual').click(); out.manualFlip = manualMode !== keepM;
+            if (manualMode !== keepM) toggleManualMode();
+            closePcPops();
+            setMode('via'); out.hintVia = document.getElementById('tbar-st').textContent; setMode('wp');
+            toggleViewMode();
+            out.viewHidden = !vis(document.getElementById('tbar')) && !vis(document.getElementById('pcHint')) && vis(document.getElementById('pcTr'))
+                             && document.getElementById('btnViewTxt').textContent === '編集にもどる';
+            toggleViewMode();
+            out.viewBack = document.getElementById('btnViewTxt').textContent === '歩く人の見え方' && !document.body.classList.contains('viewing');
+            out.closedAll = !document.querySelector('.pc-pop.show');
+            return out;
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        page.set_viewport_size({'width': 390, 'height': 812})
+        page.evaluate("()=>{ leafMap.invalidateSize(); }")
+        chk('機能', 'PC（1024px）：文字なしボタン0・同じ文字のボタン0・上バー1行、道具3群とポップオーバーが動く',
+            isinstance(pc3, dict) and pc3.get('noText') == [] and pc3.get('dup') == [] and pc3.get('nBtn', 0) >= 8
+            and pc3.get('hdrH', 99) <= 60 and pc3.get('railIn') and pc3.get('hint') == 'クリックでスポットを追加'
+            and pc3.get('popMapOpen') and pc3.get('bm') == 'gsi_photo' and pc3.get('pill') == '航空写真'
+            and pc3.get('legendOpen') and pc3.get('legendRows', 0) >= 2 and pc3.get('moreOpen') and pc3.get('moreRows') == 7
+            and pc3.get('manualFlip') and pc3.get('hintVia') == 'ルート線の上をクリックして道順を変える'
+            and pc3.get('viewHidden') and pc3.get('viewBack') and pc3.get('closedAll'), str(pc3)[:300])
 
         # v121: バックアップからの日数・未反映の保存回数で色が変わり、書き出すと戻る。iPhone の案内は1回だけ
         bk = page.evaluate("""()=>{ return (async()=>{ try{

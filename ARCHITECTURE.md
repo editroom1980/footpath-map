@@ -107,6 +107,10 @@
 
 8. **版数は3か所そろえる**（10章）。
 
+14. **PCの道具は3群で、id は据え置き**（v126）。左の縦の道具＝`#tbar`（`btnWp/btnVia/btnUndo/btnRedo`）、右上＝`#pcTr`
+    （`btnBaseMap`→`#popMap`、`btnLegend`→`#popLegend`）、下＝`#pcBl`（`btnElev`）、上バー＝`#hdr`（`btnView/btnMore`→`#popMore`）。
+    どれも `#mapWrap` の上に浮かせているだけで、`#map` の外なので保存画像には写らない。状態の反映は `_syncPcPops()`
+    が変数から描き直す（ボタンの見た目を直接いじらない）。閲覧中・配布リンク・埋め込み・スマホで隠す規則は `#tbar/#pcHint/#pcTr/#pcBl` を見る。
 13. **「配る」の出口は `shareExit()` の呼び分けだけ**（v123）。画像・配布シート・リンク・GPX の中身を `#shareSheet` 側に
     複製しない。出口を足すときは `.ss-card` を1枚増やして `shareExit` に1行足す。「この地図に載る情報」は `renderShareInfo()`
     が開くたびに実データから数える（保存しない）。

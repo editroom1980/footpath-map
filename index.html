@@ -116,13 +116,16 @@ html,body{min-height:calc(100% + env(safe-area-inset-top));font-family:'Hiragino
 
 /* ====== SCREEN 2 ====== */
 #s2{height:100vh;display:none;flex-direction:column}
-#hdr{background:#3E2A0E;color:#F5EDD8;padding:0 10px;height:44px;display:flex;align-items:center;gap:7px;flex-shrink:0}
-#hdr h1{font-size:13px;white-space:nowrap}
-#cnDisp{font-size:11px;opacity:.7;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
-.hbtn{padding:5px 9px;border-radius:4px;font-size:11px;font-family:inherit;cursor:pointer;white-space:nowrap;background:rgba(255,255,255,.15);color:#F5EDD8;border:1px solid rgba(255,255,255,.25);display:inline-flex;align-items:center;justify-content:center;gap:4px}
+/* 上バー（v126・図4）：左＝一覧・コース名、右＝歩く人の見え方・その他・保存・配る */
+#hdr{position:relative;background:#fff;color:#231C14;padding:0 12px;height:52px;display:flex;align-items:center;gap:8px;flex-shrink:0;border-bottom:1px solid #E3DCD1;z-index:1200}
+#cnDisp{font-size:16px;font-weight:800;color:#231C14;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.hbtn{height:36px;padding:0 13px;border-radius:9px;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;white-space:nowrap;background:#fff;color:#2C2620;border:1.5px solid #E3DCD1;display:inline-flex;align-items:center;gap:6px}
 .hbtn svg{flex-shrink:0}
-.hbtn:hover{background:rgba(255,255,255,.25)}
-.hbtn-save{background:var(--brand);border-color:#8E3406}
+.hbtn:hover{background:var(--brand-soft);border-color:var(--brand)}
+.hbtn.on{background:var(--brand-soft);border-color:var(--brand);color:var(--brand)}
+.hbtn-save{background:var(--brand);border-color:var(--brand);color:#fff}
+.hbtn-save:hover{background:var(--brand-lite)}
+.hbtn-back{background:#F4F0E9;border-color:#F4F0E9;color:#4A2E0E}
 #main{flex:1;display:flex;overflow:hidden;min-height:0}
 #sidebar{width:240px;flex-shrink:0;background:#FAF6EE;border-right:1px solid #D4C4A8;display:flex;flex-direction:column;overflow:hidden}
 #wpSec{flex:1;min-height:0;display:flex;flex-direction:column}
@@ -148,8 +151,42 @@ html,body{min-height:calc(100% + env(safe-area-inset-top));font-family:'Hiragino
 #iDesc{width:100%;padding:5px 7px;border:1px solid #D4C4A8;border-radius:3px;font-size:11px;font-family:inherit;background:#fff;outline:none;resize:vertical;min-height:55px}
 #mapArea{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;position:relative}
 #map,#mapArea,.leaflet-container{user-select:none;-webkit-user-select:none}
-#tbar{background:#F5EDD8;border-bottom:1px solid #D4C4A8;padding:4px 8px;display:flex;align-items:center;gap:4px;flex-shrink:0;flex-wrap:wrap}
-#tbar-st{font-size:11px;color:var(--t-sub);flex:1;min-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* PCの道具（v126・図4）：左の縦の道具（#tbar）・右上の背景地図と凡例（#pcTr）・下の高低差（#pcBl）。すべて地図の上に浮かせる */
+#tbar{position:absolute;left:12px;top:12px;z-index:1001;display:flex;flex-direction:column;gap:3px;padding:5px;background:#fff;border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,.16)}
+.rl-btn{width:54px;height:48px;border:none;border-radius:9px;background:transparent;color:#4A2E0E;font-family:inherit;font-size:10px;font-weight:700;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;line-height:1;white-space:nowrap}
+.rl-btn svg{width:17px;height:17px}
+.rl-btn:hover{background:var(--brand-soft)}
+.rl-btn.on{background:var(--brand);color:#fff}
+.rl-btn:disabled{opacity:.35;cursor:default;pointer-events:none}
+.rl-div{height:1px;background:#E3DCD1;margin:2px 6px}
+#pcHint{position:absolute;left:78px;top:12px;z-index:1001;background:rgba(255,255,255,.95);border-radius:8px;padding:0 10px;height:30px;display:flex;align-items:center;
+  box-shadow:0 1px 6px rgba(0,0,0,.12);max-width:calc(100% - 330px)}
+#tbar-st{font-size:11.5px;color:var(--t-sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#pcTr{position:absolute;right:12px;top:12px;z-index:1001;display:flex;gap:7px}
+#pcBl{position:absolute;left:12px;bottom:12px;z-index:1001}
+.pc-pill{height:36px;border-radius:9px;background:#fff;box-shadow:0 2px 10px rgba(0,0,0,.16);display:inline-flex;align-items:center;gap:6px;padding:0 12px;
+  font-size:12.5px;font-weight:700;color:#2C2620;border:none;font-family:inherit;cursor:pointer;white-space:nowrap}
+.pc-pill:hover{background:var(--brand-soft)}
+.pc-pill.on{color:var(--brand);background:var(--brand-soft)}
+.pc-pill .pc-caret{font-size:10px;color:var(--t-sub)}
+.pc-pop{position:absolute;top:44px;right:0;z-index:1002;background:#fff;border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,.2);padding:6px;min-width:236px;display:none}
+.pc-pop.show{display:block}
+#popMore{top:46px;right:12px;z-index:1300}
+.pp-sec{font-size:10.5px;font-weight:800;color:var(--t-sub);letter-spacing:.06em;padding:8px 10px 4px}
+.pp-row{width:100%;display:flex;align-items:center;gap:8px;min-height:36px;padding:6px 10px;border:none;background:none;border-radius:8px;font-family:inherit;
+  font-size:13px;color:#2C2620;text-align:left;cursor:pointer;white-space:nowrap}
+.pp-row:hover{background:#F7F3ED}
+.pp-row.static{cursor:default}.pp-row.static:hover{background:none}
+.pp-row.danger{color:#DC2626}
+.pp-row .pp-ck{margin-left:auto;color:var(--brand);font-weight:700;opacity:0}
+.pp-row.pick.on{color:var(--brand);font-weight:700}.pp-row.pick.on .pp-ck{opacity:1}
+.pp-sw{margin-left:auto;width:36px;height:21px;border-radius:11px;background:#D8D2C8;position:relative;flex:none;transition:background .15s}
+.pp-sw::after{content:'';position:absolute;top:2px;left:2px;width:17px;height:17px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2);transition:left .15s}
+.pp-row.on .pp-sw{background:var(--brand)}.pp-row.on .pp-sw::after{left:17px}
+.pp-seg{margin-left:auto;display:inline-flex;background:#F2EEE7;border-radius:8px;padding:2px}
+.pp-seg button{border:none;background:none;font-family:inherit;font-size:12px;font-weight:700;color:var(--t-sub);padding:4px 9px;border-radius:6px;cursor:pointer}
+.pp-seg button.on{background:#fff;color:var(--brand);box-shadow:0 1px 3px rgba(0,0,0,.12)}
 #mapWrap{flex:1;position:relative}
 #map{width:100%;height:100%}
 #mapMsg{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(255,255,255,.9);border:1px solid #D4C4A8;border-radius:6px;padding:10px 16px;font-size:11px;text-align:center;z-index:500;pointer-events:none;line-height:1.7}
@@ -239,7 +276,7 @@ html,body{min-height:calc(100% + env(safe-area-inset-top));font-family:'Hiragino
 .vip-photos img{width:calc(50% - 4px);max-width:200px;height:140px;object-fit:cover;border-radius:8px;cursor:pointer}
 .vip-photos img:only-child{width:100%;max-width:100%;height:210px}
 /* 埋め込み表示（?embed=1）：ホームページの中に置くので、地図だけを見せる */
-body.embed #hdr, body.embed #sidebar, body.embed #mobileTopBar, body.embed #mobileShelf,
+body.embed #hdr, body.embed #sidebar, body.embed #tbar, body.embed #pcHint, body.embed #pcTr, body.embed #pcBl, body.embed #mobileTopBar, body.embed #mobileShelf,
 body.embed #mobileElevBand, body.embed #viewBadge, body.embed #mobileRbtns{display:none!important}
 body.embed #s2, body.embed #mapArea, body.embed #mapWrap{height:100%!important;min-height:0!important}
 #stampBar{position:absolute;right:8px;bottom:8px;z-index:1200;display:none;background:rgba(255,255,255,.94);
@@ -258,12 +295,13 @@ body.embed #embedBar{display:flex}
   font-size:11.5px;font-weight:700;padding:5px 10px;border-radius:8px}
 body.embed .leaflet-control-attribution{font-size:9px}
 /* 配布リンク(?course= / ?view=)で開いたときは編集UIを隠す（見る人が触って壊さないように）*/
-body.viewonly #tbar, body.viewonly #descSec, body.viewonly .hbtn-save, body.viewonly .drag-hint,
+body.viewonly #tbar, body.viewonly #pcHint, body.viewonly #btnView, body.viewonly #btnMore, body.viewonly .hbtn-share,
+body.viewonly #descSec, body.viewonly .hbtn-save, body.viewonly .drag-hint,
 body.viewonly .mob-modes, body.viewonly .mob-save,
 body.viewonly #mobileUndoBtn, body.viewonly #mobileRedoBtn{display:none!important}
 /* 閲覧中（作る人の「閲覧モード」も、配布リンクの閲覧専用も）は、編集の操作をすべて隠す。
    歩く人の画面と同じ見え方にし、「確認しているつもりで点を増やす」事故を防ぐ（v120） */
-body.viewing #tbar .ed, body.viewonly #tbar .ed,
+body.viewing #tbar .ed, body.viewonly #tbar .ed, body.viewing #tbar, body.viewing #pcHint, body.viewing #popMore .ed,
 body.viewing .wp-ed, body.viewonly .wp-ed, body.viewing .drag-hint,
 body.viewing .mob-modes, body.viewing .mob-sdiv, body.viewing .mob-save,
 body.viewing #mobileUndoBtn, body.viewing #mobileRedoBtn,
@@ -420,7 +458,8 @@ body.viewonly #firstTip,body.embed #firstTip{display:none!important}
 .mob-share{background:rgba(255,255,255,.95);color:#231C14;font-size:12.5px;font-weight:700;min-height:40px;padding:0 13px;
   display:inline-flex;align-items:center;border-radius:20px;border:0.5px solid rgba(0,0,0,.1);cursor:pointer;font-family:inherit;
   flex-shrink:0;box-shadow:0 2px 8px rgba(0,0,0,.18);margin-left:auto;margin-right:8px}
-.hbtn-share{background:rgba(255,255,255,.92);color:#231C14;border-color:rgba(255,255,255,.6);font-weight:700}
+.hbtn-share{background:#8E3406;border-color:#8E3406;color:#fff}
+.hbtn-share:hover{background:var(--brand);border-color:var(--brand)}
 body.viewonly .mob-share, body.embed .mob-share{display:none!important}
 
 /* 押せる範囲を広げる（見た目は変えない）。隣どうしが重ならないよう、
@@ -452,7 +491,7 @@ body.viewonly .mob-share, body.embed .mob-share{display:none!important}
   .btn{min-height:36px;font-size:12px;padding:6px 10px}
   .wp-dot{width:26px;height:26px;font-size:11px}
   #hdr{display:none!important}
-  #tbar{display:none!important}
+  #tbar,#pcHint,#pcTr,#pcBl{display:none!important}
   #sidebar{display:none!important}
   #elevDetailPanel{display:none!important}
   #s2{position:fixed;top:0;left:0;right:0;height:100%}
@@ -509,7 +548,7 @@ body.viewonly .mob-share, body.embed .mob-share{display:none!important}
 @media (orientation: landscape) and (max-height: 500px) {
   /* デスクトップ枠を隠して地図を全画面に */
   #hdr{display:none!important}
-  #tbar{display:none!important}
+  #tbar,#pcHint,#pcTr,#pcBl{display:none!important}
   #sidebar{display:none!important}
   #elevDetailPanel{display:none!important}
   #s2{position:fixed;top:0;left:0;right:0;height:100%}
@@ -760,14 +799,24 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
 <!-- SCREEN 2 -->
 <div id="s2">
   <div id="hdr">
-    <span style="font-size:16px;flex-shrink:0;display:inline-flex"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M12 18.5l-3 -1.5l-6 3v-13l6 -3l6 3l6 -3v7.5" /> <path d="M9 4v13" /> <path d="M15 7v5.5" /> <path d="M21.121 20.121a3 3 0 1 0 -4.242 0c.418 .419 1.125 1.045 2.121 1.879c1.051 -.89 1.759 -1.516 2.121 -1.879" /> <path d="M19 18v.01" /></svg></span>
-    <h1 style="flex-shrink:0">Footpath Mapmaker</h1>
+    <button class="hbtn hbtn-back" onclick="backToS1()"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M5 12l14 0" /> <path d="M5 12l6 6" /> <path d="M5 12l6 -6" /></svg><span>一覧</span></button>
+    <span style="font-size:16px;flex-shrink:0;display:inline-flex;color:var(--brand)" title="Footpath Mapmaker"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M12 18.5l-3 -1.5l-6 3v-13l6 -3l6 3l6 -3v7.5" /> <path d="M9 4v13" /> <path d="M15 7v5.5" /> <path d="M21.121 20.121a3 3 0 1 0 -4.242 0c.418 .419 1.125 1.045 2.121 1.879c1.051 -.89 1.759 -1.516 2.121 -1.879" /> <path d="M19 18v.01" /></svg></span>
     <div id="cnDisp"></div>
-    <button aria-label="保存" class="hbtn hbtn-save" onclick="saveCourse()" title="保存"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M6 4h10l4 4v10a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2" /> <path d="M10 14a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /> <path d="M14 4l0 4l-6 0l0 -4" /></svg></button>
+    <button class="hbtn" id="btnView" onclick="toggleViewMode()" title="歩く人の見え方&#10;ONの間はスポットをクリックで写真・解説を表示"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" /> <path d="M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6" /></svg><span id="btnViewTxt">歩く人の見え方</span></button>
+    <button class="hbtn" id="btnMore" onclick="togglePcPop('popMore', this)" aria-expanded="false" aria-controls="popMore" title="その他&#10;JSON・座標・文字なし保存・操作ガイド・上級者向け"><svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg><span>その他</span></button>
+    <button class="hbtn hbtn-save" onclick="saveCourse()" title="保存"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M6 4h10l4 4v10a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2" /> <path d="M10 14a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /> <path d="M14 4l0 4l-6 0l0 -4" /></svg><span>保存</span></button>
     <button class="hbtn hbtn-share" onclick="openShareSheet()" title="配る&#10;画像・配布シート・リンク・GPX">配る</button>
-    <button aria-label="GPXでダウンロード" class="hbtn" onclick="exportGpx()" title="GPXでダウンロード&#10;YAMAP・ヤマレコ・Garmin・Google Earth などで開けます"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M3 17l4 -8l5 6l3 -4l6 6" /> <path d="M3 21h18" /></svg></button>
-    <button aria-label="JSONでダウンロード" class="hbtn" onclick="exportCourse()" title="JSONでダウンロード"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M14 3v4a1 1 0 0 0 1 1h4" /> <path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2" /> <path d="M12 17v-6" /> <path d="M9.5 14.5l2.5 2.5l2.5 -2.5" /></svg></button>
-    <button class="hbtn" onclick="backToS1()"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M5 12l14 0" /> <path d="M5 12l6 6" /> <path d="M5 12l6 -6" /></svg><span>一覧</span></button>
+    <!-- その他（v126）：使う頻度の低いものと上級者向け。編集の項目は .ed（閲覧中は隠す）-->
+    <div class="pc-pop" id="popMore" role="menu">
+      <button class="pp-row" onclick="closePcPops();exportCourse()">JSONで保存（バックアップ）</button>
+      <button class="pp-row" onclick="closePcPops();exportRouteCoords()">座標を書き出す（調査用）</button>
+      <button class="pp-row" onclick="closePcPops();saveMapNoText()">文字なしで画像保存</button>
+      <button class="pp-row" onclick="closePcPops();openHelp()">操作ガイド</button>
+      <div class="pp-sec ed">上級者向け</div>
+      <button class="pp-row ed" id="btnManual" onclick="toggleManualMode();_syncPcPops()" title="ONの間は通り道の点が道に吸い付かない（OSMにない山道・農道用）">手動モード（道に沿わせない）<span class="pp-sw"></span></button>
+      <button class="pp-row ed" id="btnToggleVia" onclick="toggleViaVisibility();_syncPcPops()" title="隠している間はルート線をドラッグできません（ルートは保持されます）">通り道の点を表示<span class="pp-sw"></span></button>
+      <button class="pp-row ed danger" onclick="closePcPops();clearAll()">すべて消去</button>
+    </div>
   </div>
   <div id="main">
     <div id="sidebar">
@@ -814,30 +863,38 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
       <div id="elevChartWrap"><svg id="elevChart" style="min-width:240px;width:100%;height:160px;display:block"></svg></div>
       <div id="elevMsg"></div>
     </div>
-      <div id="tbar">
-        <button class="btn ed on" id="btnWp" onclick="setMode('wp')" title="WP追加&#10;クリックでスポットをコースに追加"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M9 11a3 3 0 1 0 6 0a3 3 0 0 0 -6 0" /> <path d="M17.657 16.657l-4.243 4.243a2 2 0 0 1 -2.827 0l-4.244 -4.243a8 8 0 1 1 11.314 0" /></svg><span>WP</span></button>
-        <button class="btn ed" id="btnVia" onclick="setMode('via')" title="調整点を置く&#10;地図をクリックすると、そこを通るように道順が変わります"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M12 6a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /> <path d="M4 6l8 0" /> <path d="M16 6l4 0" /> <path d="M6 12a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /> <path d="M4 12l2 0" /> <path d="M10 12l10 0" /> <path d="M15 18a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /> <path d="M4 18l11 0" /> <path d="M19 18l1 0" /></svg><span>調整点</span></button>
-        <span class="tsep">|</span>
-        <button class="btn ed" id="btnToggleVia" onclick="toggleViaVisibility()" title="調整点の表示/非表示&#10;隠している間はルート線をドラッグできません（ルートは保持されます）"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M8 12a4 4 0 1 0 8 0a4 4 0 1 0 -8 0" /></svg><span>調整点の表示</span></button>
-        <button class="btn" id="btnMapLabels" onclick="toggleMapLabels()" title="地名/WP○ 表示切替&#10;OFFにすると地図の文字・WPマーカーが消え&#10;コースの点線だけ残ります"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M6.5 7.5a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" /> <path d="M3 6v5.172a2 2 0 0 0 .586 1.414l7.71 7.71a2.41 2.41 0 0 0 3.408 0l5.592 -5.592a2.41 2.41 0 0 0 0 -3.408l-7.71 -7.71a2 2 0 0 0 -1.414 -.586h-5.172a3 3 0 0 0 -3 3" /></svg><span>地名</span></button>
-        <button class="btn" id="btnLabelSize" onclick="cycleLabelSize()" title="名称ラベルの文字サイズ&#10;標準→大→特大を切替（保存画像にも反映）"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M4 20l4 -10l4 10" /> <path d="M5 17l6 0" /> <path d="M14 20l3 -7l3 7" /> <path d="M14.8 18l4.4 0" /></svg><span id="lblSizeTxt">標準</span></button>
-        <button class="btn" id="btnBaseMap" onclick="cycleBaseMap()" title="背景地図を切替（標準/航空写真/地形図/淡色/色違い）&#10;保存画像の配色もこれで変わります"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M9 4l0 13" /> <path d="M15 7l0 13" /> <path d="M3.5 5.5l5.5 -1.5l6 2l5.5 -1.5v12l-5.5 1.5l-6 -2l-5.5 1.5z" /></svg><span>地図</span></button>
-        <button class="btn ed" id="btnManual" onclick="toggleManualMode()" title="手動モード&#10;ONの間は調整点が白い道にフィットしない&#10;OSMにない山道・農道をルートにする際に使用"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M8 13v-7.5a1.5 1.5 0 0 1 3 0v6.5" /> <path d="M11 5.5v-2a1.5 1.5 0 1 1 3 0v8.5" /> <path d="M14 5.5a1.5 1.5 0 0 1 3 0v6.5" /> <path d="M17 7.5a1.5 1.5 0 0 1 3 0v8.5a6 6 0 0 1 -6 6h-2h.208a6 6 0 0 1 -5.012 -2.7a69.74 69.74 0 0 1 -.196 -.3c-.312 -.479 -1.407 -2.388 -3.286 -5.728a1.5 1.5 0 0 1 .536 -2.022a1.867 1.867 0 0 1 2.28 .28l1.47 1.47" /></svg><span>手動</span></button>
-        <span class="tsep">|</span>
-        <button aria-label="取り消し" class="btn ed" id="btnUndo" onclick="undoLast()" title="取り消し (⌘Z)" disabled><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M9 14l-4 -4l4 -4" /> <path d="M5 10h11a4 4 0 1 1 0 8h-1" /></svg></button>
-        <button aria-label="やり直し" class="btn ed" id="btnRedo" onclick="redoAction()" title="やり直し (⌘⇧Z)" disabled><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M15 14l4 -4l-4 -4" /> <path d="M19 10h-11a4 4 0 1 0 0 8h1" /></svg></button>
-        <button aria-label="全消去" class="btn ed" onclick="clearAll()" title="全消去&#10;すべてのWP・調整点を削除"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M4 7l16 0" /> <path d="M10 11l0 6" /> <path d="M14 11l0 6" /> <path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12" /> <path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3" /></svg></button>
-        <span class="tsep">|</span>
-        <button aria-label="高低差グラフ" class="btn" id="btnElev" onclick="toggleElevPanel()" title="高低差グラフ"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M4 19l16 0" /> <path d="M4 15l4 -6l4 2l4 -5l4 4" /></svg></button>
-        <button aria-label="マップを画像保存" class="btn" onclick="saveMapAsImage()" title="マップを画像保存"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M5 7h1a2 2 0 0 0 2 -2a1 1 0 0 1 1 -1h6a1 1 0 0 1 1 1a2 2 0 0 0 2 2h1a2 2 0 0 1 2 2v9a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-9a2 2 0 0 1 2 -2" /> <path d="M9 13a3 3 0 1 0 6 0a3 3 0 0 0 -6 0" /></svg></button>
-        <button class="btn" onclick="saveMapNoText()" title="ラベル非表示で保存&#10;WP名称と地図の文字を消して保存"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M15 8h.01" /> <path d="M7 3h11a3 3 0 0 1 3 3v11m-.856 3.099a2.991 2.991 0 0 1 -2.144 .901h-12a3 3 0 0 1 -3 -3v-12c0 -.845 .349 -1.608 .91 -2.153" /> <path d="M3 16l5 -5c.928 -.893 2.072 -.893 3 0l5 5" /> <path d="M16.33 12.338c.574 -.054 1.155 .166 1.67 .662l3 3" /> <path d="M3 3l18 18" /></svg><span>文字なし</span></button>
-        <button class="btn" onclick="openPrintSheet()" title="配布シート&#10;A4印刷・PDF・画像用のレイアウト（凡例・縮尺・方位つき）"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M17 17h2a2 2 0 0 0 2 -2v-4a2 2 0 0 0 -2 -2h-14a2 2 0 0 0 -2 2v4a2 2 0 0 0 2 2h2" /> <path d="M17 9v-4a2 2 0 0 0 -2 -2h-6a2 2 0 0 0 -2 2v4" /> <path d="M7 13m0 2a2 2 0 0 1 2 -2h6a2 2 0 0 1 2 2v4a2 2 0 0 1 -2 2h-6a2 2 0 0 1 -2 -2z" /></svg><span>配布シート</span></button>
-        <button aria-label="閲覧モード" class="btn" id="btnView" onclick="toggleViewMode()" title="閲覧モード&#10;ONの間はウェイポイントをタップで写真・解説を表示"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" /> <path d="M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6" /></svg><span id="btnViewTxt"></span></button>
-        <button aria-label="操作ガイド" class="btn" onclick="openHelp()" title="操作ガイド"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0" /> <path d="M12 16v.01" /> <path d="M12 13a2 2 0 0 0 .914 -3.782a1.98 1.98 0 0 0 -2.414 .483" /></svg></button>
-        <span id="tbar-st" title="クリックでスポットを追加／赤いルート線をドラッグすると道順を変えられます">クリックでスポットを追加</span>
-      </div>
       <div id="mapWrap">
         <div id="map"></div>
+        <!-- PC（v126）：地図の左＝置く・通り道・取消。id は #tbar のまま（閲覧中に隠す規則と検査が参照する）-->
+        <div id="tbar">
+          <button class="rl-btn ed on" id="btnWp" onclick="setMode('wp')" title="クリックでスポットをコースに追加"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M9 11a3 3 0 1 0 6 0a3 3 0 0 0 -6 0" /> <path d="M17.657 16.657l-4.243 4.243a2 2 0 0 1 -2.827 0l-4.244 -4.243a8 8 0 1 1 11.314 0" /></svg><span>スポット</span></button>
+          <button class="rl-btn ed" id="btnVia" onclick="setMode('via')" title="地図をクリックすると、そこを通るように道順が変わります"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M12 6a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /> <path d="M4 6l8 0" /> <path d="M16 6l4 0" /> <path d="M6 12a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /> <path d="M4 12l2 0" /> <path d="M10 12l10 0" /> <path d="M15 18a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /> <path d="M4 18l11 0" /> <path d="M19 18l1 0" /></svg><span>通り道</span></button>
+          <div class="rl-div ed"></div>
+          <button class="rl-btn ed" id="btnUndo" onclick="undoLast()" title="取り消し (⌘Z)" disabled><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M9 14l-4 -4l4 -4" /> <path d="M5 10h11a4 4 0 1 1 0 8h-1" /></svg><span>取消</span></button>
+          <button class="rl-btn ed" id="btnRedo" onclick="redoAction()" title="やり直し (⌘⇧Z)" disabled><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M15 14l4 -4l-4 -4" /> <path d="M19 10h-11a4 4 0 1 0 0 8h1" /></svg><span>やり直し</span></button>
+        </div>
+        <div id="pcHint"><span id="tbar-st" title="クリックでスポットを追加／赤いルート線をドラッグすると道順を変えられます">クリックでスポットを追加</span></div>
+        <!-- PC（v126）：右上＝背景地図・凡例 -->
+        <div id="pcTr">
+          <button class="pc-pill" id="btnBaseMap" onclick="togglePcPop('popMap', this)" aria-expanded="false" aria-controls="popMap" title="背景地図と地図の見せ方"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M9 4l0 13" /> <path d="M15 7l0 13" /> <path d="M3.5 5.5l5.5 -1.5l6 2l5.5 -1.5v12l-5.5 1.5l-6 -2l-5.5 1.5z" /></svg><span id="bmPillTxt">標準地図</span><span class="pc-caret">▾</span></button>
+          <button class="pc-pill" id="btnLegend" onclick="togglePcPop('popLegend', this)" aria-expanded="false" aria-controls="popLegend" title="このコースの凡例"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg><span>凡例</span></button>
+          <div class="pc-pop" id="popMap" role="menu">
+      <div class="pp-sec">背景地図</div>
+      <button class="pp-row pick" data-bm="osm" onclick="setBaseMap('osm');_syncPcPops()">標準地図（OSM）<span class="pp-ck">✓</span></button>
+      <button class="pp-row pick" data-bm="gsi_photo" onclick="setBaseMap('gsi_photo');_syncPcPops()">航空写真<span class="pp-ck">✓</span></button>
+      <button class="pp-row pick" data-bm="opentopo" onclick="setBaseMap('opentopo');_syncPcPops()">地形図（OpenTopoMap）<span class="pp-ck">✓</span></button>
+      <button class="pp-row pick" data-bm="carto" onclick="setBaseMap('carto');_syncPcPops()">淡色カラー地図<span class="pp-ck">✓</span></button>
+      <button class="pp-row pick" data-bm="osm_hot" onclick="setBaseMap('osm_hot');_syncPcPops()">色違いOSM（HOT）<span class="pp-ck">✓</span></button>
+      <div class="pp-sec">地図の見せ方</div>
+      <button class="pp-row" id="btnMapLabels" onclick="toggleMapLabels();_syncPcPops()">地名とスポットを表示<span class="pp-sw"></span></button>
+      <div class="pp-row static">文字の大きさ<span class="pp-seg" id="btnLabelSize"><button data-lsz="0" onclick="setLabelSize(0);_syncPcPops()">標準</button><button data-lsz="1" onclick="setLabelSize(1);_syncPcPops()">大</button><button data-lsz="2" onclick="setLabelSize(2);_syncPcPops()">特大</button><button data-lsz="3" hidden onclick="setLabelSize(3);_syncPcPops()">極大</button><button data-lsz="4" hidden onclick="setLabelSize(4);_syncPcPops()">最大</button></span></div>
+      <div class="pp-row static">スポットの○<span class="pp-seg"><button data-wsz="0" onclick="setWpSize(0);_syncPcPops()">標準</button><button data-wsz="1" onclick="setWpSize(1);_syncPcPops()">大</button><button data-wsz="2" onclick="setWpSize(2);_syncPcPops()">特大</button></span></div>
+      <span id="lblSizeTxt" hidden></span>
+          </div>
+          <div class="pc-pop" id="popLegend"><div class="pp-sec">このコースの凡例</div><div class="sh-legend" id="pcLegendBody"></div></div>
+        </div>
+        <!-- PC（v126）：下＝高低差 -->
+        <div id="pcBl"><button class="pc-pill" id="btnElev" onclick="toggleElevPanel()" title="高低差グラフ"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M4 19l16 0" /> <path d="M4 15l4 -6l4 2l4 -5l4 4" /></svg><span>高低差</span></button></div>
         <div id="mapMsg">⚠️ プレビュー環境では地図タイルは表示されません<br><span style="font-size:11px">GitHub Pagesに公開すると正常に表示されます</span></div>
         <div id="rtMsg">🔄 ルートを計算中...</div>
         <!-- 埋め込み表示のときだけ出る帯（コース名・距離・大きな地図で開く） -->
@@ -1927,6 +1984,7 @@ function _syncBaseMapMenu(){
     el.classList.toggle('on', el.getAttribute('data-bm') === _baseMapId);
   });
   _syncMmValues();
+  _syncPcPops();
 }
 function setBaseMap(id){
   if (!BASEMAPS[id]) return;
@@ -2088,7 +2146,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v125';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
+const APP_VERSION = 'v126';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
 }catch(_){} });
@@ -3399,10 +3457,10 @@ function _applyViewLock() {
   document.body.classList.toggle('viewing', on);
   [...wps, ...vps].forEach(x => { if (x.marker && x.marker.dragging) (on ? x.marker.dragging.disable() : x.marker.dragging.enable()); });
   const t = document.getElementById('btnViewTxt');
-  if (t) t.textContent = on ? '編集にもどる' : '';
+  if (t) t.textContent = on ? '編集にもどる' : '歩く人の見え方';
   const b = document.getElementById('btnView');
-  if (b) { b.title = on ? '編集にもどる' : '閲覧モード\nONの間はウェイポイントをタップで写真・解説を表示';
-           b.setAttribute('aria-label', on ? '編集にもどる' : '閲覧モード'); }
+  if (b) { b.title = on ? '編集にもどる' : '歩く人の見え方\nONの間はスポットをクリックで写真・解説を表示';
+           b.setAttribute('aria-label', on ? '編集にもどる' : '歩く人の見え方'); }
 }
 
 /* 配布リンクを開いた人への案内（最初の1回だけ・閲覧専用のときだけ） */
@@ -5069,7 +5127,46 @@ function _closeAllPopups(except) {
   if (except !== 'ctx'    && typeof hideCtxMenu       === 'function') hideCtxMenu();
   if (except !== 'picker' && typeof hideWpPicker      === 'function') hideWpPicker();
   if (except !== 'menu'   && typeof closeMobileMenu   === 'function') closeMobileMenu();
+  if (except !== 'pcpop'  && typeof closePcPops       === 'function') closePcPops();
 }
+/* ===== PCの道具（v126）：右上・その他のポップオーバー。開くたびに今の状態を反映する ===== */
+function togglePcPop(id, btn){
+  const pop = document.getElementById(id); if (!pop) return;
+  const open = !pop.classList.contains('show');
+  closePcPops();
+  if (!open) return;
+  if (id === 'popLegend') { const b = document.getElementById('pcLegendBody'); if (b) b.innerHTML = _sheetLegend(); }
+  _syncPcPops();
+  pop.classList.add('show');
+  if (btn) btn.setAttribute('aria-expanded', 'true');
+}
+function closePcPops(){
+  document.querySelectorAll('.pc-pop.show').forEach(pp => pp.classList.remove('show'));
+  document.querySelectorAll('[aria-controls^="pop"]').forEach(b => b.setAttribute('aria-expanded', 'false'));
+}
+/* 背景地図の名前・✓・スイッチ・大きさを、状態の変数から描き直す（変数が唯一の出どころ） */
+function _syncPcPops(){
+  try {
+    document.querySelectorAll('#popMap [data-bm]').forEach(el => el.classList.toggle('on', el.getAttribute('data-bm') === _baseMapId));
+    const bt = document.getElementById('bmPillTxt');
+    if (bt) bt.textContent = ((BASEMAPS[_baseMapId] || BASEMAPS[BASEMAP_DEFAULT]).label || '').replace(/\(.*\)/, '');
+    document.querySelectorAll('#popMap [data-lsz]').forEach(el => {
+      const i = Number(el.getAttribute('data-lsz'));
+      el.classList.toggle('on', i === _labelSizeIdx);
+      if (i >= 3) el.hidden = (i !== _labelSizeIdx);          // 極大・最大は、選んである時だけ見せる（スマホと同じ）
+    });
+    document.querySelectorAll('#popMap [data-wsz]').forEach(el => el.classList.toggle('on', Number(el.getAttribute('data-wsz')) === _wpSizeIdx));
+    document.getElementById('btnMapLabels')?.classList.toggle('on', _showMapLabels !== false);
+    document.getElementById('btnManual')?.classList.toggle('on', manualMode === true);
+    document.getElementById('btnToggleVia')?.classList.toggle('on', viaVisible !== false);
+  } catch(_) {}
+}
+document.addEventListener('click', e => {           // 外側を押したら閉じる
+  if (!document.querySelector('.pc-pop.show')) return;
+  if (e.target.closest('.pc-pop') || e.target.closest('[aria-controls^="pop"]')) return;
+  closePcPops();
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closePcPops(); });
 
 // セーフエリア(ノッチ/ステータスバー)の余白量を取得（メニューがノッチに被らないようにするため）
 function _safeInsets() {
