@@ -385,6 +385,43 @@ body.viewonly #firstTip,body.embed #firstTip{display:none!important}
 #descSheet .ds-btn{flex:1;min-height:var(--tap);border:none;border-radius:12px;font-family:inherit;
   font-size:15px;font-weight:800;background:var(--brand-grad);color:#fff;cursor:pointer}
 #descSheet .ds-btn.ghost{flex:0 0 96px;background:#F2EEE7;color:var(--t-sub)}
+/* 配る（v123）：画像・配布シート・リンク・GPX の4つの出口を1枚に。編集画面から2タップで届く */
+#shareScrim{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:3400;display:none}
+#shareSheet{position:fixed;left:0;right:0;bottom:0;z-index:3401;display:none;background:#fff;
+  border-radius:20px 20px 0 0;padding:10px 16px max(16px,env(safe-area-inset-bottom));box-shadow:0 -6px 24px rgba(0,0,0,.18);
+  max-height:88vh;overflow-y:auto;font-family:inherit}
+#shareSheet .ss-dh{width:38px;height:4px;border-radius:2px;background:#D9D1C4;margin:0 auto 10px}
+#shareSheet .ss-hd{display:flex;align-items:center;gap:8px;margin-bottom:2px}
+#shareSheet .ss-t{font-size:18px;font-weight:800;color:#231C14}
+#shareSheet .ss-x{margin-left:auto;width:var(--tap);height:var(--tap);border-radius:50%;border:none;background:#F2EEE7;color:var(--t-sub);
+  font-size:18px;cursor:pointer;font-family:inherit}
+#shareSheet .ss-n{font-size:12px;color:var(--t-sub);font-weight:600;margin-bottom:12px}
+#shareSheet .ss-cards{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+#shareSheet .ss-card{min-height:var(--tap);text-align:left;border:1px solid #E3DCD1;border-radius:12px;padding:11px 12px;background:#fff;
+  cursor:pointer;font-family:inherit;color:#231C14}
+#shareSheet .ss-card:hover{border-color:var(--brand);background:var(--brand-soft)}
+#shareSheet .ss-card .t{font-size:13.5px;font-weight:800;display:flex;align-items:center;gap:6px}
+#shareSheet .ss-card .d{font-size:10.5px;color:var(--t-sub);margin-top:3px;line-height:1.5}
+#shareSheet .ss-sec{font-size:11px;font-weight:800;color:var(--t-sub);letter-spacing:.08em;margin:16px 0 8px}
+#shareSheet .ss-list{border:1px solid #E3DCD1;border-radius:12px;overflow:hidden}
+#shareSheet .ss-li{display:flex;align-items:center;gap:10px;min-height:var(--tap);padding:9px 13px;border-bottom:1px solid #E3DCD1;
+  font-size:13.5px;font-weight:700;color:#231C14;width:100%;background:#fff;border-left:none;border-right:none;border-top:none;
+  text-align:left;font-family:inherit;cursor:pointer}
+#shareSheet .ss-li:last-child{border-bottom:none}
+#shareSheet .ss-li .ch{margin-left:auto;color:var(--t-sub);font-size:13px;font-weight:700;white-space:nowrap}
+#shareSheet .ss-li .ch.warn{color:var(--brand)}
+#shareSheet .ss-hint{margin-top:14px;font-size:11.5px;color:var(--t-sub);text-align:center;line-height:1.6}
+@media (min-width:769px){
+  #shareSheet{left:50%;right:auto;bottom:auto;top:50%;transform:translate(-50%,-50%);width:440px;max-width:calc(100vw - 32px);
+    border-radius:16px;padding:18px 20px 20px}
+  #shareSheet .ss-dh{display:none}
+}
+/* 上バーの「配る」：白い小さなボタン（ふだんは目立たない） */
+.mob-share{background:rgba(255,255,255,.95);color:#231C14;font-size:12.5px;font-weight:700;min-height:40px;padding:0 13px;
+  display:inline-flex;align-items:center;border-radius:20px;border:0.5px solid rgba(0,0,0,.1);cursor:pointer;font-family:inherit;
+  flex-shrink:0;box-shadow:0 2px 8px rgba(0,0,0,.18);margin-left:auto;margin-right:8px}
+.hbtn-share{background:rgba(255,255,255,.92);color:#231C14;border-color:rgba(255,255,255,.6);font-weight:700}
+body.viewonly .mob-share, body.embed .mob-share{display:none!important}
 
 /* 押せる範囲を広げる（見た目は変えない）。隣どうしが重ならないよう、
    並べるときは「見た目の大きさ＋すきま」が --tap 以上になるようにしている */
@@ -694,6 +731,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
     <h1 style="flex-shrink:0">Footpath Mapmaker</h1>
     <div id="cnDisp"></div>
     <button aria-label="保存" class="hbtn hbtn-save" onclick="saveCourse()" title="保存"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M6 4h10l4 4v10a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2" /> <path d="M10 14a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /> <path d="M14 4l0 4l-6 0l0 -4" /></svg></button>
+    <button class="hbtn hbtn-share" onclick="openShareSheet()" title="配る&#10;画像・配布シート・リンク・GPX">配る</button>
     <button aria-label="GPXでダウンロード" class="hbtn" onclick="exportGpx()" title="GPXでダウンロード&#10;YAMAP・ヤマレコ・Garmin・Google Earth などで開けます"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M3 17l4 -8l5 6l3 -4l6 6" /> <path d="M3 21h18" /></svg></button>
     <button aria-label="JSONでダウンロード" class="hbtn" onclick="exportCourse()" title="JSONでダウンロード"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M14 3v4a1 1 0 0 0 1 1h4" /> <path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2" /> <path d="M12 17v-6" /> <path d="M9.5 14.5l2.5 2.5l2.5 -2.5" /></svg></button>
     <button class="hbtn" onclick="backToS1()"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M5 12l14 0" /> <path d="M5 12l6 6" /> <path d="M5 12l6 -6" /></svg><span>一覧</span></button>
@@ -775,6 +813,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
         <div id="mobileTopBar">
           <div class="mob-back tap" onclick="backToS1()" aria-label="一覧へ戻る"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l14 0" /> <path d="M5 12l6 6" /> <path d="M5 12l6 -6" /></svg></div>
           <span id="mobileCourseTitle"></span>
+          <button class="mob-share tap" onclick="openShareSheet()">配る</button>
           <button class="mob-save tap" onclick="saveCourse()">保存</button>
         </div>
         <div id="mobileRbtns">
@@ -841,6 +880,30 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
           <button class="ds-btn ghost" onclick="closeDescSheet()">やめる</button>
           <button class="ds-btn" onclick="saveDescSheet()">この内容にする</button>
         </div>
+      </div>
+
+      <!-- 配る（v123）：4つの出口と「この地図に載る情報」を1枚に -->
+      <div id="shareScrim" onclick="closeShareSheet()"></div>
+      <div id="shareSheet" role="dialog" aria-label="配る">
+        <div class="ss-dh"></div>
+        <div class="ss-hd">
+          <div class="ss-t">配る</div>
+          <button class="ss-x" onclick="closeShareSheet()" aria-label="閉じる">✕</button>
+        </div>
+        <div class="ss-n" id="ssName"></div>
+        <div class="ss-cards">
+          <button class="ss-card" data-share="image" onclick="shareExit('image')"><div class="t">🖼 画像で保存</div><div class="d">SNS・チラシに貼る<br>PNG（地図のみも可）</div></button>
+          <button class="ss-card" data-share="sheet" onclick="shareExit('sheet')"><div class="t">🖨 配布シート</div><div class="d">A4で印刷・PDF<br>凡例・縮尺・方位つき</div></button>
+          <button class="ss-card" data-share="link" onclick="shareExit('link')"><div class="t">🔗 リンクを作る</div><div class="d">スマホで見てもらう<br>写真・解説つき</div></button>
+          <button class="ss-card" data-share="gpx" onclick="shareExit('gpx')"><div class="t">📍 GPXで書き出す</div><div class="d">YAMAP・ヤマレコ<br>Garmin などで開く</div></button>
+        </div>
+        <div class="ss-sec">この地図に載る情報</div>
+        <div class="ss-list">
+          <button class="ss-li" onclick="shareInfoDesc()">コースの説明<span class="ch" id="ssDesc">—</span></button>
+          <div class="ss-li">写真つきスポット<span class="ch" id="ssPhoto">—</span></div>
+          <div class="ss-li">スタンプラリーの対象<span class="ch" id="ssStamp">—</span></div>
+        </div>
+        <div class="ss-hint">リンクと配布シートには、上の内容がそのまま載ります</div>
       </div>
 
       <!-- モバイル: …メニューシート -->
@@ -1974,7 +2037,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v122';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
+const APP_VERSION = 'v123';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
 }catch(_){} });
@@ -2372,6 +2435,55 @@ function _syncDescState(){
   const el = document.getElementById('mmDescState'), src = document.getElementById('iDesc');
   if (!el || !src) return;
   el.textContent = (src.value || '').trim() ? '書かれています ›' : '未記入 ›';
+}
+
+/* ===== 配る（v123）：4つの出口を1枚に。ここは呼び分けるだけで、各出口の中身は変えない ===== */
+function openShareSheet(){
+  const sh = document.getElementById('shareSheet'), sc = document.getElementById('shareScrim');
+  if (!sh || !sc) return;
+  if (typeof closeMobileMenu === 'function') closeMobileMenu();
+  renderShareInfo();
+  sc.style.display = 'block'; sh.style.display = 'block';
+}
+function closeShareSheet(){
+  const sh = document.getElementById('shareSheet'), sc = document.getElementById('shareScrim');
+  if (sc) sc.style.display = 'none';
+  if (sh) sh.style.display = 'none';
+}
+/* コース名と距離・時間、説明の有無、写真つきスポット数、スタンプの対象数を出す＝空のまま配る事故を防ぐ */
+function renderShareInfo(){
+  const nm = document.getElementById('ssName'); if (!nm) return;
+  const distM = _lastRouteDistM || 0;
+  const stat = distM > 0 ? `${(distM/1000).toFixed(1)}km・${calcTotalTime(distM)}` : 'コースはまだありません';
+  nm.textContent = (courseInfo.name || '(名称未設定)') + '／' + stat;
+  const desc = ((document.getElementById('iDesc') || {}).value || '').trim();
+  const dEl = document.getElementById('ssDesc');
+  dEl.textContent = desc ? '書かれています ›' : '未記入 ›';
+  dEl.classList.toggle('warn', !desc);
+  const spots = _stampTargets();
+  const withPhoto = spots.filter(w => Array.isArray(w.photos) && w.photos.length > 0).length;
+  const pEl = document.getElementById('ssPhoto');
+  pEl.textContent = `${withPhoto} / ${spots.length}`;
+  pEl.classList.toggle('warn', spots.length > 0 && withPhoto === 0);
+  document.getElementById('ssStamp').textContent = spots.length ? `${spots.length}か所` : 'なし';
+}
+async function shareExit(kind){
+  if (kind === 'link') {
+    // リンクは保存済みのコースから作る。未保存なら先に保存してから同じ画面へ
+    if (!courseInfo.name) { alert('コース名が設定されていません。一覧に戻って設定してください。'); return; }
+    if (_dirty || currentCourseId == null) { const ok = await saveCourse(); if (!ok) return; }
+    const c = getCourses().find(x => x.id === currentCourseId) || {id: currentCourseId, name: courseInfo.name};
+    closeShareSheet(); openShareDialog(c); return;
+  }
+  closeShareSheet();
+  if (kind === 'image') saveMapAsImage();
+  else if (kind === 'sheet') openPrintSheet();
+  else if (kind === 'gpx') exportGpx();
+}
+/* 「コースの説明」を押したら、その場で書ける画面へ */
+function shareInfoDesc(){
+  closeShareSheet();
+  if (typeof openDescSheet === 'function') openDescSheet();
 }
 
 function openReorderSheet(){

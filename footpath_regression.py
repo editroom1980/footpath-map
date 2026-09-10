@@ -390,6 +390,24 @@ def static_checks(src):
         'interactive:false, renderer: canvasRenderer}).addTo(leafMap);' in src
         and 'if (routeDirs)    { if(leafMap) leafMap.removeLayer(routeDirs);' in src)
     chk('静的', '配布シートの凡例に進行方向の説明がある', '歩くコース（三角の向きに歩く）' in src)
+    # --- v123: 「配る」を1枚に（ロードマップ 段階1-1）---
+    chk('静的', '配るシートがある（開閉・出口・載る情報）',
+        'id="shareSheet"' in src and 'function openShareSheet' in src and 'function shareExit' in src
+        and 'function renderShareInfo' in src)
+    chk('静的', '編集画面の上バーに「配る」がある（PC・スマホとも）',
+        'class="mob-share tap" onclick="openShareSheet()">配る' in src
+        and 'class="hbtn hbtn-share" onclick="openShareSheet()"' in src)
+    chk('静的', '4つの出口がそれぞれ既存の機能を呼ぶ（中身は変えない）',
+        all(f'shareExit(\'{k}\')' in src for k in ('image', 'sheet', 'link', 'gpx'))
+        and "if (kind === 'image') saveMapAsImage();" in src and "else if (kind === 'sheet') openPrintSheet();" in src
+        and "else if (kind === 'gpx') exportGpx();" in src and "closeShareSheet(); openShareDialog(c); return;" in src)
+    chk('静的', 'リンクは未保存なら先に保存してから作る',
+        'if (_dirty || currentCourseId == null) { const ok = await saveCourse(); if (!ok) return; }' in src)
+    chk('静的', '載る情報＝説明の有無・写真つきスポット数・スタンプ対象数',
+        'id="ssDesc"' in src and 'id="ssPhoto"' in src and 'id="ssStamp"' in src
+        and "Array.isArray(w.photos) && w.photos.length > 0" in src)
+    chk('静的', '歩く人の画面と埋め込みには「配る」を出さない',
+        'body.viewonly .mob-share, body.embed .mob-share{display:none!important}' in src)
     chk('静的', '破線の切れ目と三角の位置をそろえている', 'function _dashGapCenterPx' in src)
     chk('静的', '線を切れ端に分けて三角を挟む（上に重ねない）',
         'routeLine.setLatLngs(r.pieces.length ? r.pieces : [disp]);' in src)
@@ -1216,6 +1234,94 @@ def functional_checks(index_path):
             isinstance(a11y, dict) and a11y.get('miss') == [] and a11y.get('total', 0) >= 40
             and a11y.get('zoomAllowed') is True and a11y.get('mapTouch') == 'none'
             and a11y.get('leafletPinch') is True, str(a11y)[:190])
+
+        # v123: 「配る」＝上バーの小さなボタン1回＋出口1回の2タップで、4つの出口すべてに届く
+        sh = page.evaluate("""()=>{ return (async()=>{ try{
+            const keep = {img: saveMapAsImage, sheet: openPrintSheet, gpx: exportGpx, dlg: openShareDialog,
+                          save: saveCourse, dirty: _dirty, desc: document.getElementById('iDesc').value};
+            const calls = [];
+            saveMapAsImage  = () => calls.push('image');
+            openPrintSheet  = () => calls.push('sheet');
+            exportGpx       = () => calls.push('gpx');
+            openShareDialog = c => calls.push('link:' + (c && c.name));
+            saveCourse      = async () => { calls.push('save'); _dirty = false; return true; };
+            const r = {taps: {}, box: {}, warnEmpty: null, okWritten: null, photo: {}, hidden: null};
+            const btn = document.querySelector('#mobileTopBar .mob-share');
+            r.entryVisible = !!btn && btn.getBoundingClientRect().height >= 40
+                             && getComputedStyle(btn).display !== 'none';
+            const sheet = document.getElementById('shareSheet');
+            const open = () => { btn.click(); return getComputedStyle(sheet).display !== 'none'; };
+            r.opens = open();
+            const vw = innerWidth, vh = innerHeight, sb = sheet.getBoundingClientRect();
+            r.box = {inside: sb.left >= 0 && sb.right <= vw + 0.5 && sb.bottom <= vh + 0.5, h: Math.round(sb.height)};
+            const cards = [...sheet.querySelectorAll('.ss-card')];
+            r.cards = cards.length;
+            r.cardTap = cards.every(c => c.getBoundingClientRect().height >= 44 && c.getBoundingClientRect().top >= 0);
+            r.name = document.getElementById('ssName').textContent;
+            // 説明が空なら「未記入」（色つき）、書いてあれば「書かれています」
+            document.getElementById('iDesc').value = ''; renderShareInfo();
+            const dEl = document.getElementById('ssDesc');
+            r.warnEmpty = dEl.textContent === '未記入 ›' && dEl.classList.contains('warn');
+            document.getElementById('iDesc').value = '検査用の説明'; renderShareInfo();
+            r.okWritten = dEl.textContent === '書かれています ›' && !dEl.classList.contains('warn');
+            document.getElementById('iDesc').value = keep.desc; renderShareInfo();
+            // 写真つきスポット数は実データどおり。1枚足すと1つ増える
+            const spots = _stampTargets();
+            const n0 = spots.filter(w => Array.isArray(w.photos) && w.photos.length).length;
+            r.photo.text0 = document.getElementById('ssPhoto').textContent;
+            const target = spots.find(w => !(Array.isArray(w.photos) && w.photos.length));
+            if (target) { const kp = target.photos; target.photos = ['data:image/png;base64,x']; renderShareInfo();
+                          r.photo.text1 = document.getElementById('ssPhoto').textContent; target.photos = kp; renderShareInfo(); }
+            r.photo.expect0 = `${n0} / ${spots.length}`; r.photo.expect1 = `${n0+1} / ${spots.length}`;
+            r.photo.hasTarget = !!target;
+            r.stamp = document.getElementById('ssStamp').textContent;
+            // 4つの出口：入口1回＋出口1回＝2タップ。押すとシートは閉じ、元の機能が1回ずつ呼ばれる
+            for (const k of ['image', 'sheet', 'gpx']) {
+              if (getComputedStyle(sheet).display === 'none') open();
+              sheet.querySelector(`[data-share="${k}"]`).click();
+              r.taps[k] = 2; r[k+'Closed'] = getComputedStyle(sheet).display === 'none';
+            }
+            // リンクは未保存なら保存してから（save → link の順）
+            _dirty = true; open(); sheet.querySelector('[data-share="link"]').click();
+            await new Promise(res => setTimeout(res, 50));
+            r.linkClosed = getComputedStyle(sheet).display === 'none';
+            r.calls = calls.slice();
+            // 歩く人の画面では入口を出さない
+            document.body.classList.add('viewonly');
+            r.hidden = getComputedStyle(btn).display === 'none';
+            document.body.classList.remove('viewonly');
+            closeShareSheet();
+            saveMapAsImage = keep.img; openPrintSheet = keep.sheet; exportGpx = keep.gpx;
+            openShareDialog = keep.dlg; saveCourse = keep.save; _dirty = keep.dirty;
+            return r;
+          }catch(e){ return 'ERR:'+e.message; } })(); }""")
+        _shOk = (isinstance(sh, dict) and sh.get('entryVisible') and sh.get('opens') and sh.get('box', {}).get('inside')
+                 and sh.get('cards') == 4 and sh.get('cardTap') and 'km' in sh.get('name', '')
+                 and sh.get('warnEmpty') and sh.get('okWritten')
+                 and sh.get('photo', {}).get('text0') == sh.get('photo', {}).get('expect0')
+                 and (not sh.get('photo', {}).get('hasTarget') or sh['photo'].get('text1') == sh['photo'].get('expect1'))
+                 and sh.get('imageClosed') and sh.get('sheetClosed') and sh.get('gpxClosed') and sh.get('linkClosed')
+                 and sh.get('calls') == ['image', 'sheet', 'gpx', 'save', 'link:' + (sh.get('name', '').split('／')[0])]
+                 and all(v <= 3 for v in sh.get('taps', {}).values()) and sh.get('hidden'))
+        chk('機能', '「配る」は2タップで4つの出口に届き、説明の空・写真の数を先に見せる', bool(_shOk), str(sh)[:220])
+
+        # v123: パソコンでは「配る」が上バーにあり、シートは画面の中央に1枚で出る
+        page.set_viewport_size({'width': 1280, 'height': 800})
+        pc = page.evaluate("""()=>{ try{
+            leafMap.invalidateSize();
+            const b = document.querySelector('#hdr .hbtn-share');
+            const vis = !!b && getComputedStyle(b).display !== 'none' && b.getBoundingClientRect().height > 0;
+            b.click();
+            const sh = document.getElementById('shareSheet'), r = sh.getBoundingClientRect();
+            const out = {vis, open: getComputedStyle(sh).display !== 'none', w: Math.round(r.width),
+                         centered: Math.abs((r.left + r.right) / 2 - innerWidth / 2) < 2 && r.top > 40};
+            closeShareSheet(); return out;
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        page.set_viewport_size({'width': 390, 'height': 812})
+        page.evaluate("()=>{ leafMap.invalidateSize(); }")
+        chk('機能', 'パソコンでも上バーの「配る」から同じ1枚が中央に出る',
+            isinstance(pc, dict) and pc.get('vis') and pc.get('open') and pc.get('centered') and 400 <= pc.get('w', 0) <= 480,
+            str(pc)[:160])
 
         # v121: バックアップからの日数・未反映の保存回数で色が変わり、書き出すと戻る。iPhone の案内は1回だけ
         bk = page.evaluate("""()=>{ return (async()=>{ try{
