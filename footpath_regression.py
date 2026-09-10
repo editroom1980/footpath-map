@@ -1116,8 +1116,13 @@ def functional_checks(index_path):
         par = page.evaluate("""()=>{ return (async()=>{ try{
             const origFetch = window.fetch, keepIdx = _routerIdx, keepDead = _routerDead.slice();
             const geo = {code:'Ok', routes:[{geometry:{coordinates:[[134.445,35.152],[134.446,35.153]]}}]};
-            let live = 0, peak = 0;
-            window.fetch = () => { live++; peak = Math.max(peak, live);
+            let live = 0, peak = 0, other = 0;
+            // 数えるのは経路サーバへの問い合わせだけ。標高や version.json など別の通信が
+            // たまたま重なると、経路の同時数を測ったことにならないため素通しする
+            window.fetch = (u, o) => {
+              const url = String((u && u.url) ? u.url : u);
+              if (url.indexOf('/route/v1/') < 0) { other++; return origFetch(u, o); }
+              live++; peak = Math.max(peak, live);
               return new Promise(r => setTimeout(() => { live--; r({ok:true, json:()=>Promise.resolve(geo)}); }, 30)); };
             _routerIdx = 0; _routerDeadUntil = 0; _routerDead = []; segCache = {};
             const jobs = [];
@@ -1125,7 +1130,8 @@ def functional_checks(index_path):
                                                   [{lat:35.15,lng:134.4},{lat:35.16,lng:134.5}]));
             const out = await Promise.all(jobs);
             window.fetch = origFetch; _routerIdx = keepIdx; _routerDead = keepDead; segCache = {};
-            return {peak:peak, limit:ROUTER_MAX_PARALLEL, done:out.length, ok:out.every(o=>o.length===2)};
+            return {peak:peak, limit:ROUTER_MAX_PARALLEL, done:out.length, other:other,
+                    ok:out.every(o=>o.length===2)};
           }catch(e){ return 'ERR:'+e.message; } })(); }""")
         chk('機能', '経路サーバへ同時に投げすぎない',
             isinstance(par, dict) and par.get('done') == 12 and par.get('ok') is True
