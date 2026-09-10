@@ -481,6 +481,9 @@ body.viewonly .mob-share, body.embed .mob-share{display:none!important}
     border-top:none;border-radius:16px 16px 0 0;background:rgba(255,255,255,0.97);box-shadow:0 -3px 12px rgba(0,0,0,0.07);z-index:1000;padding:4px 12px;overflow:hidden}
   #mobileElevBand.hidden-empty{display:none!important}
   #mobileShelf.no-route .mob-stats,#mobileShelf.no-route .mob-sdiv{display:none!important}
+  /* 棚の中身が入りきらない幅（iPhone mini・所要時間が1時間超など）でも「…」を枠の外へ出さない（v124）
+     距離時間だけを縮む側にして、入りきらない時だけ2行に折り返す */
+  #mobileShelf .mob-stats{flex:1 1 auto;min-width:0;flex-wrap:wrap;row-gap:0;line-height:1.15}
   /* 簡易版：高低差+78ラベルを隠し、グラフのみ表示（シェブロンは右上） */
   #mobileElevBand:not(.expanded) .mob-elev-hl{display:none!important}
   #mobileElevBand:not(.expanded) #mobileElevGrip{position:absolute;top:1px;right:8px;margin:0;z-index:3}
@@ -495,6 +498,14 @@ body.viewonly .mob-share, body.embed .mob-share{display:none!important}
 
 /* ━━━ 横向き（低い画面＝スマホ横）専用：地図を全画面にして各UIをフローティング ━━━ */
 /* PC（縦に高い画面）・縦向きには影響しない */
+/* 幅399px以下：折り返した時に「·」だけ残らないよう区切りを消す（v124）。ボタンは44pxのまま（隣と当たりが重なるため詰めない） */
+@media (max-width:399px){#mobileShelf .mob-stat-s{display:none}}
+/* 幅340px以下（初代SE級）だけ：見た目を詰める。当たり判定は .tap::after で44pxのまま */
+@media (max-width:340px){
+  #mobileShelf{padding:0 8px;gap:4px}
+  #mobileShelf .mob-mode{min-width:40px;padding:0 4px}
+  #mobileShelf .mob-stat-v{font-size:12px}
+}
 @media (orientation: landscape) and (max-height: 500px) {
   /* デスクトップ枠を隠して地図を全画面に */
   #hdr{display:none!important}
@@ -2037,7 +2048,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v123';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
+const APP_VERSION = 'v124';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
 }catch(_){} });

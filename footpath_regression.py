@@ -408,6 +408,13 @@ def static_checks(src):
         and "Array.isArray(w.photos) && w.photos.length > 0" in src)
     chk('静的', '歩く人の画面と埋め込みには「配る」を出さない',
         'body.viewonly .mob-share, body.embed .mob-share{display:none!important}' in src)
+    # --- v124: 棚の「…」が枠からはみ出さない ---
+    chk('静的', '棚の距離時間だけが縮む側で、入りきらない時は折り返す',
+        '#mobileShelf .mob-stats{flex:1 1 auto;min-width:0;flex-wrap:wrap' in src)
+    chk('静的', '375px以上はボタン44pxのまま折り返しで収め、340px以下だけ見た目を詰める',
+        '@media (max-width:399px){#mobileShelf .mob-stat-s{display:none}}' in src
+        and '@media (max-width:340px){' in src and '#mobileShelf .mob-mode{min-width:40px' in src
+        and 'width:max(100%,var(--tap))' in src)
     chk('静的', '破線の切れ目と三角の位置をそろえている', 'function _dashGapCenterPx' in src)
     chk('静的', '線を切れ端に分けて三角を挟む（上に重ねない）',
         'routeLine.setLatLngs(r.pieces.length ? r.pieces : [disp]);' in src)
@@ -1322,6 +1329,32 @@ def functional_checks(index_path):
         chk('機能', 'パソコンでも上バーの「配る」から同じ1枚が中央に出る',
             isinstance(pc, dict) and pc.get('vis') and pc.get('open') and pc.get('centered') and 400 <= pc.get('w', 0) <= 480,
             str(pc)[:160])
+
+        # v124: 小さい iPhone・長い所要時間（1時間25分）でも、棚の「…」は棚の中・画面の中に収まる
+        _fit = {}
+        for _w, _h in ((320, 568), (360, 780), (375, 812), (390, 844)):
+            page.set_viewport_size({'width': _w, 'height': _h})
+            _fit[_w] = page.evaluate("""()=>{ try{
+                leafMap.invalidateSize();
+                const keepT = mobileTimeDisp.textContent, keepD = mobileDistDisp.textContent;
+                mobileTimeDisp.textContent = '1時間25分'; mobileDistDisp.textContent = '12.8';
+                const sh = document.getElementById('mobileShelf'), more = document.querySelector('.mob-more');
+                const s = sh.getBoundingClientRect(), m = more.getBoundingClientRect();
+                const mode = document.querySelector('#mobileShelf .mob-mode');
+                const hit = parseFloat(getComputedStyle(mode, '::after').width) || 0;
+                const out = {inShelf: m.right <= s.right - 4 && m.left >= s.left,
+                             inView: m.right <= innerWidth && s.right <= innerWidth && s.left >= 0,
+                             noScroll: sh.scrollWidth <= sh.clientWidth, hit: Math.round(hit),
+                             moreW: Math.round(m.width), shelfH: Math.round(s.height)};
+                mobileTimeDisp.textContent = keepT; mobileDistDisp.textContent = keepD;
+                return out;
+              }catch(e){ return 'ERR:'+e.message; } }""")
+        page.set_viewport_size({'width': 390, 'height': 812})
+        page.evaluate("()=>{ leafMap.invalidateSize(); }")
+        chk('機能', '320〜390px幅・所要時間1時間25分でも棚の「…」が枠と画面に収まり、当たり判定は44px',
+            all(isinstance(v, dict) and v.get('inShelf') and v.get('inView') and v.get('noScroll')
+                and v.get('hit', 0) >= 44 and v.get('moreW', 0) >= 40 for v in _fit.values()),
+            str(_fit)[:260])
 
         # v121: バックアップからの日数・未反映の保存回数で色が変わり、書き出すと戻る。iPhone の案内は1回だけ
         bk = page.evaluate("""()=>{ return (async()=>{ try{
