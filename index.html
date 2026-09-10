@@ -992,10 +992,10 @@ const LINE_STYLE = {color:'#E84040', weight:4, dashArray:'8,5', opacity:.9, line
 const DBL_GAP_PX = 2;        // 往復で重なる区間：2本の線の間隔(px)
 const ROUTE_CASING_ADD = 3;  // ルート線の白いふちの太さ（赤い線に足すpx）。表示専用
 // 進行方向の三角 — ルート線の上に、一定の間隔で小さな三角を置く
-const DIR_GAP_PX   = 30;   // 三角どうしの間隔(px, 基準ズーム16)。画面上の間隔なので密度は一定
+const DIR_GAP_PX   = 50;   // 三角どうしの間隔(px, 基準ズーム16)。画面上の間隔なので密度は一定
 const DIR_LOOK_PX  = 10;   // 向きを測るときに先を見る距離(px)。点の細かさに左右されないため
-const DIR_TRI_PX   = 8;    // 三角の大きさ(px, 基準ズーム16)
-const DIR_AVOID_PX = 17;   // スポットの○に近すぎる三角は置かない(px)。○の下に隠れて見えないため
+const DIR_TRI_PX   = 5;    // 三角の大きさ(px, 基準ズーム16)
+const DIR_AVOID_PX = 10;   // スポットの○に近すぎる三角は置かない(px)。○の下に隠れて見えないため
 const DIR_MAX_K    = 1.6;  // 拡大しても三角が大きくなりすぎないための上限倍率
 const DIR_MAX      = 800;  // 一度に描く三角の上限（保険）
 // --- ルート表示チューニング（往復ずらし表示の間隔調整はここ1か所）---
@@ -1828,7 +1828,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v112';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
+const APP_VERSION = 'v113';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
 }catch(_){} });
@@ -4032,7 +4032,8 @@ function _drawDirMarks(disp){
   if (routeDirs) { leafMap.removeLayer(routeDirs); routeDirs = null; }
   const shapes = _buildDirMarks(disp);
   if (!shapes.length) return;
-  routeDirs = L.polygon(shapes, {color:'#fff', weight:2.2, fillColor:LINE_STYLE.color,
+  const dw = Math.max(0.9, DIR_TRI_PX * Math.min(_routeK(), DIR_MAX_K) * 0.22);   // 白いふちは大きさに比例
+  routeDirs = L.polygon(shapes, {color:'#fff', weight:dw, fillColor:LINE_STYLE.color,
     fillOpacity:1, opacity:1, lineJoin:'round', interactive:false, renderer: canvasRenderer}).addTo(leafMap);
 }
 
