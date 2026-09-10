@@ -351,9 +351,12 @@ def static_checks(src):
     chk('静的', 'スポットの○の下に隠れる位置は避ける', 'DIR_AVOID_PX' in src)
     chk('静的', '三角も当たり判定に使わず、後片付けもする',
         'interactive:false, renderer: canvasRenderer}).addTo(leafMap);' in src
-        and 'if (routeDirs)   { if(leafMap) leafMap.removeLayer(routeDirs);' in src)
+        and 'if (routeDirs)    { if(leafMap) leafMap.removeLayer(routeDirs);' in src
+        and 'if (routeDirGaps) { if(leafMap) leafMap.removeLayer(routeDirGaps);' in src)
     chk('静的', '配布シートの凡例に進行方向の説明がある', '歩くコース（三角の向きに歩く）' in src)
     chk('静的', '破線の切れ目と三角の位置をそろえている', 'function _dashGapCenterPx' in src)
+    chk('静的', '三角の場所は破線を消してから置く（線の上に重ねない）',
+        'routeDirGaps' in src and 'const r = _buildDirMarks(disp);' in src)
     # --- v99: ラベルの自動配置 ---
     chk('静的', 'ラベル自動配置 autoPlaceLabels 存在', 'function autoPlaceLabels' in src)
     chk('静的', 'まとめて実行する scheduleAutoLabels 存在', 'function scheduleAutoLabels' in src)
@@ -1118,8 +1121,8 @@ def functional_checks(index_path):
             leafMap.fitBounds(L.latLngBounds(line.map(c => L.latLng(c[0], c[1]))),
                               {animate:false, padding:[20,20]});
             wps.length = 0;                                   // スポット無しの素の状態で調べる
-            const east = _buildDirMarks(line);
-            const west = _buildDirMarks(line.slice().reverse());
+            const east = _buildDirMarks(line).tris;
+            const west = _buildDirMarks(line.slice().reverse()).tris;
             const pt = sh => sh.map(c => leafMap.latLngToLayerPoint(L.latLng(c[0], c[1])));
             const dirOk = (arr, sign) => arr.length > 0 && arr.every(q => {
               const v = pt(q); return (v[0].x - (v[1].x + v[2].x) / 2) * sign > 0.5; });
@@ -1143,11 +1146,11 @@ def functional_checks(index_path):
             const cx = sh => { const v = sh.map(c => leafMap.latLngToLayerPoint(L.latLng(c[0], c[1])));
                                return (v[0].x + v[1].x + v[2].x) / 3; };
             wps.length = 0;
-            const before = _buildDirMarks(line).map(cx);
+            const before = _buildDirMarks(line).tris.map(cx);
             // 出発点と、線のまん中のスポットを置く（まん中のほうの「手前」に三角が出るはず）
             wps.push({id:9000, type:'start',  lat:35.152, lng:134.440,  onRoute:true, name:'出発'});
             wps.push({id:9001, type:'course', lat:35.152, lng:134.4512, onRoute:true, name:'検査'});
-            const after = _buildDirMarks(line).map(cx);
+            const after = _buildDirMarks(line).tris.map(cx);
             const q = leafMap.latLngToLayerPoint(L.latLng(35.152, 134.4512));
             const size = DIR_TRI_PX * Math.min(_routeK(), DIR_MAX_K);
             const clear = DIR_AVOID_PX + size + 4, PER = _dashPeriodPx();

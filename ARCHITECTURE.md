@@ -39,7 +39,8 @@
 | `vps` | 調整点（Via Point）配列。ルートの通り道を手で決めるための点 |
 | `routeLine` / `_routeLineBase` | 画面上のルート線 / **その素の座標**（データ準拠） |
 | `routeCasing` | ルート線の下に敷く白い実線（v103）。**表示専用** |
-| `routeDirs` | 進行方向の三角（v112・一定間隔）。**表示専用** |
+| `routeDirs` | 進行方向の三角。**表示専用** |
+| `routeDirGaps` | 三角の場所の赤い破線を消す白い短線（v116）。**表示専用** |
 | `_lastRouteCoords` | 実際に採用されたルート座標。**GPX・距離・高低差の出どころ** |
 | `hitOverlays` | 区間ごとの当たり判定用の透明な線 |
 | `courseInfo` / `currentCourseId` | 開いているコースの名称等 / そのID |
@@ -117,7 +118,8 @@ _lastRouteCoords / _routeLineBase   ← ★これが「実データ」。GPX・�
    ↓ _buildDisplayCoords()          ★表示専用：往復区間だけ右へずらす
 routeLine.setLatLngs(...)           ← 画面に出る赤い破線
    ├ routeCasing                    ★表示専用：同じ座標の白い実線を「下」に敷く（v103）
-   └ routeDirs                      ★表示専用：30pxごとに小さな三角（v112）
+   ├ routeDirGaps                   ★表示専用：三角の場所の破線を白で消す（v116）
+   └ routeDirs                      ★表示専用：そのすき間に進行方向の三角
 ```
 
 **表示専用（`routeCasing`）の約束**

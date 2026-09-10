@@ -1099,6 +1099,7 @@ let vps         = [];
 let routeLine   = null;
 let routeCasing = null;    // ルート線の白いふち（表示専用。データ・当たり判定には一切関与しない）
 let routeDirs   = null;    // 進行方向の三角（表示専用）
+let routeDirGaps = null;   // 三角を置く場所の「すき間」＝赤い線を白で消す（表示専用）
 let hitOverlays = [];      // per-segment hit overlays — prevents segment misattribution
 let viaVisible  = true;
 let _vpDragged  = false;   // 調整点ドラッグ直後フラグ（クリックでメニューを開かないため）
@@ -1833,7 +1834,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v115';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
+const APP_VERSION = 'v116';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
 }catch(_){} });
@@ -3874,7 +3875,8 @@ function haversine(lat1,lng1,lat2,lng2) {
    POLYLINE
    ============================================================ */
 function removeLines() {
-  if (routeDirs)   { if(leafMap) leafMap.removeLayer(routeDirs);   routeDirs=null; }
+  if (routeDirs)    { if(leafMap) leafMap.removeLayer(routeDirs);    routeDirs=null; }
+  if (routeDirGaps) { if(leafMap) leafMap.removeLayer(routeDirGaps); routeDirGaps=null; }
   if (routeCasing) { if(leafMap) leafMap.removeLayer(routeCasing); routeCasing=null; }
   if (routeLine) { if(leafMap) leafMap.removeLayer(routeLine); routeLine=null; }
   _routeLineBase = null;
@@ -3992,7 +3994,8 @@ function _buildDisplayCoords(coords){
    ・画面に入っている所だけ作る（拡大すると線の長さが画面上で数万pxになるため）
    ・完全に表示専用。データ・当たり判定・高低差には一切関与しない */
 function _buildDirMarks(disp){
-  if (!leafMap || !disp || disp.length < 2) return [];
+  const EMPTY = {tris: [], gaps: []};
+  if (!leafMap || !disp || disp.length < 2) return EMPTY;
   const P = disp.map(c => leafMap.latLngToLayerPoint(L.latLng(c[0], c[1])));
   const k = Math.min(_routeK(), DIR_MAX_K);
   const size = DIR_TRI_PX * k;
@@ -4004,7 +4007,7 @@ function _buildDirMarks(disp){
   const cum = [0];
   for (let i = 1; i < P.length; i++) cum.push(cum[i-1] + Math.hypot(P[i].x - P[i-1].x, P[i].y - P[i-1].y));
   const total = cum[cum.length - 1];
-  if (total < _dashPeriodPx() * 2) return [];
+  if (total < _dashPeriodPx() * 2) return EMPTY;
   let seek = 1;
   const at = d => {                                   // 線に沿って d px 進んだ位置
     d = Math.max(0, Math.min(total, d));
@@ -4020,7 +4023,7 @@ function _buildDirMarks(disp){
   const G0  = _dashGapCenterPx();            // 最初の切れ目の中央
   const gapAt = m => G0 + m * PER;           // m 本目の破線のうしろの切れ目の中央
   const nDash = Math.floor((total - G0) / PER);
-  if (nDash < 1) return [];
+  if (nDash < 1) return EMPTY;
 
   // ①破線 DIR_EVERY_DASHES 本ごと
   const spots = [];
@@ -4064,7 +4067,7 @@ function _buildDirMarks(disp){
   // ── 三角の形を作る ──────────────────────────────────────────
   const circles = wps.filter(w => typeof w.lat === 'number')
                      .map(w => leafMap.latLngToLayerPoint(L.latLng(w.lat, w.lng)));
-  const out = [];
+  const out = [], gaps = [];
   keep.forEach(x => {
     if (out.length >= DIR_MAX) return;
     const d = gapAt(x.m);
@@ -4080,15 +4083,24 @@ function _buildDirMarks(disp){
               [pA.x - dx*back + nx2*side, pA.y - dy*back + ny2*side],
               [pA.x - dx*back - nx2*side, pA.y - dy*back - ny2*side]]
       .map(q => { const ll = leafMap.layerPointToLatLng(L.point(q[0], q[1])); return [ll.lat, ll.lng]; }));
+    // 三角を置く場所の破線を消すための短い線（この上に三角を描く＝破線の「間」に挟まる）
+    const h = size * 0.5 + 3;
+    gaps.push([[pA.x - dx*h, pA.y - dy*h], [pA.x + dx*h, pA.y + dy*h]]
+      .map(q => { const ll = leafMap.layerPointToLatLng(L.point(q[0], q[1])); return [ll.lat, ll.lng]; }));
   });
-  return out;
+  return {tris: out, gaps: gaps};
 }
 function _drawDirMarks(disp){
-  if (routeDirs) { leafMap.removeLayer(routeDirs); routeDirs = null; }
-  const shapes = _buildDirMarks(disp);
-  if (!shapes.length) return;
+  if (routeDirGaps) { leafMap.removeLayer(routeDirGaps); routeDirGaps = null; }
+  if (routeDirs)    { leafMap.removeLayer(routeDirs);    routeDirs = null; }
+  const r = _buildDirMarks(disp);
+  if (!r.tris.length) return;
+  // ①三角の場所の赤い破線を白で消す（下の白いふちと同じ色なので、線に「すき間」が空いて見える）
+  routeDirGaps = L.polyline(r.gaps, {color:'#fff', weight:_routeWeight() + 0.6, opacity:.95,
+    lineCap:'butt', lineJoin:'round', smoothFactor:0, interactive:false, renderer: canvasRenderer}).addTo(leafMap);
+  // ②そのすき間に三角を置く
   const dw = Math.max(0.9, DIR_TRI_PX * Math.min(_routeK(), DIR_MAX_K) * 0.22);   // 白いふちは大きさに比例
-  routeDirs = L.polygon(shapes, {color:'#fff', weight:dw, fillColor:LINE_STYLE.color,
+  routeDirs = L.polygon(r.tris, {color:'#fff', weight:dw, fillColor:LINE_STYLE.color,
     fillOpacity:1, opacity:1, lineJoin:'round', interactive:false, renderer: canvasRenderer}).addTo(leafMap);
 }
 
