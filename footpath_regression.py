@@ -350,7 +350,8 @@ def static_checks(src):
     chk('静的', '三角も当たり判定に使わず、後片付けもする',
         'interactive:false, renderer: canvasRenderer}).addTo(leafMap);' in src
         and 'if (routeDirs)   { if(leafMap) leafMap.removeLayer(routeDirs);' in src)
-    chk('静的', '配布シートの凡例に進行方向の説明がある', '三角の向きに歩く' in src)
+    chk('静的', '配布シートの凡例に進行方向の説明がある', '歩くコース（三角の向きに歩く）' in src)
+    chk('静的', '破線の切れ目と三角の位置をそろえている', 'function _dirHolePx' in src)
     # --- v99: ラベルの自動配置 ---
     chk('静的', 'ラベル自動配置 autoPlaceLabels 存在', 'function autoPlaceLabels' in src)
     chk('静的', 'まとめて実行する scheduleAutoLabels 存在', 'function scheduleAutoLabels' in src)
@@ -754,7 +755,7 @@ def functional_checks(index_path):
                      title:(s.querySelector('.sh-title')||{}).textContent||'' };
           }catch(e){ return 'ERR:'+e.message; } })(); }""")
         ok_sh = (isinstance(sh, dict) and sh.get('shown') == 'block' and sh.get('img') and sh.get('north')
-                 and sh.get('legend') == sh.get('used', 0) + 2          # 種別ぶん＋「歩くコース」＋「曲がり角」
+                 and sh.get('legend') == sh.get('used', 0) + 1          # 種別ぶん＋「歩くコース（三角の向きに歩く）」
                  and sh.get('meters', 0) > 0 and 0 < sh.get('ratio', 0) <= 0.6)
         chk('機能', '配布シートに凡例・縮尺・方位が入る', ok_sh, str(sh)[:180])
 

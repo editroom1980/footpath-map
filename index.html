@@ -287,8 +287,7 @@ body.viewonly #descSec.view-desc textarea{background:#F9F7F4;border-color:#E6DCC
 .sh-legend{display:flex;flex-direction:column;gap:5px;margin-bottom:12px}
 .sh-lg{display:flex;align-items:center;gap:7px;font-size:11.5px}
 .sh-lgm{width:19px;height:19px;border-radius:50%;color:#fff;font-size:9.5px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:none}
-.sh-lgline{width:19px;border-top:3px dashed #E84040;flex:none}
-.sh-lgtri{flex:none;display:inline-flex;width:19px;justify-content:center}
+.sh-lgline{flex:none;display:inline-flex;align-items:center}
 .sh-desc{font-size:11.5px;line-height:1.7;white-space:pre-wrap;margin-bottom:12px}
 .sh-spots{columns:2;column-gap:12px;font-size:11px;line-height:1.6}
 .sh-spot{break-inside:avoid;display:flex;gap:5px;margin-bottom:1px}
@@ -994,7 +993,7 @@ const ROUTE_CASING_ADD = 3;  // ルート線の白いふちの太さ（赤い線
 // 進行方向の三角 — ルート線の上に、一定の間隔で小さな三角を置く
 const DIR_GAP_PX   = 50;   // 三角どうしの間隔(px, 基準ズーム16)。画面上の間隔なので密度は一定
 const DIR_LOOK_PX  = 10;   // 向きを測るときに先を見る距離(px)。点の細かさに左右されないため
-const DIR_TRI_PX   = 5;    // 三角の大きさ(px, 基準ズーム16)
+const DIR_TRI_PX   = 7;    // 三角の大きさ(px, 基準ズーム16)
 const DIR_AVOID_PX = 10;   // スポットの○に近すぎる三角は置かない(px)。○の下に隠れて見えないため
 const DIR_MAX_K    = 1.6;  // 拡大しても三角が大きくなりすぎないための上限倍率
 const DIR_MAX      = 800;  // 一度に描く三角の上限（保険）
@@ -1828,7 +1827,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v113';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
+const APP_VERSION = 'v114';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
 }catch(_){} });
@@ -3920,7 +3919,15 @@ function buildSegCoordsList() {
 // 規則：道路と同じく「進行方向に対して常に右側」へ寄せる（右法線=(-dy,dx)）。行きと帰りが必ず反対側になり交差しない。破線・間隔も線幅と同縮尺、折返しは半円。
 function _routeWeight(){ const z=leafMap?leafMap.getZoom():16; return Math.max(2, Math.min(10, 3 + (z-16)*1.3)); } // 拡大で線を太く
 function _routeK(){ return _routeWeight()/3; }                          // 基準ズーム16を1とする倍率（破線・間隔も同縮尺）
-function _routeDash(){ const k=_routeK(); return (8*k).toFixed(1)+','+(5*k).toFixed(1); }
+/* 破線の「切れ目」に三角を置くための寸法。
+   周期＝三角の間隔。切れ目の幅＝三角がちょうど収まる幅。
+   線と三角はどちらも「線に沿った距離」で決まるので、位置がぴったりそろう
+   （──── ▶ ──── ▶ のような見た目になる）*/
+function _dirHolePx(){ return DIR_TRI_PX * Math.min(_routeK(), DIR_MAX_K) + 5; }
+function _routeDash(){
+  const P = DIR_GAP_PX, B = Math.min(P * 0.6, _dirHolePx());
+  return (P - B).toFixed(1) + ',' + B.toFixed(1);
+}
 function _buildDisplayCoords(coords){
   if(!_dblOn || !coords || coords.length<3 || !leafMap) return coords;
   const n=coords.length;
@@ -4010,9 +4017,10 @@ function _buildDirMarks(disp){
   // スポットの○の位置（この近くには置かない）
   const marks = wps.filter(w => typeof w.lat === 'number')
                    .map(w => leafMap.latLngToLayerPoint(L.latLng(w.lat, w.lng)));
-  const gap = DIR_GAP_PX;
+  const PER = DIR_GAP_PX, HOLE = Math.min(PER * 0.6, _dirHolePx());
+  const first = PER - HOLE / 2;         // 破線の最初の切れ目の中央
   const out = [];
-  for (let d = gap * 0.5; d <= total - gap * 0.15 && out.length < DIR_MAX; d += gap) {
+  for (let d = first; d <= total - HOLE * 0.4 && out.length < DIR_MAX; d += PER) {
     const pA = at(d), pB = at(Math.min(total, d + DIR_LOOK_PX));
     let dx = pB.x - pA.x, dy = pB.y - pA.y;
     const fl = Math.hypot(dx, dy);
@@ -4993,11 +5001,11 @@ function _sheetLegend() {
     return '<div class="sh-lg"><span class="sh-lgm" style="background:' + t.c + '">' + escHtml(sym) + '</span>'
          + '<span>' + escHtml(t.l) + '</span></div>';
   });
-  rows.push('<div class="sh-lg"><span class="sh-lgline"></span><span>歩くコース</span></div>');
-  rows.push('<div class="sh-lg"><span class="sh-lgtri">'
-    + '<svg width="14" height="12" viewBox="0 0 14 12"><path d="M12.5 6 L3 11 L3 1 Z" '
-    +   'fill="#E84040" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/></svg>'
-    + '</span><span>三角の向きに歩く</span></div>');
+  rows.push('<div class="sh-lg"><span class="sh-lgline">'
+    + '<svg width="27" height="10" viewBox="0 0 27 10">'
+    + '<path d="M0 5 H15" stroke="#E84040" stroke-width="3"/>'
+    + '<path d="M26 5 L18.5 8.8 L18.5 1.2 Z" fill="#E84040" stroke="#fff" stroke-width="1.2" stroke-linejoin="round"/>'
+    + '</svg></span><span>歩くコース（三角の向きに歩く）</span></div>');
   return rows.join('');
 }
 
