@@ -352,6 +352,13 @@ def static_checks(src):
     chk('静的', '新しいスポットの既定は「自動」', "labelDir:'top'" not in src and "labelDir: 'top'" not in src)
     chk('静的', "古いコースの'top'を自動として読み替える",
         "(w.labelDir && w.labelDir !== 'top') ? w.labelDir : 'auto'" in src)
+    # --- v105: ツールバーの分かりにくさ（UI点検 01・14の一部）---
+    tbar_labels = re.findall(r'<button class="btn[^>]*id="btn(?:Via|ToggleVia)"[\s\S]*?<span>([^<]*)</span>', src)
+    chk('静的', '「調整点」と同じ文字のボタンが2つ並んでいない',
+        len(tbar_labels) == 2 and tbar_labels[0] != tbar_labels[1], str(tbar_labels))
+    chk('静的', '案内文にマウスを乗せると全文が出る', "el.title = long[m] || ''" in src)
+    chk('静的', '画面を開いた直後の案内も短い文にそろえている',
+        '<span id="tbar-st" title=' in src and 'クリックでウェイポイント追加' not in src)
     chk('静的', '自動の向きは保存データに入れない（_autoDir）',
         '_autoDir' in src and 'labelDir:w.labelDir' in src.replace(' ', ''))
     # --- v100: スタンプラリー ---
@@ -1009,6 +1016,14 @@ def functional_checks(index_path):
             str(small) if small else f'{len(txt)}か所 OK')
         chk('機能', '補足の文字の濃さが 4.5:1 以上', not faint2,
             str(faint2) if faint2 else str([t['cr'] for t in txt]))
+
+        # v105: ツールバー下の案内が横に見切れていない
+        st = page.evaluate("""()=>{ setMode('wp');
+            const e = document.getElementById('tbar-st');
+            return {text:e.textContent, scrollW:e.scrollWidth, clientW:e.clientWidth, hasTitle:!!e.title}; }""")
+        chk('機能', 'ツールバー下の案内が見切れない',
+            isinstance(st, dict) and st.get('scrollW', 9e9) <= st.get('clientW', 0) + 1
+            and st.get('hasTitle') is True, str(st)[:170])
 
         # v103: 白いふちが赤い線と同じ形で敷かれ、データ側は何も変わっていない
         cas = page.evaluate("""()=>{ try{

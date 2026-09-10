@@ -668,9 +668,9 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
     </div>
       <div id="tbar">
         <button class="btn on" id="btnWp" onclick="setMode('wp')" title="WP追加&#10;クリックでスポットをコースに追加"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M9 11a3 3 0 1 0 6 0a3 3 0 0 0 -6 0" /> <path d="M17.657 16.657l-4.243 4.243a2 2 0 0 1 -2.827 0l-4.244 -4.243a8 8 0 1 1 11.314 0" /></svg><span>WP</span></button>
-        <button class="btn" id="btnVia" onclick="setMode('via')" title="調整点追加&#10;ルートラインをドラッグして経路を微調整"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M12 6a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /> <path d="M4 6l8 0" /> <path d="M16 6l4 0" /> <path d="M6 12a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /> <path d="M4 12l2 0" /> <path d="M10 12l10 0" /> <path d="M15 18a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /> <path d="M4 18l11 0" /> <path d="M19 18l1 0" /></svg><span>調整点</span></button>
+        <button class="btn" id="btnVia" onclick="setMode('via')" title="調整点を置く&#10;地図をクリックすると、そこを通るように道順が変わります"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M12 6a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /> <path d="M4 6l8 0" /> <path d="M16 6l4 0" /> <path d="M6 12a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /> <path d="M4 12l2 0" /> <path d="M10 12l10 0" /> <path d="M15 18a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /> <path d="M4 18l11 0" /> <path d="M19 18l1 0" /></svg><span>調整点</span></button>
         <span class="tsep">|</span>
-        <button class="btn" id="btnToggleVia" onclick="toggleViaVisibility()" title="調整点 表示/非表示"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M8 12a4 4 0 1 0 8 0a4 4 0 1 0 -8 0" /></svg><span>調整点</span></button>
+        <button class="btn" id="btnToggleVia" onclick="toggleViaVisibility()" title="調整点の表示/非表示&#10;隠している間はルート線をドラッグできません（ルートは保持されます）"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M8 12a4 4 0 1 0 8 0a4 4 0 1 0 -8 0" /></svg><span>調整点の表示</span></button>
         <button class="btn" id="btnMapLabels" onclick="toggleMapLabels()" title="地名/WP○ 表示切替&#10;OFFにすると地図の文字・WPマーカーが消え&#10;コースの点線だけ残ります"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M6.5 7.5a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" /> <path d="M3 6v5.172a2 2 0 0 0 .586 1.414l7.71 7.71a2.41 2.41 0 0 0 3.408 0l5.592 -5.592a2.41 2.41 0 0 0 0 -3.408l-7.71 -7.71a2 2 0 0 0 -1.414 -.586h-5.172a3 3 0 0 0 -3 3" /></svg><span>地名</span></button>
         <button class="btn" id="btnLabelSize" onclick="cycleLabelSize()" title="名称ラベルの文字サイズ&#10;標準→大→特大を切替（保存画像にも反映）"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M4 20l4 -10l4 10" /> <path d="M5 17l6 0" /> <path d="M14 20l3 -7l3 7" /> <path d="M14.8 18l4.4 0" /></svg><span id="lblSizeTxt">標準</span></button>
         <button class="btn" id="btnBaseMap" onclick="cycleBaseMap()" title="背景地図を切替（標準/航空写真/地形図/淡色/色違い）&#10;保存画像の配色もこれで変わります"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M9 4l0 13" /> <path d="M15 7l0 13" /> <path d="M3.5 5.5l5.5 -1.5l6 2l5.5 -1.5v12l-5.5 1.5l-6 -2l-5.5 1.5z" /></svg><span>地図</span></button>
@@ -686,7 +686,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
         <button class="btn" onclick="openPrintSheet()" title="配布シート&#10;A4印刷・PDF・画像用のレイアウト（凡例・縮尺・方位つき）"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M17 17h2a2 2 0 0 0 2 -2v-4a2 2 0 0 0 -2 -2h-14a2 2 0 0 0 -2 2v4a2 2 0 0 0 2 2h2" /> <path d="M17 9v-4a2 2 0 0 0 -2 -2h-6a2 2 0 0 0 -2 2v4" /> <path d="M7 13m0 2a2 2 0 0 1 2 -2h6a2 2 0 0 1 2 2v4a2 2 0 0 1 -2 2h-6a2 2 0 0 1 -2 -2z" /></svg><span>配布シート</span></button>
         <button class="btn" id="btnView" onclick="toggleViewMode()" title="閲覧モード&#10;ONの間はウェイポイントをタップで写真・解説を表示"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" /> <path d="M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6" /></svg></button>
         <button class="btn" onclick="openHelp()" title="操作ガイド"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0" /> <path d="M12 16v.01" /> <path d="M12 13a2 2 0 0 0 .914 -3.782a1.98 1.98 0 0 0 -2.414 .483" /></svg></button>
-        <span id="tbar-st">クリックでウェイポイント追加 / ルート線ドラッグで経路調整</span>
+        <span id="tbar-st" title="クリックでスポットを追加／赤いルート線をドラッグすると道順を変えられます">クリックでスポットを追加</span>
       </div>
       <div id="mapWrap">
         <div id="map"></div>
@@ -1782,7 +1782,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v104';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
+const APP_VERSION = 'v105';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
 }catch(_){} });
@@ -4989,14 +4989,21 @@ function setMode(m) {
   // なぞり描きモードへの遷移時は開始処理
   if (m === 'draw') { _customTraceMode=false; enterDrawMode(); }
   const msgs = {
-    'wp':       'クリックでウェイポイント追加 / ルート線ドラッグで経路調整',
-    'via':      '調整点モード：ルートライン上をクリックまたはドラッグ',
-    'draw':     '✏️ なぞり描き：地図を指でなぞってコースを描く',
-    'road':     '🛤 道路描画モード：クリックで点を追加 → 完了ボタンで確定',
-    'road-edit':'✏️ 編集中：点をドラッグで移動 / ライン上クリックで追加 / 点を右クリックで削除 / 他モードで終了',
+    'wp':       'クリックでスポットを追加',
+    'via':      'ルート線の上をクリックして道順を変える',
+    'draw':     'なぞり描き：地図をなぞってコースを描く',
+    'road':     '道を描いています：クリックで点を追加',
+    'road-edit':'道を編集中：点をドラッグで移動／右クリックで削除',
+  };
+  const long = {
+    'wp':       'クリックでスポットを追加／赤いルート線をドラッグすると道順を変えられます',
+    'via':      'ルート線の上をクリックまたはドラッグすると、そこを通るように道順が変わります',
+    'draw':     '地図を指でなぞるとコースを描けます',
+    'road':     'クリックで点を追加し、完了ボタンで確定します',
+    'road-edit':'点をドラッグで移動／ライン上クリックで追加／点を右クリックで削除／他のモードに切り替えると終了',
   };
   const el = document.getElementById('tbar-st');
-  if (el) el.textContent = msgs[m] || '';
+  if (el) { el.textContent = msgs[m] || ''; el.title = long[m] || ''; }
 }
 
 /* ============================================================
