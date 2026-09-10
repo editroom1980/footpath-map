@@ -307,6 +307,29 @@ def static_checks(src):
     chk('静的', '色の定義は WT の1か所だけ（CSSに直書きしない）',
         '.wp-tt-course{background:' not in src and 'function _injectWpStyles' in src)
     chk('静的', '画像保存の色も WT から作る', "_colors['wp-tt-' + t.v] = t.c" in src)
+    # --- v101: 配色の基準（白文字を載せる面は 4.5:1 以上）---
+    def _white_contrast(hexv):
+        """白い文字を載せたときの読みやすさの差を返す（大きいほど読みやすい）"""
+        h = hexv.lstrip('#')
+        ch = [int(h[i:i + 2], 16) / 255 for i in (0, 2, 4)]
+        f = lambda v: v / 12.92 if v <= 0.03928 else ((v + 0.055) / 1.055) ** 2.4
+        lum = 0.2126 * f(ch[0]) + 0.7152 * f(ch[1]) + 0.0722 * f(ch[2])
+        return round(1.05 / (lum + 0.05), 2)
+
+    root_vars = dict(re.findall(r"--(brand|brand-lite|ok):(#[0-9A-Fa-f]{6})", src))
+    js_colors = dict(re.findall(r"(brand|ok):'(#[0-9A-Fa-f]{6})'", src))
+    chk('静的', '配色の基準が :root にある', len(root_vars) == 3, str(root_vars))
+    chk('静的', 'CSSの色とJSの色が一致している（COLOR と :root）',
+        root_vars.get('brand', '').upper() == js_colors.get('brand', 'x').upper()
+        and root_vars.get('ok', '').upper() == js_colors.get('ok', 'y').upper(),
+        f'CSS={root_vars} JS={js_colors}')
+    ng_face = {k: _white_contrast(v) for k, v in root_vars.items() if _white_contrast(v) < 4.5}
+    chk('静的', '白文字を載せる色が読みやすさ 4.5:1 以上', not ng_face,
+        str({k: _white_contrast(v) for k, v in root_vars.items()}))
+    ng_wt = {c: _white_contrast(c) for c in wt_colors if _white_contrast(c) < 4.5}
+    chk('静的', 'スポットの色も 4.5:1 以上（○の中の記号が白のため）', not ng_wt, str(ng_wt))
+    chk('静的', '古い操作色を直書きしていない',
+        '#F2670E' not in src and '#C4703A' not in src, 'F2670E/C4703A が残っている')
     # --- v99: ラベルの自動配置 ---
     chk('静的', 'ラベル自動配置 autoPlaceLabels 存在', 'function autoPlaceLabels' in src)
     chk('静的', 'まとめて実行する scheduleAutoLabels 存在', 'function scheduleAutoLabels' in src)

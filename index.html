@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Footpath Mapmaker</title>
 <meta name="description" content="歩くコース（フットパス）を地図で設計し、配布用の地図画像やJSONを書き出せるWebアプリ。">
-<meta name="theme-color" content="#F2670E">
+<meta name="theme-color" content="#B8440A">
 <!-- SNS・LINEでURLを共有したときのカード表示（画像は公開URL基準の絶対パスが必要）-->
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="フットパスマップメーカー">
@@ -23,6 +23,22 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
+
+/* ══ 配色の基準 ═══════════════════════════════════════════════════
+   色を変えるときは「ここ」と、下の CONSTANTS の COLOR の2か所だけ。
+   （食い違わないよう回帰テストで一致を検査している）
+
+   決めごと：白い文字を載せる面は、読みやすさの差 4.5:1 以上にする。
+   もとの var(--brand) は 3.12:1、var(--brand) は 3.67:1 で基準に届いていなかった。
+   操作の色は1つだけにする（以前はこの2色が同じ役目で混在していた）。 */
+:root{
+  --brand:#B8440A;        /* 操作の色。白文字 5.43:1 */
+  --brand-lite:#C25313;   /* グラデーションの明るい側。白文字 4.62:1 */
+  --brand-soft:#FFF3EC;   /* 淡い下地。この上に置く --brand の文字は 4.98:1 */
+  --brand-grad:linear-gradient(135deg,#C25313,#B8440A);
+  --brand-sh:rgba(184,68,10,.32);   /* 影 */
+  --ok:#0E6B3C;           /* できた・安全・やさしい。白文字 6.59:1 */
+}
 html,body{min-height:calc(100% + env(safe-area-inset-top));font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:13px;color:#2C1B0E;overflow:hidden;background:#E8D8B8}
 
 /* ====== SCREEN 1 ====== */
@@ -30,7 +46,7 @@ html,body{min-height:calc(100% + env(safe-area-inset-top));font-family:'Hiragino
 .s1-inner{width:100%;max-width:480px;margin:0 auto;display:flex;flex-direction:column;height:100%}
 .s1-header{padding:24px 4px 16px}
 .s1-wordmark{font-family:'Plus Jakarta Sans','Hiragino Sans',sans-serif;font-size:24px;font-weight:800;color:#1C1917;letter-spacing:-0.03em}
-.s1-wordmark em{font-style:normal;color:#F2670E}
+.s1-wordmark em{font-style:normal;color:var(--brand)}
 .s1-ver{font-size:12px;font-weight:600;color:#A8A29E;letter-spacing:0;vertical-align:middle;margin-left:4px}
 .s1-sec-h{display:flex;align-items:center;justify-content:space-between;margin:4px 4px 12px}
 .s1-sec-h>span:first-child{font-family:'Plus Jakarta Sans','Hiragino Sans',sans-serif;font-size:13px;font-weight:800;color:#1C1917}
@@ -42,7 +58,7 @@ html,body{min-height:calc(100% + env(safe-area-inset-top));font-family:'Hiragino
 .s1-tool:hover{background:#F4EFE7}
 #storageInfo{margin-top:8px;font-size:10.5px;color:#9A8F80;text-align:center;line-height:1.6}
 #storageInfo.warn{color:#C0562A;font-weight:700}
-.s1-fab{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:16px;border-radius:16px;background:linear-gradient(135deg,#FB8B3E,#F2670E);color:#fff;border:none;font-family:'Plus Jakarta Sans','Hiragino Sans',sans-serif;font-size:15px;font-weight:800;box-shadow:0 6px 16px rgba(242,103,14,0.32);cursor:pointer}
+.s1-fab{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:16px;border-radius:16px;background:var(--brand-grad);color:#fff;border:none;font-family:'Plus Jakarta Sans','Hiragino Sans',sans-serif;font-size:15px;font-weight:800;box-shadow:0 6px 16px var(--brand-sh);cursor:pointer}
 .s1-fab .svgi{font-size:20px}
 /* コースカード */
 .cc{background:#fff;border-radius:18px;padding:13px;margin-bottom:11px;display:flex;align-items:center;gap:13px;border:0.5px solid #F0EBE2;box-shadow:0 1px 3px rgba(0,0,0,0.02);cursor:pointer}
@@ -71,12 +87,12 @@ html,body{min-height:calc(100% + env(safe-area-inset-top));font-family:'Hiragino
 .ncs-t{font-family:'Plus Jakarta Sans','Hiragino Sans',sans-serif;font-size:17px;font-weight:800;color:#1C1917;margin-bottom:18px;text-align:center}
 .ncs-fld{margin-bottom:14px}
 .ncs-l{font-size:12px;font-weight:700;color:#5A554E;margin-bottom:6px;display:flex;align-items:center;gap:5px}
-.ncs-l .req{color:#F2670E;font-size:10px}
+.ncs-l .req{color:var(--brand);font-size:10px}
 .ncs-l .svgi{font-size:14px;color:#A8A29E}
 .s1-input{width:100%;padding:12px 14px;border-radius:12px;border:1.5px solid #EDE8E0;background:#F9F7F4;font-size:14px;color:#1C1917;font-family:inherit;-webkit-appearance:none;appearance:none;box-shadow:none;outline:none}
-.s1-input:focus{border-color:#F2670E;background:#fff}
+.s1-input:focus{border-color:var(--brand);background:#fff}
 .s1-hint{font-size:10px;color:#BDB5A8;margin-top:5px}
-.ncs-btn{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:15px;border-radius:15px;background:linear-gradient(135deg,#FB8B3E,#F2670E);color:#fff;border:none;font-family:'Plus Jakarta Sans','Hiragino Sans',sans-serif;font-size:15px;font-weight:800;margin-top:6px;cursor:pointer}
+.ncs-btn{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:15px;border-radius:15px;background:var(--brand-grad);color:#fff;border:none;font-family:'Plus Jakarta Sans','Hiragino Sans',sans-serif;font-size:15px;font-weight:800;margin-top:6px;cursor:pointer}
 .ncs-btn .svgi{font-size:18px}
 
 /* ====== SCREEN 2 ====== */
@@ -87,7 +103,7 @@ html,body{min-height:calc(100% + env(safe-area-inset-top));font-family:'Hiragino
 .hbtn{padding:5px 9px;border-radius:4px;font-size:11px;font-family:inherit;cursor:pointer;white-space:nowrap;background:rgba(255,255,255,.15);color:#F5EDD8;border:1px solid rgba(255,255,255,.25);display:inline-flex;align-items:center;justify-content:center;gap:4px}
 .hbtn svg{flex-shrink:0}
 .hbtn:hover{background:rgba(255,255,255,.25)}
-.hbtn-save{background:#C4703A;border-color:#A85A2A}
+.hbtn-save{background:var(--brand);border-color:#8E3406}
 #main{flex:1;display:flex;overflow:hidden;min-height:0}
 #sidebar{width:240px;flex-shrink:0;background:#FAF6EE;border-right:1px solid #D4C4A8;display:flex;flex-direction:column;overflow:hidden}
 #wpSec{flex:1;min-height:0;display:flex;flex-direction:column}
@@ -96,10 +112,10 @@ html,body{min-height:calc(100% + env(safe-area-inset-top));font-family:'Hiragino
 .wp-row{display:flex;align-items:center;gap:5px;padding:5px 10px;border-bottom:1px solid #EEE8DE;cursor:grab;user-select:none}
 .wp-row:hover{background:#F0E8D8}
 .wp-row.dragging{opacity:.35}
-.wp-row.drag-over{border-top:2px solid #C4703A}
+.wp-row.drag-over{border-top:2px solid var(--brand)}
 .wp-dot{width:22px;height:22px;border-radius:50%;color:#fff;font-size:10px;font-weight:bold;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .wp-nm{font-size:11px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.wp-ed{font-size:11px;color:#C4703A;flex-shrink:0;padding:1px 3px;cursor:pointer}
+.wp-ed{font-size:11px;color:var(--brand);flex-shrink:0;padding:1px 3px;cursor:pointer}
 #infoSec{padding:8px 10px;background:#F0EAE0;flex-shrink:0;border-top:1px solid #D4C4A8}
 #distDisp{font-size:12px;font-weight:bold;color:#4A2E0E}
 #timeDisp{font-size:11px;color:#5A3A1A;margin-top:2px}
@@ -122,7 +138,7 @@ html,body{min-height:calc(100% + env(safe-area-inset-top));font-family:'Hiragino
 .btn{padding:5px 9px;border:1px solid #C4B89A;border-radius:4px;background:#fff;cursor:pointer;font-size:11px;font-family:inherit;white-space:nowrap;line-height:1.4;min-height:30px;display:inline-flex;align-items:center;justify-content:center;gap:4px}
 .btn svg{flex-shrink:0}
 .btn:hover{background:#F5EDD8}
-.btn.on{background:#C4703A;color:#fff;border-color:#C4703A}
+.btn.on{background:var(--brand);color:#fff;border-color:var(--brand)}
 .btn:disabled{opacity:.4;cursor:default;pointer-events:none}
 .btn-rd{background:#B71C1C;color:#fff;border-color:#B71C1C}
 /* Modal */
@@ -133,7 +149,7 @@ html,body{min-height:calc(100% + env(safe-area-inset-top));font-family:'Hiragino
 .m-hdr-acts{display:flex;gap:6px;align-items:center}
 .m-hbtn{border:none;cursor:pointer;font-family:inherit;font-weight:700;display:flex;align-items:center;justify-content:center}
 .m-hbtn.del{background:#DC2626;color:#fff;font-size:12px;padding:6px 14px;border-radius:14px}
-.m-hbtn.save{background:linear-gradient(135deg,#FB8B3E,#F2670E);color:#fff;font-size:12px;padding:6px 14px;border-radius:14px;box-shadow:0 2px 6px rgba(242,103,14,.35)}
+.m-hbtn.save{background:var(--brand-grad);color:#fff;font-size:12px;padding:6px 14px;border-radius:14px;box-shadow:0 2px 6px rgba(184,68,10,.35)}
 .m-hbtn.x{background:rgba(0,0,0,.06);color:#6A5640;width:30px;height:30px;border-radius:50%;font-size:15px;padding:0}
 .m-hbtn.x .svgi{width:15px;height:15px}
 .m-body{padding:14px;overflow-y:auto;flex:1;min-height:0}
@@ -146,8 +162,8 @@ html,body{min-height:calc(100% + env(safe-area-inset-top));font-family:'Hiragino
 #helpModal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:4000;overflow-y:auto;padding:20px 12px}
 #helpModal.show{display:block}
 .help-box{background:#fff;border-radius:10px;width:min(500px,100%);margin:0 auto;padding:20px;box-shadow:0 8px 32px rgba(0,0,0,.3)}
-.help-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;padding-bottom:10px;border-bottom:2px solid #C4703A}
-.help-section{margin-bottom:16px;padding:12px;background:#FAF6EE;border-radius:6px;border-left:3px solid #C4703A}
+.help-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;padding-bottom:10px;border-bottom:2px solid var(--brand)}
+.help-section{margin-bottom:16px;padding:12px;background:#FAF6EE;border-radius:6px;border-left:3px solid var(--brand)}
 .help-section h3{font-size:13px;color:#3E2A0E;margin-bottom:6px}
 .help-section p,.help-section li{font-size:12px;color:#5A3A1A;line-height:1.7}
 .help-section ul{padding-left:16px}
@@ -175,7 +191,7 @@ html,body{min-height:calc(100% + env(safe-area-inset-top));font-family:'Hiragino
 #elevModalClose:hover{color:#4A2E0E}
 #elevStats{font-size:11px;color:#6A4E2A;margin-bottom:8px;display:flex;flex-wrap:wrap;gap:10px}
 #elevStats span{white-space:nowrap}
-#elevStats b{color:#C4703A}
+#elevStats b{color:var(--brand)}
 #elevChartWrap{width:100%;overflow-x:auto}
 #elevChart{min-width:280px;width:100%;height:170px;display:block}
 #elevMsg{font-size:12px;color:#9A8070;text-align:center;padding:16px 0}
@@ -210,8 +226,8 @@ body.embed #s2, body.embed #mapArea, body.embed #mapWrap{height:100%!important;m
 #stampBar{position:absolute;right:8px;bottom:8px;z-index:1200;display:none;background:rgba(255,255,255,.94);
   color:#4A2E0E;font-size:12px;font-weight:700;padding:6px 11px;border-radius:14px;
   box-shadow:0 2px 10px rgba(0,0,0,.18);cursor:pointer}
-#stampBar.done{background:#2E7D32;color:#fff}
-.wp-visited{position:absolute;right:-3px;top:-3px;width:14px;height:14px;border-radius:50%;background:#2E7D32;
+#stampBar.done{background:var(--ok);color:#fff}
+.wp-visited{position:absolute;right:-3px;top:-3px;width:14px;height:14px;border-radius:50%;background:var(--ok);
   color:#fff;font-size:9px;line-height:14px;text-align:center;border:1.5px solid #fff;font-weight:700}
 #embedBar{position:absolute;top:0;left:0;right:0;z-index:1200;display:none;align-items:center;gap:8px;
   padding:7px 10px;background:linear-gradient(180deg,rgba(255,255,255,.96),rgba(255,255,255,.82));
@@ -219,7 +235,7 @@ body.embed #s2, body.embed #mapArea, body.embed #mapWrap{height:100%!important;m
 body.embed #embedBar{display:flex}
 #embedBar .eb-name{flex:1;min-width:0;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #embedBar .eb-stat{flex:none;color:#7A6A55;font-size:11.5px;white-space:nowrap}
-#embedBar a{flex:none;background:linear-gradient(135deg,#FB8B3E,#F2670E);color:#fff;text-decoration:none;
+#embedBar a{flex:none;background:var(--brand-grad);color:#fff;text-decoration:none;
   font-size:11.5px;font-weight:700;padding:5px 10px;border-radius:8px}
 body.embed .leaflet-control-attribution{font-size:9px}
 /* 配布リンク(?course= / ?view=)で開いたときは編集UIを隠す（見る人が触って壊さないように）*/
@@ -237,13 +253,13 @@ body.viewonly #descSec.view-desc textarea{background:#F9F7F4;border-color:#E6DCC
 .ck-row{display:flex;gap:9px;align-items:flex-start;padding:9px 0;border-bottom:1px solid #F0EBE2}
 .ck-row:last-of-type{border-bottom:none}
 .ck-ic{width:20px;height:20px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;margin-top:1px}
-.ck-ok{background:#2E7D32} .ck-warn{background:#B87503} .ck-ng{background:#C0392B} .ck-info{background:#9A8F80}
+.ck-ok{background:var(--ok)} .ck-warn{background:#B87503} .ck-ng{background:#C0392B} .ck-info{background:#9A8F80}
 .ck-l{font-size:13px;font-weight:700;color:#4A2E0E;line-height:1.5}
 .ck-d{font-size:11.5px;color:#7A6A55;line-height:1.6;word-break:break-all}
 .ck-sec{font-size:10.5px;font-weight:700;color:#9A8F80;letter-spacing:.05em;margin:12px 0 2px}
 .ck-acts{display:flex;flex-direction:column;gap:8px;margin-top:14px}
 .ck-btn{border:none;border-radius:10px;padding:12px;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer}
-.ck-primary{background:linear-gradient(135deg,#FB8B3E,#F2670E);color:#fff}
+.ck-primary{background:var(--brand-grad);color:#fff}
 .ck-sub-btn{background:#EEE5D8;color:#4A2E0E}
 .ck-guide{background:#F9F7F4;border-radius:10px;padding:11px 13px;margin-top:12px;font-size:11.5px;color:#5A4A35;line-height:1.85}
 .ck-guide b{color:#4A2E0E}
@@ -251,10 +267,10 @@ body.viewonly #descSec.view-desc textarea{background:#F9F7F4;border-color:#E6DCC
 #sheetOver{position:fixed;inset:0;z-index:6500;display:none;overflow:auto;background:rgba(40,30,20,.55);padding:16px}
 #sheetOver .sheet-actions{display:flex;gap:8px;justify-content:center;margin:0 auto 12px;max-width:1040px;flex-wrap:wrap}
 .sh-btn{border:none;border-radius:10px;padding:11px 18px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit}
-.sh-primary{background:linear-gradient(135deg,#FB8B3E,#F2670E);color:#fff}
+.sh-primary{background:var(--brand-grad);color:#fff}
 .sh-sub{background:#fff;color:#4A2E0E}
 #printSheet{max-width:1040px;margin:0 auto;background:#fff;border-radius:6px;padding:16px 18px;box-shadow:0 12px 40px rgba(0,0,0,.35);color:#3E2A0E;font-size:12px}
-.sh-head{display:flex;align-items:flex-end;gap:12px;border-bottom:2px solid #F2670E;padding-bottom:8px;margin-bottom:10px;flex-wrap:wrap}
+.sh-head{display:flex;align-items:flex-end;gap:12px;border-bottom:2px solid var(--brand);padding-bottom:8px;margin-bottom:10px;flex-wrap:wrap}
 .sh-title{font-size:20px;font-weight:800;line-height:1.25}
 .sh-area{font-size:12px;color:#7A6A55;margin-top:2px}
 .sh-stats{margin-left:auto;display:flex;gap:16px;font-size:11px;color:#7A6A55;white-space:nowrap}
@@ -273,7 +289,7 @@ body.viewonly #descSec.view-desc textarea{background:#F9F7F4;border-color:#E6DCC
 .sh-desc{font-size:11.5px;line-height:1.7;white-space:pre-wrap;margin-bottom:12px}
 .sh-spots{columns:2;column-gap:12px;font-size:11px;line-height:1.6}
 .sh-spot{break-inside:avoid;display:flex;gap:5px;margin-bottom:1px}
-.sh-spot b{flex:none;color:#C4703A}
+.sh-spot b{flex:none;color:var(--brand)}
 .sh-qr{display:flex;gap:9px;align-items:center}
 .sh-qr img,.sh-qr canvas{display:block;width:104px;height:104px}
 .sh-qr-t{font-size:10px;line-height:1.5;color:#7A6A55}
@@ -290,12 +306,12 @@ body.viewonly #descSec.view-desc textarea{background:#F9F7F4;border-color:#E6DCC
 }
 #updBar{position:fixed;left:8px;right:8px;top:max(8px,env(safe-area-inset-top));z-index:7000;display:flex;align-items:center;gap:10px;background:#4A2E0E;color:#F5EDD8;font-size:12.5px;padding:9px 12px;border-radius:12px;box-shadow:0 6px 24px rgba(0,0,0,.35)}
 #updBar span{flex:1;line-height:1.45}
-#updBar button{border:none;border-radius:8px;padding:7px 13px;font-size:12.5px;font-weight:700;font-family:inherit;background:linear-gradient(135deg,#FB8B3E,#F2670E);color:#fff;cursor:pointer;flex:none}
+#updBar button{border:none;border-radius:8px;padding:7px 13px;font-size:12.5px;font-weight:700;font-family:inherit;background:var(--brand-grad);color:#fff;cursor:pointer;flex:none}
 #updBar .upd-x{background:transparent;color:#D9CDB4;padding:6px 4px;font-size:14px}
 #offlineBadge{position:fixed;top:8px;left:50%;transform:translateX(-50%);background:rgba(90,58,26,.92);color:#fff;font-size:11px;padding:4px 14px;border-radius:14px;z-index:2600;pointer-events:none;display:none}
 body.offline #offlineBadge{display:block}
 #viewBadge{position:fixed;top:8px;left:50%;transform:translateX(-50%);background:rgba(196,112,58,.9);color:#fff;font-size:11px;padding:4px 14px;border-radius:14px;z-index:2500;pointer-events:none;display:none}
-.ctx-it.ctx-convert{color:#2E7D32}
+.ctx-it.ctx-convert{color:var(--ok)}
 /* Context menu */
 #ctxMenu{display:none;position:fixed;z-index:5000;background:#fff;border:1px solid #C4B89A;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,.25);min-width:215px;max-width:min(300px,calc(100vw - 24px - env(safe-area-inset-left) - env(safe-area-inset-right)));max-height:calc(100vh - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom));overflow-y:auto;font-family:'Hiragino Sans','Meiryo',sans-serif}
 .ctx-hdr{padding:7px 8px 7px 14px;font-size:11px;font-weight:bold;color:#4A2E0E;background:#F0E8D8;border-bottom:1px solid #D4C4A8;display:flex;align-items:center;justify-content:space-between;gap:8px}
@@ -361,7 +377,7 @@ body.offline #offlineBadge{display:block}
   #mobileElevBand:not(.expanded) #mobileElevGrip{position:absolute;top:1px;right:8px;margin:0;z-index:3}
   #mobileElevBand:not(.expanded) #mobileElevSvg{display:block!important;height:40px!important}
   #mobileElevBand.expanded{padding:6px 12px 8px}
-  #sidebar{width:100%;border-right:none;border-top:2px solid #C4703A;max-height:44vh;order:2;flex-shrink:0}
+  #sidebar{width:100%;border-right:none;border-top:2px solid var(--brand);max-height:44vh;order:2;flex-shrink:0}
   #mapArea{order:1;flex:1;min-height:0}
   .btn{min-height:36px;font-size:12px;padding:6px 10px}
   .wp-dot{width:26px;height:26px;font-size:11px}
@@ -459,7 +475,7 @@ body.offline #offlineBadge{display:block}
 .mob-stat-s{font-size:10px;color:#E2DDD4}
 .cust-handle{width:20px;height:20px;border-radius:50%;background:#fff;border:2.5px solid #E8731C;box-shadow:0 1px 3px rgba(0,0,0,.35);box-sizing:border-box;cursor:grab}
 #reorderSheet .ro-head{display:flex;align-items:center;justify-content:space-between;font-size:14px;font-weight:700;color:#4A2E0E;padding:2px 0 6px}
-#reorderSheet .ro-close{border:none;background:#F2670E;color:#fff;border-radius:8px;font-size:13px;font-weight:700;padding:6px 14px}
+#reorderSheet .ro-close{border:none;background:var(--brand);color:#fff;border-radius:8px;font-size:13px;font-weight:700;padding:6px 14px}
 #reorderSheet .ro-hint{font-size:11px;color:#9b948c;padding-bottom:6px}
 #reorderSheet .ro-row{display:flex;align-items:center;gap:8px;padding:0 4px;height:48px;box-sizing:border-box;border-bottom:0.5px solid rgba(0,0,0,.06);background:#fff;will-change:transform}
 #reorderSheet .ro-row.ro-shift{transition:transform .16s ease}
@@ -476,7 +492,7 @@ body.offline #offlineBadge{display:block}
 .mev-stat{display:flex;align-items:center;gap:3px;font-size:10px;color:#6A645E;white-space:nowrap}
 .mev-stat .svgi{width:13px;height:13px}
 .mev-stat b{font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:11px}
-.mev-up{color:#16A34A}.mev-dn{color:#DC2626}.mev-hi{color:#C4703A}.mev-lo{color:#2563EB}
+.mev-up{color:#16A34A}.mev-dn{color:#DC2626}.mev-hi{color:var(--brand)}.mev-lo{color:#2563EB}
 #mobileElevSvg{display:block;width:100%;height:46px}
 #mobileElevBand.expanded #mobileElevSvg{height:170px}
 .mob-elev-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px}
@@ -488,18 +504,18 @@ body.offline #offlineBadge{display:block}
 /* 高低差バンド洗練 */
 .mob-elev-hl{display:flex;align-items:center;gap:6px}
 .mob-elev-hl span{font-size:11px;color:#8A8077;font-weight:500}
-.mob-elev-hl strong{font-size:12px;color:#F2670E;font-family:'Plus Jakarta Sans',sans-serif;font-weight:800}
+.mob-elev-hl strong{font-size:12px;color:var(--brand);font-family:'Plus Jakarta Sans',sans-serif;font-weight:800}
 .mob-elev-chev{color:#C4BEB8;font-size:15px;display:flex}
 #mobileElevBand{cursor:pointer}
 /* シェルフのモードボタン洗練 */
 .mob-more{width:38px;height:38px;border-radius:12px;background:#F7F3ED;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#6A645E;font-size:19px;border:none;cursor:pointer}
 .mob-mode.lbl{gap:5px;padding:0 11px}
-.mrb.gps.on{background:#F2670E!important;color:#fff!important}
+.mrb.gps.on{background:var(--brand)!important;color:#fff!important}
 .mrb.gps{color:#3B82F6}
 /* 保存・戻るボタン グラデーション */
-.mob-save{background:linear-gradient(135deg,#FB8B3E,#F2670E)!important;box-shadow:0 3px 9px rgba(242,103,14,0.3)}
-.mob-mode.on{background:#FFF3EC;color:#F2670E}
-.mob-mode.on span{color:#F2670E}
+.mob-save{background:var(--brand-grad)!important;box-shadow:0 3px 9px rgba(184,68,10,.3)}
+.mob-mode.on{background:#FFF3EC;color:var(--brand)}
+.mob-mode.on span{color:var(--brand)}
 /* …メニューシート */
 #mobileMenuScrim{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.34);z-index:2000}
 #mobileMenuScrim.show{display:block}
@@ -516,15 +532,15 @@ body.offline #offlineBadge{display:block}
 .mm-map{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:0.5px solid rgba(0,0,0,0.05);cursor:pointer;font-size:13px;color:#4A2E0E}
 .mm-map:last-child{border-bottom:none}
 .mm-map-l{flex:1;line-height:1.3}
-.mm-dot{border-radius:50%;background:#C4703A;border:2px solid rgba(255,255,255,.9);box-shadow:0 1px 3px rgba(0,0,0,.3);flex:none}
-.mm-map-ck{opacity:0;color:#C4703A;font-weight:700;font-size:15px}
+.mm-dot{border-radius:50%;background:var(--brand);border:2px solid rgba(255,255,255,.9);box-shadow:0 1px 3px rgba(0,0,0,.3);flex:none}
+.mm-map-ck{opacity:0;color:var(--brand);font-weight:700;font-size:15px}
 .mm-map.on .mm-map-ck{opacity:1}
-.mm-map.on .mm-map-l{color:#C4703A;font-weight:700}
+.mm-map.on .mm-map-l{color:var(--brand);font-weight:700}
 .mm-tog-ic{font-size:16px;color:#6A645E;display:flex}
 .mm-tog-l{flex:1;font-size:13px;color:#2C2620;font-weight:500}
 .mm-sw{width:42px;height:25px;border-radius:13px;background:#D8D2C8;position:relative;flex-shrink:0;transition:background .15s}
 .mm-sw::after{content:'';position:absolute;width:21px;height:21px;border-radius:50%;background:#fff;top:2px;left:2px;box-shadow:0 1px 3px rgba(0,0,0,0.2);transition:left .15s}
-.mm-sw.on{background:#F2670E}
+.mm-sw.on{background:var(--brand)}
 .mm-sw.on::after{left:19px}
 .mm-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
 .mm-act{display:flex;flex-direction:column;align-items:center;gap:6px;padding:11px 4px;border-radius:13px;background:#F9F7F4;color:#3D3835;font-size:19px;border:none;cursor:pointer;font-family:inherit}
@@ -919,18 +935,22 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
 /* ============================================================
    CONSTANTS
    ============================================================ */
+/* 配色（上の CSS :root と同じ値。SVG や Leaflet の色指定に使う）
+   ※ ここと :root がずれていないか、回帰テストで確かめている */
+const COLOR = { brand:'#B8440A', ok:'#0E6B3C' };
+
 const WT = [
-  {v:'course',  l:'コースポイント', c:'#C4703A'},
-  {v:'start',   l:'スタート',                    c:'#2E7D32'},
+  {v:'course',  l:'コースポイント', c:'#A8551F'},
+  {v:'start',   l:'スタート',                    c:'#0E6B3C'},
   {v:'goal',    l:'ゴール',                      c:'#B71C1C'},
   {v:'view',    l:'ビュースポット',              c:'#1565C0'},
   {v:'shop',    l:'飲食店・ショップ ★',          c:'#AD1457'},   // 濃赤(ゴール)と紛らわしかった → 濃ピンクへ
   {v:'shrine',  l:'神社・寺院',                  c:'#6D4C41'},
   {v:'history', l:'史跡・記念碑',                c:'#8E24AA'},   // 橙茶(コースポイント)と紛らわしかった → 紫へ
-  {v:'park',    l:'公園・自然',                  c:'#00897B'},   // 緑(スタート)と紛らわしかった → ティールへ
+  {v:'park',    l:'公園・自然',                  c:'#00796B'},   // 緑(スタート)と紛らわしかった → ティールへ
   {v:'toilet',  l:'トイレ',                      c:'#455A64'},
   {v:'parking', l:'駐車場',                      c:'#3949AB'},   // ビュースポットと同じ色だった → 藍へ
-  {v:'other',   l:'その他',                      c:'#757575'},
+  {v:'other',   l:'その他',                      c:'#5F5F5F'},
   {v:'node',    l:'なぞり点（調整点）',            c:'#444444'},
 ];
 const SYM = {start:'S',goal:'G',view:'◎',shop:'★',shrine:'⛩',history:'碑',park:'🌿',toilet:'WC',parking:'P',other:'●',node:''};
@@ -975,7 +995,7 @@ const GPX_THIN_M     = 5;      // これより近い点は間引く(m)
 // 距離と登りの合計から3段階。上から順に当てはめ、どれにも入らなければ最後の段階。
 // 高低差が取れていないときは出さない（分からないものを断定しない）。
 const DIFFICULTY = [
-  { label: 'やさしい', color: '#2E7D32', maxKm: 3,    maxUp: 100  },
+  { label: 'やさしい', color: '#0E6B3C', maxKm: 3,    maxUp: 100  },
   { label: 'ふつう',   color: '#B87503', maxKm: 6,    maxUp: 300  },
   { label: '健脚',     color: '#C0392B', maxKm: 1e9,  maxUp: 1e9  },
 ];
@@ -1538,7 +1558,7 @@ function _askSaveBack() {
       +'<div style="font-size:16px;font-weight:700;color:#4A2E0E;margin-bottom:6px">一覧に戻ります</div>'
       +'<div style="font-size:13px;color:#6A645E;margin-bottom:16px;line-height:1.5">変更を保存しますか？</div>'
       +'<div style="display:flex;flex-direction:column;gap:8px">'
-      +'<button id="sbSave" style="border:none;border-radius:10px;padding:12px;font-size:15px;font-weight:700;background:linear-gradient(135deg,#FB8B3E,#F2670E);color:#fff">保存して戻る</button>'
+      +'<button id="sbSave" style="border:none;border-radius:10px;padding:12px;font-size:15px;font-weight:700;background:var(--brand-grad);color:#fff">保存して戻る</button>'
       +'<button id="sbNoSave" style="border:none;border-radius:10px;padding:12px;font-size:15px;font-weight:700;background:#EEE5D8;color:#4A2E0E">保存せずに戻る</button>'
       +'<button id="sbCancel" style="border:none;border-radius:10px;padding:12px;font-size:14px;font-weight:600;background:transparent;color:#9b948c">キャンセル</button>'
       +'</div></div>';
@@ -1759,7 +1779,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v100';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
+const APP_VERSION = 'v101';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
 }catch(_){} });
@@ -2368,7 +2388,7 @@ function showWpTypePicker(lat, lng, e) {
     }).map(t => {
       const isCourse = t.v === 'course';
       const style = isCourse
-        ? 'font-weight:bold;color:#C4703A;border-bottom:1px solid #EEE8DE;margin-bottom:2px;padding-bottom:7px'
+        ? 'font-weight:bold;color:var(--brand);border-bottom:1px solid #EEE8DE;margin-bottom:2px;padding-bottom:7px'
         : '';
       return `<div class="ctx-it wpick" style="${style}" onclick="event.stopPropagation();addWpFromPicker('${t.v}')">${t.l}</div>`;
     }).join('');
@@ -3304,7 +3324,7 @@ function _drawStart(ev) {
   const sp = _drawStartWp ? [_drawStartWp.lat, _drawStartWp.lng] : [ll.lat, ll.lng];
   _drawPts.push(sp);
   if (_drawPreview) { try { leafMap.removeLayer(_drawPreview); } catch(_){} }
-  _drawPreview = L.polyline([sp], _customTraceMode ? {color:'#777', weight:3, opacity:0.9, dashArray:'4,6', lineCap:'round', interactive:false} : {color:'#F2670E', weight:4, opacity:0.85, dashArray:'2,7', lineCap:'round', interactive:false}).addTo(leafMap);
+  _drawPreview = L.polyline([sp], _customTraceMode ? {color:'#777', weight:3, opacity:0.9, dashArray:'4,6', lineCap:'round', interactive:false} : {color:COLOR.brand, weight:4, opacity:0.85, dashArray:'2,7', lineCap:'round', interactive:false}).addTo(leafMap);
   // 作成/編集モード：開始点が細道に近く、動かさず長押し→その細道を削除
   if (_customMode_) {
     _pressStartT = Date.now();
@@ -3576,7 +3596,7 @@ function onSegmentHitDown(e, segAfterWpId) {
   const tmp = L.marker([vp.lat, vp.lng], {
     icon:L.divIcon({
       className:'',
-      html:`<div style="width:${sz}px;height:${sz}px;border-radius:50%;background:#C4703A;border:2px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.55)"></div>`,
+      html:`<div style="width:${sz}px;height:${sz}px;border-radius:50%;background:${COLOR.brand};border:2px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.55)"></div>`,
       iconSize:[sz,sz], iconAnchor:[sz/2,sz/2]
     }),
     interactive:false, zIndexOffset:2000
@@ -5441,8 +5461,8 @@ function _drawElevChart(pts, elevs) {
   svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
   svg.setAttribute('preserveAspectRatio','xMidYMid meet');
   svg.innerHTML=grid+xLabels+
-    `<path d="${fillD}" fill="#C4703A" fill-opacity="0.18"/>`+
-    `<path d="${lineD}" fill="none" stroke="#C4703A" stroke-width="2"/>`+
+    `<path d="${fillD}" fill="${COLOR.brand}" fill-opacity="0.18"/>`+
+    `<path d="${lineD}" fill="none" stroke="${COLOR.brand}" stroke-width="2"/>`+
     wpMarks+
     `<line x1="${PL}" y1="${PT}" x2="${PL}" y2="${PT+iH}" stroke="#C0A882" stroke-width="1"/>`+
     `<line x1="${PL}" y1="${PT+iH}" x2="${PL+iW}" y2="${PT+iH}" stroke="#C0A882" stroke-width="1"/>`;
@@ -5468,8 +5488,8 @@ function _drawMiniChart(pts, elevs) {
     `<text x="${PL-2}" y="${PT+iH+1}" text-anchor="end" font-size="7" fill="#9A8070">${Math.round(minE)}m</text>`+
     `<text x="${PL}" y="${PT+iH+11}" text-anchor="start" font-size="7" fill="#9A8070">0</text>`+
     `<text x="${PL+iW}" y="${PT+iH+11}" text-anchor="end" font-size="7" fill="#9A8070">${(totalM/1000).toFixed(1)}km</text>`+
-    `<path d="${fillD}" fill="#C4703A" fill-opacity="0.18"/>`+
-    `<path d="${lineD}" fill="none" stroke="#C4703A" stroke-width="1.8"/>`+
+    `<path d="${fillD}" fill="${COLOR.brand}" fill-opacity="0.18"/>`+
+    `<path d="${lineD}" fill="none" stroke="${COLOR.brand}" stroke-width="1.8"/>`+
     `<line x1="${PL}" y1="${PT}" x2="${PL}" y2="${PT+iH}" stroke="#C0A882" stroke-width="0.8"/>`;
   // モバイル高低差バンドを描画（折りたたみ/展開の現在状態で）
   _drawElevBand();
@@ -5559,8 +5579,8 @@ function _drawElevBand() {
 
   svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
   svg.innerHTML = grid +
-    `<path d="${fillD}" fill="#C4703A" fill-opacity="0.18"/>`+
-    `<path d="${lineD}" fill="none" stroke="#C4703A" stroke-width="${expanded?2:1.6}"/>`+
+    `<path d="${fillD}" fill="${COLOR.brand}" fill-opacity="0.18"/>`+
+    `<path d="${lineD}" fill="none" stroke="${COLOR.brand}" stroke-width="${expanded?2:1.6}"/>`+
     extra +
     `<line x1="${PL}" y1="${PT}" x2="${PL}" y2="${PT+iH}" stroke="#C0A882" stroke-width="0.8"/>`+
     `<line x1="${PL}" y1="${PT+iH}" x2="${PL+iW}" y2="${PT+iH}" stroke="#C0A882" stroke-width="0.8"/>`;
@@ -5833,7 +5853,7 @@ function renderCourseList() {
     return;
   }
   cont.innerHTML = '';
-  const _thumb = '<svg viewBox="0 0 56 56" width="56" height="56"><rect width="56" height="56" fill="#E4E8D4"/><path stroke="#fff" stroke-width="3.2" fill="none" d="M0,21 L21,25 L42,17 L56,23"/><path stroke="#fff" stroke-width="2.6" fill="none" d="M27,0 L25,56"/><path stroke="#D64545" stroke-width="2.1" fill="none" stroke-dasharray="1.5,3" stroke-linecap="round" d="M9,40 Q17,29 27,31 L40,25 L35,42 L21,48"/><circle cx="40" cy="25" r="3.6" fill="#F2670E"/></svg>';
+  const _thumb = `<svg viewBox="0 0 56 56" width="56" height="56"><rect width="56" height="56" fill="#E4E8D4"/><path stroke="#fff" stroke-width="3.2" fill="none" d="M0,21 L21,25 L42,17 L56,23"/><path stroke="#fff" stroke-width="2.6" fill="none" d="M27,0 L25,56"/><path stroke="#D64545" stroke-width="2.1" fill="none" stroke-dasharray="1.5,3" stroke-linecap="round" d="M9,40 Q17,29 27,31 L40,25 L35,42 L21,48"/><circle cx="40" cy="25" r="3.6" fill="${COLOR.brand}"/></svg>`;
   courses.forEach(c => {
     const wpCount = Array.isArray(c.wps) ? c.wps.length : 0;
     const card = document.createElement('div');
@@ -6078,7 +6098,7 @@ function openShareDialog(course) {
       +   '<span style="font-size:13px;color:#6A645E">.json</span>'
       + '</div>'
       + '<div style="font-size:12px;font-weight:700;color:#4A2E0E;margin-bottom:5px">② この名前で書き出す</div>'
-      + '<button id="shExport" style="width:100%;border:none;border-radius:10px;padding:11px;font-size:14px;font-weight:700;background:linear-gradient(135deg,#FB8B3E,#F2670E);color:#fff;margin-bottom:12px">JSONを書き出す</button>'
+      + '<button id="shExport" style="width:100%;border:none;border-radius:10px;padding:11px;font-size:14px;font-weight:700;background:var(--brand-grad);color:#fff;margin-bottom:12px">JSONを書き出す</button>'
       + '<div style="font-size:12px;color:#6A645E;line-height:1.7;margin-bottom:12px">③ 書き出したファイルを、アプリ（index.html）と同じ場所に置いて公開します。</div>'
       + '<div style="font-size:12px;font-weight:700;color:#4A2E0E;margin-bottom:5px">④ このリンクを配る</div>'
       + '<div style="font-size:11px;color:#6A645E;line-height:1.6;margin-bottom:6px">このリンクは「配布シート」のQRコードにも使われます（紙の地図から、スマホの地図へ）。</div>'
