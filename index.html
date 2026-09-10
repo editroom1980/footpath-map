@@ -39,6 +39,7 @@
   --brand-sh:rgba(184,68,10,.32);   /* 影 */
   --ok:#0E6B3C;           /* できた・安全・やさしい。白文字 6.59:1 */
   --t-sub:#6B6055;        /* 補足・説明の文字。アプリのどの下地の上でも 5.0:1 以上 */
+  --tap:44px;             /* 指で押す所の最小の大きさ（屋外で歩きながら押せるように）*/
 }
 html,body{min-height:calc(100% + env(safe-area-inset-top));font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:13px;color:#2C1B0E;overflow:hidden;background:#E8D8B8}
 
@@ -75,7 +76,7 @@ html,body{min-height:calc(100% + env(safe-area-inset-top));font-family:'Hiragino
 .cc-st .svgi{font-size:13px;color:#CBB89E}
 .cc-st b{font-family:'Plus Jakarta Sans','Hiragino Sans',sans-serif;font-weight:800;color:#3D3835}
 .cc-acts{display:flex;flex-direction:column;gap:5px;flex-shrink:0}
-.cc-act{width:30px;height:30px;border-radius:9px;border:0.5px solid #F0EBE2;background:#FAF8F4;display:flex;align-items:center;justify-content:center;color:#8A8077;font-size:14px;cursor:pointer}
+.cc-act{width:40px;height:40px;border-radius:9px;border:0.5px solid #F0EBE2;background:#FAF8F4;display:flex;align-items:center;justify-content:center;color:#8A8077;font-size:14px;cursor:pointer}
 .cc-act.rd{color:#DC2626}
 .cc-act .svgi{font-size:14px}
 .no-courses{font-size:12px;color:var(--t-sub);text-align:center;padding:30px 0}
@@ -324,6 +325,12 @@ body.offline #offlineBadge{display:block}
 .ctx-it.wpick{padding:7px 14px;font-size:12px}
 .ctx-it.ctx-cancel{color:var(--t-sub);font-size:11px;justify-content:center}
 .ctx-sep{height:1px;background:#EEE8DE;margin:2px 0}
+/* 押せる範囲を広げる（見た目は変えない）。隣どうしが重ならないよう、
+   並べるときは「見た目の大きさ＋すきま」が --tap 以上になるようにしている */
+.tap{position:relative}
+.tap::after{content:'';position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  width:max(100%,var(--tap));height:max(100%,var(--tap))}
+
 /* Mobile */
 /* モバイル共通 */
   @media(max-width:768px){
@@ -362,7 +369,10 @@ body.offline #offlineBadge{display:block}
   #mobileCourseTitle{display:none!important}
   .mob-back{background:rgba(255,255,255,0.95)!important;box-shadow:0 2px 8px rgba(0,0,0,0.18)}
   .mob-save{box-shadow:0 2px 8px rgba(0,0,0,0.22)}
-  #mobileRbtns{display:flex!important;top:calc(50px + env(safe-area-inset-top))!important;bottom:auto;right:max(8px,env(safe-area-inset-right))}
+  #mobileRbtns{display:flex!important;top:calc(58px + env(safe-area-inset-top))!important;bottom:auto;right:max(8px,env(safe-area-inset-right))}
+  /* スタンプ表示は、下のカードの「…」ボタンに重なっていたので左上へ出す（v106で実測して判明）*/
+  #stampBar{left:max(8px,env(safe-area-inset-left));right:auto;bottom:auto;
+    top:calc(max(8px,env(safe-area-inset-top)) + 50px)}
   /* 下部：モード行（下段）＋簡易高低差（上段）を1つのカードとしてフローティング */
   #mobileShelf{display:flex!important;position:absolute;left:max(8px,env(safe-area-inset-left));right:max(8px,env(safe-area-inset-right));
     bottom:max(8px,env(safe-area-inset-bottom));width:auto;height:48px!important;box-sizing:border-box;
@@ -415,7 +425,7 @@ body.offline #offlineBadge{display:block}
     border-top:none!important;border-radius:14px;padding:0 8px!important;gap:4px;align-items:center;
     background:rgba(255,255,255,0.95);box-shadow:0 2px 10px rgba(0,0,0,0.2);z-index:1000}
   #mobileShelf .mob-sdiv{display:none}
-  #mobileShelf .mob-mode{height:34px;padding:0 6px}
+  #mobileShelf .mob-mode{height:44px;min-width:44px;padding:0 4px}
   #mobileShelf .mob-mode .svgi{font-size:19px}
   #mobileShelf .mob-stats{font-size:13px;gap:2px;padding:0 2px}
 
@@ -454,17 +464,17 @@ body.offline #offlineBadge{display:block}
 /* ━━━ モバイルUI要素 ━━━ */
 #mobileTopBar,#mobileRbtns,#mobileShelf,#mobileElevBand{display:none}
 #mobileTopBar{position:absolute;top:0;left:0;right:0;z-index:1000;padding:8px 12px;align-items:center;gap:10px;background:rgba(255,255,255,0.92)}
-.mob-back{width:30px;height:30px;border-radius:50%;background:#F5F4F2;border:0.5px solid rgba(0,0,0,0.1);display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer}
+.mob-back{width:40px;height:40px;border-radius:50%;background:#F5F4F2;border:0.5px solid rgba(0,0,0,0.1);display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer}
 .mob-back i{font-size:15px;color:#1C1917}
 #mobileCourseTitle{flex:1;font-size:14px;font-weight:700;color:#1C1917;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.mob-save{background:var(--brand);color:#fff;font-size:11px;font-weight:700;padding:5px 14px;border-radius:14px;border:none;cursor:pointer;flex-shrink:0}
-#mobileRbtns{position:absolute;right:10px;top:52px;z-index:1000;flex-direction:column;gap:5px}
-.mrb{width:32px;height:32px;background:rgba(255,255,255,0.92);border:0.5px solid rgba(0,0,0,0.09);border-radius:9px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;color:#3D3835}
+.mob-save{background:var(--brand);color:#fff;font-size:12px;font-weight:700;min-height:40px;padding:0 16px;display:inline-flex;align-items:center;border-radius:20px;border:none;cursor:pointer;flex-shrink:0}
+#mobileRbtns{position:absolute;right:10px;top:60px;z-index:1000;flex-direction:column;gap:8px}
+.mrb{width:40px;height:40px;background:rgba(255,255,255,0.92);border:0.5px solid rgba(0,0,0,0.09);border-radius:9px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;color:#3D3835}
 .mrb:disabled{opacity:0.35;cursor:default}
-.mrb.mt{margin-top:5px}
+.mrb.mt{margin-top:8px}
 #mobileShelf{background:#fff;border-top:0.5px solid rgba(0,0,0,0.07);height:54px;flex-shrink:0;padding:0 12px;gap:6px;align-items:center}
-.mob-modes{display:flex;gap:3px;align-items:center;flex-shrink:0}
-.mob-mode{height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;border:none;background:transparent;color:var(--t-sub);font-size:14px;padding:0 8px}
+.mob-modes{display:flex;gap:2px;align-items:center;flex-shrink:0}
+.mob-mode{height:44px;min-width:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;border:none;background:transparent;color:var(--t-sub);font-size:14px;padding:0 8px}
 .mob-mode.lbl{font-size:10px;font-weight:700;gap:4px}
 .mob-mode.lbl span{font-size:10px;font-weight:700}
 .mob-mode.on{background:var(--brand-soft);color:var(--brand)}
@@ -509,7 +519,7 @@ body.offline #offlineBadge{display:block}
 .mob-elev-chev{color:var(--t-sub);font-size:15px;display:flex}
 #mobileElevBand{cursor:pointer}
 /* シェルフのモードボタン洗練 */
-.mob-more{width:38px;height:38px;border-radius:12px;background:#F7F3ED;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#6A645E;font-size:19px;border:none;cursor:pointer}
+.mob-more{width:40px;height:40px;border-radius:12px;background:#F7F3ED;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#6A645E;font-size:19px;border:none;cursor:pointer}
 .mob-mode.lbl{gap:5px;padding:0 11px}
 .mrb.gps.on{background:var(--brand)!important;color:#fff!important}
 .mrb.gps{color:#3B82F6}
@@ -524,13 +534,13 @@ body.offline #offlineBadge{display:block}
 #mobileMenuSheet.show{display:block}
 .mm-dh{width:36px;height:4px;background:#E5E7EB;border-radius:3px;margin:0 auto 9px}
 .mm-t{font-family:'Plus Jakarta Sans',sans-serif;font-size:15px;font-weight:800;color:#1C1917;margin-bottom:11px;text-align:center;position:relative}
-.mm-close{position:absolute;right:0;top:-3px;width:28px;height:28px;border-radius:50%;background:#F2EFEA;border:none;display:flex;align-items:center;justify-content:center;color:#8A8077;font-size:15px;cursor:pointer}
+.mm-close{position:absolute;right:0;top:-3px;width:36px;height:36px;border-radius:50%;background:#F2EFEA;border:none;display:flex;align-items:center;justify-content:center;color:#8A8077;font-size:15px;cursor:pointer}
 .mm-sec{font-size:10px;font-weight:700;color:var(--t-sub);font-family:'Plus Jakarta Sans',sans-serif;letter-spacing:0.06em;margin:0 2px 5px}
 .mm-tog-wrap{background:#F9F7F4;border-radius:13px;padding:1px 14px;margin-bottom:12px}
-.mm-tog{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:0.5px solid rgba(0,0,0,0.05);cursor:pointer}
+.mm-tog{display:flex;align-items:center;gap:10px;min-height:var(--tap);padding:9px 0;border-bottom:0.5px solid rgba(0,0,0,0.05);cursor:pointer}
 .mm-tog:last-child{border-bottom:none}
 .mm-maplist{background:#F9F7F4;border-radius:13px;padding:2px 14px;margin-bottom:12px}
-.mm-map{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:0.5px solid rgba(0,0,0,0.05);cursor:pointer;font-size:13px;color:#4A2E0E}
+.mm-map{display:flex;align-items:center;gap:10px;min-height:var(--tap);padding:11px 0;border-bottom:0.5px solid rgba(0,0,0,0.05);cursor:pointer;font-size:13px;color:#4A2E0E}
 .mm-map:last-child{border-bottom:none}
 .mm-map-l{flex:1;line-height:1.3}
 .mm-dot{border-radius:50%;background:var(--brand);border:2px solid rgba(255,255,255,.9);box-shadow:0 1px 3px rgba(0,0,0,.3);flex:none}
@@ -696,25 +706,25 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
         <div id="embedBar"><span class="eb-name"></span><span class="eb-stat"></span><a target="_blank" rel="noopener">大きな地図で開く ↗</a></div>
         <!-- モバイル: 地図上フロートUI -->
         <div id="mobileTopBar">
-          <div class="mob-back" onclick="backToS1()" aria-label="一覧へ戻る"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l14 0" /> <path d="M5 12l6 6" /> <path d="M5 12l6 -6" /></svg></div>
+          <div class="mob-back tap" onclick="backToS1()" aria-label="一覧へ戻る"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l14 0" /> <path d="M5 12l6 6" /> <path d="M5 12l6 -6" /></svg></div>
           <span id="mobileCourseTitle"></span>
-          <button class="mob-save" onclick="saveCourse()">保存</button>
+          <button class="mob-save tap" onclick="saveCourse()">保存</button>
         </div>
         <div id="mobileRbtns">
-          <button class="mrb" id="mobileUndoBtn" onclick="undoLast()" disabled aria-label="取り消し"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14l-4 -4l4 -4" /> <path d="M5 10h11a4 4 0 1 1 0 8h-1" /></svg></button>
-          <button class="mrb" id="mobileRedoBtn" onclick="redoAction()" disabled aria-label="やり直し"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14l4 -4l-4 -4" /> <path d="M19 10h-11a4 4 0 1 0 0 8h1" /></svg></button>
-          <button class="mrb gps mt" onclick="gotoCurrentLocation()" aria-label="現在地"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12a3 3 0 1 0 6 0a3 3 0 1 0 -6 0" /> <path d="M4 12a8 8 0 1 0 16 0a8 8 0 1 0 -16 0" /> <path d="M12 2l0 2" /> <path d="M12 20l0 2" /> <path d="M20 12l2 0" /> <path d="M2 12l2 0" /></svg></button>
-          <button class="mrb mt" onclick="leafMap&&leafMap.zoomIn()" aria-label="拡大"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5l0 14" /> <path d="M5 12l14 0" /></svg></button>
-          <button class="mrb" onclick="leafMap&&leafMap.zoomOut()" aria-label="縮小"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l14 0" /></svg></button>
+          <button class="mrb tap" id="mobileUndoBtn" onclick="undoLast()" disabled aria-label="取り消し"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14l-4 -4l4 -4" /> <path d="M5 10h11a4 4 0 1 1 0 8h-1" /></svg></button>
+          <button class="mrb tap" id="mobileRedoBtn" onclick="redoAction()" disabled aria-label="やり直し"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14l4 -4l-4 -4" /> <path d="M19 10h-11a4 4 0 1 0 0 8h1" /></svg></button>
+          <button class="mrb gps mt tap" onclick="gotoCurrentLocation()" aria-label="現在地"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12a3 3 0 1 0 6 0a3 3 0 1 0 -6 0" /> <path d="M4 12a8 8 0 1 0 16 0a8 8 0 1 0 -16 0" /> <path d="M12 2l0 2" /> <path d="M12 20l0 2" /> <path d="M20 12l2 0" /> <path d="M2 12l2 0" /></svg></button>
+          <button class="mrb mt tap" onclick="leafMap&&leafMap.zoomIn()" aria-label="拡大"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5l0 14" /> <path d="M5 12l14 0" /></svg></button>
+          <button class="mrb tap" onclick="leafMap&&leafMap.zoomOut()" aria-label="縮小"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l14 0" /></svg></button>
         </div>
       </div>
       <!-- モバイル: コントロールシェルフ -->
       <div id="mobileShelf">
                 <div class="mob-modes">
-          <button id="mobileDrawBtn" class="mob-mode" onclick="setMode('draw')" aria-label="なぞり"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 19a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" /> <path d="M19 7a2 2 0 1 0 0 -4a2 2 0 0 0 0 4" /> <path d="M11 19h5.5a3.5 3.5 0 0 0 0 -7h-8a3.5 3.5 0 0 1 0 -7h4.5" /></svg></button>
-          <button id="mobileWpBtn" class="mob-mode on" onclick="setMode('wp')" aria-label="WP"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11a3 3 0 1 0 6 0a3 3 0 0 0 -6 0" /> <path d="M17.657 16.657l-4.243 4.243a2 2 0 0 1 -2.827 0l-4.244 -4.243a8 8 0 1 1 11.314 0" /></svg></button>
-          <button id="mobileViaBtn" class="mob-mode" onclick="setMode('via')" aria-label="調整点"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /> <path d="M4 6l8 0" /> <path d="M16 6l4 0" /> <path d="M6 12a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /> <path d="M4 12l2 0" /> <path d="M10 12l10 0" /> <path d="M15 18a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /> <path d="M4 18l11 0" /> <path d="M19 18l1 0" /></svg></button>
-          <button id="mobileCustomBtn" class="mob-mode" onclick="toggleCustomMode()" aria-label="細道 作成・編集"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4"/><path d="M13.5 6.5l4 4"/></svg></button>
+          <button id="mobileDrawBtn" class="mob-mode tap" onclick="setMode('draw')" aria-label="なぞり"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 19a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" /> <path d="M19 7a2 2 0 1 0 0 -4a2 2 0 0 0 0 4" /> <path d="M11 19h5.5a3.5 3.5 0 0 0 0 -7h-8a3.5 3.5 0 0 1 0 -7h4.5" /></svg></button>
+          <button id="mobileWpBtn" class="mob-mode on tap" onclick="setMode('wp')" aria-label="WP"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11a3 3 0 1 0 6 0a3 3 0 0 0 -6 0" /> <path d="M17.657 16.657l-4.243 4.243a2 2 0 0 1 -2.827 0l-4.244 -4.243a8 8 0 1 1 11.314 0" /></svg></button>
+          <button id="mobileViaBtn" class="mob-mode tap" onclick="setMode('via')" aria-label="調整点"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /> <path d="M4 6l8 0" /> <path d="M16 6l4 0" /> <path d="M6 12a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /> <path d="M4 12l2 0" /> <path d="M10 12l10 0" /> <path d="M15 18a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /> <path d="M4 18l11 0" /> <path d="M19 18l1 0" /></svg></button>
+          <button id="mobileCustomBtn" class="mob-mode tap" onclick="toggleCustomMode()" aria-label="細道 作成・編集"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4"/><path d="M13.5 6.5l4 4"/></svg></button>
         </div>
         <div class="mob-sdiv"></div>
         <div class="mob-stats">
@@ -723,7 +733,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
           <span id="mobileTimeDisp" class="mob-stat-v">—</span>
         </div>
         <div class="mob-sdiv"></div>
-        <button class="mob-more" onclick="openMobileMenu()" aria-label="メニュー"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" /> <path d="M11 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" /> <path d="M18 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" /></svg></button>
+        <button class="mob-more tap" onclick="openMobileMenu()" aria-label="メニュー"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" /> <path d="M11 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" /> <path d="M18 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" /></svg></button>
       </div>
       <!-- モバイル: 高低差バンド（上フリックでせり上げ） -->
       <div id="mobileElevBand">
@@ -738,7 +748,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
       <div id="mobileMenuScrim" onclick="closeMobileMenu()"></div>
       <div id="mobileMenuSheet">
         <div class="mm-dh"></div>
-        <div class="mm-t">メニュー<button class="mm-close" onclick="closeMobileMenu()" aria-label="閉じる"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6l-12 12" /> <path d="M6 6l12 12" /></svg></button></div>
+        <div class="mm-t">メニュー<button class="mm-close tap" onclick="closeMobileMenu()" aria-label="閉じる"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6l-12 12" /> <path d="M6 6l12 12" /></svg></button></div>
         <div class="mm-sec">表示・設定</div>
         <div class="mm-tog-wrap">
           <div class="mm-tog" onclick="toggleMapLabels();_syncMobileMenu()"><span class="mm-tog-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 7.5a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" /> <path d="M3 6v5.172a2 2 0 0 0 .586 1.414l7.71 7.71a2.41 2.41 0 0 0 3.408 0l5.592 -5.592a2.41 2.41 0 0 0 0 -3.408l-7.71 -7.71a2 2 0 0 0 -1.414 -.586h-5.172a3 3 0 0 0 -3 3" /></svg></span><span class="mm-tog-l">地名・WP</span><div class="mm-sw" id="mmSwLabels"></div></div>
@@ -1782,7 +1792,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v105';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
+const APP_VERSION = 'v106';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
 }catch(_){} });
@@ -5887,9 +5897,9 @@ function renderCourseList() {
         </div>
       </div>
       <div class="cc-acts">
-        <button class="cc-act" title="JSONで書き出し"><svg class=\"svgi\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d="M14 3v4a1 1 0 0 0 1 1h4" /> <path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2" /> <path d="M12 17v-6" /> <path d="M9.5 14.5l2.5 2.5l2.5 -2.5" /></svg></button>
-        <button class="cc-act" title="配布用リンクを作る"><svg class=\"svgi\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d="M9 15l6 -6" /> <path d="M11 6l.463 -.536a5 5 0 0 1 7.071 7.072l-.534 .464" /> <path d="M13 18l-.397 .534a5.068 5.068 0 0 1 -7.127 0a4.972 4.972 0 0 1 0 -7.071l.524 -.463" /></svg></button>
-        <button class="cc-act rd" title="削除"><svg class=\"svgi\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d="M4 7l16 0" /> <path d="M10 11l0 6" /> <path d="M14 11l0 6" /> <path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12" /> <path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3" /></svg></button>
+        <button class="cc-act tap" title="JSONで書き出し"><svg class=\"svgi\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d="M14 3v4a1 1 0 0 0 1 1h4" /> <path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2" /> <path d="M12 17v-6" /> <path d="M9.5 14.5l2.5 2.5l2.5 -2.5" /></svg></button>
+        <button class="cc-act tap" title="配布用リンクを作る"><svg class=\"svgi\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d="M9 15l6 -6" /> <path d="M11 6l.463 -.536a5 5 0 0 1 7.071 7.072l-.534 .464" /> <path d="M13 18l-.397 .534a5.068 5.068 0 0 1 -7.127 0a4.972 4.972 0 0 1 0 -7.071l.524 -.463" /></svg></button>
+        <button class="cc-act rd tap" title="削除"><svg class=\"svgi\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d="M4 7l16 0" /> <path d="M10 11l0 6" /> <path d="M14 11l0 6" /> <path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12" /> <path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3" /></svg></button>
       </div>`;
     const [expBtn,shareBtn,delBtn] = card.querySelectorAll('.cc-act');
     card.querySelector('.cc-info').addEventListener('click', ()=>loadCourseData(c));

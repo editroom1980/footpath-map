@@ -359,6 +359,9 @@ def static_checks(src):
     chk('静的', '案内文にマウスを乗せると全文が出る', "el.title = long[m] || ''" in src)
     chk('静的', '画面を開いた直後の案内も短い文にそろえている',
         '<span id="tbar-st" title=' in src and 'クリックでウェイポイント追加' not in src)
+    # --- v106: 指で押す所の大きさ（UI点検 06）---
+    chk('静的', '押す所の最小の大きさを1か所で決めている', '--tap:44px;' in src)
+    chk('静的', '見た目を変えずに押せる範囲を広げる仕掛けがある', '.tap::after{content:' in src)
     chk('静的', '自動の向きは保存データに入れない（_autoDir）',
         '_autoDir' in src and 'labelDir:w.labelDir' in src.replace(' ', ''))
     # --- v100: スタンプラリー ---
@@ -1024,6 +1027,32 @@ def functional_checks(index_path):
         chk('機能', 'ツールバー下の案内が見切れない',
             isinstance(st, dict) and st.get('scrollW', 9e9) <= st.get('clientW', 0) + 1
             and st.get('hasTitle') is True, str(st)[:170])
+
+        # v106: 主要なボタンが 44px 四方のどこを押しても反応する（実際に当たり判定を調べる）
+        taps = page.evaluate("""()=>{
+            // 前の検査で開いたままの画面があると、その上を押したことになってしまう
+            ['closeModal','hideWpPicker','closeMobileMenu','closeHelp','closeElevModal','closePrintSheet']
+              .forEach(f => { try { if (typeof window[f] === 'function') window[f](); } catch(_){} });
+            const need = 44, d = need/2 - 1, out = [];
+            ['.mob-back','.mob-save','.mob-more','#mobileWpBtn','#mobileViaBtn','#mobileUndoBtn']
+              .forEach(sel => {
+                const el = document.querySelector(sel); if (!el) return;
+                const r = el.getBoundingClientRect(); if (r.width < 1) return;
+                const cx = r.left + r.width/2, cy = r.top + r.height/2;
+                const names = [];
+                const hit = [[cx-d,cy],[cx+d,cy],[cx,cy-d],[cx,cy+d]].map(p => {
+                  const t = document.elementFromPoint(p[0], p[1]);
+                  names.push(t ? ((t.id ? '#'+t.id : '') + String(t.className||'').slice(0,14)) : 'null');
+                  return !!(t && (t === el || el.contains(t)));
+                });
+                out.push({sel:sel, w:Math.round(r.width), h:Math.round(r.height),
+                          ok:hit.every(Boolean), hit:hit, names:names});
+              });
+            return out; }""")
+        bad_tap = [t for t in taps if not t['ok']]
+        chk('機能', '主要なボタンは 44px 四方のどこを押しても反応する',
+            len(taps) >= 5 and not bad_tap,
+            str(bad_tap)[:400] if bad_tap else f'{len(taps)}個 OK ' + str([t['w'] for t in taps]))
 
         # v103: 白いふちが赤い線と同じ形で敷かれ、データ側は何も変わっていない
         cas = page.evaluate("""()=>{ try{
