@@ -1209,9 +1209,9 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <!-- QRコード生成（配布シート用）。読み込めなかった場合はQRを出さないだけで動作に影響しない -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script>
 /* ============================================================
    CONSTANTS
@@ -1376,6 +1376,7 @@ let _wpPickerLatlng = null; // WPタイプピッカー表示中の座標
 let _showMapLabels  = true;  // 地図ラベル表示フラグ
 let _lastRouteCoords= null;  // 最後のルート座標（高低差用）
 let _elevData       = null;  // 高低差データキャッシュ
+let elevCache       = {};    // 点ごとの標高(m)。キーは _elevKey。保存データの elevs に同梱し、開くときに標高サーバを呼ばない（v127）
 let _elevFetchTimer = null;  // 自動fetch用タイマー
 let _baseTileLayer  = null;  // 通常タイルレイヤー参照
 let _drawRoad   = null;   // 描画中のカスタム道路
@@ -2146,7 +2147,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v126';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
+const APP_VERSION = 'v127';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
 }catch(_){} });
@@ -4672,10 +4673,11 @@ async function doRouting() {
       _elevFetchTimer = setTimeout(function() {
         _elevFetchTimer = null;
         _refreshElevChart(false);
-      }, 2000);
+      }, _elevAllCached(combined) ? 0 : 2000);   // 同梱済みなら待たずに描く（v127）
       removeLines();
       drawLines(combined, buildSegCoordsList());
       updateDistanceAndTime(combined);
+      _persistDerivedQuietly();                   // 次に開くとき経路サーバを呼ばずに済むように（v127）
     }
   } catch(_) { /* keep straight lines on error */ }
   finally { showRtMsg(false); }
@@ -6110,6 +6112,7 @@ async function _refreshElevChart(openModal) {
     const elevs = await _fetchElevs(pts);
     _elevData = {pts, elevs};
     updateDistanceAndTime(_lastRouteCoords);   // 登りの時間を所要時間へ反映
+    _persistDerivedQuietly();                  // 次に開くとき標高サーバを呼ばずに済むように（v127）
     _drawMiniChart(pts, elevs);   // サイドバーのミニチャートに描画
     if (openModal !== false) _drawElevChart(pts, elevs); // モーダル内描画（自動fetchはスキップ）
   } catch(e) {
@@ -6126,6 +6129,35 @@ function _showElevMsg(msg) {
   if (chart) chart.innerHTML = '';
 }
 
+function _elevKey(lat, lng) { return `${(+lat).toFixed(5)},${(+lng).toFixed(5)}`; }
+/* いま描いている高低差の点の標高だけ（キャッシュ全部ではなく、このコースに要る分）。保存データの elevs になる */
+function _elevsInUse() {
+  const out = {};
+  if (!_elevData || !Array.isArray(_elevData.pts)) return out;
+  _elevData.pts.forEach(p => { const k = _elevKey(p[0], p[1]); const v = elevCache[k]; if (typeof v === 'number') out[k] = +v.toFixed(1); });
+  return out;
+}
+function _elevAllCached(coords) {
+  return _sampleCoords(coords, 50).every(p => typeof elevCache[_elevKey(p[0], p[1])] === 'number');
+}
+/* 開くのを速くするため、計算し終えた道順と標高を、保存操作なしで保存データに書き足す（v127）。
+   触るのは routes / elevs だけ。名前・スポット・説明・savedAt・未保存フラグ・バックアップの回数は変えない。
+   未保存の編集がある間は書かない（保存のときに一緒に入る） */
+function _persistDerivedQuietly() {
+  try {
+    if (_dirty || currentCourseId == null || !lsAvail()) return false;
+    const list = getCourses();
+    const c = list.find(x => x && x.id === currentCourseId);
+    if (!c) return false;
+    const routes = _routesInUse(), elevs = _elevsInUse();
+    const same = (a, b) => JSON.stringify(a || {}) === JSON.stringify(b || {});
+    let changed = false;
+    if (Object.keys(routes).length && !same(c.routes, routes)) { c.routes = routes; changed = true; }
+    if (Object.keys(elevs).length  && !same(c.elevs,  elevs))  { c.elevs  = elevs;  changed = true; }
+    return changed ? setCourses(list) : false;
+  } catch(_) { return false; }
+}
+
 function _sampleCoords(coords, max) {
   const step = Math.max(1, Math.floor(coords.length / max));
   const out = [];
@@ -6136,12 +6168,15 @@ function _sampleCoords(coords, max) {
 
 async function _fetchElevs(pts) {
   const GSI = 'https://cyberjapandata2.gsi.go.jp/general/dem/scripts/getelevation.php';
-  const one = p =>
-    fetch(`${GSI}?lon=${p[1].toFixed(6)}&lat=${p[0].toFixed(6)}&outtype=JSON`,
+  const one = p => {
+    const k = _elevKey(p[0], p[1]);
+    if (typeof elevCache[k] === 'number') return Promise.resolve(elevCache[k]);   // 同梱・取得済みなら呼ばない（v127）
+    return fetch(`${GSI}?lon=${p[1].toFixed(6)}&lat=${p[0].toFixed(6)}&outtype=JSON`,
           {signal: AbortSignal.timeout(8000)})
       .then(r => r.json())
-      .then(d => typeof d.elevation === 'number' ? d.elevation : null)
+      .then(d => { const v = typeof d.elevation === 'number' ? d.elevation : null; if (v !== null) elevCache[k] = v; return v; })
       .catch(() => null);
+  };
   // 50件を一度に投げるとブラウザの同時接続上限で待たされ、順番待ちのまま8秒に達して
   // 「取得失敗」になることがあった。ELEV_BATCH 件ずつ順番に取得する（提供元サーバへの配慮も兼ねる）。
   const elevs = [];
@@ -6441,6 +6476,7 @@ function buildCurrentSaveData() {
     customRoads: customRoads.map(r=>({id:r.id,name:r.name,coords:r.coords})),
     customPaths: (customPaths||[]).map(p=>({id:p.id, pts:(p.pts||[]).map(pt=>pt.slice())})),
     routes:  _routesInUse(),   // 区間ごとの道順。開くときに経路サーバを呼ばずに済ませる（v119）
+    elevs:   _elevsInUse(),    // 点ごとの標高。開くときに標高サーバを呼ばずに済ませる（v127）
     maxWpId: idW,
     maxVpNum:idV,
     savedAt: new Date().toISOString(),
@@ -6591,6 +6627,10 @@ function loadCourseData(data) {
         const c = data.routes[k];
         if (Array.isArray(c) && c.length >= 2) segCache[k] = c.map(q => [+q[0], +q[1]]);
       });
+    }
+    elevCache = {};
+    if (data.elevs && typeof data.elevs === 'object') {
+      Object.keys(data.elevs).forEach(k => { const v = +data.elevs[k]; if (isFinite(v)) elevCache[k] = v; });
     }
     _healPending=true;   // 読込データの誤順序を初回ルーティング時に自動修復
     scheduleRouting();

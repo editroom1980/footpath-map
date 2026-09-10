@@ -424,6 +424,27 @@ def static_checks(src):
     chk('静的', '文字の大きさは3段階だけ見せる（極大・最大は選んである時だけ）',
         ".mm-map[data-lsz='3']:not(.on),.mm-map[data-lsz='4']:not(.on){display:none}" in src)
     chk('静的', '「›」の右に今の設定を出す', 'function _syncMmValues' in src and 'id="mmValMap"' in src and 'id="mmValSize"' in src)
+    # --- v127: 開くのを速く（道順と標高を同梱し、開くときは経路サーバも標高サーバも呼ばない）---
+    chk('静的', '書き出し専用の2ライブラリは後回しで読む（Leaflet は先）',
+        '<script defer src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas' in src
+        and '<script defer src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs' in src
+        and '<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>' in src)
+    chk('静的', '標高は点ごとのキャッシュを先に見る', "if (typeof elevCache[k] === 'number') return Promise.resolve(elevCache[k]);" in src
+        and 'function _elevKey' in src)
+    chk('静的', '保存データに elevs が入り、読み込みで戻す', 'elevs:   _elevsInUse(),' in src and 'function _elevsInUse' in src
+        and "if (data.elevs && typeof data.elevs === 'object')" in src)
+    chk('静的', '計算し終えた道順・標高を静かに書き足す（未保存の編集がある間は書かない）',
+        'function _persistDerivedQuietly' in src and src.count('_persistDerivedQuietly();') == 2
+        and 'if (_dirty || currentCourseId == null || !lsAvail()) return false;' in src)
+    chk('静的', '標高が揃っていれば2秒待たずに描く', "_elevAllCached(combined) ? 0 : 2000" in src)
+    try:
+        import json as _json
+        _smp = _json.load(open(os.path.join(os.path.dirname(os.path.abspath(INDEX)), 'sample.json'), encoding='utf-8'))
+        chk('静的', 'サンプルコースに道順と標高が同梱されている（開いても問い合わせ0）',
+            isinstance(_smp.get('routes'), dict) and len(_smp['routes']) >= 15 and isinstance(_smp.get('elevs'), dict) and len(_smp['elevs']) >= 40
+            and len(_smp.get('wps', [])) >= 10, f"routes={len(_smp.get('routes') or {})} elevs={len(_smp.get('elevs') or {})}")
+    except Exception as _e:
+        chk('静的', 'サンプルコースに道順と標高が同梱されている（開いても問い合わせ0）', False, str(_e)[:120])
     # --- v126: PCの道具を役割で3群に（ロードマップ 段階1-3／図4）---
     chk('静的', '上バー＝一覧・コース名・歩く人の見え方・その他・保存・配る（文字つき）',
         'class="hbtn hbtn-back" onclick="backToS1()"' in src and 'id="btnView"' in src and '<span id="btnViewTxt">歩く人の見え方</span>' in src
@@ -1482,6 +1503,44 @@ def functional_checks(index_path):
             and pc3.get('legendOpen') and pc3.get('legendRows', 0) >= 2 and pc3.get('moreOpen') and pc3.get('moreRows') == 7
             and pc3.get('manualFlip') and pc3.get('hintVia') == 'ルート線の上をクリックして道順を変える'
             and pc3.get('viewHidden') and pc3.get('viewBack') and pc3.get('closedAll'), str(pc3)[:300])
+
+        # v127: 標高は同じ点を二度取りに行かない。elevs を読み込むと0回。静かな書き足しは routes/elevs だけ・未保存中は書かない
+        pf = page.evaluate("""()=>{ return (async()=>{ try{
+            const keepFetch = window.fetch, keepC = getCourses(), keepE = Object.assign({}, elevCache), keepED = _elevData, keepD = _dirty;
+            let calls = 0;
+            window.fetch = (u, o) => { if (String(u).indexOf('getelevation') >= 0) { calls++; return Promise.resolve({json: () => Promise.resolve({elevation: 123.4})}); }
+                                       return keepFetch(u, o); };
+            const pts = [[35.15, 134.44], [35.151, 134.441], [35.152, 134.442], [35.153, 134.443], [35.154, 134.444]];
+            elevCache = {};
+            const e1 = await _fetchElevs(pts); const c1 = calls;
+            const e2 = await _fetchElevs(pts); const c2 = calls - c1;
+            _elevData = {pts, elevs: e2};
+            const inUse = _elevsInUse();
+            // 保存 → elevs が入る → 読み込みで elevCache に戻る
+            const data = buildCurrentSaveData();
+            const savedKeys = Object.keys(data.elevs || {}).length;
+            elevCache = {};
+            Object.keys(data.elevs).forEach(k => { const v = +data.elevs[k]; if (isFinite(v)) elevCache[k] = v; });   // loadCourseData と同じ復元式
+            const e3 = await _fetchElevs(pts); const c3 = calls - c1 - c2;
+            // 静かな書き足し：保存データに routes/elevs だけが入り、名前・savedAt・未保存フラグは変わらない
+            const stored = JSON.parse(JSON.stringify(data)); delete stored.routes; delete stored.elevs; stored.savedAt = 'T0';
+            setCourses([stored]); currentCourseId = stored.id;
+            const rw = routeWps(); const k0 = _segKey(rw[0].lat, rw[0].lng, rw[1].lat, rw[1].lng);
+            const keepSeg = segCache[k0]; segCache[k0] = [[rw[0].lat, rw[0].lng], [(rw[0].lat + rw[1].lat) / 2, (rw[0].lng + rw[1].lng) / 2], [rw[1].lat, rw[1].lng]];
+            _dirty = true;  const wroteDirty = _persistDerivedQuietly(); const afterDirty = getCourses()[0];
+            _dirty = false; const wrote = _persistDerivedQuietly(); const after = getCourses()[0];
+            if (keepSeg) segCache[k0] = keepSeg; else delete segCache[k0];
+            window.fetch = keepFetch; setCourses(keepC); elevCache = keepE; _elevData = keepED; _dirty = keepD;
+            return {c1, c2, c3, ok1: e1.every(v => v === 123.4), ok3: e3.every(v => v === 123.4), inUse: Object.keys(inUse).length, savedKeys,
+                    wroteDirty, dirtyUntouched: !afterDirty.routes && !afterDirty.elevs,
+                    wrote, routesN: Object.keys(after.routes || {}).length, elevsN: Object.keys(after.elevs || {}).length,
+                    nameSame: after.name === stored.name, savedAtSame: after.savedAt === 'T0', wpsSame: after.wps.length === stored.wps.length, dirtyRestored: _dirty === keepD};
+          }catch(e){ return 'ERR:'+e.message; } })(); }""")
+        chk('機能', '標高は同じ点を二度取らず、同梱を読めば0回。静かな書き足しは routes/elevs だけ',
+            isinstance(pf, dict) and pf.get('c1') == 5 and pf.get('c2') == 0 and pf.get('c3') == 0 and pf.get('ok1') and pf.get('ok3')
+            and pf.get('inUse') == 5 and pf.get('savedKeys') == 5 and pf.get('wroteDirty') is False and pf.get('dirtyUntouched')
+            and pf.get('wrote') is True and pf.get('routesN', 0) >= 1 and pf.get('elevsN') == 5 and pf.get('nameSame') and pf.get('savedAtSame')
+            and pf.get('wpsSame') and pf.get('dirtyRestored') is True, str(pf)[:300])
 
         # v121: バックアップからの日数・未反映の保存回数で色が変わり、書き出すと戻る。iPhone の案内は1回だけ
         bk = page.evaluate("""()=>{ return (async()=>{ try{
