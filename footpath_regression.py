@@ -435,6 +435,12 @@ def static_checks(src):
     chk('静的', '選べる種類の出どころは _buildTypeOptions のまま（チップは select を読む）',
         "const cur = sel.value, opts = [...sel.options].map(o => o.value);" in src and 'function _buildTypeOptions' in src)
     chk('静的', '最初の案内が「種類と名前はあとから」を伝える', '種類と名前は、○を押してあとから決められます' in src)
+    # --- v138: ゆっくり基準・区間所要時間（F3）＋帯の仕上げ（A1〜A4）---
+    chk('静的', '歩く速さの既定は3km/h（フットパスマップの実測に合わせた）', 'const WALK_SPEED_DEFAULT = 0;' in src and '3.0 km/h（フットパス・立ち止まる前提）' in src
+        and '既定3km/h＝立ち止まる前提' in src)
+    chk('静的', '配布シートに区間の目安（S→①の分数）が載る', 'function _segmentMinutes' in src and '<div class="sh-segs">' in src)
+    chk('静的', '帯は押すとカード・到着・約・aria-live', 'onclick="nextBarTap()"' in src and 'aria-live="polite"' in src and 'function _arrivedSpot' in src
+        and "const ARRIVE_M = 25;" in src and "const NEXT_ACC_ABOUT_M = 40;" in src)
     # --- v137: 歩く人の心得（フットパス特化 F1）＋PCの歩く人に「一覧」を出さない（A5）---
     chk('静的', '心得は協会の3か条を含み、配慮する・守る・楽しむの3見出し',
         "const KOKOROE = [" in src and all(w in src for w in ['田畑や私有地には立ち入らない', 'ゴミは必ず持ち帰る', '動植物や農作物を採らない'])
@@ -1900,6 +1906,28 @@ def functional_checks(index_path):
           }catch(e){ return 'ERR:'+e.message; } }""")
         chk('機能', '心得：追記が保存され、配布シートに標準＋追記、読む／書く画面と読み上げが動く',
             isinstance(kk, dict) and all(kk.get(k) for k in ('saved', 'sheet', 'viewShown', 'spoken', 'editShown', 'savedEdit', 'shareRow')), str(kk)[:220])
+
+        # v138: 既定の速さ／区間の目安／帯：タップでカード・到着・約
+        f3 = page.evaluate("""()=>{ try{
+            const keepIdx = _walkSpeedIdx, keepLS = localStorage.getItem(LS.walkSpeed), keepV = viewMode, keepCls = document.body.className, keepPos = _walkPos, keepLRC = _lastRouteCoords;
+            localStorage.removeItem(LS.walkSpeed); restoreSizePrefs(); const out = {def: _walkSpeed()};
+            if (keepLS === null) localStorage.removeItem(LS.walkSpeed); else localStorage.setItem(LS.walkSpeed, keepLS); _walkSpeedIdx = keepIdx;
+            _lastRouteCoords = [[35.152, 134.440], [35.152, 134.445], [35.152, 134.450], [35.152, 134.455], [35.152, 134.460]];
+            const segs = _segmentMinutes(); out.segs = segs.length; out.segOk = segs.every(g => g.min >= 1 && g.distM >= 20 && g.from && g.to);
+            const html = _sheetHtml('data:,', 800); out.sheet = segs.length ? html.indexOf('sh-segs') >= 0 && html.indexOf('区間の目安') >= 0 : true;
+            viewMode = true; document.body.classList.add('viewing');
+            const sp = _stampTargets().find(w => w.type !== 'start'); const c = _lastRouteCoords;
+            _onWalkerPos(c[0][0], c[0][1], 60);
+            const tx = document.getElementById('nbText');
+            out.about = /約/.test(tx.textContent) && /約\\d+分/.test(tx.textContent);
+            _onWalkerPos(sp.lat, sp.lng, 5);
+            out.arrive = document.getElementById('nbLabel').textContent === '到着' && document.getElementById('nextBar').classList.contains('arrive') && _nextWpId === sp.id;
+            closeViewInfo(); nextBarTap(); out.card = document.getElementById('viewInfoPanel').classList.contains('show'); closeViewInfo();
+            viewMode = keepV; document.body.className = keepCls; _walkPos = keepPos; _lastRouteCoords = keepLRC; renderNextBar();
+            return out;
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        chk('機能', '既定3km/h・区間の目安・帯のタップでカード・到着・精度が悪いと「約」',
+            isinstance(f3, dict) and f3.get('def') == 3 and f3.get('segOk') and f3.get('sheet') and f3.get('about') and f3.get('arrive') and f3.get('card'), str(f3)[:220])
 
         # v121: バックアップからの日数・未反映の保存回数で色が変わり、書き出すと戻る。iPhone の案内は1回だけ
         bk = page.evaluate("""()=>{ return (async()=>{ try{

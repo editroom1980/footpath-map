@@ -377,6 +377,9 @@ body.viewonly #descSec.view-desc textarea{background:#F9F7F4;border-color:#E6DCC
 .sh-qr{display:flex;gap:9px;align-items:center}
 .sh-qr img,.sh-qr canvas{display:block;width:104px;height:104px}
 .sh-qr-t{font-size:10px;line-height:1.5;color:#7A6A55}
+.sh-segs{margin-top:10px;padding-top:8px;border-top:1px solid #EFE7DA}
+.sh-seg-l{font-size:10.5px;line-height:1.6;color:#3E2A0E}
+.sh-seg-l b{color:var(--brand)}
 .sh-kokoroe{margin-top:10px;padding-top:8px;border-top:1px solid #EFE7DA}
 .sh-kk{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:3px 14px;font-size:10.5px;line-height:1.5}
 .sh-kk b{color:var(--brand);margin-right:6px}
@@ -476,6 +479,11 @@ body.embed #nextBar{display:none!important}
 #nextBar .nb-t b{font-weight:800}
 #nextBar .nb-dir{color:var(--brand);font-weight:800;margin-left:4px}
 #nextBar.done .nb-arrow{background:var(--ok)}
+#nextBar.arrive .nb-arrow{background:var(--ok)}
+#nextBar.arrive .nb-l{color:var(--ok)}
+#nextBar.stale .nb-t{opacity:.55}
+#nextBar .nb-main{cursor:pointer;border-radius:8px}
+#nextBar .nb-main:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
 #nextBar .nb-cmp{flex:none;width:36px;height:36px;border-radius:50%;border:none;background:#F2EEE7;font-size:17px;cursor:pointer}
 #nextBar .nb-cmp.on{background:var(--brand-soft)}
 #nextBar .nb-cmp[hidden]{display:none}
@@ -904,9 +912,9 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
         <div id="diffDisp"></div>
         <label id="walkSpeedRow">歩く速さ
           <select id="walkSpeedSel" onchange="setWalkSpeed(Number(this.value))" title="所要時間の計算に使います。高低差を取得済みなら登りの時間も加算されます">
-            <option value="0">3.0 km/h（ゆっくり）</option>
+            <option value="0" selected>3.0 km/h（フットパス・立ち止まる前提）</option>
             <option value="1">3.5 km/h</option>
-            <option value="2" selected>4.0 km/h（標準）</option>
+            <option value="2">4.0 km/h（さっさと歩く）</option>
             <option value="3">4.5 km/h</option>
             <option value="4">5.0 km/h（速め）</option>
           </select>
@@ -967,7 +975,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
         <!-- 歩く人の画面（v132）：次のスポットまでの距離と向き。◎か追従で位置が入ると出る -->
         <div id="nextBar" hidden>
           <div class="nb-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M12 2 L19 21 L12 17 L5 21 Z"/></svg></div>
-          <div class="nb-main"><div class="nb-l">次のスポット</div><div class="nb-t" id="nbText"></div></div>
+          <div class="nb-main" role="button" tabindex="0" onclick="nextBarTap()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();nextBarTap();}" title="押すと、次のスポットの写真と解説"><div class="nb-l" id="nbLabel">次のスポット</div><div class="nb-t" id="nbText" aria-live="polite"></div></div>
           <button class="nb-cmp tap" id="nbCompass" onclick="enableCompass()" aria-label="コンパスを使う" title="コンパスを使う（向きの矢印が体の向き基準になります）">🧭</button>
         </div>
         <!-- PC（v126）：下＝高低差 -->
@@ -1165,9 +1173,9 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
           </div>
           <div class="mm-subpane" data-sub="spd">
         <div class="mm-maplist">
-          <div class="mm-map" data-spd="0" onclick="setWalkSpeed(0)"><span class="mm-map-l">3.0 km/h（ゆっくり）</span><span class="mm-map-ck">✓</span></div>
+          <div class="mm-map" data-spd="0" onclick="setWalkSpeed(0)"><span class="mm-map-l">3.0 km/h（フットパス・立ち止まる前提）</span><span class="mm-map-ck">✓</span></div>
           <div class="mm-map" data-spd="1" onclick="setWalkSpeed(1)"><span class="mm-map-l">3.5 km/h</span><span class="mm-map-ck">✓</span></div>
-          <div class="mm-map" data-spd="2" onclick="setWalkSpeed(2)"><span class="mm-map-l">4.0 km/h（標準）</span><span class="mm-map-ck">✓</span></div>
+          <div class="mm-map" data-spd="2" onclick="setWalkSpeed(2)"><span class="mm-map-l">4.0 km/h（さっさと歩く）</span><span class="mm-map-ck">✓</span></div>
           <div class="mm-map" data-spd="3" onclick="setWalkSpeed(3)"><span class="mm-map-l">4.5 km/h</span><span class="mm-map-ck">✓</span></div>
           <div class="mm-map" data-spd="4" onclick="setWalkSpeed(4)"><span class="mm-map-l">5.0 km/h（速め）</span><span class="mm-map-ck">✓</span></div>
         </div>
@@ -1291,7 +1299,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
     <div class="help-section">
       <h3>⏱ 所要時間の計算</h3>
       <ul>
-        <li>距離÷歩く速さ（既定4km/h・変更可）＋ 各スポットの滞在時間。高低差を取得済みなら登り100mにつき10分を加算</li>
+        <li>距離÷歩く速さ（既定3km/h＝立ち止まる前提・変更可）＋ 各スポットの滞在時間。高低差を取得済みなら登り100mにつき10分を加算</li>
         <li>滞在時間はスポットの編集画面で分単位で設定できます</li>
       </ul>
     </div>
@@ -1375,7 +1383,10 @@ const ROUTER_MAX_PARALLEL = 4;      // 提供元サーバへ同時に投げる�
 const ROUTER_COOLDOWN_MS = 60000;   // 全部だめだったあと、次に試すまでの間（待ち時間で操作が止まらないように）
 // --- 歩く速さ（所要時間の計算）---
 const WALK_SPEEDS = [3, 3.5, 4, 4.5, 5];   // km/h。3=ゆっくり / 4=標準 / 5=速め
-const WALK_SPEED_DEFAULT = 2;              // 既定は 4km/h（従来と同じ計算になる位置）
+const WALK_SPEED_DEFAULT = 0;              // 既定は 3km/h。各地のフットパスマップは時速2.5〜3km（立ち止まる前提）で書かれている（v138）
+const ARRIVE_M = 25;                       // これ以内なら「到着」と出す（スタンプの50mより厳しめ）（v138）
+const NEXT_ACC_ABOUT_M = 40;               // 位置の精度がこれより悪ければ距離に「約」を付ける（v138）
+const NEXT_STALE_MS = 30000;               // これより古い位置は薄く出す（v138）
 // 登りの時間加算：標高100mにつき+10分（登り600mで1時間。ネイスミスの法則の一般的な係数）
 const CLIMB_MIN_PER_100M = 10;
 // --- スタンプラリー（歩いた人の記録。閲覧モードのときだけ働く）---
@@ -2312,7 +2323,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v137';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
+const APP_VERSION = 'v138';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
 }catch(_){} });
@@ -3640,7 +3651,7 @@ function _applyViewLock() {
    NEXT_OFFROUTE_M 以上離れていれば直線）。向きは北=0の矢印＋方角の文字。コンパス許可後は矢印が体の向き基準 */
 function _onWalkerPos(lat, lng, acc) {
   const prog = _routeProgress(lat, lng, _walkPos ? _walkPos.along : null);
-  _walkPos = {lat, lng, acc: acc || 0, along: prog.along, off: prog.off};
+  _walkPos = {lat, lng, acc: acc || 0, along: prog.along, off: prog.off, at: Date.now()};
   renderNextBar();
   if (typeof _drawElevHere === 'function') _drawElevHere();
 }
@@ -3704,8 +3715,35 @@ function nextSpotInfo() {
   const straight = prog.off > NEXT_OFFROUTE_M;
   const d = straight ? haversine(_walkPos.lat, _walkPos.lng, next.wp.lat, next.wp.lng) : (next.along - prog.along);
   const brg = _bearing(_walkPos.lat, _walkPos.lng, next.wp.lat, next.wp.lng);
-  return {wp: next.wp, label: _spotLabel(next.wp), distM: d, distText: _fmtDistM(d), straight, dirText: _dirName(brg),
-          rot: (_walkHeading == null) ? brg : ((brg - _walkHeading + 360) % 360)};
+  const min = Math.max(1, Math.round((d / 1000) / _walkSpeed() * 60));
+  const about = (_walkPos.acc || 0) > NEXT_ACC_ABOUT_M;
+  return {wp: next.wp, label: _spotLabel(next.wp), distM: d, distText: (about ? '約' : '') + _fmtDistM(d), straight, dirText: _dirName(brg),
+          min, rot: (_walkHeading == null) ? brg : ((brg - _walkHeading + 360) % 360)};
+}
+/* いま居る（ARRIVE_M 以内の）スポット。到着の表示に使う（v138） */
+function _arrivedSpot() {
+  if (!_walkPos) return null;
+  let best = null, bd = ARRIVE_M;
+  _stampTargets().forEach(w => { const d = _distM([_walkPos.lat, _walkPos.lng], [w.lat, w.lng]); if (d <= bd) { bd = d; best = w; } });
+  return best;
+}
+/* 区間ごとの目安の分数（S→①、①→②…）。番号のついたコースポイントと出発・到着の間だけ（見どころは区間の単位にしない）。
+   コース沿いの距離÷歩く速さ。登りと滞在は含めない（v138） */
+function _segmentMinutes() {
+  const spots = _spotsAlongRoute().filter(sp => sp.wp.type === 'start' || sp.wp.type === 'goal' || sp.wp.type === 'course');
+  const out = [];
+  for (let i = 1; i < spots.length; i++) {
+    const d = spots[i].along - spots[i-1].along;
+    if (d < 20) continue;                                  // 同じ場所（往復の重なり等）は飛ばす
+    const mark = w => w.type === 'start' ? 'S' : w.type === 'goal' ? 'G' : (() => { const n = courseNum(w) || 0; return (n >= 1 && n <= 20) ? String.fromCharCode(0x245F + n) : String(n || '?'); })();
+    out.push({from: mark(spots[i-1].wp), to: mark(spots[i].wp), distM: Math.round(d), min: Math.max(1, Math.round((d / 1000) / _walkSpeed() * 60))});
+  }
+  return out;
+}
+let _nextWpId = null;
+function nextBarTap() {
+  const id = _nextWpId; if (id == null) return;
+  if (typeof showViewInfo === 'function') showViewInfo(id);
 }
 function renderNextBar() {
   const bar = document.getElementById('nextBar'); if (!bar) return;
@@ -3714,13 +3752,21 @@ function renderNextBar() {
   const tx = document.getElementById('nbText'), ar = bar.querySelector('.nb-arrow'), cp = document.getElementById('nbCompass');
   if (cp) cp.hidden = !(typeof DeviceOrientationEvent !== 'undefined') || !_walkPos;
   const info = nextSpotInfo();
+  const here = _arrivedSpot();
+  const lb = document.getElementById('nbLabel');
   bar.classList.toggle('done', !!_walkPos && !info);
-  if (!info) { tx.textContent = _walkPos ? 'ゴールに着きました' : '◎を押すと、次のスポットまでの距離が出ます'; ar.style.visibility = _walkPos ? 'visible' : 'hidden'; ar.style.transform = ''; return; }
-  tx.innerHTML = '<div class="nb-name">次：<b>' + escHtml(info.label) + '</b></div>'
-               + '<div class="nb-dist"> まで <b>' + info.distText + '</b>' + (info.straight ? '（直線）' : '') + '<span class="nb-dir">' + info.dirText + '</span></div>';
+  bar.classList.toggle('arrive', !!here);
+  bar.classList.toggle('stale', !!_walkPos && (Date.now() - (_walkPos.at || 0)) > NEXT_STALE_MS);
+  _nextWpId = here ? here.id : (info ? info.wp.id : null);
+  if (lb) lb.textContent = here ? '到着' : '次のスポット';
+  if (!info) { tx.textContent = _walkPos ? (here ? _spotLabel(here) + '　ゴールに着きました' : 'ゴールに着きました') : '◎を押すと、次のスポットまでの距離が出ます'; ar.style.visibility = _walkPos ? 'visible' : 'hidden'; ar.style.transform = ''; return; }
+  tx.innerHTML = (here ? '<div class="nb-name"><b>' + escHtml(_spotLabel(here)) + '</b>　次：' + escHtml(info.label) + '</div>'
+                       : '<div class="nb-name">次：<b>' + escHtml(info.label) + '</b></div>')
+               + '<div class="nb-dist"> まで <b>' + info.distText + '</b>' + (info.straight ? '（直線）' : '') + '・約' + info.min + '分<span class="nb-dir">' + info.dirText + '</span></div>';
   ar.style.visibility = 'visible';
   ar.style.transform = 'rotate(' + Math.round(info.rot) + 'deg)';
 }
+setInterval(() => { if (viewMode && _walkPos) renderNextBar(); }, 15000);   // 古い位置を薄くする（v138）
 /* コンパス：iPhone は許可が要る（ボタンを押したときだけ求められる）。取れたら矢印が体の向き基準になる */
 function enableCompass() {
   const start = () => {
@@ -5958,6 +6004,9 @@ function _sheetHtml(imgUrl, cssWidth) {
     +             '<div class="sh-qr-t">カメラでQRコードを読み取ると、<br>この地図をスマホで開けます</div></div>' : '')
     +   '</div>'
     + '</div>'
+    + (function(){ const segs = _segmentMinutes(); return segs.length
+        ? '<div class="sh-segs"><div class="sh-sec">区間の目安（' + _walkSpeed() + 'km/h' + (_walkSpeed() <= 3 ? '・立ち止まる前提' : '') + '）</div><div class="sh-seg-l">'
+          + segs.map(g => escHtml(g.from) + '→' + escHtml(g.to) + ' <b>' + g.min + '分</b>').join('　') + '</div></div>' : ''; })()
     + '<div class="sh-kokoroe"><div class="sh-sec">歩く人の心得</div><div class="sh-kk">' + _kokoroeRows((courseInfo.kokoroe || '').trim(), true) + '</div></div>'
     + '<div class="sh-foot"><span>' + attr + '</span>'
     +   '<span>' + d.getFullYear() + '/' + p(d.getMonth() + 1) + '/' + p(d.getDate()) + ' 作成 ／ Footpath Mapmaker</span></div>';
