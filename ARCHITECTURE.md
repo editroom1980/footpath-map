@@ -376,3 +376,8 @@ CONSTANTS(904) → STATE(968) → STORAGE(1015) → 版のお知らせ(1021) →
 - 地図タイル提供元の絵柄そのもの
 
 これらは**実機確認が必要**。作業報告では必ずその旨を書く。
+
+## 自動保存（v148）
+- 未保存フラグ `_dirty` を立てるのは `_markDirty()` だけ（`saveSnapshot()` と、スナップショットを取らない設定変更）。立てると `AUTOSAVE_MS` 後に `saveCourse({quiet:true})`。
+- 保存できないとき（容量いっぱい）は `_saveState='error'` でボタンが赤くなり、`_dirty` は残る。閲覧中・コース名なし・`window.__noAutoSave`（検査）では予約しない。
+- `_persistDerivedQuietly()`（道順・標高の静かな書き戻し）は `_dirty` が消えたあとにだけ働くので、自動保存と競合しない。

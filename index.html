@@ -125,6 +125,9 @@ html,body{touch-action:manipulation;min-height:calc(100% + env(safe-area-inset-t
 .hbtn.on{background:var(--brand-soft);border-color:var(--brand);color:var(--brand)}
 .hbtn-save{background:var(--brand);border-color:var(--brand);color:#fff}
 .hbtn-save:hover{background:var(--brand-lite)}
+.hbtn-save.is-saved{background:#fff;border-color:#E3DCD1;color:var(--t-sub)}   /* 自動保存済み＝目立たせない（v148） */
+.hbtn-save.is-error,.mob-save.is-error{background:#B71C1C!important;color:#fff!important}
+.mob-save.is-saved{background:#EEE9E1!important;color:var(--t-sub)!important;box-shadow:none!important}
 .hbtn-back{background:#F4F0E9;border-color:#F4F0E9;color:#4A2E0E}
 #main{flex:1;display:flex;overflow:hidden;min-height:0}
 #sidebar{width:240px;flex-shrink:0;background:#FAF6EE;border-right:1px solid #D4C4A8;display:flex;flex-direction:column;overflow:hidden}
@@ -305,6 +308,14 @@ body.embed #s2, body.embed #mapArea, body.embed #mapWrap{height:100%!important;m
 .wp-sticker.find{border-color:#E8F5E9}
 .find-dot{border-radius:50%;color:#fff;font-weight:bold;text-align:center;border:2.5px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.45);cursor:pointer}
 #mobileFindBtn[hidden],#btnFind[hidden],#mmFindsRow[hidden],#btnGoal[hidden],#mmGoalRow[hidden]{display:none!important}
+/* スポットの編集：くわしい設定（v148） */
+.m-more{border:1px solid #E6DCCB;border-radius:10px;padding:0 10px;margin:4px 0 10px;background:#FCFAF6}
+.m-more summary{cursor:pointer;list-style:none;min-height:var(--tap);display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:#4A2E0E}
+.m-more summary::-webkit-details-marker{display:none}
+.m-more summary::before{content:'▸';font-size:12px;color:var(--t-sub)}
+.m-more[open] summary::before{content:'▾'}
+.m-more summary small{font-weight:500;color:var(--t-sub);font-size:11px}
+.m-more[open] summary{border-bottom:1px solid #EFE7DA;margin-bottom:8px}
 .mrb.find{color:#2E7D32}
 .fsh-scrim{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:3400;display:none}
 .fsh{position:fixed;left:0;right:0;bottom:0;z-index:3401;display:none;background:#fff;border-radius:20px 20px 0 0;padding:10px 16px max(16px,env(safe-area-inset-bottom));box-shadow:0 -6px 24px rgba(0,0,0,.18);max-height:90vh;overflow-y:auto}
@@ -909,6 +920,7 @@ body.viewonly .mob-share, body.embed .mob-share{display:none!important}
 .mm-tog-wrap{background:#F9F7F4;border-radius:13px;padding:1px 14px;margin-bottom:12px}
 .mm-tog{display:flex;align-items:center;gap:10px;min-height:var(--tap);padding:9px 0;border-bottom:0.5px solid rgba(0,0,0,0.05);cursor:pointer}
 .mm-tog:last-child{border-bottom:none}
+.mm-tog.on .mm-tog-l,.mm-map.on .mm-map-l{color:var(--brand);font-weight:800}
 .mm-maplist{background:#F9F7F4;border-radius:13px;padding:2px 14px;margin-bottom:12px}
 .mm-map{display:flex;align-items:center;gap:10px;min-height:var(--tap);padding:11px 0;border-bottom:0.5px solid rgba(0,0,0,0.05);cursor:pointer;font-size:13px;color:#4A2E0E}
 .mm-map:last-child{border-bottom:none}
@@ -1037,6 +1049,8 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
       <button class="pp-row" onclick="closePcPops();saveMapNoText()">文字なしで画像保存</button>
       <button class="pp-row" onclick="closePcPops();openHelp()">操作ガイド</button>
       <div class="pp-sec ed">上級者向け</div>
+      <button class="pp-row ed" id="btnVia" onclick="setMode('via');closePcPops()" title="地図をクリックすると、そこを通るように道順が変わります（ふだんは赤い線をドラッグすれば足ります）">通り道の点を置く（クリックした所を通る）<span class="pp-sw"></span></button>
+      <button class="pp-row ed" id="btnCustom" onclick="toggleCustomMode();closePcPops()" title="地図に無い道をなぞって描く（終わりは完了ボタン）">道を描く（地図に無い道をなぞる）<span class="pp-sw"></span></button>
       <button class="pp-row ed" id="btnManual" onclick="toggleManualMode();_syncPcPops()" title="ONの間は通り道の点が道に吸い付かない（OSMにない山道・農道用）">道に沿わせない<span class="pp-sw"></span></button>
       <button class="pp-row ed" id="btnToggleVia" onclick="toggleViaVisibility();_syncPcPops()" title="隠している間はルート線をドラッグできません（ルートは保持されます）">通り道の点を表示<span class="pp-sw"></span></button>
       <button class="pp-row ed" id="btnCustomFeat" onclick="toggleCustomFeature();_syncPcPops()" title="地図に無い道を自分で描いて、その道に沿って道順を引く">自分で描いた道を使う<span class="pp-sw"></span></button>
@@ -1096,8 +1110,6 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
         <div id="tbar">
           <button class="rl-btn ed on" id="btnWp" onclick="setMode('wp')" title="クリックでスポットをコースに追加"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M9 11a3 3 0 1 0 6 0a3 3 0 0 0 -6 0" /> <path d="M17.657 16.657l-4.243 4.243a2 2 0 0 1 -2.827 0l-4.244 -4.243a8 8 0 1 1 11.314 0" /></svg><span>スポット</span></button>
           <button class="rl-btn ed" id="btnDraw" onclick="setMode('draw')" title="指でなぞって描く&#10;地図をドラッグしてなぞると、そのとおりにコースが引かれます"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 19a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" /> <path d="M19 7a2 2 0 1 0 0 -4a2 2 0 0 0 0 4" /> <path d="M11 19h5.5a3.5 3.5 0 0 0 0 -7h-8a3.5 3.5 0 0 1 0 -7h4.5" /></svg><span>なぞる</span></button>
-          <button class="rl-btn ed" id="btnCustom" onclick="toggleCustomMode()" title="自分で描いた道&#10;地図に無い道をなぞって描く（終了で確定・長押しで削除）"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4"/><path d="M13.5 6.5l4 4"/></svg><span>道を描く</span></button>
-          <button class="rl-btn ed" id="btnVia" onclick="setMode('via')" title="地図をクリックすると、そこを通るように道順が変わります"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M12 6a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /> <path d="M4 6l8 0" /> <path d="M16 6l4 0" /> <path d="M6 12a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /> <path d="M4 12l2 0" /> <path d="M10 12l10 0" /> <path d="M15 18a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /> <path d="M4 18l11 0" /> <path d="M19 18l1 0" /></svg><span>通り道</span></button>
           <div class="rl-div ed"></div>
           <button class="rl-btn ed" id="btnUndo" onclick="undoLast()" title="取り消し (⌘Z)" disabled><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M9 14l-4 -4l4 -4" /> <path d="M5 10h11a4 4 0 1 1 0 8h-1" /></svg><span>取消</span></button>
           <button class="rl-btn ed" id="btnRedo" onclick="redoAction()" title="やり直し (⌘⇧Z)" disabled><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M15 14l4 -4l-4 -4" /> <path d="M19 10h-11a4 4 0 1 0 0 8h1" /></svg><span>やり直し</span></button>
@@ -1177,8 +1189,6 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
                 <div class="mob-modes">
           <button id="mobileDrawBtn" class="mob-mode tap" onclick="setMode('draw')" aria-label="指でなぞって描く"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 19a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" /> <path d="M19 7a2 2 0 1 0 0 -4a2 2 0 0 0 0 4" /> <path d="M11 19h5.5a3.5 3.5 0 0 0 0 -7h-8a3.5 3.5 0 0 1 0 -7h4.5" /></svg></button>
           <button id="mobileWpBtn" class="mob-mode on tap" onclick="setMode('wp')" aria-label="スポット"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11a3 3 0 1 0 6 0a3 3 0 0 0 -6 0" /> <path d="M17.657 16.657l-4.243 4.243a2 2 0 0 1 -2.827 0l-4.244 -4.243a8 8 0 1 1 11.314 0" /></svg></button>
-          <button id="mobileViaBtn" class="mob-mode tap" onclick="setMode('via')" aria-label="通り道の点"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /> <path d="M4 6l8 0" /> <path d="M16 6l4 0" /> <path d="M6 12a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /> <path d="M4 12l2 0" /> <path d="M10 12l10 0" /> <path d="M15 18a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /> <path d="M4 18l11 0" /> <path d="M19 18l1 0" /></svg></button>
-          <button id="mobileCustomBtn" class="mob-mode tap" onclick="toggleCustomMode()" aria-label="自分で描いた道"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4"/><path d="M13.5 6.5l4 4"/></svg></button>
         </div>
         <div class="mob-sdiv"></div>
         <div class="mob-stats">
@@ -1420,6 +1430,8 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
         <button class="mm-adv-h" id="mmAdvBtn" onclick="toggleMmAdv()" aria-expanded="false">上級者向け<span>ふだんは触らなくて大丈夫です</span><i>›</i></button>
         <div id="mmAdv">
           <div class="mm-tog-wrap">
+          <div class="mm-tog" id="mobileViaBtn" onclick="setMode('via');closeMobileMenu();showToast('通り道の点：地図を押した所を通るように道順が変わります（スポットに戻すには下の「スポット」）')" data-edit="1"><span class="mm-tog-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /> <path d="M4 6l8 0" /> <path d="M16 6l4 0" /> <path d="M6 12a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /> <path d="M4 12l2 0" /> <path d="M10 12l10 0" /> <path d="M15 18a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /> <path d="M4 18l11 0" /> <path d="M19 18l1 0" /></svg></span><span class="mm-tog-l">通り道の点を置く</span><div class="mm-sw" id="mmSwViaMode"></div></div>
+          <div class="mm-tog" id="mobileCustomBtn" onclick="toggleCustomMode();_syncMobileMenu()" data-edit="1"><span class="mm-tog-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4"/><path d="M13.5 6.5l4 4"/></svg></span><span class="mm-tog-l">道を描く（地図に無い道）</span><div class="mm-sw" id="mmSwCustomMode"></div></div>
           <div class="mm-tog" onclick="toggleViaVisibility();_syncMobileMenu()" data-edit="1"><span class="mm-tog-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 12a4 4 0 1 0 8 0a4 4 0 1 0 -8 0" /></svg></span><span class="mm-tog-l">通り道の点を表示</span><div class="mm-sw" id="mmSwVia"></div></div>
           <div class="mm-tog" onclick="toggleManualMode();_syncMobileMenu()" data-edit="1"><span class="mm-tog-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 13v-7.5a1.5 1.5 0 0 1 3 0v6.5" /> <path d="M11 5.5v-2a1.5 1.5 0 1 1 3 0v8.5" /> <path d="M14 5.5a1.5 1.5 0 0 1 3 0v6.5" /> <path d="M17 7.5a1.5 1.5 0 0 1 3 0v8.5a6 6 0 0 1 -6 6h-2h.208a6 6 0 0 1 -5.012 -2.7a69.74 69.74 0 0 1 -.196 -.3c-.312 -.479 -1.407 -2.388 -3.286 -5.728a1.5 1.5 0 0 1 .536 -2.022a1.867 1.867 0 0 1 2.28 .28l1.47 1.47" /></svg></span><span class="mm-tog-l">道に沿わせない</span><div class="mm-sw" id="mmSwManual"></div></div>
           <div class="mm-tog" onclick="toggleCustomFeature();_syncMobileMenu()" data-edit="1"><span class="mm-tog-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6 -6l4 4l8 -8"/><path d="M14 7l7 0l0 7"/></svg></span><span class="mm-tog-l">自分で描いた道を使う</span><div class="mm-sw" id="mmSwCustom"></div></div>
@@ -1494,31 +1506,8 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
     <div class="m-body">
       <label>種別</label><select id="mType"></select>
       <div id="mTypeChips"></div>   <!-- 種別の選び方（v128）：よく使う4つを大きく、残りは畳む。値は上の select に入れる -->
-      <label>名称 1行目（地図上に表示）</label><input id="mName" placeholder="スポット名">
-      <label>名称 2行目（任意）</label><input id="mName2" placeholder="補足・カッコ書きなど">
-      <label>説明・補足</label><textarea id="mDesc2" placeholder="例：農水省認定・171枚の棚田が広がる"></textarea>
-      <label>電話・URL</label><input id="mTel" placeholder="例：090-1234-5678">
-      <label>滞在時間（分）</label>
-      <input type="number" id="mDwell" min="0" max="480" step="5" value="0" placeholder="0">
-      <div style="font-size:11px;font-weight:bold;color:var(--t-sub);margin-bottom:4px">前後の接続設定</div>
-      <label style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:normal;cursor:pointer;margin-bottom:5px">
-        <input type="checkbox" id="mOnRoute" style="width:auto;padding:0;margin:0">
-        このスポットをコースに含める
-      </label>
-      <div style="height:6px"></div>
-      <label style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:normal;cursor:pointer;margin-bottom:5px">
-        <input type="checkbox" id="mFitBefore" checked style="width:auto;padding:0;margin:0">
-        前のラインを道路に沿う
-      </label>
-      <label style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:normal;cursor:pointer;margin-bottom:10px">
-        <input type="checkbox" id="mFitAfter" checked style="width:auto;padding:0;margin:0">
-        後のラインを道路に沿う
-      </label>
-      <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
-        <span style="font-size:11px;font-weight:bold;color:var(--t-sub)">名称ラベル表示位置</span>
-        <select id="mLabelDir" style="font-size:11px;padding:2px 4px;border:1px solid #C4B89A;border-radius:4px;background:#FAF6EE;width:auto;margin:0"><option value="auto">自動（おすすめ）</option><option value="top">上</option><option value="bottom">下</option><option value="left">左</option><option value="right">右</option></select>
-      </div>
-      <div style="font-size:11px;font-weight:bold;color:var(--t-sub);margin-bottom:5px">写真（最大12枚・写真のある印は「シール」で見せられます）</div>
+      <label>名前（地図に出ます）</label><input id="mName" placeholder="例：飯見の棚田">
+      <div style="font-size:11px;font-weight:bold;color:var(--t-sub);margin-bottom:5px">写真（最大12枚・撮るか選ぶ）</div>
       <div id="mPhotoStrip" class="photo-strip"></div>
       <div style="display:flex;gap:8px;margin-bottom:10px">
         <input type="file" accept="image/*" id="mPhotoFile" style="display:none" multiple>
@@ -1526,7 +1515,31 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
         <button aria-label="ファイルから選択" class="photo-add-btn" onclick="document.getElementById('mPhotoFile').click()" title="ファイルから選択"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h4l3 3h7a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-11a2 2 0 0 1 2 -2" /></svg></button>
         <button aria-label="カメラで撮影" class="photo-add-btn" onclick="document.getElementById('mPhotoCamera').click()" title="カメラで撮影"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h1a2 2 0 0 0 2 -2a1 1 0 0 1 1 -1h6a1 1 0 0 1 1 1a2 2 0 0 0 2 2h1a2 2 0 0 1 2 2v9a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-9a2 2 0 0 1 2 -2" /> <path d="M9 13a3 3 0 1 0 6 0a3 3 0 0 0 -6 0" /></svg></button>
       </div>
-    </div>
+      <label>説明（歩く人のカードに出ます）</label><textarea id="mDesc2" placeholder="例：農水省認定・171枚の棚田が広がる"></textarea>
+      <details id="mMore" class="m-more">
+        <summary>くわしい設定 <small>2行目の名前・電話・滞在時間・道順・名札の位置</small></summary>
+        <label>名前の2行目（任意）</label><input id="mName2" placeholder="補足・カッコ書きなど">
+        <label>電話・URL</label><input id="mTel" placeholder="例：090-1234-5678">
+        <label>滞在時間（分・所要時間に足します）</label>
+        <input type="number" id="mDwell" min="0" max="480" step="5" value="0" placeholder="0">
+        <div style="font-size:11px;font-weight:bold;color:var(--t-sub);margin-bottom:4px">道順</div>
+        <label style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:normal;cursor:pointer;margin-bottom:5px">
+          <input type="checkbox" id="mOnRoute" style="width:auto;padding:0;margin:0">
+          このスポットを道順に入れる（外すと「立ち寄らない場所」になります）
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:normal;cursor:pointer;margin-bottom:5px">
+          <input type="checkbox" id="mFitBefore" checked style="width:auto;padding:0;margin:0">
+          前の区間を道に沿わせる
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:normal;cursor:pointer;margin-bottom:10px">
+          <input type="checkbox" id="mFitAfter" checked style="width:auto;padding:0;margin:0">
+          後の区間を道に沿わせる
+        </label>
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+          <span style="font-size:11px;font-weight:bold;color:var(--t-sub)">名札の位置</span>
+          <select id="mLabelDir" style="font-size:11px;padding:2px 4px;border:1px solid #C4B89A;border-radius:4px;background:#FAF6EE;width:auto;margin:0"><option value="auto">自動（おすすめ）</option><option value="top">上</option><option value="bottom">下</option><option value="left">左</option><option value="right">右</option></select>
+        </div>
+      </details>
     <div class="m-ftr" style="justify-content:flex-end">
       <button class="m-hbtn x" onclick="closeModal()" aria-label="閉じる"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6l-12 12" /> <path d="M6 6l12 12" /></svg></button>
     </div>
@@ -1701,6 +1714,7 @@ const SHARE_CHECKS = [
   {k:'contact', l:'問い合わせ先を書いた（困ったときの連絡先）', auto:'contact'},
 ];
 const GOAL_IMG_MAX = 1280;   // ゴールの1枚（記念写真）の長辺（v147）
+const AUTOSAVE_MS = 1500;    // 変更からこれだけ静かなら自動で保存（v148・「保存」を意識させない）
 const TYPE_BIG = ['course', 'view', 'history', 'shop'];   // 編集画面で大きく出す「よく使う4つ」（オーナー指定・v129）。残りは畳む
 const LINE_STYLE = {color:'#E84040', weight:4, dashArray:'8,5', opacity:.9, lineJoin:'round', lineCap:'round', smoothFactor:0};
 const DBL_GAP_PX = 2;        // 往復で重なる区間：2本の線の間隔(px)
@@ -2231,11 +2245,11 @@ function renderStorageInfo(){
 function _lsGet(k){ try { return localStorage.getItem(k); } catch(_) { return null; } }
 function _lsSet(k, v){ try { localStorage.setItem(k, v); } catch(_) {} }
 function _daysSince(iso){ const t = Date.parse(iso); return isNaN(t) ? null : Math.floor((Date.now() - t) / 86400000); }
-function _noteSaved(){
+function _noteSaved(quiet){
   if (!_lsGet(LS.firstSaveAt)) _lsSet(LS.firstSaveAt, new Date().toISOString());
   const n = (+_lsGet(LS.saveCount) || 0) + 1;
   _lsSet(LS.saveCount, String(n));
-  if (n % 5 === 0) showToast('💾 保存 ' + n + ' 回ぶんがバックアップに入っていません。一覧の「すべて書き出す」で残せます');
+  if (n % (quiet ? 40 : 5) === 0) showToast('💾 保存 ' + n + ' 回ぶんがバックアップに入っていません。一覧の「すべて書き出す」で残せます');   // 自動保存は回数が増えるので控えめに（v148）
 }
 function _noteBackup(){ _lsSet(LS.backupAt, new Date().toISOString()); _lsSet(LS.saveCount, '0'); renderBackupStatus(); }
 function backupStatus(){
@@ -2412,6 +2426,7 @@ async function newCourse() {
   if (!name || !area) { alert('コース名とエリアを入力してください。'); return; }
   courseInfo  = {name, area, start:document.getElementById('s1Start').value.trim(), goal:document.getElementById('s1Goal').value.trim(), kokoroe:'', info:{}};
   currentCourseId = null;
+  clearTimeout(_autoSaveT); _autoSaveT = null; _setSaveState('dirty');   // 新しいコース＝まだ保存されていない（v148）
   if (typeof loadFinds === 'function') loadFinds();   // 発見の印を片づける（v143）
   if (typeof applyTheme === 'function') applyTheme(null, {quiet:true});   // 色を標準に戻す（v145）
 
@@ -2441,8 +2456,10 @@ async function newCourse() {
   }, 60);
 }
 
-function backToS1() {
+async function backToS1() {
   if (_customMode_) { showToast('作成・編集モードを終了してください'); return; }
+  if (_dirty && courseInfo && courseInfo.name && !window.__noAutoSave) { await autoSaveNow(); }   // 自動で保存してから戻る（v148）
+  if (!_dirty) { _doBackToS1(); return; }
   _askSaveBack();
 }
 function _doBackToS1() {
@@ -2574,7 +2591,7 @@ function initMap() {
   const _dsc = document.getElementById('iDesc');
   if (_dsc && !_dsc._dirtyHooked) {          // 説明を書き換えたら「未保存」にする（これまで拾えていなかった）
     _dsc._dirtyHooked = true;
-    _dsc.addEventListener('input', () => { _dirty = true; });
+    _dsc.addEventListener('input', () => { _markDirty(); });
   }
   leafMap.on('zoomend', _redrawRouteOffset);   // 往復ずらし表示をズームに追従して再計算
   leafMap.on('zoomend', _clusterStickers);      // シールの束ねをズームごとに作り直す（v142）
@@ -2695,7 +2712,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v147';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
+const APP_VERSION = 'v148';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
 }catch(_){} });
@@ -3084,7 +3101,7 @@ function closeDescSheet(){
 }
 function saveDescSheet(){
   const ta = document.getElementById('mDescText'), src = document.getElementById('iDesc');
-  if (ta && src && src.value !== ta.value) { src.value = ta.value; _dirty = true; }
+  if (ta && src && src.value !== ta.value) { src.value = ta.value; _markDirty(); }
   _syncDescState();
   closeDescSheet();
   showToast('コースの説明を書き込みました（保存はまだです）');
@@ -4243,6 +4260,8 @@ function _syncMobileMenu() {
   document.getElementById('mmSwVia')?.classList.toggle('on', viaVisible !== false);
   document.getElementById('mmSwManual')?.classList.toggle('on', manualMode === true);
   document.getElementById('mmSwView')?.classList.toggle('on', viewMode === true);
+  document.getElementById('mmSwViaMode')?.classList.toggle('on', mode === 'via');        // v148：上級者向けへ移した道具の状態
+  document.getElementById('mmSwCustomMode')?.classList.toggle('on', _customMode_ === true);
   document.getElementById('mmSwFollow')?.classList.toggle('on', _followOn === true);
   _syncBaseMapMenu();
   _syncCustomMenu();
@@ -5988,6 +6007,8 @@ function openModal(id) {
   document.getElementById('mLabelDir').value    = wp.labelDir  || 'auto';
   _modalPhotos = [...(wp.photos || [])];
   renderModalPhotos();
+  const _more = document.getElementById('mMore');   // くわしい設定は、何か入っているときだけ開いておく（v148）
+  if (_more) _more.open = !!((_nameParts[1] || '').trim() || (wp.tel || '').trim() || (wp.dwell || 0) > 0 || (wp.labelDir && wp.labelDir !== 'auto') || wp.fitBefore === false || wp.fitAfter === false || wp.onRoute === false);   // 置いたときの既定（道順に入れる・道に沿う・名札は自動）から変えてあるときだけ
   document.getElementById('mOver').classList.add('show');
   setTimeout(()=>document.getElementById('mName').focus(), 50);
 }
@@ -6555,8 +6576,33 @@ function _makeSnapshot() {
   };
 }
 
+/* 未保存フラグ（v148）：立てるのはここだけ。立てたら自動保存を予約する（AUTOSAVE_MS 静かなら保存） */
+let _autoSaveT = null, _saveState = 'saved';   // saved / dirty / saving / error
+function _markDirty(){ _dirty = true; scheduleAutoSave(); }
+function scheduleAutoSave(){
+  if (window.__noAutoSave || viewMode || !courseInfo || !courseInfo.name) { _setSaveState('dirty'); return; }
+  clearTimeout(_autoSaveT); _setSaveState('dirty');
+  _autoSaveT = setTimeout(autoSaveNow, AUTOSAVE_MS);
+}
+async function autoSaveNow(){
+  clearTimeout(_autoSaveT); _autoSaveT = null;
+  if (!_dirty || viewMode || !courseInfo || !courseInfo.name) return _dirty === false;
+  _setSaveState('saving');
+  const ok = await saveCourse({quiet:true});
+  _setSaveState(ok ? 'saved' : 'error');
+  return ok;
+}
+function _setSaveState(st){
+  _saveState = st;
+  const t = st === 'saved' ? '保存済み' : st === 'saving' ? '保存中…' : st === 'error' ? '保存できず' : '保存';
+  document.querySelectorAll('.hbtn-save, .mob-save').forEach(b => {
+    b.classList.toggle('is-saved', st === 'saved'); b.classList.toggle('is-error', st === 'error');
+    const sp = b.querySelector('span'); if (sp) sp.textContent = t; else b.textContent = t;
+    b.title = st === 'saved' ? '保存されています（変えると自動で保存します）' : st === 'error' ? '保存できませんでした。押してもう一度' : '押すとすぐ保存します（放っておいても自動で保存します）';
+  });
+}
 function saveSnapshot() {
-  _dirty = true;              // 編集操作は必ずここを通る＝未保存フラグの唯一の立て場所
+  _markDirty();              // 編集操作は必ずここを通る＝未保存フラグの唯一の立て場所（自動保存もここから）
   undoStack.push(_makeSnapshot());
   if (undoStack.length > 30) undoStack.shift();
   redoStack = [];          // 新操作でやり直し履歴をクリア
@@ -6910,7 +6956,7 @@ function closeKokoroeSheet() {
 }
 function saveKokoroeSheet() {
   const v = (document.getElementById('kkText').value || '').trim();
-  if ((courseInfo.kokoroe || '') !== v) { courseInfo.kokoroe = v; _dirty = true; }
+  if ((courseInfo.kokoroe || '') !== v) { courseInfo.kokoroe = v; _markDirty(); }
   closeKokoroeSheet(); _syncMmValues(); renderShareInfo();
   showToast(v ? 'この地域からのお願いを書き込みました（保存はまだです）' : '標準の心得だけを載せます');
 }
@@ -6962,7 +7008,7 @@ async function _ensureSticker(wp){
   return _ensureStickerSrc(p, () => { if (wp.marker && wps.includes(wp)) { wp.marker.setIcon(wpIcon(wp)); updateTooltip(wp); _clusterStickers(); } });
 }
 function toggleStickers(){
-  courseInfo.stickers = !courseInfo.stickers; _dirty = true;
+  courseInfo.stickers = !courseInfo.stickers; _markDirty();
   refreshIcons(); _syncPcPops(); _syncMobileMenu();
   showToast(courseInfo.stickers ? '写真のあるスポットをシールで見せます。歩く人の画面と配布シートにも同じに出ます' : 'スポットの印を○に戻しました');
 }
@@ -6992,7 +7038,7 @@ function _clusterStickers(){
    技術的な保護ではない（ファイルの中身は見える）。作者の意思表示＋アプリでの取り込み拒否。作者自身のバックアップ（shared 無し）は常に取り込める */
 function _isLockedShare(data){ return !!(data && data.shared === true && data.noEdit === true); }
 function toggleNoEdit(){
-  courseInfo.noEdit = !courseInfo.noEdit; _dirty = true; renderShareInfo();
+  courseInfo.noEdit = !courseInfo.noEdit; _markDirty(); renderShareInfo();
   showToast(courseInfo.noEdit ? 'そのまま使ってもらう：配布ファイルを他の人がこのアプリに取り込んで直すことを断ります（技術的な保護ではありません）' : '取り込んで直してよい：他の人が自分のアプリに取り込んで手を加えられます');
 }
 /* ===== ゴールの1枚（v147・フットパス特化 F7）：ゴールで記念写真に コース名・日付・距離・スタンプ を焼き込む ===== */
@@ -7074,7 +7120,7 @@ function _renderShareChecks(){
 }
 function shareCheckTap(k){
   const c = SHARE_CHECKS.find(x => x.k === k); if (!c) return;
-  if (c.own) { courseInfo.check = courseInfo.check || {}; if (courseInfo.check[k]) delete courseInfo.check[k]; else courseInfo.check[k] = true; _dirty = true; _renderShareChecks(); return; }
+  if (c.own) { courseInfo.check = courseInfo.check || {}; if (courseInfo.check[k]) delete courseInfo.check[k]; else courseInfo.check[k] = true; _markDirty(); _renderShareChecks(); return; }
   if (k === 'guide' || k === 'caution') { closeShareSheet(); showToast(k === 'guide' ? '道順の線の上の「通り道の点」を押して「分岐・注意の案内を付ける」→ 分岐' : '「通り道の点」を押して「分岐・注意の案内を付ける」→ 注意'); return; }
   closeShareSheet(); openInfoSheet('edit');
 }
@@ -7135,7 +7181,7 @@ function _thRender(){
 function closeThemeSheet(){ document.getElementById('themeScrim').style.display = 'none'; document.getElementById('themeSheet').style.display = 'none'; _thEdit = null; applyTheme(courseInfo.theme || null); }
 function saveThemeSheet(){
   if (!_thEdit) return;
-  const v = _thValue(); courseInfo.theme = _themeIsDefault(v) ? null : v; _dirty = true;
+  const v = _thValue(); courseInfo.theme = _themeIsDefault(v) ? null : v; _markDirty();
   _thEdit = null; document.getElementById('themeScrim').style.display = 'none'; document.getElementById('themeSheet').style.display = 'none';
   applyTheme(courseInfo.theme); _syncMmValues();
   showToast('地図の色：' + _themeName() + '（保存すると歩く人の画面と配布シートも同じ色になります）');
@@ -7544,13 +7590,13 @@ function saveGuideSheet() {
   const note = (document.getElementById('gNote').value || '').trim().slice(0, 40);
   vp.guide = _gEdit.kind === 'caution' ? {kind:'caution', ctype:_gEdit.ctype, note, photos:_gEdit.photos.slice()}
                                        : {kind:'turn', dir:_gEdit.dir, note, photos:_gEdit.photos.slice()};
-  _dirty = true; _syncVpIcon(vp); closeGuideSheet(); renderNextBar();
+  _markDirty(); _syncVpIcon(vp); closeGuideSheet(); renderNextBar();
   showToast('案内を付けました：' + _guideText(vp.guide) + (note ? '（' + note + '）' : ''));
 }
 function removeGuide() {
   if (!_gEdit) return;
   const vp = vps.find(v => v.id === _gEdit.vpId); if (!vp) { closeGuideSheet(); return; }
-  saveSnapshot(); delete vp.guide; _dirty = true; _syncVpIcon(vp); closeGuideSheet(); renderNextBar(); showToast('案内を外しました');
+  saveSnapshot(); delete vp.guide; _markDirty(); _syncVpIcon(vp); closeGuideSheet(); renderNextBar(); showToast('案内を外しました');
 }
 /* 歩く人：分岐・注意のカード（○のカードと同じ置き場に出す） */
 function showGuideInfo(vpId) {
@@ -7616,7 +7662,7 @@ function _sheetInfoHtml() {
 function _ciPickDiff(v) {
   courseInfo.info = courseInfo.info || {};
   if (v === 'auto') delete courseInfo.info.diff; else courseInfo.info.diff = v;
-  _dirty = true;
+  _markDirty();
   document.querySelectorAll('#ciDiff button').forEach(b => b.classList.toggle('on', b.getAttribute('data-d') === (courseInfo.info.diff || 'auto')));
   const d = courseDifficulty(_lastRouteDistM);
   document.getElementById('ciDiffHint').textContent = d ? ('自動の目安：' + _starText({label: d.label}) + ' ' + d.label + '（' + d.km.toFixed(1) + 'km・登り' + Math.round(d.up) + 'm）') : '自動の目安は高低差が取れてから出ます';
@@ -7652,7 +7698,7 @@ function saveInfoSheet() {
   courseInfo.info = courseInfo.info || {};
   let changed = false;
   document.querySelectorAll('#ciFields input[data-k]').forEach(inp => { const k = inp.getAttribute('data-k'), v = inp.value.trim(); if ((courseInfo.info[k] || '') !== v) { courseInfo.info[k] = v; changed = true; } });
-  if (changed) _dirty = true;
+  if (changed) _markDirty();
   closeInfoSheet(); _syncMmValues(); renderShareInfo(); _renderDifficulty(_lastRouteDistM);
   showToast(_courseInfoCount() ? 'コースの情報を書き込みました（保存はまだです）' : 'コースの情報は空のままです');
 }
@@ -8132,8 +8178,9 @@ function buildCurrentSaveData() {
 
 // 保存できたら true、保存できなかったら false（呼び出し側で画面遷移を止められるように）
 // 写真の退避(IndexedDB)を待つため非同期。呼び出し側は await すること。
-async function saveCourse() {
-  if (!courseInfo.name) { alert('コース名が設定されていません。一覧に戻って設定してください。'); return false; }
+async function saveCourse(opts) {
+  const quiet = !!(opts && opts.quiet);   // 自動保存（v148）：成功は知らせない・失敗は通知で
+  if (!courseInfo.name) { if (!quiet) alert('コース名が設定されていません。一覧に戻って設定してください。'); return false; }
   await _stashLivePhotos();       // 写真は IndexedDB へ。本体には参照だけを残す（容量対策）
   const data    = buildCurrentSaveData();
   const courses = getCourses();
@@ -8142,14 +8189,16 @@ async function saveCourse() {
   const ok = setCourses(courses);
   currentCourseId = data.id;
   if (!ok && lsAvail()) {                             // 書き込めなかった＝ブラウザの保存容量がいっぱい
-    alert('⚠️ 保存できませんでした（ブラウザの保存容量がいっぱいです）\n\n'
+    if (quiet) showToast('⚠️ 保存できませんでした（保存容量がいっぱい）。写真を減らすか「JSONで保存」を');
+    else alert('⚠️ 保存できませんでした（ブラウザの保存容量がいっぱいです）\n\n'
         + '写真を減らすか、「JSON書き出し」でファイルに保存してください。\n'
         + 'このままアプリを閉じると、今回の変更は失われます。');
     return false;
   }
   _dirty = false;             // 保存できた＝未保存の変更なし
-  _noteSaved();               // バックアップに入っていない保存回数を数える
-  showToast(lsAvail() ? '💾 保存しました（ブラウザ）' : '💾 保存しました（メモリ/JSONエクスポート推奨）');
+  clearTimeout(_autoSaveT); _autoSaveT = null; _setSaveState('saved');
+  _noteSaved(quiet);          // バックアップに入っていない保存回数を数える
+  if (!quiet) showToast(lsAvail() ? '💾 保存しました（ブラウザ）' : '💾 保存しました（メモリ/JSONエクスポート推奨）');
   return true;
 }
 
@@ -8210,6 +8259,7 @@ function loadCourseData(data) {
   applyTheme(courseInfo.theme, {quiet:true});   // 印と線を作る前に色を決める（v145）
   currentCourseId = data.id;
   _dirty = false;             // 読み込み直後は未保存の変更なし
+  clearTimeout(_autoSaveT); _autoSaveT = null; _setSaveState('saved');
 
   document.getElementById('s1').style.display = 'none';
   document.getElementById('s2').style.display = 'flex';
