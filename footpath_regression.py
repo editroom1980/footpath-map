@@ -435,6 +435,14 @@ def static_checks(src):
     chk('静的', '選べる種類の出どころは _buildTypeOptions のまま（チップは select を読む）',
         "const cur = sel.value, opts = [...sel.options].map(o => o.value);" in src and 'function _buildTypeOptions' in src)
     chk('静的', '最初の案内が「種類と名前はあとから」を伝える', '種類と名前は、○を押してあとから決められます' in src)
+    # --- v144: 周辺の情報を取り込む（OSM・Wikipedia。Google は使わない）---
+    chk('静的', '周辺の情報は OpenStreetMap（Overpass 2系統）と Wikipedia から。Google の情報は使わない',
+        "NEARBY_OVERPASS   = ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter']" in src and "NEARBY_WIKI       = 'https://ja.wikipedia.org/w/api.php'" in src
+        and 'maps.googleapis.com' not in src and 'places.googleapis.com' not in src)
+    chk('静的', '候補は距離・種類で絞り、既にあるスポットと重複は除き、選んだものだけを道順に入れないスポットとしてまとめて置く（取り消しは1回）',
+        'function nearbySearch' in src and 'function _nbIsDup' in src and 'function _addSpotsBulk' in src and "onRoute:false, lat:it.lat, lng:it.lng" in src and src.count('saveSnapshot();\n  items.forEach') == 1)
+    chk('静的', '入口は PC「その他」とスマホのコース欄（編集のときだけ）。出典を説明に書く',
+        'onclick="closePcPops();openNearbySheet()"' in src and 'onclick="closeMobileMenu();openNearbySheet()" data-edit="1"' in src and '（情報：OpenStreetMap）' in src and 'Wikipedia「' in src)
     # --- v143: 発見（歩く人が貼る・作者に送る・作者が取り込む）---
     chk('静的', '発見はコースIDごとに端末に残り（LS.finds）、写真は IndexedDB、片づけで消さない',
         "finds:       'fp_finds'" in src and 'function _saveFinds' in src and 'await _stashPhotoArray(f.photos);' in src and "Object.values(_allFinds()).forEach(list =>" in src)
@@ -1635,7 +1643,7 @@ def functional_checks(index_path):
             isinstance(pc3, dict) and pc3.get('noText') == [] and pc3.get('dup') == [] and pc3.get('nBtn', 0) >= 8
             and pc3.get('hdrH', 99) <= 60 and pc3.get('railIn') and pc3.get('hint') == 'クリックでスポットを追加'
             and pc3.get('popMapOpen') and pc3.get('bm') == 'gsi_photo' and pc3.get('pill') == '航空写真'
-            and pc3.get('legendOpen') and pc3.get('legendRows', 0) >= 2 and pc3.get('moreOpen') and pc3.get('moreRows') == 9
+            and pc3.get('legendOpen') and pc3.get('legendRows', 0) >= 2 and pc3.get('moreOpen') and pc3.get('moreRows') == 10
             and pc3.get('manualFlip') and pc3.get('hintVia') == 'ルート線の上をクリックして道順を変える'
             and pc3.get('viewHidden') and pc3.get('viewBack') and pc3.get('closedAll'), str(pc3)[:300])
 
@@ -2023,6 +2031,41 @@ def functional_checks(index_path):
           }catch(e){ return 'ERR:'+e.message; } }""")
         chk('機能', 'スポット削除の「元に戻す」が戻し、別の操作の後は案内し、通知は重ならず、種別はこのコースで使った順',
             isinstance(b1, dict) and all(b1.get(k) for k in ('gone', 'toast', 'back', 'guarded', 'stacked', 'order')), str(b1)[:220])
+
+        # v144: 周辺の情報：通信は差し替えて、候補→重複除外→選んで追加→1回で取り消し
+        nb = page.evaluate("""async ()=>{ try{
+            const keepFetch = window.fetch, keepV = viewMode, n0 = wps.length, keepU = undoStack.length, keepD = _dirty;
+            const c = L.latLngBounds(wps.filter(w => w.type !== 'node').map(w => [w.lat, w.lng])).getCenter(); const w0 = wps.find(w => w.type !== 'node');
+            window.fetch = async (url, opts) => { const u = String(url);
+              if (u.indexOf('overpass') >= 0) return new Response(JSON.stringify({elements:[
+                {type:'node', id:1, lat:c.lat + 0.001, lon:c.lng + 0.001, tags:{amenity:'cafe', name:'縁側カフェ', opening_hours:'Sa,Su 10:00-16:00', phone:'0790-00-0000'}},
+                {type:'way', id:2, center:{lat:c.lat - 0.001, lon:c.lng}, tags:{amenity:'school', name:'飯見小学校'}},
+                {type:'node', id:3, lat:c.lat, lon:c.lng + 0.0015, tags:{amenity:'toilets'}},
+                {type:'node', id:4, lat:w0.lat, lon:w0.lng, tags:{amenity:'cafe', name:(w0.name || '').split('\\n')[0]}},
+                {type:'node', id:5, lat:c.lat + 0.2, lon:c.lng, tags:{amenity:'cafe', name:'遠いカフェ'}}]}), {status:200});
+              if (u.indexOf('wikipedia') >= 0) { if (u.indexOf('geosearch') >= 0) return new Response(JSON.stringify({query:{geosearch:[{pageid:99, title:'飯見の棚田', lat:c.lat + 0.0005, lon:c.lng - 0.0005}]}}), {status:200});
+                return new Response(JSON.stringify({query:{pages:{'99':{pageid:99, title:'飯見の棚田', extract:'飯見の棚田は兵庫県宍粟市にある棚田である。日本の棚田百選に選ばれている。'}}}}), {status:200}); }
+              return keepFetch(url, opts); };
+            viewMode = false; openNearbySheet(); _nb.radius = 2000; _nbKinds().add('wiki');
+            await nearbySearch();
+            const names = _nb.cands.map(x => x.name);
+            const out = {found: _nb.cands.length === 4 && names.includes('縁側カフェ') && names.includes('トイレ') && names.includes('飯見の棚田') && !names.includes('遠いカフェ'),
+                         dup: !names.includes((w0.name || '').split('\\n')[0]) || (w0.name || '') === '',
+                         layer: !!_nbLayer && _nbLayer.getLayers().length === _nb.cands.length,
+                         listed: document.querySelectorAll('#nbList .nb-item').length === 4};
+            _nbToggle(_nb.cands.find(x => x.name === '縁側カフェ').id); _nbToggle(_nb.cands.find(x => x.name === '飯見の棚田').id);
+            out.btn = document.getElementById('nbAdd').textContent === '選んだ 2 件を追加';
+            addNearbySelected();
+            const a = wps.find(w => w.name === '縁側カフェ'), b = wps.find(w => w.name === '飯見の棚田');
+            out.added = wps.length === n0 + 2 && !!a && a.type === 'shop' && a.onRoute === false && a.tel === '0790-00-0000' && a.desc.indexOf('営業時間') >= 0 && a.desc.indexOf('（情報：OpenStreetMap）') >= 0 && !!a.marker
+                        && !!b && b.type === 'history' && b.desc.indexOf('棚田百選') >= 0 && b.desc.indexOf('Wikipedia「飯見の棚田」') >= 0;
+            out.closed = document.getElementById('nearbySheet').style.display === 'none' && !_nbLayer;
+            undoLast(); out.undone = wps.length === n0 && !wps.some(w => w.name === '縁側カフェ');
+            window.fetch = keepFetch; viewMode = keepV; _nb.cands = []; _nb.sel = new Set(); undoStack.length = keepU; _dirty = keepD; document.querySelectorAll('#toastBox .toast').forEach(e => e.remove());
+            return out;
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        chk('機能', '周辺の情報：候補（距離・重複を除外）→地図の薄い○→選んで追加（種別・説明・出典）→1回で取り消し',
+            isinstance(nb, dict) and all(nb.get(k) for k in ('found', 'dup', 'layer', 'listed', 'btn', 'added', 'closed', 'undone')), str(nb)[:260])
 
         # v143: 発見：貼る→端末に残る→印とカード→送るファイル→作者が取り込む→消す。編集画面では印を出さない
         fd = page.evaluate("""async ()=>{ try{

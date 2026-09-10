@@ -63,6 +63,7 @@
   info: { access, car, toilet, rest, season, notes, contact, diff }, // コースの情報（v139）。空欄は入れない。diff は手で選んだ★（1〜3）だけ
   vps[].guide: { kind:"turn"|"caution", dir, ctype, note, photos[] }, // 分岐・注意の案内（v141）。写真は idb: 参照
   stickers: true,                      // 写真のある印をシールで見せる（v142）。OFF のときは書かない
+  // 周辺の情報（v144）は OpenStreetMap（Overpass）と Wikipedia だけ。Google Places/Maps の情報は規約で使えない（載せない・取りに行かない）
   // 発見（v143）はコースの保存データには入らない。端末の LS.finds = { [courseId]: [{id, lat, lng, word, by, at, photos[]}] }。送るファイルは {fpFinds:1, courseId, courseName, finds:[…写真は実体]}
   maxWpId, maxVpNum, savedAt, version }
 ```

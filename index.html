@@ -338,6 +338,25 @@ body.embed #s2, body.embed #mapArea, body.embed #mapWrap{height:100%!important;m
 .vip-acts button{border:none;background:#F2EEE7;border-radius:10px;padding:10px 12px;font-family:inherit;font-size:13px;font-weight:700;color:#3D3835;cursor:pointer;min-height:var(--tap)}
 .vip-acts button.danger{background:#FDECEC;color:#B71C1C}
 .vip-note{font-size:11px;color:#8A8078;margin-top:8px;line-height:1.6}
+/* 周辺の情報（v144） */
+.nb-seg{display:flex;gap:6px}
+.nb-seg button,.nb-kind{border:1px solid #D4C4A8;border-radius:10px;background:#fff;font-family:inherit;font-size:13px;font-weight:700;color:#2C2620;padding:8px 12px;min-height:var(--tap);cursor:pointer}
+.nb-seg button.on,.nb-kind.on{border-color:var(--brand);background:var(--brand-soft);color:var(--brand)}
+.nb-kinds{display:flex;flex-wrap:wrap;gap:6px}
+.nb-kind{min-height:38px;padding:6px 10px;font-size:12.5px}
+.nb-go{width:100%;margin-top:12px}
+.nb-tools{display:flex;justify-content:flex-end;margin:4px 0}
+.nb-list{display:flex;flex-direction:column;gap:6px;max-height:38vh;overflow-y:auto}
+.nb-item{display:flex;align-items:center;gap:9px;border:1px solid #EFE7DA;border-radius:12px;background:#fff;padding:6px 8px;font-family:inherit;text-align:left;cursor:pointer;min-height:var(--tap)}
+.nb-item.on{border-color:var(--brand);background:#FFF7F2}
+.nb-ck{width:22px;height:22px;border-radius:6px;border:1.5px solid #C4B89A;display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#fff;flex-shrink:0;background:#fff}
+.nb-item.on .nb-ck{background:var(--brand);border-color:var(--brand)}
+.nb-dot{width:26px;height:26px;border-radius:50%;color:#fff;font-weight:700;font-size:12px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+.nb-t{display:flex;flex-direction:column;gap:2px;min-width:0}
+.nb-t b{font-size:14px;color:#231C14;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nb-t small{font-size:11px;color:var(--t-sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.leaflet-tooltip.nb-tt{font-size:11px;padding:2px 6px;background:#fff;border:1px solid #D4C4A8;color:#2C2620}
+@media (min-width:769px){.fsh.nb{width:560px}}
 @media (min-width:769px){.fsh{left:50%;right:auto;bottom:auto;top:50%;transform:translate(-50%,-50%);width:460px;max-width:calc(100vw - 32px);border-radius:16px;padding:18px 20px 20px}.fsh .ds-dh{display:none}}
 .wp-visited{position:absolute;right:-3px;top:-3px;width:14px;height:14px;border-radius:50%;background:var(--ok);
   color:#fff;font-size:9px;line-height:14px;text-align:center;border:1.5px solid #fff;font-weight:700}
@@ -991,6 +1010,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
     <button class="hbtn hbtn-share" onclick="openShareSheet()" title="配る&#10;画像・配布シート・リンク・GPX">配る</button>
     <!-- その他（v126）：使う頻度の低いものと上級者向け。編集の項目は .ed（閲覧中は隠す）-->
     <div class="pc-pop" id="popMore" role="menu">
+      <button class="pp-row ed" onclick="closePcPops();openNearbySheet()" title="OpenStreetMap と Wikipedia から、コースの周りのお店・史跡・学校などを候補にして選んで置く">周辺の情報を取り込む（お店・史跡・学校…）</button>
       <button class="pp-row" onclick="closePcPops();exportCourse()">JSONで保存（バックアップ）</button>
       <button class="pp-row" onclick="closePcPops();exportRouteCoords()">座標を書き出す（調査用）</button>
       <button class="pp-row" onclick="closePcPops();saveMapNoText()">文字なしで画像保存</button>
@@ -1206,6 +1226,26 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
         </div>
       </div>
 
+      <!-- 周辺の情報（v144）：OSM・Wikipedia から候補→選んだものだけスポット -->
+      <div id="nearbyScrim" class="fsh-scrim" onclick="closeNearbySheet()"></div>
+      <div id="nearbySheet" class="fsh nb" role="dialog" aria-label="周辺の情報を取り込む">
+        <div class="ds-dh"></div>
+        <div class="ds-t">周辺の情報を取り込む</div>
+        <div class="ds-n">OpenStreetMap と Wikipedia から、コースの周りにあるお店・史跡・学校などを探します（Google の情報は規約で使えません）。選んだものだけが、道順に入らないスポットになります。</div>
+        <label class="kk-l">コースからの距離</label>
+        <div class="g-seg nb-seg" id="nbRadius"></div>
+        <label class="kk-l">種類</label>
+        <div class="nb-kinds" id="nbKinds"></div>
+        <button class="ds-btn nb-go" id="nbSearch" onclick="nearbySearch()">探す</button>
+        <div class="ds-n" id="nbStatus" style="margin-top:8px"></div>
+        <div class="nb-tools"><button type="button" class="f-ghost tap" id="nbSelAll" onclick="_nbSelectAll(_nb.sel.size < _nb.cands.length)" hidden>全部選ぶ／外す</button></div>
+        <div id="nbList" class="nb-list"></div>
+        <div class="ds-row">
+          <button class="ds-btn ghost" onclick="closeNearbySheet()">閉じる</button>
+          <button class="ds-btn" id="nbAdd" onclick="addNearbySelected()" disabled>選んだものを追加</button>
+        </div>
+      </div>
+
       <!-- 発見（v143）：歩く人が貼る／一覧と作者へ送る -->
       <div id="findScrim" class="fsh-scrim" onclick="closeFindSheet()"></div>
       <div id="findSheet" class="fsh" role="dialog" aria-label="発見を貼る">
@@ -1297,6 +1337,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
         <div class="mm-maplist">
           <div class="mm-map" onclick="closeMobileMenu();openDescSheet()" data-edit="1"><span class="mm-map-l">コースの説明・見どころ</span><span class="mm-v" id="mmDescState">›</span></div>
           <div class="mm-map" onclick="closeMobileMenu();openReorderSheet()" data-edit="1"><span class="mm-map-l">スポットの並べ替え</span><span class="mm-v" id="mmReorderN">›</span></div>
+          <div class="mm-map" onclick="closeMobileMenu();openNearbySheet()" data-edit="1"><span class="mm-map-l">周辺の情報を取り込む（お店・史跡・学校…）</span><span class="mm-v">›</span></div>
           <div class="mm-map" onclick="closeMobileMenu();saveMapOffline()" title="このコースの範囲の地図を端末に保存します（圏外でも表示できます）"><span class="mm-map-l">地図を持ち歩く（圏外用）</span><span class="mm-v">›</span></div>
           <div class="mm-map" onclick="closeMobileMenu();openKokoroeSheet(viewMode ? 'view' : 'edit')"><span class="mm-map-l">歩く人の心得</span><span class="mm-v" id="mmKokoroe">›</span></div>
           <div class="mm-map" id="mmFindsRow" onclick="closeMobileMenu();openFindsSheet()" hidden><span class="mm-map-l">見つけたもの（発見）</span><span class="mm-v" id="mmFinds">0 件 ›</span></div>
@@ -1552,6 +1593,26 @@ const PHOTO_MAX_PX = 1024, PHOTO_QUALITY = 0.66, PHOTO_MAX_PER_SPOT = 12;
 const STICKER_PX = 96, STICKER_QUALITY = 0.72, STICKER_CLUSTER_PX = 46;
 /* 発見（v143・構想「参加者が見つけたものを貼って共有」の端末側）。歩く人がその端末に貼る。作者へはファイル（Web Share／保存）で送る */
 const FIND_COLOR = '#2E7D32', FIND_WORD_MAX = 30, FIND_BY_MAX = 12, FIND_POS_FRESH_MS = 120000;
+/* 周辺の情報（v144・構想 D）。Google の情報は Google 以外の地図に載せられない（規約）ので使わない。
+   OpenStreetMap（Overpass API）と Wikipedia（ja）から、コースの周りのお店・史跡・学校などを候補として出し、選んだものだけスポットにする */
+const NEARBY_OVERPASS   = ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter'];
+const NEARBY_WIKI       = 'https://ja.wikipedia.org/w/api.php';
+const NEARBY_TIMEOUT_MS = 20000, NEARBY_MAX = 150, NEARBY_DUP_M = 15, NEARBY_DESC_MAX = 160;
+const NEARBY_RADII      = [300, 1000, 2000];         // コース（スポット）からの距離の選択肢
+const NEARBY_KINDS = [                                // 画面の並び。t＝このアプリの種別。q＝Overpass の条件
+  {k:'shop',    l:'お店・飲食',     t:'shop',    q:['["amenity"~"^(restaurant|cafe|fast_food|pub|bar|ice_cream|food_court)$"]', '["shop"]']},
+  {k:'shrine',  l:'神社・寺院',     t:'shrine',  q:['["amenity"="place_of_worship"]']},
+  {k:'hist',    l:'史跡・見どころ', t:'history', q:['["historic"]', '["tourism"~"^(attraction|museum|artwork|information|picnic_site)$"]']},
+  {k:'view',    l:'展望',           t:'view',    q:['["tourism"="viewpoint"]']},
+  {k:'park',    l:'公園・自然',     t:'park',    q:['["leisure"~"^(park|garden|playground|nature_reserve)$"]', '["natural"~"^(spring|peak|waterfall|hot_spring)$"]']},
+  {k:'school',  l:'学校・幼稚園',   t:'school',  q:['["amenity"~"^(school|kindergarten|college|university)$"]']},
+  {k:'hall',    l:'公民館・役所',   t:'hall',    q:['["amenity"~"^(community_centre|townhall|library|social_facility)$"]']},
+  {k:'toilet',  l:'トイレ',         t:'toilet',  q:['["amenity"="toilets"]']},
+  {k:'parking', l:'駐車場',         t:'parking', q:['["amenity"="parking"]']},
+  {k:'bus',     l:'バス停・駅',     t:'other',   q:['["highway"="bus_stop"]', '["railway"="station"]']},
+  {k:'wiki',    l:'Wikipedia の記事', t:'history', q:null},
+];
+const NEARBY_KIND_DEFAULT_OFF = ['bus'];             // 最初は外しておく種類
 const TYPE_BIG = ['course', 'view', 'history', 'shop'];   // 編集画面で大きく出す「よく使う4つ」（オーナー指定・v129）。残りは畳む
 const LINE_STYLE = {color:'#E84040', weight:4, dashArray:'8,5', opacity:.9, lineJoin:'round', lineCap:'round', smoothFactor:0};
 const DBL_GAP_PX = 2;        // 往復で重なる区間：2本の線の間隔(px)
@@ -2545,7 +2606,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v143';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
+const APP_VERSION = 'v144';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
 }catch(_){} });
@@ -6829,6 +6890,170 @@ function _clusterStickers(){
     if (near) { near.n++; show(w, false); } else leaders.push({w, pt, n: 1});
   });
   leaders.forEach(l => { if (l.n > 1) { l.w._clusterN = l.n; l.w.marker.setIcon(wpIcon(l.w)); } });
+}
+
+/* ===== 周辺の情報（v144）：OpenStreetMap と Wikipedia から候補を出し、選んだものだけスポットにする =====
+   候補は地図に薄い○で出す（押すと選択）。追加は「道順に入らないスポット」としてまとめて置き、1回の取り消しで全部戻る */
+let _nb = {radius: 1000, kinds: null, cands: [], sel: new Set(), busy: false};
+let _nbLayer = null;
+async function _fetchJsonTimeout(url, opts, ms){
+  const ctrl = new AbortController(); const t = setTimeout(() => ctrl.abort(), ms || NEARBY_TIMEOUT_MS);
+  try { const res = await fetch(url, Object.assign({signal: ctrl.signal}, opts || {})); if (!res.ok) throw new Error('HTTP ' + res.status); return await res.json(); }
+  finally { clearTimeout(t); }
+}
+function _nbKinds(){ if (!_nb.kinds) _nb.kinds = new Set(NEARBY_KINDS.filter(k => !NEARBY_KIND_DEFAULT_OFF.includes(k.k)).map(k => k.k)); return _nb.kinds; }
+function _nbAnchorBounds(){
+  const pts = _stampTargets().map(w => [w.lat, w.lng]);
+  if (pts.length) return L.latLngBounds(pts);
+  const c = leafMap ? leafMap.getCenter() : null; return c ? L.latLngBounds([c, c]) : null;
+}
+function _nbDistToCourse(lat, lng){   // コース（道順の線があればそれ、無ければスポット）までの最短距離 m
+  let best = Infinity;
+  const c = _lastRouteCoords;
+  if (c && c.length > 1) { for (let i = 0; i < c.length; i += Math.max(1, Math.floor(c.length / 800))) { const d = haversine(lat, lng, c[i][0], c[i][1]); if (d < best) best = d; } }
+  _stampTargets().forEach(w => { const d = haversine(lat, lng, w.lat, w.lng); if (d < best) best = d; });
+  return best;
+}
+function _nbKindOf(tags){
+  const a = tags.amenity || '', t = tags.tourism || '', l = tags.leisure || '', n = tags.natural || '';
+  if (/^(restaurant|cafe|fast_food|pub|bar|ice_cream|food_court)$/.test(a) || tags.shop) return 'shop';
+  if (a === 'place_of_worship') return 'shrine';
+  if (a === 'toilets') return 'toilet';
+  if (a === 'parking') return 'parking';
+  if (/^(school|kindergarten|college|university)$/.test(a)) return 'school';
+  if (/^(community_centre|townhall|library|social_facility)$/.test(a)) return 'hall';
+  if (t === 'viewpoint') return 'view';
+  if (tags.historic || /^(attraction|museum|artwork|information|picnic_site)$/.test(t)) return 'hist';
+  if (/^(park|garden|playground|nature_reserve)$/.test(l) || /^(spring|peak|waterfall|hot_spring)$/.test(n)) return 'park';
+  if (tags.highway === 'bus_stop' || tags.railway === 'station') return 'bus';
+  return null;
+}
+const _NB_WORDS = {restaurant:'飲食店', cafe:'カフェ', fast_food:'軽食', pub:'居酒屋・パブ', bar:'バー', ice_cream:'アイス', food_court:'フードコート', toilets:'トイレ', parking:'駐車場', school:'学校', kindergarten:'幼稚園・保育園', college:'専門学校', university:'大学', community_centre:'公民館・集会所', townhall:'役場', library:'図書館', social_facility:'福祉施設', viewpoint:'展望', attraction:'観光名所', museum:'博物館・資料館', artwork:'アート', information:'案内所', picnic_site:'休憩地', park:'公園', garden:'庭園', playground:'遊び場', nature_reserve:'自然保護区', spring:'湧き水', peak:'山頂', waterfall:'滝', hot_spring:'温泉', bus_stop:'バス停', station:'駅', monument:'記念碑', memorial:'碑・慰霊碑', castle:'城跡', ruins:'遺跡', archaeological_site:'遺跡', wayside_shrine:'祠', wayside_cross:'道標', tomb:'墓・古墳', boundary_stone:'境界石', building:'歴史的建物', shinto:'神社', buddhist:'寺院', christian:'教会',
+  // shop=* の主なもの（無いものは英語のまま出す）
+  hairdresser:'理容・美容室', convenience:'コンビニ', supermarket:'スーパー', bakery:'パン屋', electronics:'電器店', clothes:'衣料品店', furniture:'家具店', hardware:'金物・日用品店', florist:'花屋', greengrocer:'青果店', butcher:'精肉店', seafood:'鮮魚店', confectionery:'菓子店', alcohol:'酒屋', kiosk:'売店', gift:'土産・雑貨', books:'本屋', pharmacy:'薬局', chemist:'薬局', car_repair:'自動車整備', car:'自動車販売', bicycle:'自転車店', farm:'農産物直売', general:'よろず屋', variety_store:'雑貨店', doityourself:'ホームセンター', tea:'お茶屋', rice:'米屋', tobacco:'たばこ店', laundry:'クリーニング', dry_cleaning:'クリーニング', optician:'メガネ店', jewelry:'宝飾店', sports:'スポーツ用品店', stationery:'文具店', toys:'玩具店', pet:'ペット用品', garden_centre:'園芸店', agrarian:'農業資材', craft:'工芸', deli:'惣菜', beverages:'飲料', newsagent:'新聞・雑誌', mobile_phone:'携帯電話店', computer:'パソコン店', wine:'ワイン', watches:'時計店', boutique:'ブティック', mall:'ショッピングセンター', department_store:'百貨店', fuel:'ガソリンスタンド', massage:'マッサージ', beauty:'美容サロン', fishing:'釣具店', charcoal:'木炭', outdoor:'アウトドア用品'};
+function _nbWord(v){ return _NB_WORDS[v] || v || ''; }
+function _nbDefaultName(kind, tags){
+  const a = tags.amenity || '';
+  if (kind === 'toilet') return 'トイレ'; if (kind === 'parking') return '駐車場'; if (kind === 'bus') return (tags.railway === 'station' ? '駅' : 'バス停');
+  if (kind === 'shrine') return tags.religion === 'buddhist' ? '寺院' : (tags.religion === 'shinto' ? '神社' : '神社・寺院');
+  if (kind === 'view') return '展望'; if (kind === 'hist') return _nbWord(tags.historic) || '史跡';
+  return _nbWord(a) || _nbWord(tags.shop) || '';
+}
+function _nbDesc(kind, tags){
+  const parts = [];
+  if (kind === 'shop') { const w = _nbWord(tags.amenity) || (tags.shop ? (_NB_WORDS[tags.shop] || 'お店（' + tags.shop + '）') : ''); if (w) parts.push(w); if (tags.cuisine) parts.push(tags.cuisine.replace(/;/g, '・')); }
+  else if (kind === 'shrine') { if (tags.religion) parts.push(_nbWord(tags.religion)); }
+  else if (kind === 'hist') { if (tags.historic) parts.push(_nbWord(tags.historic)); if (tags.inscription) parts.push(tags.inscription); }
+  else { const w = _nbWord(tags.amenity) || _nbWord(tags.tourism) || _nbWord(tags.leisure) || _nbWord(tags.natural) || _nbWord(tags.highway) || _nbWord(tags.railway); if (w) parts.push(w); }
+  if (tags.description) parts.push(tags.description);
+  if (tags.opening_hours) parts.push('営業時間 ' + tags.opening_hours);
+  if (tags.website || tags['contact:website']) parts.push(tags.website || tags['contact:website']);
+  let d = parts.filter(Boolean).join('。').slice(0, NEARBY_DESC_MAX);
+  return (d ? d + '\n' : '') + '（情報：OpenStreetMap）';
+}
+function _nbBbox(){
+  const b = _nbAnchorBounds(); if (!b) return null;
+  const r = _nb.radius + 50, lat = b.getCenter().lat;
+  const dLat = r / 111320, dLng = r / (111320 * Math.max(0.2, Math.cos(lat * Math.PI / 180)));
+  return {s: b.getSouth() - dLat, w: b.getWest() - dLng, n: b.getNorth() + dLat, e: b.getEast() + dLng, c: b.getCenter(),
+          radius: Math.min(10000, Math.round(haversine(b.getSouth(), b.getWest(), b.getNorth(), b.getEast()) / 2 + r))};
+}
+async function _nbFetchOsm(bb){
+  const kinds = NEARBY_KINDS.filter(k => k.q && _nbKinds().has(k.k));
+  if (!kinds.length) return [];
+  const box = [bb.s, bb.w, bb.n, bb.e].map(v => v.toFixed(5)).join(',');
+  const q = '[out:json][timeout:20];(' + kinds.map(k => k.q.map(f => 'nwr' + f + '(' + box + ');').join('')).join('') + ');out center tags ' + NEARBY_MAX + ';';
+  let lastErr = null;
+  for (const base of NEARBY_OVERPASS) {
+    try {
+      const j = await _fetchJsonTimeout(base, {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:'data=' + encodeURIComponent(q)});
+      return (j.elements || []).map(el => {
+        const tags = el.tags || {}, lat = el.lat != null ? el.lat : (el.center || {}).lat, lng = el.lon != null ? el.lon : (el.center || {}).lon;
+        const kind = _nbKindOf(tags); if (lat == null || lng == null || !kind || !_nbKinds().has(kind)) return null;
+        const name = tags.name || tags['name:ja'] || _nbDefaultName(kind, tags); if (!name) return null;
+        return {id:'osm' + el.type + el.id, kind, type:(NEARBY_KINDS.find(k => k.k === kind) || {}).t || 'other', name, desc:_nbDesc(kind, tags), tel:tags.phone || tags['contact:phone'] || '', lat, lng, src:'OpenStreetMap'};
+      }).filter(Boolean);
+    } catch(e) { lastErr = e; }
+  }
+  throw lastErr || new Error('overpass');
+}
+async function _nbFetchWiki(bb){
+  if (!_nbKinds().has('wiki')) return [];
+  const u = NEARBY_WIKI + '?action=query&list=geosearch&gscoord=' + bb.c.lat.toFixed(5) + '%7C' + bb.c.lng.toFixed(5) + '&gsradius=' + Math.max(100, bb.radius) + '&gslimit=50&format=json&origin=*';
+  const j = await _fetchJsonTimeout(u);
+  const pages = ((j.query || {}).geosearch || []).filter(pg => pg.lat != null && pg.lon != null);
+  const ex = {};
+  for (let i = 0; i < pages.length; i += 20) {
+    const ids = pages.slice(i, i + 20).map(pg => pg.pageid).join('%7C');
+    try { const e = await _fetchJsonTimeout(NEARBY_WIKI + '?action=query&prop=extracts&exintro=1&explaintext=1&exsentences=2&exlimit=20&pageids=' + ids + '&format=json&origin=*'); Object.values((e.query || {}).pages || {}).forEach(pg => { ex[pg.pageid] = pg.extract || ''; }); } catch(_) {}
+  }
+  return pages.map(pg => ({id:'wiki' + pg.pageid, kind:'wiki', type:'history', name:pg.title, desc:((ex[pg.pageid] || '').slice(0, NEARBY_DESC_MAX) + '\n（Wikipedia「' + pg.title + '」より）').trim(), tel:'', lat:pg.lat, lng:pg.lon, src:'Wikipedia'}));
+}
+function _nbIsDup(c){ return wps.some(w => w.type !== 'node' && haversine(c.lat, c.lng, w.lat, w.lng) <= NEARBY_DUP_M && ((w.name || '').split('\n')[0] === c.name || haversine(c.lat, c.lng, w.lat, w.lng) <= 5)); }
+async function nearbySearch(){
+  if (_nb.busy) return;
+  const bb = _nbBbox(); if (!bb) { showToast('先に地図を表示してください'); return; }
+  if (!_nbKinds().size) { showToast('種類を1つ以上選んでください'); return; }
+  _nb.busy = true; _nb.cands = []; _nb.sel = new Set(); _nbRenderList(); _nbSetStatus('探しています…（OpenStreetMap' + (_nbKinds().has('wiki') ? '・Wikipedia' : '') + '）');
+  const errs = [];
+  let osm = [], wiki = [];
+  try { osm = await _nbFetchOsm(bb); } catch(e) { errs.push('OpenStreetMap'); }
+  try { wiki = await _nbFetchWiki(bb); } catch(e) { errs.push('Wikipedia'); }
+  const all = osm.concat(wiki).map(c => Object.assign(c, {dist: Math.round(_nbDistToCourse(c.lat, c.lng))})).filter(c => c.dist <= _nb.radius && !_nbIsDup(c));
+  const seen = new Set();
+  _nb.cands = all.filter(c => { const k = c.name + '@' + c.lat.toFixed(4) + ',' + c.lng.toFixed(4); if (seen.has(k)) return false; seen.add(k); return true; }).sort((a, b) => a.dist - b.dist).slice(0, NEARBY_MAX);
+  _nb.busy = false;
+  _nbSetStatus((errs.length ? '⚠️ ' + errs.join('・') + ' から取得できませんでした（通信できる場所で試してください）。' : '') + (_nb.cands.length ? _nb.cands.length + ' 件見つかりました。追加するものを選んでください（地図の薄い○も押せます）' : (errs.length ? '' : 'この範囲には見つかりませんでした。距離を広げるか、種類を増やしてください')));
+  _nbRenderList(); _nbRenderLayer();
+}
+function _nbSetStatus(t){ const el = document.getElementById('nbStatus'); if (el) el.textContent = t; }
+function _nbToggle(id){ if (_nb.sel.has(id)) _nb.sel.delete(id); else _nb.sel.add(id); _nbRenderList(); _nbRenderLayer(); }
+function _nbSelectAll(on){ _nb.sel = new Set(on ? _nb.cands.map(c => c.id) : []); _nbRenderList(); _nbRenderLayer(); }
+function _nbRenderList(){
+  const box = document.getElementById('nbList'); if (!box) return;
+  box.innerHTML = _nb.cands.map(c => { const t = WT.find(x => x.v === c.type) || WT[0]; const kl = (NEARBY_KINDS.find(k => k.k === c.kind) || {}).l || '';
+    return '<button type="button" class="nb-item tap' + (_nb.sel.has(c.id) ? ' on' : '') + '" onclick="_nbToggle(\'' + c.id + '\')"><span class="nb-ck">' + (_nb.sel.has(c.id) ? '✓' : '') + '</span><span class="nb-dot" style="background:' + t.c + '">' + escHtml(String(SYM[c.type] || '●')) + '</span><span class="nb-t"><b>' + escHtml(c.name) + '</b><small>' + escHtml(kl + '・コースから ' + _fmtDistM(c.dist) + '・' + c.src) + '</small></span></button>'; }).join('');
+  const n = _nb.sel.size, btn = document.getElementById('nbAdd'); if (btn) { btn.disabled = !n; btn.textContent = n ? '選んだ ' + n + ' 件を追加' : '選んだものを追加'; }
+  const sa = document.getElementById('nbSelAll'); if (sa) sa.hidden = !_nb.cands.length;
+}
+function _nbRenderLayer(){
+  if (!leafMap) return;
+  if (!_nbLayer) _nbLayer = L.layerGroup().addTo(leafMap); else _nbLayer.clearLayers();
+  _nb.cands.forEach(c => { const t = WT.find(x => x.v === c.type) || WT[0], on = _nb.sel.has(c.id);
+    const m = L.circleMarker([c.lat, c.lng], {radius: on ? 9 : 7, color:'#fff', weight:2, fillColor:t.c, fillOpacity: on ? .95 : .4, pane:'markerPane'}).addTo(_nbLayer);
+    m.bindTooltip(c.name, {direction:'top', offset:[0,-8], className:'nb-tt', opacity: on ? 1 : .8});
+    m.on('click', e => { L.DomEvent.stopPropagation(e); _nbToggle(c.id); }); });
+}
+function _nbClearLayer(){ if (_nbLayer) { try { leafMap.removeLayer(_nbLayer); } catch(_) {} _nbLayer = null; } }
+function _nbPick(k, v){ if (k === 'radius') _nb.radius = v; else { const ks = _nbKinds(); if (ks.has(v)) ks.delete(v); else ks.add(v); } _nbRenderControls(); }
+function _nbRenderControls(){
+  document.querySelectorAll('#nbRadius button').forEach(b => b.classList.toggle('on', Number(b.getAttribute('data-v')) === _nb.radius));
+  const ks = _nbKinds(), box = document.getElementById('nbKinds'); if (!box) return;
+  box.innerHTML = NEARBY_KINDS.map(k => '<button type="button" class="nb-kind' + (ks.has(k.k) ? ' on' : '') + '" onclick="_nbPick(\'kind\',\'' + k.k + '\')">' + escHtml(k.l) + '</button>').join('');
+}
+function openNearbySheet(){
+  if (viewMode) { showToast('周辺の情報は編集画面で取り込めます'); return; }
+  _closeAllPopups();
+  const r = document.getElementById('nbRadius'); if (r && !r.children.length) r.innerHTML = NEARBY_RADII.map(v => '<button type="button" data-v="' + v + '" onclick="_nbPick(\'radius\',' + v + ')">' + (v >= 1000 ? (v / 1000) + ' km' : v + ' m') + '</button>').join('');
+  _nbRenderControls(); _nbRenderList(); _nbRenderLayer();
+  if (!_nb.cands.length) _nbSetStatus('');
+  document.getElementById('nearbyScrim').style.display = 'block'; document.getElementById('nearbySheet').style.display = 'block';
+}
+function closeNearbySheet(){ document.getElementById('nearbyScrim').style.display = 'none'; document.getElementById('nearbySheet').style.display = 'none'; _nbClearLayer(); }
+function _addSpotsBulk(items){   // 道順に入れないスポットをまとめて置く（1回の取り消しで全部戻る）
+  if (!items.length) return 0;
+  if (!_boundsAnchor) _setAnchor(items[0].lat, items[0].lng, false);
+  saveSnapshot();
+  items.forEach(it => { idW++; const wp = {id:idW, type:it.type || 'other', name:String(it.name || '').slice(0, 60), desc:it.desc || '', tel:it.tel || '', dwell:0, fitBefore:true, fitAfter:true, onRoute:false, lat:it.lat, lng:it.lng, photos:[], labelDir:'auto', marker:null}; wps.push(wp); buildWpMarker(wp); });
+  redrawList(); refreshIcons(); if (typeof scheduleAutoLabels === 'function') scheduleAutoLabels();
+  return items.length;
+}
+function addNearbySelected(){
+  const items = _nb.cands.filter(c => _nb.sel.has(c.id)); if (!items.length) return;
+  const n = _addSpotsBulk(items);
+  _nb.cands = _nb.cands.filter(c => !_nb.sel.has(c.id)); _nb.sel = new Set();
+  closeNearbySheet();
+  showToast(n + ' 件をスポットにしました（道順には入れていません。○を押すと種類や説明を直せます・「取消」で戻せます）');
 }
 
 /* ===== 発見（v143）：歩く人が見つけたものを、写真とひとことで地図に貼る =====
