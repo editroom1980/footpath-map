@@ -287,7 +287,7 @@ body.viewonly #descSec.view-desc textarea{background:#F9F7F4;border-color:#E6DCC
 .sh-legend{display:flex;flex-direction:column;gap:5px;margin-bottom:12px}
 .sh-lg{display:flex;align-items:center;gap:7px;font-size:11.5px}
 .sh-lgm{width:19px;height:19px;border-radius:50%;color:#fff;font-size:9.5px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:none}
-.sh-lgline{width:19px;border-top:3px dashed #E84040;flex:none}
+.sh-lgline{flex:none;display:inline-flex}
 .sh-desc{font-size:11.5px;line-height:1.7;white-space:pre-wrap;margin-bottom:12px}
 .sh-spots{columns:2;column-gap:12px;font-size:11px;line-height:1.6}
 .sh-spot{break-inside:avoid;display:flex;gap:5px;margin-bottom:1px}
@@ -987,12 +987,14 @@ const WT = [
   {v:'node',    l:'なぞり点（調整点）',            c:'#444444'},
 ];
 const SYM = {start:'S',goal:'G',view:'◎',shop:'★',shrine:'⛩',history:'碑',park:'🌿',toilet:'WC',parking:'P',other:'●',node:''};
-const LINE_STYLE = {color:'#E84040', weight:4, dashArray:'8,5', opacity:.9, lineJoin:'round', lineCap:'round', smoothFactor:0};
+const LINE_STYLE = {color:'#E84040', weight:4, opacity:.95, lineJoin:'round', lineCap:'round', smoothFactor:0};
 const DBL_GAP_PX = 2;        // 往復で重なる区間：2本の線の間隔(px)
 const ROUTE_CASING_ADD = 3;  // ルート線の白いふちの太さ（赤い線に足すpx）。表示専用
-const ARROW_GAP_PX  = 90;    // 進行方向の矢印を置く間隔(px)。画面上の間隔なので、拡大しても密度は変わらない
-const ARROW_BACK    = 7;     // 矢印の奥行き(px, 基準ズーム16)
-const ARROW_SIDE    = 5;     // 矢印の広がり(px, 基準ズーム16)
+const ARROW_GAP_PX  = 13;    // 矢印どうしの間隔(px, 基準ズーム16)。>>>>> のように連ねるための間隔
+const ARROW_BACK    = 8;     // 矢印の奥行き(px, 基準ズーム16)
+const ARROW_SIDE    = 5.5;   // 矢印の広がり(px, 基準ズーム16)
+const ARROW_MAX     = 900;   // 一度に描く矢印の上限（保険。ふつうは画面内だけなので届かない）
+const ARROW_MAX_K   = 1.6;   // 矢印の大きさの上限倍率。拡大しても大きくなりすぎないようにする
 // --- ルート表示チューニング（往復ずらし表示の間隔調整はここ1か所）---
 const OFF_GEO_M  = 1.0;      // 片側オフセットの地理基準(m)。中ズームで従来同等・拡大で広がる。広げたいなら上げる
 const OFF_MAX_PX = 20;       // 広がりの上限(px)。窮屈な箇所での過剰拡大による交差を防ぐ保険
@@ -1707,6 +1709,9 @@ function initMap() {
   leafMap.on('zoomend', _customScaleWeights);
   leafMap.on('zoomend', () => { if (typeof scheduleAutoLabels === 'function') scheduleAutoLabels(); });
   leafMap.on('zoomend', _redrawRouteOffset);   // 往復ずらし表示をズームに追従して再計算
+  leafMap.on('moveend', () => {               // 矢印は画面内だけ作るので、動かしたら作り直す
+    if (routeLine && _routeLineBase) _drawArrows(_buildDisplayCoords(_routeLineBase));
+  });
   canvasRenderer = L.canvas({padding: 0.5}); // Canvas renderer for polylines
 
   // 画面回転・リサイズ時に地図サイズを再計算（横向きで地図がずれるのを防ぐ）
@@ -1821,7 +1826,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v108';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
+const APP_VERSION = 'v109';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
 }catch(_){} });
@@ -3912,9 +3917,9 @@ function buildSegCoordsList() {
 // ── 往復（同じ道の行き帰り）で重なる区間だけ、表示上だけ左右に振り分ける（表示専用） ──
 // データ(_lastRouteCoords)・当たり判定(allCoordsオーバーレイ)は一切変更しない。往復が無ければ素の座標をそのまま返す。
 // 規則：道路と同じく「進行方向に対して常に右側」へ寄せる（右法線=(-dy,dx)）。行きと帰りが必ず反対側になり交差しない。破線・間隔も線幅と同縮尺、折返しは半円。
-function _routeWeight(){ const z=leafMap?leafMap.getZoom():16; return Math.max(2, Math.min(10, 3 + (z-16)*1.3)); } // 拡大で線を太く
-function _routeK(){ return _routeWeight()/3; }                          // 基準ズーム16を1とする倍率（破線・間隔も同縮尺）
-function _routeDash(){ const k=_routeK(); return (8*k).toFixed(1)+','+(5*k).toFixed(1); }
+function _routeWeight(){ const z=leafMap?leafMap.getZoom():16; return Math.max(3, Math.min(12, 4 + (z-16)*1.4)); } // 拡大で矢印を大きく
+function _threadWeight(){ return Math.max(1.5, Math.min(3.2, _routeWeight()*0.42)); }   // 矢印どうしをつなぐ細い線
+function _routeK(){ return _routeWeight()/4; }                          // 基準ズーム16を1とする倍率（矢印の大きさ・間隔）
 function _buildDisplayCoords(coords){
   if(!_dblOn || !coords || coords.length<3 || !leafMap) return coords;
   const n=coords.length;
@@ -3979,9 +3984,14 @@ function _buildDisplayCoords(coords){
 function _buildArrows(disp){
   if (!leafMap || !disp || disp.length < 2) return [];
   const P = disp.map(c => leafMap.latLngToLayerPoint(L.latLng(c[0], c[1])));
-  const k = _routeK(), back = ARROW_BACK * k, side = ARROW_SIDE * k;
+  const k = Math.min(_routeK(), ARROW_MAX_K);   // 拡大しても矢印は大きくなりすぎない
+  const back = ARROW_BACK * k, side = ARROW_SIDE * k, gap = ARROW_GAP_PX * k;
+  // 画面に入っている所だけ作る（拡大すると線の長さが数万pxになるため）
+  const sz = leafMap.getSize(), MG = 80;
+  const inView = q => { const c = leafMap.layerPointToContainerPoint(q);
+    return c.x > -MG && c.x < sz.x + MG && c.y > -MG && c.y < sz.y + MG; };
   const out = [];
-  let acc = ARROW_GAP_PX * 0.55;          // 始点のすぐ横に置かない
+  let acc = gap * 0.55;                   // 始点のすぐ横に置かない
   for (let i = 0; i < P.length - 1; i++) {
     const a = P[i], b = P[i + 1];
     let dx = b.x - a.x, dy = b.y - a.y;
@@ -3992,13 +4002,15 @@ function _buildArrows(disp){
     let t = acc;
     while (t <= len) {
       const px = a.x + dx * t, py = a.y + dy * t;
-      const pts = [
-        L.point(px - dx * back + nx * side, py - dy * back + ny * side),
-        L.point(px, py),
-        L.point(px - dx * back - nx * side, py - dy * back - ny * side),
-      ].map(q => { const ll = leafMap.layerPointToLatLng(q); return [ll.lat, ll.lng]; });
-      out.push(pts);
-      t += ARROW_GAP_PX;
+      const tip = L.point(px, py);
+      if (inView(tip) && out.length < ARROW_MAX) {
+        out.push([
+          L.point(px - dx * back + nx * side, py - dy * back + ny * side),
+          tip,
+          L.point(px - dx * back - nx * side, py - dy * back - ny * side),
+        ].map(q => { const ll = leafMap.layerPointToLatLng(q); return [ll.lat, ll.lng]; }));
+      }
+      t += gap;
     }
     acc = t - len;                        // 区間をまたいで間隔を保つ
   }
@@ -4011,15 +4023,16 @@ function _drawArrows(disp){
   if (routeArrows)       { leafMap.removeLayer(routeArrows);       routeArrows = null; }
   if (!shapes.length) return;
   const base = {lineJoin:'round', lineCap:'round', smoothFactor:0, interactive:false, renderer: canvasRenderer};
-  routeArrowsCasing = L.polyline(shapes, {...base, color:'#fff', weight:w + ROUTE_CASING_ADD, opacity:.95}).addTo(leafMap);
-  routeArrows       = L.polyline(shapes, {...base, color:LINE_STYLE.color, weight:w, opacity:1}).addTo(leafMap);
+  const aw = 3 * Math.min(_routeK(), ARROW_MAX_K);          // 矢印の線の太さ（大きさと同じ上限）
+  routeArrowsCasing = L.polyline(shapes, {...base, color:'#fff', weight:aw + ROUTE_CASING_ADD, opacity:.95}).addTo(leafMap);
+  routeArrows       = L.polyline(shapes, {...base, color:LINE_STYLE.color, weight:aw, opacity:1}).addTo(leafMap);
 }
 
 function _redrawRouteOffset(){
   if(!routeLine) return;
   try{
-    routeLine.setStyle({weight:_routeWeight(), dashArray:_routeDash()});                 // 線太さ・破線をズームに追従
-    if (routeCasing) routeCasing.setStyle({weight:_routeWeight()+ROUTE_CASING_ADD});      // 白いふちも同じだけ太くする
+    routeLine.setStyle({weight:_threadWeight()});                                        // 線の太さをズームに追従
+    if (routeCasing) routeCasing.setStyle({weight:_threadWeight()+ROUTE_CASING_ADD});     // 白いふちも同じだけ太くする
     if(_routeLineBase){ const d=_buildDisplayCoords(_routeLineBase);                     // 間隔をズームに追従
       if (_dblOn) { routeLine.setLatLngs(d); if (routeCasing) routeCasing.setLatLngs(d); }
       _drawArrows(d); }                       // 矢印は画面上の間隔で置くので毎回作り直す
@@ -4032,9 +4045,9 @@ function drawLines(allCoords, segList) {
   // 白いふち（表示専用）：航空写真・地形図・淡色地図の上でも赤い破線が沈まないようにする。
   // 赤い線と同じ表示座標を使うので、往復ずらし表示ともズレない。当たり判定はこの線に付けない。
   const _disp = _buildDisplayCoords(allCoords);
-  routeCasing = L.polyline(_disp, {color:'#fff', weight:_routeWeight()+ROUTE_CASING_ADD, opacity:.95,
+  routeCasing = L.polyline(_disp, {color:'#fff', weight:_threadWeight()+ROUTE_CASING_ADD, opacity:.95,
     lineJoin:'round', lineCap:'round', smoothFactor:0, interactive:false, renderer: canvasRenderer}).addTo(leafMap);
-  routeLine = L.polyline(_disp, {...LINE_STYLE, weight:_routeWeight(), dashArray:_routeDash(), renderer: canvasRenderer}).addTo(leafMap);
+  routeLine = L.polyline(_disp, {...LINE_STYLE, weight:_threadWeight(), renderer: canvasRenderer}).addTo(leafMap);
   _drawArrows(_disp);                        // 進行方向の矢印（線の上に重ねる）
 
   // 単一オーバーレイ + findNearestSegment方式:
@@ -4971,7 +4984,15 @@ function _sheetLegend() {
     return '<div class="sh-lg"><span class="sh-lgm" style="background:' + t.c + '">' + escHtml(sym) + '</span>'
          + '<span>' + escHtml(t.l) + '</span></div>';
   });
-  rows.push('<div class="sh-lg"><span class="sh-lgline"></span><span>歩くコース</span></div>');
+  rows.push('<div class="sh-lg"><span class="sh-lgline">'
+    + '<svg width="22" height="10" viewBox="0 0 22 10">'
+    + '<path d="M0 5 H22" stroke="#fff" stroke-width="5" stroke-linecap="round"/>'
+    + '<path d="M0 5 H22" stroke="#E84040" stroke-width="2" stroke-linecap="round"/>'
+    + '<path d="M2 1.5 L5.5 5 L2 8.5 M9 1.5 L12.5 5 L9 8.5 M16 1.5 L19.5 5 L16 8.5" fill="none" '
+    +   'stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>'
+    + '<path d="M2 1.5 L5.5 5 L2 8.5 M9 1.5 L12.5 5 L9 8.5 M16 1.5 L19.5 5 L16 8.5" fill="none" '
+    +   'stroke="#E84040" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>'
+    + '</svg></span><span>歩くコース（矢印の向きに歩く）</span></div>');
   return rows.join('');
 }
 
