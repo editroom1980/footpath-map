@@ -435,6 +435,10 @@ def static_checks(src):
     chk('静的', '選べる種類の出どころは _buildTypeOptions のまま（チップは select を読む）',
         "const cur = sel.value, opts = [...sel.options].map(o => o.value);" in src and 'function _buildTypeOptions' in src)
     chk('静的', '最初の案内が「種類と名前はあとから」を伝える', '種類と名前は、○を押してあとから決められます' in src)
+    # --- v151: 閉じ忘れの修正（v148〜v150 で歩く人のカード・操作ガイドが見えなくなっていた）---
+    _mo = src[src.index('<div id="mOver" class="m-over">'):src.index('<!-- Via point context menu (singleton) -->')]
+    chk('静的', 'スポットの編集画面（#mOver）の div の開きと閉じが釣り合っている（後ろの要素を巻き込まない）',
+        len(re.findall(r'<div\b', _mo)) == _mo.count('</div>'), f"{len(re.findall(r'<div\\b', _mo))} vs {_mo.count('</div>')}")
     # --- v150: 手数を減らす③（配布用リンクの画面を3手順に・置き場所へ1回で・操作ガイドを今の画面に）---
     chk('静的', '配布用リンクの画面は 書き出す→置く→配る の3手順。埋め込みは畳む。GitHub Pages なら置き場所（アップロード画面）を開くボタン',
         'id="shGh"' in src and 'function _ghUploadUrlFor' in src and "<details class=\"sd-more\">" in src and src.index('class="sd-more"') < src.index('id="shEmbed"'))
@@ -2070,6 +2074,21 @@ def functional_checks(index_path):
           }catch(e){ return 'ERR:'+e.message; } }""")
         chk('機能', 'スポット削除の「元に戻す」が戻し、別の操作の後は案内し、通知は重ならず、種別はこのコースで使った順',
             isinstance(b1, dict) and all(b1.get(k) for k in ('gone', 'toast', 'back', 'guarded', 'stacked', 'order')), str(b1)[:220])
+
+        # v151: 画面の上に出るもの（歩く人のカード・操作ガイド・メニュー・種類の選択）が body 直下にあり、実際に見える
+        dom = page.evaluate("""()=>{ try{
+            const ids = ['viewInfoPanel','helpModal','ctxMenu','wpTypePicker','viewBadge','offlineBadge','mobileMenuSheet','toastBox'];
+            const inside = ids.filter(id => { const e = document.getElementById(id); return e && e.closest('#mOver'); });
+            const keepV = viewMode, keepCls = document.body.className;
+            viewMode = true; document.body.classList.add('viewing');
+            const w = wps.find(x => x.type !== 'node'); closeModal(); showViewInfo(w.id);
+            const pr = document.getElementById('viewInfoPanel').getBoundingClientRect(); const cardVisible = pr.width > 50 && pr.height > 30 && getComputedStyle(document.getElementById('viewInfoPanel')).display !== 'none';
+            closeViewInfo(); viewMode = keepV; document.body.className = keepCls;
+            openHelp(); const hr = document.querySelector('#helpModal .help-box').getBoundingClientRect(); const helpVisible = hr.width > 200 && hr.height > 100; closeHelp();
+            return {inside, cardVisible, helpVisible};
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        chk('機能', '歩く人のカード・操作ガイドなどが編集画面の中に巻き込まれておらず、実際に画面に出る',
+            isinstance(dom, dict) and dom.get('inside') == [] and dom.get('cardVisible') and dom.get('helpVisible'), str(dom)[:200])
 
         # v150: 置き場所の URL は GitHub Pages のときだけ組み立てる
         gh = page.evaluate("""()=>[_ghUploadUrlFor('editroom1980.github.io','/footpath-map/index.html'), _ghUploadUrlFor('editroom1980.github.io','/footpath-map/'), _ghUploadUrlFor('user.github.io','/index.html'), _ghUploadUrlFor('example.com','/a/index.html')]""")
