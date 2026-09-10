@@ -359,6 +359,14 @@ def static_checks(src):
     chk('静的', '直線に逃げた区間は覚えない・保存しない',
         's.fallback = true' in src and 'if (!coords.fallback) segCache[key] = coords;' in src and 'c.fallback' in src)
     chk('静的', '区間キーの式は1か所（_segKey）', 'function _segKey' in src and src.count('toFixed(6)};${') == 1)
+    # --- v120: 閲覧中は編集の操作を受け付けない（ロードマップ 段階0-2）---
+    chk('静的', '閲覧中に編集の操作を隠すCSSがある', 'body.viewing #tbar .ed' in src and 'function _applyViewLock' in src)
+    chk('静的', '地図タップ・編集画面・取消・全消去に閲覧中の門がある',
+        all(x in src for x in ["function onMapClick(e) {\n  if (viewMode) return;", "function openModal(id) {\n  if (viewMode) return;",
+                               "function undoLast() {\n  if (viewMode) return;", "function redoAction() {\n  if (viewMode) return;",
+                               "function clearAll() {\n  if (viewMode) return;", "row.draggable  = !viewMode;"]))
+    chk('静的', 'メニューの編集項目に印がある（7か所以上）', src.count('data-edit="1"') >= 7)
+    chk('静的', '歩く人への案内がある', 'id="walkTip"' in src and 'function maybeShowWalkTip' in src)
     chk('静的', '出発点・到着点のつなぎ区間も同梱する', 'if (startWp && startWp.id !== rw[0].id) pairs.push' in src)
     chk('静的', '近すぎる「ふつうの三角」を飛ばすきまりがある', 'const DIR_MIN_DASHES' in src)
     chk('静的', '置き場所と向きは線に沿った距離で決める（点の細かさに左右されない）', 'DIR_LOOK_PX' in src)
@@ -1177,6 +1185,51 @@ def functional_checks(index_path):
                     justBefore:justBefore.length, tooClose:tooClose.length,
                     clear:Math.round(clear), per:Math.round(PER)};
           }catch(e){ return 'ERR:'+e.message; } }""")
+        # v120: 閲覧モードにすると、押せる編集操作が0になり、地図タップ・編集画面・印の移動が効かない
+        vw = page.evaluate("""()=>{ try{
+            if (viewMode) toggleViewMode();
+            const w = s => { const e = document.querySelector(s); return e ? Math.round(e.getBoundingClientRect().width) : -1; };
+            toggleViewMode();
+            const viewing = document.body.classList.contains('viewing');
+            const hidden = ['#mobileWpBtn','#mobileViaBtn','#mobileDrawBtn','#mobileCustomBtn','.mob-save','#mobileUndoBtn','#mobileRedoBtn'].map(w);
+            const eb = document.getElementById('mobileEditBack'); const r = eb.getBoundingClientRect();
+            const hit = document.elementFromPoint(r.left + r.width/2, r.top + r.height/2);
+            const backHit = r.width > 0 && !!(hit && (hit === eb || eb.contains(hit)));
+            const n0 = wps.length;
+            onMapClick({latlng:L.latLng(35.1521,134.4452), originalEvent:{clientX:120,clientY:300}});
+            const picker = getComputedStyle(document.getElementById('wpTypePicker')).display;
+            openModal(wps[0].id);
+            const modal = document.getElementById('mOver').classList.contains('show');
+            const dragOn = wps.filter(x => x.marker && x.marker.dragging && x.marker.dragging.enabled()).length;
+            undoLast(); redoAction(); clearAll();
+            const added = wps.length - n0;
+            toggleViewMode();
+            const withM = wps.filter(x => x.marker && x.marker.dragging).length;
+            const restored = w('#mobileWpBtn') > 0 && !document.body.classList.contains('viewing')
+              && wps.filter(x => x.marker && x.marker.dragging && x.marker.dragging.enabled()).length === withM;
+            return {viewing, hidden, backHit, added, picker, modal, dragOn, restored};
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        chk('機能', '閲覧中は編集の操作が押せず、地図タップ・編集画面・印の移動が効かない',
+            isinstance(vw, dict) and vw.get('viewing') is True and all(x == 0 for x in vw.get('hidden', [1]))
+            and vw.get('backHit') is True and vw.get('added') == 0 and vw.get('picker') == 'none'
+            and vw.get('modal') is False and vw.get('dragOn') == 0 and vw.get('restored') is True, str(vw)[:190])
+
+        # v120: 配布リンクを開いた人への案内は、最初の1回だけ出る
+        wt = page.evaluate("""()=>{ try{
+            localStorage.removeItem(LS.walkTipSeen);
+            document.body.classList.add('viewonly');
+            const d = () => getComputedStyle(document.getElementById('walkTip')).display;
+            maybeShowWalkTip(); const shown = d() !== 'none';
+            dismissWalkTip();   const hid = d() === 'none';
+            maybeShowWalkTip(); const again = d() !== 'none';
+            const flag = !!localStorage.getItem(LS.walkTipSeen);
+            document.body.classList.remove('viewonly');
+            return {shown, hid, again, flag};
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        chk('機能', '歩く人への案内は最初の1回だけ出る',
+            isinstance(wt, dict) and wt.get('shown') is True and wt.get('hid') is True
+            and wt.get('again') is False and wt.get('flag') is True, str(wt)[:150])
+
         # v119: 保存データの道順を読み戻すと、経路サーバを1回も呼ばずに同じ道順が出る
         rt = page.evaluate("""()=>{ return (async()=>{ try{
             const snapshot = buildCurrentSaveData();                 // あとで元に戻すため

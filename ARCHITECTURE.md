@@ -102,6 +102,9 @@
 
 8. **版数は3か所そろえる**（10章）。
 
+11. **閲覧中（`viewMode`）は編集の操作を一切受け付けない**（v120）。見た目は `body.viewing`（配布リンクは `body.viewonly` も）で
+    隠し、動きは `onMapClick`／`openModal`／`undoLast`／`redoAction`／`clearAll`／一覧のドラッグの `if (viewMode) return;` と
+    `_applyViewLock()`（印の `dragging.disable()`）で止める。**編集の入口を足したら、この門も足すこと。**
 10. **配布リンク・保存データを開くとき、経路サーバを呼ばない**（v119）。`routes` を `segCache` に戻してから
     道なり計算に入るので、計算はすべてキャッシュに当たる。**直線に逃げた結果（`fallback`）は覚えない・保存しない**
     （保存すると、サーバ復旧後も直線のまま固まる）。区間のキーは `_segKey()` の1か所で作る。
