@@ -435,6 +435,13 @@ def static_checks(src):
     chk('静的', '選べる種類の出どころは _buildTypeOptions のまま（チップは select を読む）',
         "const cur = sel.value, opts = [...sel.options].map(o => o.value);" in src and 'function _buildTypeOptions' in src)
     chk('静的', '最初の案内が「種類と名前はあとから」を伝える', '種類と名前は、○を押してあとから決められます' in src)
+    # --- v139: 協会式のコース情報（F2）---
+    chk('静的', 'コースの情報の項目は協会式の7つ（アクセス・車・トイレ・休憩・季節・注意・問い合わせ）',
+        "const COURSE_INFO_FIELDS = [" in src and all(f"k:'{k}'" in src for k in ('access', 'car', 'toilet', 'rest', 'season', 'notes', 'contact')))
+    chk('静的', 'コースの情報は保存・復元され、配布シート・メニュー・PC・配るに出る',
+        "info:    _courseInfoClean()," in src and "info:(data.info && typeof data.info === 'object')" in src and 'function _sheetInfoHtml' in src
+        and 'id="infoSheet"' in src and 'id="mmInfo"' in src and 'id="infoBtn"' in src and 'id="ssInfo"' in src)
+    chk('静的', '難易度は★3段階（自動＋手直し）', 'function _starText' in src and "_ciPickDiff('auto')" in src)
     # --- v138: ゆっくり基準・区間所要時間（F3）＋帯の仕上げ（A1〜A4）---
     chk('静的', '歩く速さの既定は3km/h（フットパスマップの実測に合わせた）', 'const WALK_SPEED_DEFAULT = 0;' in src and '3.0 km/h（フットパス・立ち止まる前提）' in src
         and '既定3km/h＝立ち止まる前提' in src)
@@ -1928,6 +1935,25 @@ def functional_checks(index_path):
           }catch(e){ return 'ERR:'+e.message; } }""")
         chk('機能', '既定3km/h・区間の目安・帯のタップでカード・到着・精度が悪いと「約」',
             isinstance(f3, dict) and f3.get('def') == 3 and f3.get('segOk') and f3.get('sheet') and f3.get('about') and f3.get('arrive') and f3.get('card'), str(f3)[:220])
+
+        # v139: コースの情報：書く→保存データ→配布シートと読む画面に出る。難易度の★
+        ci = page.evaluate("""()=>{ try{
+            const keepI = JSON.stringify(courseInfo.info || {}), keepD = _dirty, keepV = viewMode;
+            courseInfo.info = {};
+            openInfoSheet('edit');
+            const out = {editShown: !document.getElementById('ciEdit').hidden && document.querySelectorAll('#ciFields input').length === COURSE_INFO_FIELDS.length};
+            document.getElementById('ci_toilet').value = '出発点の公民館にあります'; document.getElementById('ci_car').value = '公民館に10台';
+            _ciPickDiff('2'); _dirty = false; saveInfoSheet();
+            out.saved = buildCurrentSaveData().info.toilet === '出発点の公民館にあります' && buildCurrentSaveData().info.diff === '2' && _dirty === true;
+            out.count = _courseInfoCount() === 2;
+            const html = _sheetHtml('data:,', 800);
+            out.sheet = html.indexOf('sh-info') >= 0 && html.indexOf('出発点の公民館にあります') >= 0 && html.indexOf('★★☆') >= 0;
+            viewMode = true; openInfoSheet('view');
+            out.view = !document.getElementById('ciView').hidden && document.getElementById('ciView').textContent.indexOf('公民館に10台') >= 0 && document.getElementById('ciView').textContent.indexOf('★★☆') >= 0;
+            closeInfoSheet(); viewMode = keepV; courseInfo.info = JSON.parse(keepI); _dirty = keepD; renderShareInfo(); _syncMmValues();
+            return out;
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        chk('機能', 'コースの情報：書く→保存→配布シートと読む画面、難易度の★', isinstance(ci, dict) and all(ci.get(k) for k in ('editShown', 'saved', 'count', 'sheet', 'view')), str(ci)[:220])
 
         # v121: バックアップからの日数・未反映の保存回数で色が変わり、書き出すと戻る。iPhone の案内は1回だけ
         bk = page.evaluate("""()=>{ return (async()=>{ try{

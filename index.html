@@ -374,6 +374,9 @@ body.viewonly #descSec.view-desc textarea{background:#F9F7F4;border-color:#E6DCC
 .sh-spots{columns:2;column-gap:12px;font-size:11px;line-height:1.6}
 .sh-spot{break-inside:avoid;display:flex;gap:5px;margin-bottom:1px}
 .sh-spot b{flex:none;color:var(--brand)}
+.sh-info{margin:6px 0 10px;font-size:11px;line-height:1.55}
+.sh-info div{display:flex;gap:6px;margin-bottom:2px}
+.sh-info b{flex:none;color:var(--brand);font-weight:700;min-width:5.5em}
 .sh-qr{display:flex;gap:9px;align-items:center}
 .sh-qr img,.sh-qr canvas{display:block;width:104px;height:104px}
 .sh-qr-t{font-size:10px;line-height:1.5;color:#7A6A55}
@@ -462,6 +465,31 @@ body.viewonly #firstTip,body.embed #firstTip{display:none!important}
 #kokoroeSheet .ds-btn.ghost{flex:0 0 96px;background:#F2EEE7;color:var(--t-sub)}
 #kokoroeSheet .ds-btn.ghost:only-child{flex:1}
 @media (min-width:769px){#kokoroeSheet{left:50%;right:auto;bottom:auto;top:50%;transform:translate(-50%,-50%);width:480px;max-width:calc(100vw - 32px);border-radius:16px;padding:18px 20px 20px}#kokoroeSheet .ds-dh{display:none}}
+/* コースの情報のシート（v139）。心得と同じ見た目 */
+#infoScrim{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:3400;display:none}
+#infoSheet{position:fixed;left:0;right:0;bottom:0;z-index:3401;display:none;background:#fff;border-radius:20px 20px 0 0;
+  padding:10px 16px max(16px,env(safe-area-inset-bottom));box-shadow:0 -6px 24px rgba(0,0,0,.18);max-height:90vh;overflow-y:auto}
+#infoSheet .ds-dh{width:38px;height:4px;border-radius:2px;background:#D9D1C4;margin:0 auto 12px}
+#infoSheet .kk-hd{display:flex;align-items:center;gap:10px;margin-bottom:3px}
+#infoSheet .ds-t{font-size:17px;font-weight:800;color:#231C14;flex:1}
+#infoSheet .ds-n{font-size:11.5px;color:var(--t-sub);margin-bottom:10px;line-height:1.7}
+#infoSheet .kk-l{display:block;font-size:12px;font-weight:700;color:var(--t-sub);margin-bottom:4px}
+#infoSheet .ci-row{margin-bottom:10px}
+#infoSheet .ci-h{font-size:11px;color:var(--t-sub);margin-top:4px}
+#infoSheet .ci-seg{margin-left:0;display:inline-flex}
+#infoSheet .ci-seg button{font-size:13px;padding:6px 12px}
+#infoSheet input{width:100%;padding:9px 11px;border:1px solid #D4C4A8;border-radius:10px;font-size:14px;font-family:inherit;box-sizing:border-box;outline:none}
+#infoSheet input:focus{border-color:var(--brand)}
+#infoSheet .ci-v{display:grid;gap:8px;margin-bottom:10px}
+#infoSheet .ci-vi{border:1px solid #E3DCD1;border-radius:12px;padding:8px 12px;font-size:13px;line-height:1.6;color:#231C14}
+#infoSheet .ci-vi b{display:block;color:var(--brand);font-size:12px;letter-spacing:.06em}
+#infoSheet .ds-row{display:flex;gap:9px;margin-top:12px}
+#infoSheet .ds-btn{flex:1;min-height:var(--tap);border:none;border-radius:12px;font-family:inherit;font-size:14px;font-weight:700;background:var(--brand-grad);color:#fff;cursor:pointer}
+#infoSheet .ds-btn.ghost{flex:0 0 96px;background:#F2EEE7;color:var(--t-sub)}
+#infoSheet .ds-btn.ghost:only-child{flex:1}
+@media (min-width:769px){#infoSheet{left:50%;right:auto;bottom:auto;top:50%;transform:translate(-50%,-50%);width:520px;max-width:calc(100vw - 32px);border-radius:16px;padding:18px 20px 20px}#infoSheet .ds-dh{display:none}}
+.info-btn{margin-top:6px;border:1px solid #D4C4A8;background:#fff;border-radius:6px;font-size:11px;padding:3px 9px;cursor:pointer;font-family:inherit;color:#4A2E0E}
+.info-btn:hover{background:var(--brand-soft);border-color:var(--brand)}
 .ft-b.ghost{background:#F2EEE7;color:#4A2E0E;margin-bottom:8px}
 body.viewonly .hbtn-back{display:none!important}   /* PCで配布リンクを開いた人に「一覧」（作る人の画面）を見せない（A5・v137） */
 /* 配る（v123）：画像・配布シート・リンク・GPX の4つの出口を1枚に。編集画面から2タップで届く */
@@ -910,6 +938,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
         <div id="distDisp">総距離: — km</div>
         <div id="timeDisp">所要時間: —</div>
         <div id="diffDisp"></div>
+        <button class="info-btn" id="infoBtn" onclick="openInfoSheet(viewMode ? 'view' : 'edit')">コースの情報（アクセス・トイレ…）</button>
         <label id="walkSpeedRow">歩く速さ
           <select id="walkSpeedSel" onchange="setWalkSpeed(Number(this.value))" title="所要時間の計算に使います。高低差を取得済みなら登りの時間も加算されます">
             <option value="0" selected>3.0 km/h（フットパス・立ち止まる前提）</option>
@@ -1076,6 +1105,25 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
         </div>
       </div>
 
+      <!-- コースの情報（v139）：協会式の項目。歩く人は読む、作る人は書く -->
+      <div id="infoScrim" onclick="closeInfoSheet()"></div>
+      <div id="infoSheet" role="dialog" aria-label="コースの情報">
+        <div class="ds-dh"></div>
+        <div class="kk-hd"><div class="ds-t" id="ciTitle">コースの情報</div></div>
+        <div class="ds-n" id="ciNote"></div>
+        <div id="ciView" hidden></div>
+        <div id="ciEdit" hidden>
+          <div class="ci-row"><label class="kk-l">難易度</label>
+            <div class="pp-seg ci-seg" id="ciDiff"><button type="button" data-d="auto" onclick="_ciPickDiff('auto')">自動</button><button type="button" data-d="1" onclick="_ciPickDiff('1')">★</button><button type="button" data-d="2" onclick="_ciPickDiff('2')">★★</button><button type="button" data-d="3" onclick="_ciPickDiff('3')">★★★</button></div>
+            <div class="ci-h" id="ciDiffHint"></div></div>
+          <div id="ciFields"></div>
+        </div>
+        <div class="ds-row">
+          <button class="ds-btn ghost" onclick="closeInfoSheet()">閉じる</button>
+          <button class="ds-btn" id="ciSave" onclick="saveInfoSheet()" hidden>この内容にする</button>
+        </div>
+      </div>
+
       <!-- 配る（v123）：4つの出口と「この地図に載る情報」を1枚に -->
       <div id="shareScrim" onclick="closeShareSheet()"></div>
       <div id="shareSheet" role="dialog" aria-label="配る">
@@ -1097,6 +1145,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
           <div class="ss-li">写真つきスポット<span class="ch" id="ssPhoto">—</span></div>
           <div class="ss-li">スタンプラリーの対象<span class="ch" id="ssStamp">—</span></div>
           <button class="ss-li" onclick="closeShareSheet();openKokoroeSheet('edit')">歩く人の心得<span class="ch" id="ssKokoroe">—</span></button>
+          <button class="ss-li" onclick="closeShareSheet();openInfoSheet('edit')">コースの情報<span class="ch" id="ssInfo">—</span></button>
         </div>
         <div class="ss-hint">リンクと配布シートには、上の内容がそのまま載ります</div>
       </div>
@@ -1114,6 +1163,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
           <div class="mm-map" onclick="closeMobileMenu();openReorderSheet()" data-edit="1"><span class="mm-map-l">スポットの並べ替え</span><span class="mm-v" id="mmReorderN">›</span></div>
           <div class="mm-map" onclick="closeMobileMenu();saveMapOffline()" title="このコースの範囲の地図を端末に保存します（圏外でも表示できます）"><span class="mm-map-l">地図を持ち歩く（圏外用）</span><span class="mm-v">›</span></div>
           <div class="mm-map" onclick="closeMobileMenu();openKokoroeSheet(viewMode ? 'view' : 'edit')"><span class="mm-map-l">歩く人の心得</span><span class="mm-v" id="mmKokoroe">›</span></div>
+          <div class="mm-map" onclick="closeMobileMenu();openInfoSheet(viewMode ? 'view' : 'edit')"><span class="mm-map-l">コースの情報（アクセス・トイレ…）</span><span class="mm-v" id="mmInfo">›</span></div>
         </div>
         <div class="mm-sec">歩くとき</div>
         <div class="mm-tog-wrap list">
@@ -1341,6 +1391,16 @@ const KOKOROE = [
   {h:'配慮する', items:['あいさつをして、道を分け合う', '田畑や私有地には立ち入らない', '門や物は元どおりに', '農作業の車や人に道を譲る']},
   {h:'守る',     items:['ゴミは必ず持ち帰る', '動植物や農作物を採らない', '犬はつなぐ・火は使わない']},
   {h:'楽しむ',   items:['コースと天気を確かめて、無理をしない', '歩きやすい靴・水・地図を持つ', '困ったら地元の人に声をかける']},
+];
+/* コースの情報（v139・フットパス特化 F2）。各地のフットパスマップに共通する項目。空欄は載せない */
+const COURSE_INFO_FIELDS = [
+  {k:'access',  l:'アクセス（電車・バス）', ph:'例：JR姫新線 播磨新宮駅からバス「波賀」下車、徒歩5分'},
+  {k:'car',     l:'車・駐車場',           ph:'例：飯見公民館の駐車場（10台・無料）'},
+  {k:'toilet',  l:'トイレ',              ph:'例：出発点の公民館と、②の公園にあります'},
+  {k:'rest',    l:'休憩・おもてなし',      ph:'例：③の縁側カフェ（第2・4日曜）、道の駅で食事'},
+  {k:'season',  l:'おすすめの季節',        ph:'例：5月の田植えと9月の稲刈りの頃。真夏は日陰が少ないので朝に'},
+  {k:'notes',   l:'注意',                ph:'例：国道29号沿いは車に注意。イノシシが出ることがあります'},
+  {k:'contact', l:'問い合わせ先',          ph:'例：飯見自治会 090-xxxx-xxxx／メール'},
 ];
 const TYPE_BIG = ['course', 'view', 'history', 'shop'];   // 編集画面で大きく出す「よく使う4つ」（オーナー指定・v129）。残りは畳む
 const LINE_STYLE = {color:'#E84040', weight:4, dashArray:'8,5', opacity:.9, lineJoin:'round', lineCap:'round', smoothFactor:0};
@@ -2041,7 +2101,7 @@ async function newCourse() {
   const name  = document.getElementById('s1Name').value.trim();
   const area  = document.getElementById('s1Area').value.trim();
   if (!name || !area) { alert('コース名とエリアを入力してください。'); return; }
-  courseInfo  = {name, area, start:document.getElementById('s1Start').value.trim(), goal:document.getElementById('s1Goal').value.trim(), kokoroe:''};
+  courseInfo  = {name, area, start:document.getElementById('s1Start').value.trim(), goal:document.getElementById('s1Goal').value.trim(), kokoroe:'', info:{}};
   currentCourseId = null;
 
   const btn = document.getElementById('s1Btn');
@@ -2323,7 +2383,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v138';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
+const APP_VERSION = 'v139';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
 }catch(_){} });
@@ -2755,6 +2815,8 @@ function renderShareInfo(){
   document.getElementById('ssStamp').textContent = spots.length ? `${spots.length}か所` : 'なし';
   const kEl = document.getElementById('ssKokoroe');
   if (kEl) kEl.textContent = (courseInfo.kokoroe || '').trim() ? '標準＋この地域の追記 ›' : '標準の文 ›';
+  const iEl = document.getElementById('ssInfo');
+  if (iEl) { const n = _courseInfoCount(); iEl.textContent = `${n} / ${COURSE_INFO_FIELDS.length} 記入 ›`; iEl.classList.toggle('warn', n === 0); }
 }
 async function shareExit(kind){
   if (kind === 'link') {
@@ -3863,6 +3925,7 @@ function _syncMmValues(){
     v('mmValSpd', (WALK_SPEEDS[_walkSpeedIdx] || 4).toFixed(1) + ' km/h');
     v('mmReorderN', String(wps.length));
     v('mmKokoroe', (courseInfo.kokoroe || '').trim() ? '追記あり' : '標準');
+    v('mmInfo', `${_courseInfoCount()} / ${COURSE_INFO_FIELDS.length}`);
   } catch(_) {}
 }
 
@@ -5984,7 +6047,7 @@ function _sheetHtml(imgUrl, cssWidth) {
     +   '<div class="sh-stats">'
     +     '<div>総距離<b>' + escHtml(dist.replace(/^総距離:\s*/, '')) + '</b></div>'
     +     '<div>所要時間<b>' + escHtml(time.replace(/^所要時間:\s*/, '').replace(/（.*?）/, '')) + '</b></div>'
-    +     (diff ? '<div>難易度<b style="color:' + diff.color + '">' + escHtml(diff.label) + '</b>'
+    +     (diff ? '<div>難易度<b style="color:' + diff.color + '">' + _starText(diff) + ' ' + escHtml(diff.label) + '</b>'
     +             '<span style="display:block;font-size:11px">登り ' + Math.round(diff.up) + ' m</span></div>' : '')
     +   '</div>'
     + '</div>'
@@ -5999,6 +6062,7 @@ function _sheetHtml(imgUrl, cssWidth) {
     +     '<div class="sh-sec">凡例</div><div class="sh-legend">' + _sheetLegend() + '</div>'
     +     (desc ? '<div class="sh-sec">コースの見どころ</div><div class="sh-desc">' + escHtml(desc) + '</div>' : '')
     +     (spots ? '<div class="sh-sec">スポット</div><div class="sh-spots">' + spots + '</div>' : '')
+    +     _sheetInfoHtml()
     +     (link ? '<div class="sh-sec" style="margin-top:10px">スマホで見る</div>'
     +             '<div class="sh-qr"><div id="sheetQr"></div>'
     +             '<div class="sh-qr-t">カメラでQRコードを読み取ると、<br>この地図をスマホで開けます</div></div>' : '')
@@ -6478,6 +6542,72 @@ function saveKokoroeSheet() {
   showToast(v ? 'この地域からのお願いを書き込みました（保存はまだです）' : '標準の心得だけを載せます');
 }
 function speakKokoroe() { _speakText(_kokoroeSpeechText((courseInfo.kokoroe || '').trim())); }
+
+/* ===== コースの情報（v139）===== */
+function _courseInfoClean() {
+  const src = (courseInfo && courseInfo.info) || {}, out = {};
+  COURSE_INFO_FIELDS.forEach(f => { const v = String(src[f.k] || '').trim(); if (v) out[f.k] = v; });
+  if (src.diff && ['1', '2', '3'].includes(String(src.diff))) out.diff = String(src.diff);
+  return out;
+}
+function _courseInfoCount() { const c = _courseInfoClean(); return COURSE_INFO_FIELDS.filter(f => c[f.k]).length; }
+/* 難易度の★：手で選んであればそれ、無ければ距離と登りから（DIFFICULTY の段階を3つに当てる） */
+function _starText(diff) {
+  const manual = ((courseInfo && courseInfo.info) || {}).diff;
+  let n;
+  if (manual && ['1', '2', '3'].includes(String(manual))) n = Number(manual);
+  else if (diff) { const idx = Math.max(0, DIFFICULTY.findIndex(d => d.label === diff.label)); n = Math.min(3, Math.max(1, Math.round((idx + 1) * 3 / DIFFICULTY.length))); }
+  else return '';
+  return '★'.repeat(n) + '☆'.repeat(3 - n);
+}
+function _sheetInfoHtml() {
+  const c = _courseInfoClean();
+  const rows = COURSE_INFO_FIELDS.filter(f => c[f.k]).map(f => '<div><b>' + escHtml(f.l.replace(/（.*?）/, '')) + '</b><span>' + escHtml(c[f.k]) + '</span></div>');
+  return rows.length ? '<div class="sh-sec">コースの情報</div><div class="sh-info">' + rows.join('') + '</div>' : '';
+}
+function _ciPickDiff(v) {
+  courseInfo.info = courseInfo.info || {};
+  if (v === 'auto') delete courseInfo.info.diff; else courseInfo.info.diff = v;
+  _dirty = true;
+  document.querySelectorAll('#ciDiff button').forEach(b => b.classList.toggle('on', b.getAttribute('data-d') === (courseInfo.info.diff || 'auto')));
+  const d = courseDifficulty(_lastRouteDistM);
+  document.getElementById('ciDiffHint').textContent = d ? ('自動の目安：' + _starText({label: d.label}) + ' ' + d.label + '（' + d.km.toFixed(1) + 'km・登り' + Math.round(d.up) + 'm）') : '自動の目安は高低差が取れてから出ます';
+}
+function openInfoSheet(mode) {
+  const sh = document.getElementById('infoSheet'), sc = document.getElementById('infoScrim'); if (!sh || !sc) return;
+  if (typeof closeMobileMenu === 'function') closeMobileMenu();
+  const edit = (mode === 'edit') && !viewMode;
+  const c = _courseInfoClean();
+  document.getElementById('ciTitle').textContent = edit ? 'コースの情報' : 'このコースについて';
+  document.getElementById('ciNote').textContent = edit ? '各地のフットパスマップに共通する項目です。書いた項目だけが配布シートと配布リンクに載ります。'
+                                                       : (Object.keys(c).length ? '' : 'まだ情報が書かれていません。');
+  const vw = document.getElementById('ciView'), ed = document.getElementById('ciEdit');
+  vw.hidden = edit; ed.hidden = !edit; document.getElementById('ciSave').hidden = !edit;
+  if (edit) {
+    document.getElementById('ciFields').innerHTML = COURSE_INFO_FIELDS.map(f =>
+      '<div class="ci-row"><label class="kk-l" for="ci_' + f.k + '">' + escHtml(f.l) + '</label><input id="ci_' + f.k + '" data-k="' + f.k + '" placeholder="' + escHtml(f.ph) + '" value="' + escHtml(c[f.k] || '') + '"></div>').join('');
+    _ciPickDiff((courseInfo.info || {}).diff || 'auto'); _dirty = _dirty;   // 表示だけ（押していないので未保存フラグは動かさない）
+  } else {
+    const d = courseDifficulty(_lastRouteDistM);
+    const rows = [];
+    if (d || c.diff) rows.push('<div class="ci-vi"><b>難易度</b>' + _starText(d) + (d ? ' ' + escHtml(d.label) + '（登り' + Math.round(d.up) + 'm）' : '') + '</div>');
+    COURSE_INFO_FIELDS.filter(f => c[f.k]).forEach(f => rows.push('<div class="ci-vi"><b>' + escHtml(f.l) + '</b>' + escHtml(c[f.k]) + '</div>'));
+    vw.innerHTML = '<div class="ci-v">' + rows.join('') + '</div>';
+  }
+  sc.style.display = 'block'; sh.style.display = 'block';
+}
+function closeInfoSheet() {
+  const sh = document.getElementById('infoSheet'), sc = document.getElementById('infoScrim');
+  if (sc) sc.style.display = 'none'; if (sh) sh.style.display = 'none';
+}
+function saveInfoSheet() {
+  courseInfo.info = courseInfo.info || {};
+  let changed = false;
+  document.querySelectorAll('#ciFields input[data-k]').forEach(inp => { const k = inp.getAttribute('data-k'), v = inp.value.trim(); if ((courseInfo.info[k] || '') !== v) { courseInfo.info[k] = v; changed = true; } });
+  if (changed) _dirty = true;
+  closeInfoSheet(); _syncMmValues(); renderShareInfo(); _renderDifficulty(_lastRouteDistM);
+  showToast(_courseInfoCount() ? 'コースの情報を書き込みました（保存はまだです）' : 'コースの情報は空のままです');
+}
 function _stopSpeaking() {
   if (_canSpeak()) { try { window.speechSynthesis.cancel(); } catch(_) {} }
   _speaking = false; _syncSayBtn();
@@ -6933,6 +7063,7 @@ function buildCurrentSaveData() {
     goal:    courseInfo.goal,
     desc:    document.getElementById('iDesc')?.value||'',
     kokoroe: courseInfo.kokoroe || '',   // 歩く人の心得の「地域の追記」（標準の文は KOKOROE）（v137）
+    info:    _courseInfoClean(),         // アクセス・駐車場・トイレ・休憩・季節・注意・問い合わせ・難易度（v139）
     center:  leafMap ? {lat:leafMap.getCenter().lat, lng:leafMap.getCenter().lng} : null,
     zoom:    leafMap ? leafMap.getZoom() : 14,
     wps:     wps.map(w=>({id:w.id,type:w.type,name:w.name,desc:w.desc,tel:w.tel,dwell:w.dwell||0,fitBefore:w.fitBefore!==false,fitAfter:w.fitAfter!==false,onRoute:w.onRoute!==undefined?w.onRoute!==false:(w.type==='course'),lat:w.lat,lng:w.lng,labelDir:w.labelDir||'auto',photos:w.photos||[]})),
@@ -7023,7 +7154,7 @@ function _fitCourseToScreen(data){
   }
 }
 function loadCourseData(data) {
-  courseInfo = {name:data.name, area:data.area, start:data.start||'', goal:data.goal||'', kokoroe:data.kokoroe||''};
+  courseInfo = {name:data.name, area:data.area, start:data.start||'', goal:data.goal||'', kokoroe:data.kokoroe||'', info:(data.info && typeof data.info === 'object') ? Object.assign({}, data.info) : {}};
   currentCourseId = data.id;
   _dirty = false;             // 読み込み直後は未保存の変更なし
 
