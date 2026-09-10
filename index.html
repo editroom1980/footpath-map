@@ -377,6 +377,9 @@ body.viewonly #descSec.view-desc textarea{background:#F9F7F4;border-color:#E6DCC
 .sh-qr{display:flex;gap:9px;align-items:center}
 .sh-qr img,.sh-qr canvas{display:block;width:104px;height:104px}
 .sh-qr-t{font-size:10px;line-height:1.5;color:#7A6A55}
+.sh-kokoroe{margin-top:10px;padding-top:8px;border-top:1px solid #EFE7DA}
+.sh-kk{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:3px 14px;font-size:10.5px;line-height:1.5}
+.sh-kk b{color:var(--brand);margin-right:6px}
 .sh-foot{margin-top:10px;padding-top:6px;border-top:1px solid #EFE7DA;font-size:9.5px;color:#8A7A63;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
 @media (max-width:760px){#sheetOver{padding:10px}.sh-body{grid-template-columns:1fr}#printSheet{padding:12px}}
 @media print{
@@ -435,6 +438,29 @@ body.viewonly #firstTip,body.embed #firstTip{display:none!important}
 #descSheet .ds-btn{flex:1;min-height:var(--tap);border:none;border-radius:12px;font-family:inherit;
   font-size:15px;font-weight:800;background:var(--brand-grad);color:#fff;cursor:pointer}
 #descSheet .ds-btn.ghost{flex:0 0 96px;background:#F2EEE7;color:var(--t-sub)}
+/* 心得のシート（v137）。説明シートと同じ見た目 */
+#kokoroeScrim{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:3400;display:none}
+#kokoroeSheet{position:fixed;left:0;right:0;bottom:0;z-index:3401;display:none;background:#fff;border-radius:20px 20px 0 0;
+  padding:10px 16px max(16px,env(safe-area-inset-bottom));box-shadow:0 -6px 24px rgba(0,0,0,.18);max-height:88vh;overflow-y:auto}
+#kokoroeSheet .ds-dh{width:38px;height:4px;border-radius:2px;background:#D9D1C4;margin:0 auto 12px}
+#kokoroeSheet .kk-hd{display:flex;align-items:center;gap:10px;margin-bottom:3px}
+#kokoroeSheet .ds-t{font-size:17px;font-weight:800;color:#231C14;flex:1}
+#kokoroeSheet .ds-n{font-size:11.5px;color:var(--t-sub);margin-bottom:10px;line-height:1.7}
+#kokoroeSheet .kk-std{display:grid;gap:8px;margin-bottom:10px}
+#kokoroeSheet .kk-g{border:1px solid #E3DCD1;border-radius:12px;padding:8px 12px;font-size:13px;line-height:1.7;color:#231C14}
+#kokoroeSheet .kk-g b{display:block;color:var(--brand);font-size:12px;letter-spacing:.06em;margin-bottom:2px}
+#kokoroeSheet .kk-custom{border:1px solid var(--brand);background:var(--brand-soft);border-radius:12px;padding:8px 12px;font-size:13px;line-height:1.7;white-space:pre-wrap;margin-bottom:10px}
+#kokoroeSheet .kk-custom b{display:block;color:var(--brand);font-size:12px;letter-spacing:.06em}
+#kokoroeSheet .kk-l{display:block;font-size:12px;font-weight:700;color:var(--t-sub);margin-bottom:4px}
+#kokoroeSheet textarea{width:100%;min-height:22vh;padding:11px 12px;border:1px solid #D4C4A8;border-radius:10px;font-size:14px;font-family:inherit;line-height:1.6;box-sizing:border-box;outline:none}
+#kokoroeSheet textarea:focus{border-color:var(--brand)}
+#kokoroeSheet .ds-row{display:flex;gap:9px;margin-top:12px}
+#kokoroeSheet .ds-btn{flex:1;min-height:var(--tap);border:none;border-radius:12px;font-family:inherit;font-size:14px;font-weight:700;background:var(--brand-grad);color:#fff;cursor:pointer}
+#kokoroeSheet .ds-btn.ghost{flex:0 0 96px;background:#F2EEE7;color:var(--t-sub)}
+#kokoroeSheet .ds-btn.ghost:only-child{flex:1}
+@media (min-width:769px){#kokoroeSheet{left:50%;right:auto;bottom:auto;top:50%;transform:translate(-50%,-50%);width:480px;max-width:calc(100vw - 32px);border-radius:16px;padding:18px 20px 20px}#kokoroeSheet .ds-dh{display:none}}
+.ft-b.ghost{background:#F2EEE7;color:#4A2E0E;margin-bottom:8px}
+body.viewonly .hbtn-back{display:none!important}   /* PCで配布リンクを開いた人に「一覧」（作る人の画面）を見せない（A5・v137） */
 /* 配る（v123）：画像・配布シート・リンク・GPX の4つの出口を1枚に。編集画面から2タップで届く */
 /* 次のスポット（v132）：歩く人の画面の上。矢印は北=0で回す（コンパス許可後は体の向き基準） */
 #nextBar{display:none;position:absolute;left:64px;right:12px;top:max(8px,env(safe-area-inset-top));z-index:1001;background:rgba(255,255,255,.96);
@@ -945,7 +971,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
           <button class="nb-cmp tap" id="nbCompass" onclick="enableCompass()" aria-label="コンパスを使う" title="コンパスを使う（向きの矢印が体の向き基準になります）">🧭</button>
         </div>
         <!-- PC（v126）：下＝高低差 -->
-        <div id="pcBl"><button class="pc-pill" id="btnGps" onclick="gotoCurrentLocation()" title="現在地へ移動（位置情報の許可が要ります）"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12a3 3 0 1 0 6 0a3 3 0 1 0 -6 0" /> <path d="M4 12a8 8 0 1 0 16 0a8 8 0 1 0 -16 0" /> <path d="M12 2l0 2" /> <path d="M12 20l0 2" /> <path d="M20 12l2 0" /> <path d="M2 12l2 0" /></svg><span>現在地</span></button><button class="pc-pill" id="btnElev" onclick="toggleElevPanel()" title="高低差グラフ"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M4 19l16 0" /> <path d="M4 15l4 -6l4 2l4 -5l4 4" /></svg><span>高低差</span></button></div>
+        <div id="pcBl"><button class="pc-pill" id="btnGps" onclick="gotoCurrentLocation()" title="現在地へ移動（位置情報の許可が要ります）"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12a3 3 0 1 0 6 0a3 3 0 1 0 -6 0" /> <path d="M4 12a8 8 0 1 0 16 0a8 8 0 1 0 -16 0" /> <path d="M12 2l0 2" /> <path d="M12 20l0 2" /> <path d="M20 12l2 0" /> <path d="M2 12l2 0" /></svg><span>現在地</span></button><button class="pc-pill" id="btnKokoroe" onclick="openKokoroeSheet(viewMode ? 'view' : 'edit')" title="歩く人の心得（配布シートと配布リンクに載ります）">🙏<span>心得</span></button><button class="pc-pill" id="btnElev" onclick="toggleElevPanel()" title="高低差グラフ"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M4 19l16 0" /> <path d="M4 15l4 -6l4 2l4 -5l4 4" /></svg><span>高低差</span></button></div>
         <div id="mapMsg">⚠️ プレビュー環境では地図タイルは表示されません<br><span style="font-size:11px">GitHub Pagesに公開すると正常に表示されます</span></div>
         <div id="rtMsg">🔄 ルートを計算中...</div>
         <!-- 埋め込み表示のときだけ出る帯（コース名・距離・大きな地図で開く） -->
@@ -978,7 +1004,8 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
       <div id="walkTip">
         <div class="ft-ic">🚶</div>
         <div class="ft-t">この地図の使いかた</div>
-        <div class="ft-d">・○をタップすると、写真と解説が見られます<br>・スポットに近づくと、スタンプが付きます<br>・◎を押すと、いまの場所を追いかけて、次のスポットまでの距離が出ます（もう一度押すと止まります）</div>
+        <div class="ft-d">・○をタップすると、写真と解説が見られます<br>・スポットに近づくと、スタンプが付きます<br>・◎を押すと、いまの場所を追いかけて、次のスポットまでの距離が出ます（もう一度押すと止まります）<br>・田畑や私有地には入らない、ゴミは持ち帰る、動植物や農作物は採らない（心得）</div>
+        <button class="ft-b ghost" onclick="dismissWalkTip();openKokoroeSheet('view')">心得を読む</button>
         <button class="ft-b" onclick="dismissWalkTip()">わかった</button>
         <div class="ft-n">この案内は最初の1回だけ出ます</div>
       </div>
@@ -1023,6 +1050,24 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
         </div>
       </div>
 
+      <!-- 歩く人の心得（v137）：標準の文＋地域の追記。歩く人は読む（読み上げも）、作る人は追記を書く -->
+      <div id="kokoroeScrim" onclick="closeKokoroeSheet()"></div>
+      <div id="kokoroeSheet" role="dialog" aria-label="歩く人の心得">
+        <div class="ds-dh"></div>
+        <div class="kk-hd"><div class="ds-t">歩く人の心得</div><button class="vip-say tap" id="kkSay" onclick="speakKokoroe()" aria-label="読み上げ">🔊 読み上げ</button></div>
+        <div class="ds-n" id="kkNote">このコースを歩く人へのお願いです。配布シートと配布リンクに載ります。</div>
+        <div class="kk-std" id="kkStd"></div>
+        <div class="kk-custom" id="kkCustom" hidden></div>
+        <div id="kkEdit" hidden>
+          <label class="kk-l" for="kkText">この地域からのお願い（追記・任意）</label>
+          <textarea id="kkText" placeholder="例：5月と9月は農作業の車が通ります。農道では脇に寄って譲ってください。／クマ鈴をお持ちください。"></textarea>
+        </div>
+        <div class="ds-row">
+          <button class="ds-btn ghost" id="kkClose" onclick="closeKokoroeSheet()">閉じる</button>
+          <button class="ds-btn" id="kkSave" onclick="saveKokoroeSheet()" hidden>この内容にする</button>
+        </div>
+      </div>
+
       <!-- 配る（v123）：4つの出口と「この地図に載る情報」を1枚に -->
       <div id="shareScrim" onclick="closeShareSheet()"></div>
       <div id="shareSheet" role="dialog" aria-label="配る">
@@ -1043,6 +1088,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
           <button class="ss-li" onclick="shareInfoDesc()">コースの説明<span class="ch" id="ssDesc">—</span></button>
           <div class="ss-li">写真つきスポット<span class="ch" id="ssPhoto">—</span></div>
           <div class="ss-li">スタンプラリーの対象<span class="ch" id="ssStamp">—</span></div>
+          <button class="ss-li" onclick="closeShareSheet();openKokoroeSheet('edit')">歩く人の心得<span class="ch" id="ssKokoroe">—</span></button>
         </div>
         <div class="ss-hint">リンクと配布シートには、上の内容がそのまま載ります</div>
       </div>
@@ -1059,6 +1105,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
           <div class="mm-map" onclick="closeMobileMenu();openDescSheet()" data-edit="1"><span class="mm-map-l">コースの説明・見どころ</span><span class="mm-v" id="mmDescState">›</span></div>
           <div class="mm-map" onclick="closeMobileMenu();openReorderSheet()" data-edit="1"><span class="mm-map-l">スポットの並べ替え</span><span class="mm-v" id="mmReorderN">›</span></div>
           <div class="mm-map" onclick="closeMobileMenu();saveMapOffline()" title="このコースの範囲の地図を端末に保存します（圏外でも表示できます）"><span class="mm-map-l">地図を持ち歩く（圏外用）</span><span class="mm-v">›</span></div>
+          <div class="mm-map" onclick="closeMobileMenu();openKokoroeSheet(viewMode ? 'view' : 'edit')"><span class="mm-map-l">歩く人の心得</span><span class="mm-v" id="mmKokoroe">›</span></div>
         </div>
         <div class="mm-sec">歩くとき</div>
         <div class="mm-tog-wrap list">
@@ -1280,6 +1327,13 @@ const WT = [
   {v:'node',    l:'描いた道の点',                c:'#444444'},
 ];
 const SYM = {start:'S',goal:'G',view:'◎',shop:'★',shrine:'⛩',history:'碑',park:'🌿',school:'学',hall:'公',toilet:'WC',parking:'P',other:'●',node:''};
+/* 歩く人の心得（v137・フットパス特化 F1）。日本フットパス協会の3か条（田畑や私有地には立ち入らない／ゴミは必ず持ち帰る／
+   動植物や農作物を採らない）を土台に、英国 Countryside Code の3見出し（配慮する・守る・楽しむ）で並べる。地域の追記はコースごと（courseInfo.kokoroe） */
+const KOKOROE = [
+  {h:'配慮する', items:['あいさつをして、道を分け合う', '田畑や私有地には立ち入らない', '門や物は元どおりに', '農作業の車や人に道を譲る']},
+  {h:'守る',     items:['ゴミは必ず持ち帰る', '動植物や農作物を採らない', '犬はつなぐ・火は使わない']},
+  {h:'楽しむ',   items:['コースと天気を確かめて、無理をしない', '歩きやすい靴・水・地図を持つ', '困ったら地元の人に声をかける']},
+];
 const TYPE_BIG = ['course', 'view', 'history', 'shop'];   // 編集画面で大きく出す「よく使う4つ」（オーナー指定・v129）。残りは畳む
 const LINE_STYLE = {color:'#E84040', weight:4, dashArray:'8,5', opacity:.9, lineJoin:'round', lineCap:'round', smoothFactor:0};
 const DBL_GAP_PX = 2;        // 往復で重なる区間：2本の線の間隔(px)
@@ -1976,7 +2030,7 @@ async function newCourse() {
   const name  = document.getElementById('s1Name').value.trim();
   const area  = document.getElementById('s1Area').value.trim();
   if (!name || !area) { alert('コース名とエリアを入力してください。'); return; }
-  courseInfo  = {name, area, start:document.getElementById('s1Start').value.trim(), goal:document.getElementById('s1Goal').value.trim()};
+  courseInfo  = {name, area, start:document.getElementById('s1Start').value.trim(), goal:document.getElementById('s1Goal').value.trim(), kokoroe:''};
   currentCourseId = null;
 
   const btn = document.getElementById('s1Btn');
@@ -2258,7 +2312,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v136';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
+const APP_VERSION = 'v137';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
 }catch(_){} });
@@ -2688,6 +2742,8 @@ function renderShareInfo(){
   pEl.textContent = `${withPhoto} / ${spots.length}`;
   pEl.classList.toggle('warn', spots.length > 0 && withPhoto === 0);
   document.getElementById('ssStamp').textContent = spots.length ? `${spots.length}か所` : 'なし';
+  const kEl = document.getElementById('ssKokoroe');
+  if (kEl) kEl.textContent = (courseInfo.kokoroe || '').trim() ? '標準＋この地域の追記 ›' : '標準の文 ›';
 }
 async function shareExit(kind){
   if (kind === 'link') {
@@ -3760,6 +3816,7 @@ function _syncMmValues(){
     v('mmValSize', ls === ws ? ls : `文字 ${ls}・印 ${ws}`);
     v('mmValSpd', (WALK_SPEEDS[_walkSpeedIdx] || 4).toFixed(1) + ' km/h');
     v('mmReorderN', String(wps.length));
+    v('mmKokoroe', (courseInfo.kokoroe || '').trim() ? '追記あり' : '標準');
   } catch(_) {}
 }
 
@@ -5901,6 +5958,7 @@ function _sheetHtml(imgUrl, cssWidth) {
     +             '<div class="sh-qr-t">カメラでQRコードを読み取ると、<br>この地図をスマホで開けます</div></div>' : '')
     +   '</div>'
     + '</div>'
+    + '<div class="sh-kokoroe"><div class="sh-sec">歩く人の心得</div><div class="sh-kk">' + _kokoroeRows((courseInfo.kokoroe || '').trim(), true) + '</div></div>'
     + '<div class="sh-foot"><span>' + attr + '</span>'
     +   '<span>' + d.getFullYear() + '/' + p(d.getMonth() + 1) + '/' + p(d.getDate()) + ' 作成 ／ Footpath Mapmaker</span></div>';
 }
@@ -6328,22 +6386,63 @@ function _spotSpeechText(wp) {
   return desc ? name + '。' + desc : name + '。';
 }
 function _syncSayBtn() {
-  const b = document.getElementById('vipSay'); if (!b) return;
-  b.textContent = _speaking ? '⏹ 止める' : '🔊 読み上げ';
-  b.classList.toggle('on', _speaking);
-  b.setAttribute('aria-label', _speaking ? '読み上げを止める' : '読み上げ');
+  ['vipSay', 'kkSay'].forEach(id => { const b = document.getElementById(id); if (!b) return;
+    b.textContent = _speaking ? '⏹ 止める' : '🔊 読み上げ';
+    b.classList.toggle('on', _speaking);
+    b.setAttribute('aria-label', _speaking ? '読み上げを止める' : '読み上げ'); });
 }
+
+/* ===== 歩く人の心得（v137）===== */
+function _kokoroeRows(custom, forSheet) {   // 配布シート用（1行ずつ）／シート用は _renderKokoroeStd
+  const rows = KOKOROE.map(g => '<div><b>' + escHtml(g.h) + '</b>' + g.items.map(escHtml).join('・') + '</div>');
+  if (custom) rows.push('<div><b>この地域から</b>' + escHtml(custom).replace(/\n/g, '<br>') + '</div>');
+  return rows.join('');
+}
+function _kokoroeSpeechText(custom) {
+  return '歩く人の心得。' + KOKOROE.map(g => g.h + '。' + g.items.join('。')).join('。') + (custom ? '。この地域からのお願い。' + custom : '');
+}
+function openKokoroeSheet(mode) {
+  const sh = document.getElementById('kokoroeSheet'), sc = document.getElementById('kokoroeScrim'); if (!sh || !sc) return;
+  if (typeof closeMobileMenu === 'function') closeMobileMenu();
+  const edit = (mode === 'edit') && !viewMode;
+  const custom = (courseInfo.kokoroe || '').trim();
+  document.getElementById('kkStd').innerHTML = KOKOROE.map(g => '<div class="kk-g"><b>' + escHtml(g.h) + '</b>' + g.items.map(escHtml).join('／') + '</div>').join('');
+  const cu = document.getElementById('kkCustom');
+  cu.hidden = edit || !custom; if (!cu.hidden) cu.innerHTML = '<b>この地域からのお願い</b>' + escHtml(custom);
+  document.getElementById('kkEdit').hidden = !edit;
+  document.getElementById('kkSave').hidden = !edit;
+  document.getElementById('kkNote').textContent = edit ? '標準の文はそのまま載ります。この地域からのお願いがあれば下に書いてください（配布シートと配布リンクに載ります）。'
+                                                       : 'このコースを歩く人へのお願いです。';
+  if (edit) document.getElementById('kkText').value = courseInfo.kokoroe || '';
+  _syncSayBtn();
+  sc.style.display = 'block'; sh.style.display = 'block';
+}
+function closeKokoroeSheet() {
+  const sh = document.getElementById('kokoroeSheet'), sc = document.getElementById('kokoroeScrim');
+  if (sc) sc.style.display = 'none'; if (sh) sh.style.display = 'none';
+  _stopSpeaking();
+}
+function saveKokoroeSheet() {
+  const v = (document.getElementById('kkText').value || '').trim();
+  if ((courseInfo.kokoroe || '') !== v) { courseInfo.kokoroe = v; _dirty = true; }
+  closeKokoroeSheet(); _syncMmValues(); renderShareInfo();
+  showToast(v ? 'この地域からのお願いを書き込みました（保存はまだです）' : '標準の心得だけを載せます');
+}
+function speakKokoroe() { _speakText(_kokoroeSpeechText((courseInfo.kokoroe || '').trim())); }
 function _stopSpeaking() {
   if (_canSpeak()) { try { window.speechSynthesis.cancel(); } catch(_) {} }
   _speaking = false; _syncSayBtn();
 }
 function speakSpot(wpId) {
+  const wp = wps.find(w => w.id === wpId); if (!wp) return;
+  _speakText(_spotSpeechText(wp));
+}
+function _speakText(text) {
   if (!_canSpeak()) { showToast('この端末では読み上げを使えません'); return; }
   if (_speaking) { _stopSpeaking(); return; }
-  const wp = wps.find(w => w.id === wpId); if (!wp) return;
   try {
     window.speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(_spotSpeechText(wp));
+    const u = new SpeechSynthesisUtterance(text);
     u.lang = 'ja-JP'; u.rate = 1.0;
     const vs = window.speechSynthesis.getVoices ? (window.speechSynthesis.getVoices() || []) : [];
     const ja = vs.find(v => (v.lang || '').toLowerCase().startsWith('ja'));
@@ -6784,6 +6883,7 @@ function buildCurrentSaveData() {
     start:   courseInfo.start,
     goal:    courseInfo.goal,
     desc:    document.getElementById('iDesc')?.value||'',
+    kokoroe: courseInfo.kokoroe || '',   // 歩く人の心得の「地域の追記」（標準の文は KOKOROE）（v137）
     center:  leafMap ? {lat:leafMap.getCenter().lat, lng:leafMap.getCenter().lng} : null,
     zoom:    leafMap ? leafMap.getZoom() : 14,
     wps:     wps.map(w=>({id:w.id,type:w.type,name:w.name,desc:w.desc,tel:w.tel,dwell:w.dwell||0,fitBefore:w.fitBefore!==false,fitAfter:w.fitAfter!==false,onRoute:w.onRoute!==undefined?w.onRoute!==false:(w.type==='course'),lat:w.lat,lng:w.lng,labelDir:w.labelDir||'auto',photos:w.photos||[]})),
@@ -6874,7 +6974,7 @@ function _fitCourseToScreen(data){
   }
 }
 function loadCourseData(data) {
-  courseInfo = {name:data.name, area:data.area, start:data.start||'', goal:data.goal||''};
+  courseInfo = {name:data.name, area:data.area, start:data.start||'', goal:data.goal||'', kokoroe:data.kokoroe||''};
   currentCourseId = data.id;
   _dirty = false;             // 読み込み直後は未保存の変更なし
 

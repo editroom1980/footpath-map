@@ -59,6 +59,7 @@
   customPaths:[{id,pts:[[lat,lng],…]}],      // 細道（手描きの道）
   routes:{ "lng,lat;lng,lat": [[lat,lng],…] }, // 区間ごとの道順（v119）。読み込み時に segCache へ戻す
   elevs: { "lat,lng": m },                     // 点ごとの標高（v127）。読み込み時に elevCache へ戻す。routes と共に計算後に静かに書き足される
+  kokoroe: "この地域からのお願い",              // 歩く人の心得の地域の追記（v137）。標準の文は KOKOROE 定数
   maxWpId, maxVpNum, savedAt, version }
 ```
 

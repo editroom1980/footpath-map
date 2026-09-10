@@ -435,6 +435,16 @@ def static_checks(src):
     chk('静的', '選べる種類の出どころは _buildTypeOptions のまま（チップは select を読む）',
         "const cur = sel.value, opts = [...sel.options].map(o => o.value);" in src and 'function _buildTypeOptions' in src)
     chk('静的', '最初の案内が「種類と名前はあとから」を伝える', '種類と名前は、○を押してあとから決められます' in src)
+    # --- v137: 歩く人の心得（フットパス特化 F1）＋PCの歩く人に「一覧」を出さない（A5）---
+    chk('静的', '心得は協会の3か条を含み、配慮する・守る・楽しむの3見出し',
+        "const KOKOROE = [" in src and all(w in src for w in ['田畑や私有地には立ち入らない', 'ゴミは必ず持ち帰る', '動植物や農作物を採らない'])
+        and all(f"{{h:'{h}'" in src for h in ('配慮する', '守る', '楽しむ')))
+    chk('静的', '地域の追記はコースごとに保存・復元される', "kokoroe: courseInfo.kokoroe || ''," in src and "kokoroe:data.kokoroe||''" in src)
+    chk('静的', '心得は配布シート・歩く人の最初の案内・メニュー・PCの帯・配るの「載る情報」に出る',
+        '<div class="sh-kokoroe">' in src and "openKokoroeSheet('view')\">心得を読む</button>" in src and '<span class="mm-map-l">歩く人の心得</span>' in src
+        and 'id="btnKokoroe"' in src and 'id="ssKokoroe"' in src)
+    chk('静的', '心得は読み上げられる（共通の読み上げ関数）', 'function _speakText' in src and 'function speakKokoroe' in src and 'function _kokoroeSpeechText' in src)
+    chk('静的', 'PCで配布リンクを開いた人に「一覧」を見せない', 'body.viewonly .hbtn-back{display:none!important}' in src)
     # --- v136: 見直しで見つけた3件（通知の折り返し／削除タイマー／圏外の縮尺10）---
     chk('静的', '通知は折り返す（375px幅で両側にはみ出していた）', "whiteSpace:'normal', textAlign:'center'" in src and "maxWidth:'calc(100vw - 24px)'" in src)
     chk('静的', '削除の「元に戻す」は前のトーストのタイマーを止めてから出す', "if (old) { clearTimeout(old._timer); old.remove(); }" in src
@@ -1863,6 +1873,33 @@ def functional_checks(index_path):
         page.set_viewport_size({'width': 390, 'height': 812}); page.evaluate("()=>{ leafMap.invalidateSize(); }")
         chk('機能', '長い通知が375px幅に収まり、続けて2回削除しても新しい「元に戻す」が残って戻せる',
             isinstance(rv, dict) and rv.get('toastIn') and rv.get('newToastKept') and rv.get('pendingKept') and rv.get('restored'), str(rv)[:200])
+
+        # v137: 心得：追記が保存データに入り、配布シートに標準＋追記が載り、読む画面と書く画面が動き、読み上げ文に3見出しが入る
+        kk = page.evaluate("""()=>{ try{
+            const keepK = courseInfo.kokoroe, keepD = _dirty, keepV = viewMode, keepSS = window.speechSynthesis;
+            const calls = [];
+            Object.defineProperty(window, 'speechSynthesis', {configurable: true, value: {speak: u => calls.push(u.text), cancel: () => {}, getVoices: () => []}});
+            courseInfo.kokoroe = '5月は農道を譲ってください';
+            const out = {saved: buildCurrentSaveData().kokoroe === '5月は農道を譲ってください'};
+            const html = _sheetHtml('data:,', 800);
+            out.sheet = html.indexOf('sh-kokoroe') >= 0 && html.indexOf('田畑や私有地には立ち入らない') >= 0 && html.indexOf('5月は農道を譲ってください') >= 0;
+            viewMode = true; openKokoroeSheet('view');
+            const sh = document.getElementById('kokoroeSheet');
+            out.viewShown = getComputedStyle(sh).display !== 'none' && document.getElementById('kkEdit').hidden && !document.getElementById('kkCustom').hidden
+                            && document.getElementById('kkCustom').textContent.indexOf('5月は農道') >= 0;
+            document.getElementById('kkSay').click(); out.spoken = calls.length === 1 && /配慮する/.test(calls[0]) && /5月は農道/.test(calls[0]);
+            closeKokoroeSheet(); viewMode = false;
+            openKokoroeSheet('edit');
+            out.editShown = !document.getElementById('kkEdit').hidden && document.getElementById('kkText').value === '5月は農道を譲ってください';
+            document.getElementById('kkText').value = 'クマ鈴をお持ちください'; _dirty = false; saveKokoroeSheet();
+            out.savedEdit = courseInfo.kokoroe === 'クマ鈴をお持ちください' && _dirty === true;
+            renderShareInfo(); out.shareRow = document.getElementById('ssKokoroe').textContent.indexOf('追記') >= 0;
+            courseInfo.kokoroe = keepK; _dirty = keepD; viewMode = keepV;
+            Object.defineProperty(window, 'speechSynthesis', {configurable: true, value: keepSS});
+            return out;
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        chk('機能', '心得：追記が保存され、配布シートに標準＋追記、読む／書く画面と読み上げが動く',
+            isinstance(kk, dict) and all(kk.get(k) for k in ('saved', 'sheet', 'viewShown', 'spoken', 'editShown', 'savedEdit', 'shareRow')), str(kk)[:220])
 
         # v121: バックアップからの日数・未反映の保存回数で色が変わり、書き出すと戻る。iPhone の案内は1回だけ
         bk = page.evaluate("""()=>{ return (async()=>{ try{
