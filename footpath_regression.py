@@ -462,10 +462,11 @@ def static_checks(src):
         'function _makeGpsMarker' in src and 'class="me-pulse"' in src and 'class="me-dot"' in src and '@keyframes mePulse' in src
         and '@media (prefers-reduced-motion:reduce){.me-pulse{animation:none' in src and src.count('_gpsMarker = _makeGpsMarker(ll);') == 2 and 'radius:8, color:\'#fff\', weight:3,' not in src)
     # --- v171: スポットは長押し→確認してから置く（オーナー指摘「タップで即追加される」）---
-    chk('静的', 'スマホは長押し→「ここにスポットを追加しますか？」→追加する。タップでは置かず案内を出す。PC のクリックは今までどおり',
+    chk('静的', 'スマホは長押し→「ここにスポットを追加しますか？」→コースに入れる／立ち寄り先にする を選ぶ。タップでは置かず案内を出す。PC のクリックは今までどおり',
         'function _initWpAddHold' in src and 'function _askAddWp' in src and 'function addWpHere' in src and 'id="addWpDlg"' in src and 'ここにスポットを追加しますか？' in src
         and 'const WP_ADD_HOLD_MS = 450' in src and 'if (Date.now() - _lastTouchAt < 900) { _tapWpHint(); return; }' in src and 'class="wp-ghost"' in src
-        and '<b>地図を長押しして置く</b>' in src and 'body.viewing #addWpDlg,body.viewonly #addWpDlg{display:none!important}' in src)
+        and '<b>地図を長押しして置く</b>' in src and 'body.viewing #addWpDlg,body.viewonly #addWpDlg{display:none!important}' in src
+        and 'onclick="addWpHere(true)"' in src and 'onclick="addWpHere(false)"' in src and '<b>コースに入れる</b>' in src and '<b>立ち寄り先にする</b>' in src)
     # --- v169: メニュー整理・スポットを左端・「道を変更」（線の長押し→引っぱる）・通り道の点は見えない・道に沿わせる ---
     chk('静的', 'メニュー：項目ごとに絵、短い言葉、「詳細」（説明なし）。「通り道の点を表示」は廃止。道を変更＝線の長押し（_initLineHold）。通り道の点は引きずれず、案内の無い点は見えない',
         src.count('class="mm-ic"') >= 14 and 'mm-map-l">コースの説明を書く<' in src and 'mm-map-l">順番・逆回り・周回<' in src and 'mm-map-l">色・シール・文字<' in src and '>詳細<i>' in src
@@ -2531,16 +2532,21 @@ def functional_checks(index_path):
             _closeAddWp(); out.cancel = !_wpAdd && !document.getElementById('addWpDlg').classList.contains('show') && wps.length === n0;
             // 長押し→追加する→1つ増える／取消で戻る
             el.dispatchEvent(pe('pointerdown', 10, 10)); await wait(WP_ADD_HOLD_MS + 150); document.dispatchEvent(pe('pointerup', 10, 10));
-            addWpHere(); out.added = wps.length === n0 + 1 && wps[wps.length - 1].type === 'spot' && !_wpAdd;
+            addWpHere(true); out.added = wps.length === n0 + 1 && wps[wps.length - 1].type === 'spot' && wps[wps.length - 1].onRoute !== false && !_wpAdd;
             undoLast(); out.undone = wps.length === n0;
+            // 立ち寄り先を選ぶと道順に入らない（番号も付かない）
+            el.dispatchEvent(pe('pointerdown', 14, 14)); await wait(WP_ADD_HOLD_MS + 150); document.dispatchEvent(pe('pointerup', 14, 14));
+            addWpHere(false); const nw = wps[wps.length - 1];
+            out.side = wps.length === n0 + 1 && nw.onRoute === false && _isNumbered(nw) === false && routeWps().every(w => w.id !== nw.id);
+            undoLast(); out.undone2 = wps.length === n0;
             // 指を動かしたら確認は出ない（地図を動かしたいとき）
             el.dispatchEvent(pe('pointerdown', 0, 0)); await wait(120); document.dispatchEvent(pe('pointermove', 40, 40)); await wait(WP_ADD_HOLD_MS + 150);
             out.moveNoAsk = !_wpAdd; document.dispatchEvent(pe('pointerup', 40, 40));
             _closeAddWp(); setMode(keepMode === 'draw' || keepMode === 'via' ? 'wp' : keepMode); undoStack.length = keepU; _dirty = keepD; viewMode = keepV; document.querySelectorAll('#toastBox .toast').forEach(e => e.remove());
             return out;
           }catch(e){ return 'ERR:'+e.message; } }""")
-        chk('機能', 'スポットを置く：指のタップでは置かない／長押しで確認／やめる／追加する／取消で戻る／指を動かしたら確認を出さない',
-            isinstance(aw, dict) and all(aw.get(k) for k in ('tapNoAdd', 'asks', 'cancel', 'added', 'undone', 'moveNoAsk')), str(aw)[:260])
+        chk('機能', 'スポットを置く：指のタップでは置かない／長押しで確認／やめる／コースに入れる／立ち寄り先にする／取消で戻る／指を動かしたら確認を出さない',
+            isinstance(aw, dict) and all(aw.get(k) for k in ('tapNoAdd', 'asks', 'cancel', 'added', 'undone', 'side', 'undone2', 'moveNoAsk')), str(aw)[:300])
 
         # v169: 道を変更：地図は固定／線の外は何も起きない／線を引っぱると点ができて曲がる（見えない・引きずれない）／押さえて離すと設定／スポットの道具では起きない／タップでは置かない／取消で戻る／広域は実線
         hd = page.evaluate("""async ()=>{ try{

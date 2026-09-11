@@ -296,10 +296,13 @@ html,body{touch-action:manipulation;min-height:calc(100% + var(--sat));font-fami
 #addWpDlg.show{display:block}
 #addWpDlg .aw-t{font-size:15px;font-weight:800;color:#231C14}
 #addWpDlg .aw-d{font-size:11.5px;color:var(--t-sub);margin-top:5px;line-height:1.55}
-#addWpDlg .aw-b{display:flex;gap:8px;margin-top:12px}
-#addWpDlg .aw-b button{flex:1;min-height:var(--tap);border:none;border-radius:11px;font-family:inherit;font-size:15px;font-weight:800;cursor:pointer}
-#addWpDlg .aw-no{background:#EEE5D8;color:#4A2E0E}
+#addWpDlg .aw-yes,#addWpDlg .aw-alt{display:block;width:100%;margin-top:10px;padding:10px 14px;border:none;border-radius:12px;font-family:inherit;text-align:left;cursor:pointer;min-height:var(--tap)}
 #addWpDlg .aw-yes{background:var(--brand-grad);color:#fff}
+#addWpDlg .aw-alt{background:#FAF6EE;border:1.5px solid #D4C4A8;color:#4A2E0E}
+#addWpDlg .aw-yes b,#addWpDlg .aw-alt b{display:block;font-size:15px;font-weight:800}
+#addWpDlg .aw-yes small{display:block;font-size:11px;font-weight:600;opacity:.9;margin-top:2px}
+#addWpDlg .aw-alt small{display:block;font-size:11px;color:var(--t-sub);margin-top:2px}
+#addWpDlg .aw-no{width:100%;margin-top:8px;min-height:var(--tap);border:none;border-radius:11px;background:transparent;color:#9b948c;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer}
 body.viewing #addWpDlg,body.viewonly #addWpDlg{display:none!important}
 /* 場所を動かす（v164） */
 #moveBar{display:none;position:fixed;top:calc(60px + var(--sat));left:50%;transform:translateX(-50%);width:min(560px,calc(100% - 24px));z-index:1400;background:#fff;border:2px solid var(--brand);border-radius:14px;padding:10px 12px;box-shadow:0 6px 24px rgba(0,0,0,.25);gap:10px;align-items:center;flex-wrap:wrap}
@@ -1707,8 +1710,10 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
 <!-- スポットを置く確認（v171）：長押しした場所に薄い○を出して「ここに置く」か聞く -->
 <div id="addWpDlg" role="dialog" aria-label="スポットを置く">
   <div class="aw-t">ここにスポットを追加しますか？</div>
-  <div class="aw-d">歩く順の番号が付き、道順もつながります（あとで「取消」で戻せます）</div>
-  <div class="aw-b"><button type="button" class="aw-no tap" onclick="_closeAddWp()">やめる</button><button type="button" class="aw-yes tap" onclick="addWpHere()">追加する</button></div>
+  <div class="aw-d">どちらにするか選んでください（あとで「取消」で戻せます・○を押せば変えられます）</div>
+  <button type="button" class="aw-yes tap" onclick="addWpHere(true)"><b>コースに入れる</b><small>歩く順の番号が付き、道順がつながります</small></button>
+  <button type="button" class="aw-alt tap" onclick="addWpHere(false)"><b>立ち寄り先にする</b><small>道順には入りません（番号なし・種類の絵だけ）</small></button>
+  <button type="button" class="aw-no tap" onclick="_closeAddWp()">やめる</button>
 </div>
 <div id="crFinishBar">
   <span style="font-size:11px;color:#1565C0;font-weight:bold">🛤 道路描画中 — クリックで点を追加</span>
@@ -1724,7 +1729,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
     <div class="help-section">
       <h3>📍 スポットを置く・直す</h3>
       <ul>
-        <li>スマホ：置きたい場所を**長押し** → 「ここにスポットを追加しますか？」→「追加する」（うっかり置かないように確認します）</li>
+        <li>スマホ：置きたい場所を**長押し** → 「ここにスポットを追加しますか？」→「コースに入れる」（番号が付く）か「立ち寄り先にする」（道順に入らない）を選びます</li>
         <li>PC：地図をクリック → その場に置かれます（番号は自動・道順も自動）</li>
         <li>○をクリック／タップ → 種類・名前・写真・説明を直します（電話・滞在時間などは「くわしい設定」。削除もここ）</li>
         <li>左の一覧（PC）や「スポットの並べ替え」（スマホ）で順番を変えると、道順も付いてきます</li>
@@ -2982,7 +2987,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v174';
+const APP_VERSION = 'v175';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -5250,11 +5255,17 @@ function _closeAddWp(){
   if (_wpAdd) { try { leafMap.removeLayer(_wpAdd.marker); } catch(_) {} _wpAdd = null; }
   const dlg = document.getElementById('addWpDlg'); if (dlg) dlg.classList.remove('show');
 }
-function addWpHere(){
+function addWpHere(onRoute){   // v175：コースに入れる／立ち寄り先にする をその場で選ぶ
   const a = _wpAdd; if (!a) return;
   _closeAddWp();
-  addWp(a.ll.lat, a.ll.lng, 'spot');
-  showToast('置きました。○を押すと種類と名前を変えられます（「取消」で戻せます）');
+  const wp = addWp(a.ll.lat, a.ll.lng, 'spot');
+  if (wp && onRoute === false) {
+    wp.onRoute = false;
+    clearCache(); redrawStraight(); scheduleRouting(); redrawList(); refreshIcons();
+    if (typeof scheduleAutoLabels === 'function') scheduleAutoLabels();
+  }
+  showToast(onRoute === false ? '立ち寄り先にしました。○を押すと種類と名前を決められます（「取消」で戻せます）'
+                              : '置きました。○を押すと種類と名前を変えられます（「取消」で戻せます）');
 }
 function _initLineHold(){
   const el = leafMap && leafMap.getContainer(); if (!el || el._holdInit) return; el._holdInit = true;
