@@ -844,6 +844,9 @@ body.viewonly .mob-share, body.embed .mob-share{display:none!important}
 #mobileCourseTitle{flex:1;font-size:14px;font-weight:700;color:#1C1917;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .mob-save{background:var(--brand);color:#fff;font-size:12px;font-weight:700;min-height:40px;padding:0 16px;display:inline-flex;align-items:center;border-radius:20px;border:none;cursor:pointer;flex-shrink:0}
 #mobileRbtns{position:absolute;right:10px;top:60px;z-index:1000;flex-direction:column;gap:8px}
+#modeHint{display:none;position:absolute;left:12px;right:64px;top:60px;z-index:1000;background:rgba(74,46,14,.92);color:#fff;font-size:12.5px;line-height:1.45;padding:8px 12px;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.2)}
+@media (max-width:768px){#modeHint:not([hidden]){display:block}}
+body.viewing #modeHint,body.viewonly #modeHint{display:none!important}
 .mrb{width:40px;height:40px;background:rgba(255,255,255,0.92);border:0.5px solid rgba(0,0,0,0.09);border-radius:9px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;color:#3D3835}
 .mrb:disabled{opacity:0.35;cursor:default}
 .mrb.mt{margin-top:8px}
@@ -1175,6 +1178,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
           <button class="mob-share tap" onclick="openShareSheet()">配る</button>
           <button class="mob-save tap" onclick="saveCourse()">保存</button>
         </div>
+        <div id="modeHint" role="status" hidden></div>   <!-- v156：いまの道具の案内（スマホ） -->
         <div id="mobileRbtns">
           <button class="mrb tap" id="mobileUndoBtn" onclick="undoLast()" disabled aria-label="取り消し"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14l-4 -4l4 -4" /> <path d="M5 10h11a4 4 0 1 1 0 8h-1" /></svg></button>
           <button class="mrb tap" id="mobileRedoBtn" onclick="redoAction()" disabled aria-label="やり直し"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14l4 -4l-4 -4" /> <path d="M19 10h-11a4 4 0 1 0 0 8h1" /></svg></button>
@@ -2797,7 +2801,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v155';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
+const APP_VERSION = 'v156';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
 }catch(_){} });
@@ -3144,7 +3148,7 @@ function toggleCustomMode(){
     _activeHandle=null; _customTraceMode=false; exitDrawMode(); _setMarkersClickable(true); _showDrawBar(false); _renderCustom();
     showToast('道を描くのを終了しました');
   }
-  _syncCustomMenu();
+  _syncCustomMenu(); _syncModeHint();
 }
 // 画面ピクセル距離：点pから線分ab
 function _distPtSeg(p,a,b){ const dx=b.x-a.x,dy=b.y-a.y; const l2=dx*dx+dy*dy||1e-9; let t=((p.x-a.x)*dx+(p.y-a.y)*dy)/l2; t=Math.max(0,Math.min(1,t)); return Math.hypot(p.x-(a.x+dx*t), p.y-(a.y+dy*t)); }
@@ -6647,6 +6651,16 @@ function setMode(m) {
   };
   const el = document.getElementById('tbar-st');
   if (el) { el.textContent = msgs[m] || ''; el.title = long[m] || ''; }
+  _syncModeHint();
+}
+/* スマホの案内（v156）：ふだんの「スポット」以外の道具を選んでいる間だけ、上に一言出す。何をすれば結果が出るかを迷わせない */
+function _syncModeHint(){
+  const el = document.getElementById('modeHint'); if (!el) return;
+  let t = '';
+  if (_customMode_) t = '道を描く：地図に無い道を指でなぞって描きます。終わったら下の「終了」';
+  else if (mode === 'draw') t = 'なぞる：地図を指でなぞると、その道がコースになります';
+  else if (mode === 'via') t = '通り道：地図を押した所を通るように道順が変わります（戻すには「スポット」）';
+  el.textContent = t; el.hidden = !t;
 }
 
 /* ============================================================

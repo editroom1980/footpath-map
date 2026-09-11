@@ -435,6 +435,9 @@ def static_checks(src):
     chk('静的', '選べる種類の出どころは _buildTypeOptions のまま（チップは select を読む）',
         "const cur = sel.value, opts = [...sel.options].map(o => o.value);" in src and 'function _buildTypeOptions' in src)
     chk('静的', '最初の案内が「種類と名前はあとから」を伝える', '種類と名前は、○を押してあとから決められます' in src)
+    # --- v156: スマホにも「いまの道具の案内」---
+    chk('静的', 'スマホでも、なぞる・通り道・道を描く を選んでいる間は上に一言の案内（ふだんは出さない・歩く人には出さない）',
+        'id="modeHint"' in src and 'function _syncModeHint' in src and 'body.viewing #modeHint,body.viewonly #modeHint{display:none!important}' in src)
     # --- v155: 番号と種類の分離・漢字の印をやめて絵に（オーナー指示）---
     chk('静的', '種類の絵（TYPE_ICON）があり、漢字の印（学・公・碑・WC）は無い。旧 course は spot に読み替える',
         'const TYPE_ICON = {' in src and all(k + ':' in src.split('const TYPE_ICON = {')[1].split('};')[0] for k in ('view','shop','shrine','history','park','school','hall','toilet','parking','other'))
@@ -2096,6 +2099,18 @@ def functional_checks(index_path):
           }catch(e){ return 'ERR:'+e.message; } }""")
         chk('機能', 'スポット削除の「元に戻す」が戻し、別の操作の後は案内し、通知は重ならず、種別はこのコースで使った順',
             isinstance(b1, dict) and all(b1.get(k) for k in ('gone', 'toast', 'back', 'guarded', 'stacked', 'order')), str(b1)[:220])
+
+        # v156: 道具の案内：スポットでは無し、通り道・なぞるで出て、スポットに戻すと消える
+        mh = page.evaluate("""()=>{ try{
+            const keepM = mode; const el = document.getElementById('modeHint');
+            setMode('wp'); const out = {none: el.hidden === true};
+            setMode('via'); out.via = el.hidden === false && /通り道/.test(el.textContent);
+            setMode('draw'); out.draw = el.hidden === false && /なぞる/.test(el.textContent);
+            setMode('wp'); out.back = el.hidden === true;
+            setMode(keepM === 'draw' || keepM === 'via' ? keepM : 'wp');
+            return out;
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        chk('機能', '道具の案内：スポットでは無し／通り道・なぞるで出る／戻すと消える', isinstance(mh, dict) and all(mh.get(k) for k in ('none', 'via', 'draw', 'back')), str(mh)[:160])
 
         # v155: 道順に入った神社は番号＋鳥居の小さな絵、外すと鳥居だけ。帯の文字は①。凡例に番号の行と種類の行
         nm = page.evaluate("""()=>{ try{
