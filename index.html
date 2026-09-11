@@ -277,6 +277,11 @@ html,body{touch-action:manipulation;min-height:calc(100% + var(--sat));font-fami
 #crFinishBar.show{display:flex}
 .vp-hold{border-radius:50%;background:var(--brand);border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.45)}   /* 道を変更：つかんでいる点（v169） */
 /* スポットを置く確認（v171） */
+/* 現在地（v172）：青い丸＋ゆっくり広がる輪 */
+.me-dot{position:absolute;left:50%;top:50%;width:16px;height:16px;margin:-8px 0 0 -8px;border-radius:50%;background:#3B82F6;border:3px solid #fff;box-sizing:content-box;box-shadow:0 1px 6px rgba(0,0,0,.4)}
+.me-pulse{position:absolute;left:50%;top:50%;width:22px;height:22px;margin:-11px 0 0 -11px;border-radius:50%;background:rgba(59,130,246,.45);animation:mePulse 2.4s cubic-bezier(.25,.6,.35,1) infinite}
+@keyframes mePulse{0%{transform:scale(.55);opacity:.75}70%{transform:scale(2.6);opacity:0}100%{transform:scale(2.6);opacity:0}}
+@media (prefers-reduced-motion:reduce){.me-pulse{animation:none;opacity:.35}}
 .wp-ghost{border-radius:50%;background:var(--brand);opacity:.55;border:3px dashed #fff;box-shadow:0 2px 10px rgba(0,0,0,.4);animation:wpGhost 1.2s ease-in-out infinite}
 @keyframes wpGhost{0%,100%{transform:scale(1)}50%{transform:scale(1.14)}}
 @media (prefers-reduced-motion:reduce){.wp-ghost{animation:none}}
@@ -2962,7 +2967,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v171';
+const APP_VERSION = 'v172';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -4668,22 +4673,26 @@ function _distM(a, b){
   const dx = (a[1] - b[1]) * 111320 * Math.cos(a[0] * Math.PI / 180);
   return Math.hypot(dx, dy);
 }
+/* 現在地の印（v172・ルートプランナーに倣う）：青い丸が、ゆっくり広がる輪（パルス）といっしょに出る。
+   歩いている間もずっと出るので、点滅ではなく「静かに広がって消える」動きにして目に障らないようにした */
+function _makeGpsMarker(ll){
+  const m = L.marker(ll, {icon: L.divIcon({className:'', html:'<span class="me-pulse"></span><span class="me-dot"></span>', iconSize:[22,22], iconAnchor:[11,11]}),
+                          interactive:true, keyboard:false, zIndexOffset:1500}).addTo(leafMap);
+  m.on('click', function(ev){
+    L.DomEvent.stopPropagation(ev);
+    if (viewMode) return;
+    if (typeof _drawActive !== 'undefined' && _drawActive) return;
+    const g = m.getLatLng();
+    showWpTypePicker(g.lat, g.lng, ev);
+  });
+  return m;
+}
 // 現在地の印と精度の円を今の位置に合わせる（印が無ければ作る）
 function _showGpsHere(lat, lng, accuracy){
   const ll = [lat, lng];
   if (_gpsMarker) { _gpsMarker.setLatLng(ll); }
   else {
-    _gpsMarker = L.circleMarker(ll, {
-      radius:8, color:'#fff', weight:3,
-      fillColor:'#3B82F6', fillOpacity:1, interactive:true, bubblingMouseEvents:false, pane:'markerPane'
-    }).addTo(leafMap);
-    _gpsMarker.on('click', function(ev){
-      L.DomEvent.stopPropagation(ev);
-      if (viewMode) return;
-      if (typeof _drawActive !== 'undefined' && _drawActive) return;
-      const g = _gpsMarker.getLatLng();
-      showWpTypePicker(g.lat, g.lng, ev);
-    });
+    _gpsMarker = _makeGpsMarker(ll);
   }
   if (accuracy > 0) {                       // 精度の円（どのくらい確からしいか）
     if (_gpsCircle) { _gpsCircle.setLatLng(ll); _gpsCircle.setRadius(accuracy); }
@@ -4751,18 +4760,7 @@ function gotoCurrentLocation() {
       if (_gpsMarker) {
         _gpsMarker.setLatLng(ll);
       } else {
-        _gpsMarker = L.circleMarker(ll, {
-          radius:8, color:'#fff', weight:3,
-          fillColor:'#3B82F6', fillOpacity:1, interactive:true, bubblingMouseEvents:false, pane:'markerPane'
-        }).addTo(leafMap);
-        // ③ 現在地マーカーをタップ → 種別ピッカーを開き、現在地をWPとして追加
-        _gpsMarker.on('click', function(ev){
-          L.DomEvent.stopPropagation(ev);
-          if (viewMode) return;
-          if (typeof _drawActive !== 'undefined' && _drawActive) return;
-          const g = _gpsMarker.getLatLng();
-          showWpTypePicker(g.lat, g.lng, ev);
-        });
+        _gpsMarker = _makeGpsMarker(ll);
       }
       leafMap.setView(ll, Math.max(leafMap.getZoom(), 16));
       _onWalkerPos(lat, lng, pos.coords.accuracy || 0);   // 次のスポットまでの距離（v132）

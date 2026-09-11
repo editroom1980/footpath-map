@@ -447,6 +447,10 @@ def static_checks(src):
     # --- v157: 番号の丸と種類の丸を横に並べる（オーナー指摘：iPhone で片方しか見えない）---
     chk('静的', '番号つきで種類がある地点：地図は「種類の丸＋右上に番号の小丸」、一覧・並べ替え・配布シート・カードは番号と種類を並べて出す',
         'class="wp-num"' in src and 'class="wp-dot cat"' in src and 'class="ro-badge cat"' in src and 'class="sh-cat"' in src and 'class="vip-dot vip-dot2"' in src and '_catBadge' not in src and 'wp-pair' not in src)
+    # --- v172: 現在地はゆっくり広がる輪（パルス）で出す（ルートプランナーに倣う）---
+    chk('静的', '現在地は青い丸＋ゆっくり広がる輪。動きを減らす設定では輪を止める',
+        'function _makeGpsMarker' in src and 'class="me-pulse"' in src and 'class="me-dot"' in src and '@keyframes mePulse' in src
+        and '@media (prefers-reduced-motion:reduce){.me-pulse{animation:none' in src and src.count('_gpsMarker = _makeGpsMarker(ll);') == 2 and 'radius:8, color:\'#fff\', weight:3,' not in src)
     # --- v171: スポットは長押し→確認してから置く（オーナー指摘「タップで即追加される」）---
     chk('静的', 'スマホは長押し→「ここにスポットを追加しますか？」→追加する。タップでは置かず案内を出す。PC のクリックは今までどおり',
         'function _initWpAddHold' in src and 'function _askAddWp' in src and 'function addWpHere' in src and 'id="addWpDlg"' in src and 'ここにスポットを追加しますか？' in src
@@ -2886,7 +2890,7 @@ def functional_checks(index_path):
             toggleFollowMode();
             const on = _followOn;
             cb({coords:{latitude:c.lat, longitude:c.lng, accuracy:12}});
-            const first = {marker: !!_gpsMarker, circle: !!_gpsCircle,
+            const first = {marker: !!_gpsMarker && !!_gpsMarker.getElement && !!(_gpsMarker.getElement() || {}).querySelector && !!_gpsMarker.getElement().querySelector('.me-pulse'), circle: !!_gpsCircle,
                            center: [leafMap.getCenter().lat, leafMap.getCenter().lng]};
             // ほんの少し（1m弱）動いた → 地図は寄せ直さない
             cb({coords:{latitude:c.lat + 0.000005, longitude:c.lng, accuracy:12}});
