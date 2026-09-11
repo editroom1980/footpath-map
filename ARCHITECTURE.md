@@ -391,3 +391,8 @@ CONSTANTS(904) → STATE(968) → STORAGE(1015) → 版のお知らせ(1021) →
 - `_declutter()`（zoomend・refreshIcons・表示切替から）：印を優先順に束ね（`_clusterN`／`_clusterHidden`）、通り道の点の表示を `_vpVisibleAt` で決める。`_clusterStickers` は同じ関数の旧名。
 - `autoPlaceLabels()`：束ねて隠した印の名札は対象外。`_labelAllowedAt(wp, z)` で広域の足切り、4方向に置けなければ `_labelHidden`。表示の反映は `_syncLabelVis`。
 - `_wpSize()` は `ZOOM_SCALE` の倍率を含む。ズームの段が変わったら `refreshIcons()`＋全 `updateTooltip()`。
+
+## 周辺の情報の出どころ（v162）
+- OpenStreetMap（Overpass）：`nwr["name"]` に除外条件を付けた1本の問い合わせ＋名前の無い実用物。種類分けは `_nbKindOf(tags)`。
+- 国土数値情報：`data/ksj/index.json`（県コード・範囲・入っているデータ）→ `data/ksj/<pref>/<code>.json`（`items:[[lat,lng,name,sub],…]`）。`KSJ_KIND` で種類へ。変換は `tools/ksj_convert.py`。
+- Wikipedia geosearch、名前検索時は Nominatim（bounded）。Google は使わない。

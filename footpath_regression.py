@@ -430,7 +430,7 @@ def static_checks(src):
     chk('静的', '地図タップで即「コースポイント」として置く（選択画面も編集画面も開かない）',
         "addWp(e.latlng.lat, e.latlng.lng, 'spot');" in _omc and 'showWpTypePicker(e.latlng' not in _omc and 'openModal(' not in _omc)
     chk('静的', '編集画面の種別は「よく使う4つを大きく、残りは畳む」',
-        "const TYPE_BIG = ['spot', 'view', 'history', 'shop']" in src and 'id="mTypeChips"' in src and 'function _renderTypeChips' in src
+        "const TYPE_BIG = ['view', 'history', 'shop', 'shrine']" in src and "if (t.v === 'spot' && wp.type !== 'spot') return;" in src and 'id="mTypeChips"' in src and 'function _renderTypeChips' in src
         and '#mType{display:none}' in src)
     chk('静的', '選べる種類の出どころは _buildTypeOptions のまま（チップは select を読む）',
         "const cur = sel.value, opts = [...sel.options].map(o => o.value);" in src and 'function _buildTypeOptions' in src)
@@ -518,9 +518,11 @@ def static_checks(src):
     chk('静的', '凡例の線も同じ色。標準に戻すと WT_BASE の色へ。入口は PC・スマホの「地図の見せ方」（編集のときだけ）',
         "stroke=\"' + LINE_STYLE.color + '\"" in src and 'const WT_BASE = {};' in src and 'id="btnTheme"' in src and 'onclick="closeMobileMenu();openThemeSheet()" data-edit="1"' in src)
     # --- v144: 周辺の情報を取り込む（OSM・Wikipedia。Google は使わない）---
-    chk('静的', '周辺の情報は OpenStreetMap（Overpass 2系統）と Wikipedia から。Google の情報は使わない',
+    chk('静的', '周辺の情報は OpenStreetMap（Overpass 2系統・名前のあるもの全部）と国土数値情報と Wikipedia から。Google の情報は使わない',
         "NEARBY_OVERPASS   = ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter']" in src and "NEARBY_WIKI       = 'https://ja.wikipedia.org/w/api.php'" in src
-        and 'maps.googleapis.com' not in src and 'places.googleapis.com' not in src)
+        and 'maps.googleapis.com' not in src and 'places.googleapis.com' not in src
+        and 'nwr["name"]["highway"!~"."]' in src and 'function _nbFetchKsj' in src and "KSJ_INDEX = 'data/ksj/index.json'" in src and 'function _nbFetchNominatim' in src and 'id="nbKw"' in src
+        and os.path.exists(os.path.join(os.path.dirname(INDEX), 'data', 'ksj', 'index.json')) and os.path.exists(os.path.join(os.path.dirname(INDEX), 'data', 'ksj', '28', 'P29.json')))
     chk('静的', '候補は距離・種類で絞り、既にあるスポットと重複は除き、選んだものだけを道順に入れないスポットとしてまとめて置く（取り消しは1回）',
         'function nearbySearch' in src and 'function _nbIsDup' in src and 'function _addSpotsBulk' in src and "onRoute:false, lat:it.lat, lng:it.lng" in src and src.count('saveSnapshot();\n  items.forEach') == 1)
     chk('静的', '入口は PC「その他」とスマホのコース欄（編集のときだけ）。出典を説明に書く',
@@ -1799,7 +1801,7 @@ def functional_checks(index_path):
           }catch(e){ return 'ERR:'+e.message; } }""")
         chk('機能', '10個置くのに画面切替0回。編集画面は4つ大きく、残りは畳んだ中から選べる',
             isinstance(pl, dict) and pl.get('added') == 10 and pl.get('allCourse') and pl.get('switches') == 0
-            and pl.get('bigs') == ['1地点', 'ビュースポット', '史跡・記念碑', '飲食店・ショップ'] and pl.get('restHidden')
+            and pl.get('bigs') == ['ビュースポット', '史跡・記念碑', '飲食店・ショップ', '神社・寺院'] and pl.get('restHidden')
             and pl.get('restN', 0) >= 5 and pl.get('selVal') == 'parking' and pl.get('onChip') == '駐車場' and pl.get('savedType') == 'parking',
             str(pl)[:260])
 
@@ -2304,22 +2306,33 @@ def functional_checks(index_path):
             const keepFetch = window.fetch, keepV = viewMode, n0 = wps.length, keepU = undoStack.length, keepD = _dirty;
             const c = L.latLngBounds(wps.filter(w => w.type !== 'node').map(w => [w.lat, w.lng])).getCenter(); const w0 = wps.find(w => w.type !== 'node');
             window.fetch = async (url, opts) => { const u = String(url);
+              if (u.indexOf('data/ksj/index.json') >= 0) return new Response(JSON.stringify({prefs:[{code:'28', name:'兵庫県', bbox:[34.0, 134.0, 36.0, 136.0], sets:[{code:'P29', label:'学校', type:'school', n:1}, {code:'P18', label:'警察署・交番', type:'hall', n:1}]}]}), {status:200});
+              if (u.indexOf('data/ksj/28/P29.json') >= 0) return new Response(JSON.stringify({code:'P29', label:'学校', items:[[c.lat + 0.0012, c.lng - 0.0008, '検査小学校', '小学校']]}), {status:200});
+              if (u.indexOf('data/ksj/28/P18.json') >= 0) return new Response(JSON.stringify({code:'P18', label:'警察署・交番', items:[[c.lat - 0.0012, c.lng + 0.0008, '検査駐在所', '検査町1']]}), {status:200});
+              if (u.indexOf('nominatim') >= 0) return new Response(JSON.stringify([{osm_id: 77, lat: String(c.lat + 0.002), lon: String(c.lng), display_name: '検査会館, 検査町, 宍粟市'}]), {status:200});
+              if (u.indexOf('overpass') >= 0 && /"name"~/.test(decodeURIComponent(String((opts || {}).body || '')))) return new Response(JSON.stringify({elements:[{type:'node', id:9, lat:c.lat + 0.0015, lon:c.lng + 0.0015, tags:{office:'company', name:'検査商事'}}]}), {status:200});
               if (u.indexOf('overpass') >= 0) return new Response(JSON.stringify({elements:[
                 {type:'node', id:1, lat:c.lat + 0.001, lon:c.lng + 0.001, tags:{amenity:'cafe', name:'縁側カフェ', opening_hours:'Sa,Su 10:00-16:00', phone:'0790-00-0000'}},
                 {type:'way', id:2, center:{lat:c.lat - 0.001, lon:c.lng}, tags:{amenity:'school', name:'飯見小学校'}},
                 {type:'node', id:3, lat:c.lat, lon:c.lng + 0.0015, tags:{amenity:'toilets'}},
                 {type:'node', id:4, lat:w0.lat, lon:w0.lng, tags:{amenity:'cafe', name:(w0.name || '').split('\\n')[0]}},
-                {type:'node', id:5, lat:c.lat + 0.2, lon:c.lng, tags:{amenity:'cafe', name:'遠いカフェ'}}]}), {status:200});
+                {type:'node', id:5, lat:c.lat + 0.2, lon:c.lng, tags:{amenity:'cafe', name:'遠いカフェ'}},
+                {type:'way', id:6, center:{lat:c.lat + 0.0008, lon:c.lng + 0.0004}, tags:{building:'industrial', name:'(株)検査製作所'}},
+                {type:'node', id:7, lat:c.lat - 0.0011, lon:c.lng - 0.0013, tags:{amenity:'police', name:'検査交番'}},
+                {type:'node', id:8, lat:c.lat + 0.0003, lon:c.lng - 0.0009, tags:{place:'hamlet', name:'検査集落'}}]}), {status:200});
               if (u.indexOf('wikipedia') >= 0) { if (u.indexOf('geosearch') >= 0) return new Response(JSON.stringify({query:{geosearch:[{pageid:99, title:'飯見の棚田', lat:c.lat + 0.0005, lon:c.lng - 0.0005}]}}), {status:200});
                 return new Response(JSON.stringify({query:{pages:{'99':{pageid:99, title:'飯見の棚田', extract:'飯見の棚田は兵庫県宍粟市にある棚田である。日本の棚田百選に選ばれている。'}}}}), {status:200}); }
               return keepFetch(url, opts); };
-            viewMode = false; openNearbySheet(); _nb.radius = 2000; _nbKinds().add('wiki');
+            viewMode = false; openNearbySheet(); _nb.radius = 2000; _nbKinds().add('wiki'); _nbKinds().add('facility'); _nbKinds().add('place'); _ksjIndex = null; for (const k in _ksjSets) delete _ksjSets[k];
+            document.getElementById('nbKw').value = '';
             await nearbySearch();
             const names = _nb.cands.map(x => x.name);
-            const out = {found: _nb.cands.length === 4 && names.includes('縁側カフェ') && names.includes('トイレ') && names.includes('飯見の棚田') && !names.includes('遠いカフェ'),
+            const out = {names: names.slice(0, 16), status: document.getElementById('nbStatus').textContent.slice(0, 60), found: names.includes('縁側カフェ') && names.includes('トイレ') && names.includes('飯見の棚田') && !names.includes('遠いカフェ'),
+                         v162: names.includes('(株)検査製作所') && names.includes('検査交番') && names.includes('検査集落') && names.includes('検査小学校') && names.includes('検査駐在所')
+                               && _nb.cands.find(x => x.name === '(株)検査製作所').kind === 'facility' && _nb.cands.find(x => x.name === '検査交番').kind === 'hall' && _nb.cands.find(x => x.name === '検査集落').kind === 'place' && _nb.cands.find(x => x.name === '検査小学校').src === '国土数値情報' && /国土数値情報/.test(_nb.cands.find(x => x.name === '検査小学校').desc),
                          dup: !names.includes((w0.name || '').split('\\n')[0]) || (w0.name || '') === '',
                          layer: !!_nbLayer && _nbLayer.getLayers().length === _nb.cands.length,
-                         listed: document.querySelectorAll('#nbList .nb-item').length === 4};
+                         listed: document.querySelectorAll('#nbList .nb-item').length === _nb.cands.length};
             _nbToggle(_nb.cands.find(x => x.name === '縁側カフェ').id); _nbToggle(_nb.cands.find(x => x.name === '飯見の棚田').id);
             out.btn = document.getElementById('nbAdd').textContent === '選んだ 2 件を追加';
             addNearbySelected();
@@ -2327,12 +2340,16 @@ def functional_checks(index_path):
             out.added = wps.length === n0 + 2 && !!a && a.type === 'shop' && a.onRoute === false && a.tel === '0790-00-0000' && a.desc.indexOf('営業時間') >= 0 && a.desc.indexOf('（情報：OpenStreetMap）') >= 0 && !!a.marker
                         && !!b && b.type === 'history' && b.desc.indexOf('棚田百選') >= 0 && b.desc.indexOf('Wikipedia「飯見の棚田」') >= 0;
             out.closed = document.getElementById('nearbySheet').style.display === 'none' && !_nbLayer;
+            // 名前で探す：OSM の名前検索＋Nominatim＋国土数値情報の名前一致
+            openNearbySheet(); document.getElementById('nbKw').value = '検査'; await nearbySearch();
+            const kn = _nb.cands.map(x => x.name); out.keyword = kn.includes('検査商事') && kn.includes('検査会館') && kn.includes('検査小学校') && kn.includes('検査駐在所');
+            document.getElementById('nbKw').value = ''; closeNearbySheet();
             undoLast(); out.undone = wps.length === n0 && !wps.some(w => w.name === '縁側カフェ');
-            window.fetch = keepFetch; viewMode = keepV; _nb.cands = []; _nb.sel = new Set(); undoStack.length = keepU; _dirty = keepD; document.querySelectorAll('#toastBox .toast').forEach(e => e.remove());
+            window.fetch = keepFetch; viewMode = keepV; _nb.cands = []; _nb.sel = new Set(); _ksjIndex = null; for (const k in _ksjSets) delete _ksjSets[k]; undoStack.length = keepU; _dirty = keepD; document.querySelectorAll('#toastBox .toast').forEach(e => e.remove());
             return out;
           }catch(e){ return 'ERR:'+e.message; } }""")
         chk('機能', '周辺の情報：候補（距離・重複を除外）→地図の薄い○→選んで追加（種別・説明・出典）→1回で取り消し',
-            isinstance(nb, dict) and all(nb.get(k) for k in ('found', 'dup', 'layer', 'listed', 'btn', 'added', 'closed', 'undone')), str(nb)[:260])
+            isinstance(nb, dict) and all(nb.get(k) for k in ('found', 'v162', 'dup', 'layer', 'listed', 'btn', 'added', 'closed', 'keyword', 'undone')), str(nb)[:600])
 
         # v143: 発見：貼る→端末に残る→印とカード→送るファイル→作者が取り込む→消す。編集画面では印を出さない
         fd = page.evaluate("""async ()=>{ try{

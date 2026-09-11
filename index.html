@@ -228,6 +228,8 @@ html,body{touch-action:manipulation;min-height:calc(100% + var(--sat));font-fami
 .tc-chip.on{border-color:var(--brand);background:var(--brand-soft);color:var(--brand)}
 .tc-dot{width:20px;height:20px;border-radius:50%;color:#fff;font-size:10px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;flex:none}
 .tc-hint{font-size:11.5px;color:var(--ok);margin:4px 0 6px;font-weight:700}
+.tc-none{font-size:11.5px;color:var(--t-sub);margin:2px 0 6px;line-height:1.5}
+.tc-clear{border:none;background:none;font-family:inherit;font-size:12px;color:var(--t-sub);text-decoration:underline;cursor:pointer;padding:2px 0;margin:2px 0 6px;min-height:32px}
 .tc-more{display:inline-flex;align-items:center;gap:6px;margin-top:6px;border:none;background:none;font-family:inherit;font-size:12px;font-weight:700;color:var(--t-sub);cursor:pointer;padding:6px 2px;min-height:var(--tap)}
 .m-body textarea{resize:vertical;min-height:55px}
 .m-ftr{padding:10px 14px;border-top:1px solid #EEE;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-shrink:0;background:#fff}
@@ -365,6 +367,9 @@ body.embed #s2, body.embed #mapArea, body.embed #mapWrap{height:100%!important;m
 .nb-seg button,.nb-kind{border:1px solid #D4C4A8;border-radius:10px;background:#fff;font-family:inherit;font-size:13px;font-weight:700;color:#2C2620;padding:8px 12px;min-height:var(--tap);cursor:pointer}
 .nb-seg button.on,.nb-kind.on{border-color:var(--brand);background:var(--brand-soft);color:var(--brand)}
 .nb-kinds{display:flex;flex-wrap:wrap;gap:6px}
+.nb-kw{display:flex;gap:6px}
+.nb-kw input{flex:1;min-width:0;padding:9px 11px;border:1px solid #D4C4A8;border-radius:10px;font-size:16px;font-family:inherit;outline:none}
+.nb-kw input:focus{border-color:var(--brand)}
 .nb-kind{min-height:38px;padding:6px 10px;font-size:12.5px}
 .nb-go{width:100%;margin-top:12px}
 .nb-tools{display:flex;justify-content:flex-end;margin:4px 0}
@@ -1341,7 +1346,10 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
       <div id="nearbySheet" class="fsh nb" role="dialog" aria-label="周辺の情報を取り込む">
         <div class="ds-dh"></div>
         <div class="ds-t">周辺の情報を取り込む</div>
-        <div class="ds-n">OpenStreetMap と Wikipedia から、コースの周りにあるお店・史跡・学校などを探します（Google の情報は規約で使えません）。選んだものだけが、道順に入らないスポットになります。</div>
+        <div class="ds-n">OpenStreetMap・国土数値情報（国土交通省の公的データ：学校・役場・公民館・郵便局・警察・病院・文化財・公園・バス停）・Wikipedia から、コースの周りにあるものを探します（Google の情報は規約で使えません）。選んだものだけが、道順に入らないスポットになります。</div>
+        <label class="kk-l" for="nbKw">名前で探す（任意）</label>
+        <div class="nb-kw"><input type="text" id="nbKw" placeholder="例：〇〇神社、〇〇公民館、〇〇商店" onkeydown="if(event.key==='Enter'){nearbySearch();}"><button type="button" class="f-ghost tap" onclick="document.getElementById('nbKw').value='';">消す</button></div>
+        <div class="ds-n" style="margin:4px 0 8px">名前を入れると周り 10km から名前で探します（種類は問いません）。空欄なら下の距離と種類で探します。</div>
         <label class="kk-l">コースからの距離</label>
         <div class="g-seg nb-seg" id="nbRadius"></div>
         <label class="kk-l">種類</label>
@@ -1780,22 +1788,25 @@ const FIND_COLOR = '#2E7D32', FIND_WORD_MAX = 30, FIND_BY_MAX = 12, FIND_POS_FRE
    OpenStreetMap（Overpass API）と Wikipedia（ja）から、コースの周りのお店・史跡・学校などを候補として出し、選んだものだけスポットにする */
 const NEARBY_OVERPASS   = ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter'];
 const NEARBY_WIKI       = 'https://ja.wikipedia.org/w/api.php';
-const NEARBY_TIMEOUT_MS = 20000, NEARBY_MAX = 150, NEARBY_DUP_M = 15, NEARBY_DESC_MAX = 160;
-const NEARBY_RADII      = [300, 1000, 2000];         // コース（スポット）からの距離の選択肢
-const NEARBY_KINDS = [                                // 画面の並び。t＝このアプリの種別。q＝Overpass の条件
-  {k:'shop',    l:'お店・飲食',     t:'shop',    q:['["amenity"~"^(restaurant|cafe|fast_food|pub|bar|ice_cream|food_court)$"]', '["shop"]']},
-  {k:'shrine',  l:'神社・寺院',     t:'shrine',  q:['["amenity"="place_of_worship"]']},
-  {k:'hist',    l:'史跡・見どころ', t:'history', q:['["historic"]', '["tourism"~"^(attraction|museum|artwork|information|picnic_site)$"]']},
-  {k:'view',    l:'展望',           t:'view',    q:['["tourism"="viewpoint"]']},
-  {k:'park',    l:'公園・自然',     t:'park',    q:['["leisure"~"^(park|garden|playground|nature_reserve)$"]', '["natural"~"^(spring|peak|waterfall|hot_spring)$"]']},
-  {k:'school',  l:'学校・幼稚園',   t:'school',  q:['["amenity"~"^(school|kindergarten|college|university)$"]']},
-  {k:'hall',    l:'公民館・役所',   t:'hall',    q:['["amenity"~"^(community_centre|townhall|library|social_facility)$"]']},
-  {k:'toilet',  l:'トイレ',         t:'toilet',  q:['["amenity"="toilets"]']},
-  {k:'parking', l:'駐車場',         t:'parking', q:['["amenity"="parking"]']},
-  {k:'bus',     l:'バス停・駅',     t:'other',   q:['["highway"="bus_stop"]', '["railway"="station"]']},
-  {k:'wiki',    l:'Wikipedia の記事', t:'history', q:null},
+const NEARBY_TIMEOUT_MS = 20000, NEARBY_MAX = 300, NEARBY_DUP_M = 15, NEARBY_DESC_MAX = 160, NEARBY_KW_RADIUS = 10000, NEARBY_MERGE_M = 60;
+const KSJ_INDEX = 'data/ksj/index.json';   // 国土数値情報（国土交通省）を tools/ksj_convert.py で変換したもの（v162）
+const NEARBY_RADII      = [300, 1000, 2000, 5000];   // コース（スポット）からの距離の選択肢（v162：5km を追加）
+const NEARBY_KINDS = [                                // 画面の並び。t＝このアプリの種別。v162：問い合わせは種類ごとでなく「名前のあるもの全部」を1回で取り、あとで種類に振り分ける
+  {k:'shop',     l:'お店・飲食',            t:'shop'},
+  {k:'shrine',   l:'神社・寺院',            t:'shrine'},
+  {k:'hist',     l:'史跡・文化財・見どころ', t:'history'},
+  {k:'view',     l:'展望',                  t:'view'},
+  {k:'park',     l:'公園・自然',            t:'park'},
+  {k:'school',   l:'学校・幼稚園',          t:'school'},
+  {k:'hall',     l:'公民館・役所・郵便局・警察', t:'hall'},
+  {k:'facility', l:'会社・病院・その他の施設', t:'other'},
+  {k:'toilet',   l:'トイレ',                t:'toilet'},
+  {k:'parking',  l:'駐車場',                t:'parking'},
+  {k:'bus',      l:'バス停・駅',            t:'other'},
+  {k:'place',    l:'地名・集落',            t:'other'},
+  {k:'wiki',     l:'Wikipedia の記事',      t:'history'},
 ];
-const NEARBY_KIND_DEFAULT_OFF = ['bus'];             // 最初は外しておく種類
+const NEARBY_KIND_DEFAULT_OFF = ['bus', 'place'];    // 最初は外しておく種類
 /* 地図の色（テーマ・v145・構想「色を自由に」）。コースに保存され、歩く人の画面・配布シート・地図画像も同じ色になる。
    組み合わせ（preset）＝道順の線の色＋印の色。線の色・点線／実線・太さは個別にも変えられる */
 const THEMES = [
@@ -1819,7 +1830,7 @@ const SHARE_CHECKS = [
 ];
 const GOAL_IMG_MAX = 1280;   // ゴールの1枚（記念写真）の長辺（v147）
 const AUTOSAVE_MS = 1500;    // 変更からこれだけ静かなら自動で保存（v148・「保存」を意識させない）
-const TYPE_BIG = ['spot', 'view', 'history', 'shop'];
+const TYPE_BIG = ['view', 'history', 'shop', 'shrine'];   // v162：「地点」は選択肢から外した（種類なし＝既定。番号は種類と別に付く）
 /* 名前から種類を決める（v160・Footpath に倣う：名前を入れれば絵が決まる。人に分類を考えさせない）。上から順に最初に当たったもの */
 const NAME_TYPE_HINTS = [
   ['shrine',  ['神社','神宮','大社','八幡','稲荷','天満宮','寺','院','観音','地蔵','不動','大師','祠','堂','宮']],
@@ -2851,7 +2862,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v161';
+const APP_VERSION = 'v162';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -3572,18 +3583,14 @@ function showWpTypePicker(lat, lng, e) {
     `<div class="ctx-hdr"><span>ポイントの種類を選択</span>` +
     `<button class="ctx-hx" aria-label="閉じる" onclick="event.stopPropagation();hideWpPicker()"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M18 6l-12 12" /> <path d="M6 6l12 12" /></svg></button></div>` +
     WT.filter(t => {
-      if (t.v === 'node') return false;
+      if (t.v === 'node' || t.v === 'spot') return false;               // 「種類なし」は現在地から置く画面では「番号だけの地点」の行として別に出す（v162）
       // 既にスタート/ゴールがある場合は選択肢から除外（1つずつに制限）
       if (t.v === 'start' && wps.some(w => w.type === 'start')) return false;
       if (t.v === 'goal'  && wps.some(w => w.type === 'goal'))  return false;
       return true;
-    }).map(t => {
-      const isCourse = t.v === 'spot';
-      const style = isCourse
-        ? 'font-weight:bold;color:var(--brand);border-bottom:1px solid #EEE8DE;margin-bottom:2px;padding-bottom:7px'
-        : '';
-      return `<div class="ctx-it wpick" style="${style}" onclick="event.stopPropagation();addWpFromPicker('${t.v}')">${t.l}</div>`;
-    }).join('');
+    }).map(t => `<div class="ctx-it wpick" onclick="event.stopPropagation();addWpFromPicker('${t.v}')">${t.l}</div>`).join('');
+  picker.innerHTML = picker.innerHTML.replace('</button>', '</button>') + '';
+  picker.innerHTML = picker.innerHTML.replace(/(<\/button>)(<div class="ctx-it wpick")/, '$1<div class="ctx-it wpick" style="font-weight:bold;color:var(--brand);border-bottom:1px solid #EEE8DE;margin-bottom:2px;padding-bottom:7px" onclick="event.stopPropagation();addWpFromPicker(\'spot\')">種類なし（番号だけ）</div>$2');
 
   // まず表示してから実際の高さを測り、画面内に確実に収める（はみ出し防止）
   const cx = e.originalEvent ? e.originalEvent.clientX : 100;
@@ -6040,9 +6047,10 @@ function _renderTypeChips() {
   };
   const bigs = TYPE_BIG.filter(v => opts.includes(v));
   const used = {}; wps.forEach(w => { used[w.type] = (used[w.type] || 0) + 1; });
-  const rest = opts.filter(v => !TYPE_BIG.includes(v)).sort((a, b) => (used[b] || 0) - (used[a] || 0) || opts.indexOf(a) - opts.indexOf(b));   // このコースで使った順（B7・v140）
+  const rest = opts.filter(v => !TYPE_BIG.includes(v) && v !== 'spot').sort((a, b) => (used[b] || 0) - (used[a] || 0) || opts.indexOf(a) - opts.indexOf(b));   // このコースで使った順（B7・v140）。「種類なし」は出さない（v162）
   const open = rest.includes(cur) || _typeMoreOpen;
   box.innerHTML = '<div class="tc-row">' + bigs.map(v => chip(v, true)).join('') + '</div>'
+    + (cur === 'spot' ? '<div class="tc-none">種類は選ばなくても大丈夫です（番号は別に付きます）。選ぶと印に絵が付き、選び直せます</div>' : '<button type="button" class="tc-clear" onclick="_pickType(\'spot\')">種類を外す</button>')
     + (rest.length ? `<button type="button" class="tc-more" onclick="_typeMoreOpen=!_typeMoreOpen;_renderTypeChips()" aria-expanded="${open}">その他の種類（${rest.length}）<i>${open ? '▴' : '▾'}</i></button>` : '')
     + (open && rest.length ? '<div class="tc-row rest">' + rest.map(v => chip(v, false)).join('') + '</div>' : '');
 }
@@ -6069,6 +6077,7 @@ function _buildTypeOptions(wp) {
   const isLast  = rw.length > 0 && rw[rw.length-1].id === wp.id;
   sel.innerHTML = '';
   WT.forEach(t => {
+    if (t.v === 'spot' && wp.type !== 'spot') return;                  // 「種類なし」は選択肢に出さない（v162）。いま種類なしなら値として残す
     // start は先頭の点のみ、goal は末尾の点のみ提示（現在その型なら常に残す）
     if (t.v === 'start' && !isFirst && wp.type !== 'start') return;
     if (t.v === 'goal'  && !isLast  && wp.type !== 'goal')  return;
@@ -7439,18 +7448,23 @@ function _nbDistToCourse(lat, lng){   // コース（道順の線があればそ
   _stampTargets().forEach(w => { const d = haversine(lat, lng, w.lat, w.lng); if (d < best) best = d; });
   return best;
 }
-function _nbKindOf(tags){
-  const a = tags.amenity || '', t = tags.tourism || '', l = tags.leisure || '', n = tags.natural || '';
-  if (/^(restaurant|cafe|fast_food|pub|bar|ice_cream|food_court)$/.test(a) || tags.shop) return 'shop';
-  if (a === 'place_of_worship') return 'shrine';
+function _nbKindOf(tags){   // OpenStreetMap のタグ → この画面の種類（v162：会社・病院・役所・地名も拾う）
+  const a = tags.amenity || '', t = tags.tourism || '', l = tags.leisure || '', n = tags.natural || '', h = tags.highway || '', r = tags.railway || '';
+  if (/^(restaurant|cafe|fast_food|pub|bar|ice_cream|food_court|marketplace|vending_machine)$/.test(a) || tags.shop || tags.craft) return 'shop';
+  if (a === 'place_of_worship' || tags.historic === 'wayside_shrine') return 'shrine';
   if (a === 'toilets') return 'toilet';
   if (a === 'parking') return 'parking';
-  if (/^(school|kindergarten|college|university)$/.test(a)) return 'school';
-  if (/^(community_centre|townhall|library|social_facility)$/.test(a)) return 'hall';
+  if (/^(school|kindergarten|college|university|childcare)$/.test(a)) return 'school';
+  if (/^(community_centre|townhall|library|social_facility|post_office|police|fire_station|bank|public_building)$/.test(a) || tags.office === 'government') return 'hall';
   if (t === 'viewpoint') return 'view';
-  if (tags.historic || /^(attraction|museum|artwork|information|picnic_site)$/.test(t)) return 'hist';
-  if (/^(park|garden|playground|nature_reserve)$/.test(l) || /^(spring|peak|waterfall|hot_spring)$/.test(n)) return 'park';
-  if (tags.highway === 'bus_stop' || tags.railway === 'station') return 'bus';
+  if (tags.historic || /^(attraction|museum|artwork|information|picnic_site|gallery|zoo|aquarium|theme_park)$/.test(t) || /^(tower|lighthouse|water_tower|windmill|observatory)$/.test(tags.man_made || '')) return 'hist';
+  if (/^(park|garden|playground|nature_reserve|dog_park)$/.test(l) || /^(spring|peak|waterfall|hot_spring|tree|cave_entrance|saddle|cliff)$/.test(n)) return 'park';
+  if (h === 'bus_stop' || /^(station|halt)$/.test(r) || a === 'bus_station' || tags.public_transport === 'station') return 'bus';
+  if (tags.place) return 'place';
+  if (/^(hospital|clinic|doctors|dentist|pharmacy|veterinary|nursing_home|fuel|charging_station|car_wash|shelter|drinking_water|grave_yard|crematorium|animal_shelter|events_venue|conference_centre|arts_centre|cinema|theatre|studio|coworking_space)$/.test(a)
+      || tags.office || tags.healthcare || tags.industrial || /^(sports_centre|pitch|stadium|swimming_pool|golf_course|track|fitness_centre|ice_rink|marina|slipway)$/.test(l)
+      || /^(hotel|guest_house|hostel|motel|camp_site|caravan_site|alpine_hut|wilderness_hut|chalet)$/.test(t) || tags.man_made || tags.emergency || tags.aeroway || tags.club
+      || (tags.building && tags.name)) return 'facility';
   return null;
 }
 const _NB_WORDS = {restaurant:'飲食店', cafe:'カフェ', fast_food:'軽食', pub:'居酒屋・パブ', bar:'バー', ice_cream:'アイス', food_court:'フードコート', toilets:'トイレ', parking:'駐車場', school:'学校', kindergarten:'幼稚園・保育園', college:'専門学校', university:'大学', community_centre:'公民館・集会所', townhall:'役場', library:'図書館', social_facility:'福祉施設', viewpoint:'展望', attraction:'観光名所', museum:'博物館・資料館', artwork:'アート', information:'案内所', picnic_site:'休憩地', park:'公園', garden:'庭園', playground:'遊び場', nature_reserve:'自然保護区', spring:'湧き水', peak:'山頂', waterfall:'滝', hot_spring:'温泉', bus_stop:'バス停', station:'駅', monument:'記念碑', memorial:'碑・慰霊碑', castle:'城跡', ruins:'遺跡', archaeological_site:'遺跡', wayside_shrine:'祠', wayside_cross:'道標', tomb:'墓・古墳', boundary_stone:'境界石', building:'歴史的建物', shinto:'神社', buddhist:'寺院', christian:'教会',
@@ -7476,31 +7490,64 @@ function _nbDesc(kind, tags){
   let d = parts.filter(Boolean).join('。').slice(0, NEARBY_DESC_MAX);
   return (d ? d + '\n' : '') + '（情報：OpenStreetMap）';
 }
-function _nbBbox(){
+function _nbBbox(){ return _nbBboxFor(_nb.radius); }
+function _nbBboxFor(radius){
   const b = _nbAnchorBounds(); if (!b) return null;
-  const r = _nb.radius + 50, lat = b.getCenter().lat;
+  const r = radius + 50, lat = b.getCenter().lat;
   const dLat = r / 111320, dLng = r / (111320 * Math.max(0.2, Math.cos(lat * Math.PI / 180)));
   return {s: b.getSouth() - dLat, w: b.getWest() - dLng, n: b.getNorth() + dLat, e: b.getEast() + dLng, c: b.getCenter(),
           radius: Math.min(10000, Math.round(haversine(b.getSouth(), b.getWest(), b.getNorth(), b.getEast()) / 2 + r))};
 }
-async function _nbFetchOsm(bb){
-  const kinds = NEARBY_KINDS.filter(k => k.q && _nbKinds().has(k.k));
-  if (!kinds.length) return [];
+async function _nbFetchOsm(bb, kw){   // v162：名前のあるものを全部＋名前が無くても役に立つもの（トイレ・駐車場・水・バス停）を1回で。kw があれば名前で探す
   const box = [bb.s, bb.w, bb.n, bb.e].map(v => v.toFixed(5)).join(',');
-  const q = '[out:json][timeout:20];(' + kinds.map(k => k.q.map(f => 'nwr' + f + '(' + box + ');').join('')).join('') + ');out center tags ' + NEARBY_MAX + ';';
+  const named = kw ? 'nwr["name"~"' + kw.replace(/["\\]/g, '') + '",i](' + box + ');'
+                   : 'nwr["name"]["highway"!~"."]["waterway"!~"."]["boundary"!~"."]["route"!~"."]["landuse"!~"."]["power"!~"."]["place"!~"."]["railway"!~"^(rail|narrow_gauge|abandoned|disused|light_rail|subway|tram)$"]["natural"!~"^(water|wood|scrub|grassland|coastline|bay|strait)$"]["type"!~"^(route|boundary|waterway)$"](' + box + ');'
+                     + 'nwr["amenity"~"^(toilets|parking|drinking_water|shelter)$"](' + box + ');nwr["highway"="bus_stop"](' + box + ');'
+                     + (_nbKinds().has('place') ? 'nwr["place"~"^(hamlet|village|neighbourhood|locality|quarter|suburb|isolated_dwelling)$"](' + box + ');' : '');
+  const q = '[out:json][timeout:20];(' + named + ');out center tags 800;';
   let lastErr = null;
   for (const base of NEARBY_OVERPASS) {
     try {
       const j = await _fetchJsonTimeout(base, {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:'data=' + encodeURIComponent(q)});
       return (j.elements || []).map(el => {
         const tags = el.tags || {}, lat = el.lat != null ? el.lat : (el.center || {}).lat, lng = el.lon != null ? el.lon : (el.center || {}).lon;
-        const kind = _nbKindOf(tags); if (lat == null || lng == null || !kind || !_nbKinds().has(kind)) return null;
+        const kind = _nbKindOf(tags); if (lat == null || lng == null || !kind) return null;
+        if (!kw && !_nbKinds().has(kind)) return null;
         const name = tags.name || tags['name:ja'] || _nbDefaultName(kind, tags); if (!name) return null;
         return {id:'osm' + el.type + el.id, kind, type:(NEARBY_KINDS.find(k => k.k === kind) || {}).t || 'other', name, desc:_nbDesc(kind, tags), tel:tags.phone || tags['contact:phone'] || '', lat, lng, src:'OpenStreetMap'};
       }).filter(Boolean);
     } catch(e) { lastErr = e; }
   }
   throw lastErr || new Error('overpass');
+}
+/* 国土数値情報（国土交通省・公的データ）。学校・役場・公民館・郵便局・警察・病院・文化施設・文化財・観光資源・公園・バス停。
+   県ごとに tools/ksj_convert.py で JSON にして data/ksj/ に置く。コースのある県のぶんだけ読む（v162） */
+let _ksjIndex = null; const _ksjSets = {};
+const KSJ_KIND = {P29:'school', P05:'hall', P30:'hall', P18:'hall', P27:'hall', P04:'facility', P32:'hist', P12:'hist', P13:'park', P11:'bus'};
+async function _nbFetchKsj(bb, kw){
+  if (!_ksjIndex) { try { _ksjIndex = await _fetchJsonTimeout(KSJ_INDEX); } catch(_) { _ksjIndex = {prefs:[]}; } }
+  const c = bb.c, prefs = (_ksjIndex.prefs || []).filter(p => p.bbox && c.lat >= p.bbox[0] - 0.2 && c.lng >= p.bbox[1] - 0.2 && c.lat <= p.bbox[2] + 0.2 && c.lng <= p.bbox[3] + 0.2);
+  const out = [];
+  for (const pf of prefs) for (const st of (pf.sets || [])) {
+    const kind = KSJ_KIND[st.code] || 'facility'; if (!kw && !_nbKinds().has(kind)) continue;
+    const key = pf.code + '/' + st.code;
+    if (!_ksjSets[key]) { try { _ksjSets[key] = await _fetchJsonTimeout('data/ksj/' + key + '.json'); } catch(_) { _ksjSets[key] = {items:[]}; } }
+    const d = _ksjSets[key];
+    (d.items || []).forEach((it, i) => {
+      const [lat, lng, name, sub] = it;
+      if (lat < bb.s || lat > bb.n || lng < bb.w || lng > bb.e) return;
+      if (kw && String(name).indexOf(kw) < 0) return;
+      out.push({id:'ksj' + key + '-' + i, kind, type:(NEARBY_KINDS.find(k => k.k === kind) || {}).t || 'other', name, desc:(sub ? sub + '\n' : '') + '（情報：国土数値情報「' + (st.label || d.label || '') + '」国土交通省）', tel:'', lat, lng, src:'国土数値情報'});
+    });
+  }
+  return out;
+}
+/* 名前で探す：OpenStreetMap（上）に加えて Nominatim（住所・地名の検索）。範囲は NEARBY_KW_RADIUS */
+async function _nbFetchNominatim(kw, bb){
+  const u = 'https://nominatim.openstreetmap.org/search?q=' + encodeURIComponent(kw) + '&format=json&limit=20&accept-language=ja&bounded=1&viewbox=' + bb.w.toFixed(5) + ',' + bb.n.toFixed(5) + ',' + bb.e.toFixed(5) + ',' + bb.s.toFixed(5);
+  const j = await _fetchJsonTimeout(u);
+  return (Array.isArray(j) ? j : []).map((r, i) => { const nm = (r.display_name || '').split(',')[0].trim(); if (!nm) return null;
+    return {id:'nom' + (r.osm_id || i), kind:'facility', type:'other', name:nm, desc:(r.display_name || '').slice(0, NEARBY_DESC_MAX) + '\n（情報：OpenStreetMap／Nominatim）', tel:'', lat:parseFloat(r.lat), lng:parseFloat(r.lon), src:'OpenStreetMap'}; }).filter(Boolean);
 }
 async function _nbFetchWiki(bb){
   if (!_nbKinds().has('wiki')) return [];
@@ -7517,18 +7564,24 @@ async function _nbFetchWiki(bb){
 function _nbIsDup(c){ return wps.some(w => w.type !== 'node' && haversine(c.lat, c.lng, w.lat, w.lng) <= NEARBY_DUP_M && ((w.name || '').split('\n')[0] === c.name || haversine(c.lat, c.lng, w.lat, w.lng) <= 5)); }
 async function nearbySearch(){
   if (_nb.busy) return;
-  const bb = _nbBbox(); if (!bb) { showToast('先に地図を表示してください'); return; }
-  if (!_nbKinds().size) { showToast('種類を1つ以上選んでください'); return; }
-  _nb.busy = true; _nb.cands = []; _nb.sel = new Set(); _nbRenderList(); _nbSetStatus('探しています…（OpenStreetMap' + (_nbKinds().has('wiki') ? '・Wikipedia' : '') + '）');
+  const kw = ((document.getElementById('nbKw') || {}).value || '').trim();
+  const bb0 = _nbBbox(); if (!bb0) { showToast('先に地図を表示してください'); return; }
+  if (!kw && !_nbKinds().size) { showToast('種類を1つ以上選んでください'); return; }
+  const radius = kw ? NEARBY_KW_RADIUS : _nb.radius;
+  const bb = kw ? _nbBboxFor(radius) : bb0;
+  _nb.busy = true; _nb.cands = []; _nb.sel = new Set(); _nbRenderList(); _nbSetStatus(kw ? '「' + kw + '」を探しています…（周り 10km・OpenStreetMap・国土数値情報）' : '探しています…（OpenStreetMap・国土数値情報' + (_nbKinds().has('wiki') ? '・Wikipedia' : '') + '）');
   const errs = [];
-  let osm = [], wiki = [];
-  try { osm = await _nbFetchOsm(bb); } catch(e) { errs.push('OpenStreetMap'); }
-  try { wiki = await _nbFetchWiki(bb); } catch(e) { errs.push('Wikipedia'); }
-  const all = osm.concat(wiki).map(c => Object.assign(c, {dist: Math.round(_nbDistToCourse(c.lat, c.lng))})).filter(c => c.dist <= _nb.radius && !_nbIsDup(c));
-  const seen = new Set();
-  _nb.cands = all.filter(c => { const k = c.name + '@' + c.lat.toFixed(4) + ',' + c.lng.toFixed(4); if (seen.has(k)) return false; seen.add(k); return true; }).sort((a, b) => a.dist - b.dist).slice(0, NEARBY_MAX);
+  let osm = [], wiki = [], ksj = [], nom = [];
+  try { osm = await _nbFetchOsm(bb, kw); } catch(e) { errs.push('OpenStreetMap'); }
+  try { ksj = await _nbFetchKsj(bb, kw); } catch(e) { errs.push('国土数値情報'); }
+  if (!kw) { try { wiki = await _nbFetchWiki(bb); } catch(e) { errs.push('Wikipedia'); } }
+  else { try { nom = await _nbFetchNominatim(kw, bb); } catch(e) {} }
+  const all = osm.concat(ksj, wiki, nom).map(c => Object.assign(c, {dist: Math.round(_nbDistToCourse(c.lat, c.lng))})).filter(c => c.dist <= radius && !_nbIsDup(c));
+  const kept = [];                                         // 同じ名前が 60m 以内に2つ（OSM と公的データ）なら先のものだけ
+  all.sort((a, b) => a.dist - b.dist).forEach(c => { if (!kept.some(k => k.name === c.name && haversine(k.lat, k.lng, c.lat, c.lng) <= NEARBY_MERGE_M)) kept.push(c); });
+  _nb.cands = kept.slice(0, NEARBY_MAX);
   _nb.busy = false;
-  _nbSetStatus((errs.length ? '⚠️ ' + errs.join('・') + ' から取得できませんでした（通信できる場所で試してください）。' : '') + (_nb.cands.length ? _nb.cands.length + ' 件見つかりました。追加するものを選んでください（地図の薄い○も押せます）' : (errs.length ? '' : 'この範囲には見つかりませんでした。距離を広げるか、種類を増やしてください')));
+  _nbSetStatus((errs.length ? '⚠️ ' + errs.join('・') + ' から取得できませんでした（通信できる場所で試してください）。' : '') + (_nb.cands.length ? _nb.cands.length + ' 件見つかりました。追加するものを選んでください（地図の薄い○も押せます）' : (errs.length ? '' : (kw ? 'その名前は周り 10km に見つかりませんでした' : 'この範囲には見つかりませんでした。距離を広げるか、種類を増やしてください'))));
   _nbRenderList(); _nbRenderLayer();
 }
 function _nbSetStatus(t){ const el = document.getElementById('nbStatus'); if (el) el.textContent = t; }
