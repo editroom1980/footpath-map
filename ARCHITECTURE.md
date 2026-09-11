@@ -397,3 +397,8 @@ CONSTANTS(904) → STATE(968) → STORAGE(1015) → 版のお知らせ(1021) →
 - 国土数値情報：`data/ksj/index.json`（県コード・範囲・入っているデータ）→ `data/ksj/<pref>/<code>.json`（`items:[[lat,lng,name,sub],…]`）。`KSJ_KIND` で種類へ。変換は `tools/ksj_convert.py`。
 - Wikipedia geosearch、名前検索時は Nominatim（bounded）。Google は使わない。
 - 種類の対応（v163）：`NEARBY_KINDS[].t` がこのアプリの種類。周辺の情報で拾える種類（お店・神社・史跡・展望・公園・学校・公民館・病院・施設・トイレ・駐車場・バス停・地名・Wikipedia）は全部 `WT` に対応する種類がある。**取り込んだものを `other` に落とさない**（オーナー指示）。名前から種類を推定する `NAME_TYPE_HINTS` は先勝ちなので、「病院」（院＝寺院より先）「道の駅」（駅＝バス停より先）の順序に注意。
+
+## 印は勝手に動かない（v164）
+- スポットの Leaflet マーカーは `draggable: wp.type === 'node'`。**node 以外を draggable にしない**（`_applyViewLock`／`_unlockAllMarkers` も node だけ戻す）。
+- 動かす流れは `startMoveSpot()`（編集画面から）→ `_moveWp` にスポットを入れ、`#moveBar`・`#movePin`（画面の真ん中に固定した同じ印）を出し、元の印を薄くする → `onMapClick` の先頭で `_moveCommit(latlng)`、または「ここに置く」で `_moveHere()`（地図の中心）。置くときは `_snapCustom` → `saveSnapshot` → 座標更新 → `clearCache(); scheduleRouting()`。
+- 途中でやめる入口：`_closeAllPopups`・`setMode`・`toggleViewMode`・Esc。新しい画面や道具を足すときは `_closeAllPopups()` を通せば自動的にやめる。

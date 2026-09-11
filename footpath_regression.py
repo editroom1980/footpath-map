@@ -447,6 +447,11 @@ def static_checks(src):
     # --- v157: 番号の丸と種類の丸を横に並べる（オーナー指摘：iPhone で片方しか見えない）---
     chk('静的', '番号つきで種類がある地点：地図は「種類の丸＋右上に番号の小丸」、一覧・並べ替え・配布シート・カードは番号と種類を並べて出す',
         'class="wp-num"' in src and 'class="wp-dot cat"' in src and 'class="ro-badge cat"' in src and 'class="sh-cat"' in src and 'class="vip-dot vip-dot2"' in src and '_catBadge' not in src and 'wp-pair' not in src)
+    # --- v164: 印は引きずっても動かない。動かすのは編集画面の「場所を動かす」から（Footpath に倣う）---
+    chk('静的', 'スポットの印は引きずれない（node だけ draggable）。編集画面に「場所を動かす」、帯（やめる・ここに置く）と真ん中の印があり、タップ・Esc・道具の切り替えで扱う',
+        "{draggable: wp.type === 'node', icon:wpIcon(wp,sz,anc)" in src and 'id="mMove"' in src and 'id="moveBar"' in src and 'id="movePin"' in src and 'function startMoveSpot' in src and 'function _moveCommit' in src
+        and 'if (_moveWp) { _moveCommit(e.latlng); return; }' in src and "if (e.key === 'Escape' && _moveWp) { _moveCancel(); return; }" in src and 'body.moving #modeHint{display:none!important}' in src
+        and src.count('if (_moveWp) _moveCancel();') >= 3)
     # --- v163: 取り込んだものは対応する種類で（バス停・駅／病院・医院／施設・会社・宿／地名・集落）---
     chk('静的', '種類にバス停・駅／病院・医院／施設・会社・宿／地名・集落があり（絵つき・テーマ4つ全部に色）、周辺の情報の種類は全部それぞれの種類へ（その他に落とさない）',
         all("v:'" + k in src for k in ('bus', 'hospital', 'facility', 'place')) and all(k + ':' in src.split('const TYPE_ICON = {')[1].split('};')[0] for k in ('bus', 'hospital', 'facility', 'place'))
@@ -2360,6 +2365,34 @@ def functional_checks(index_path):
         chk('機能', '周辺の情報：候補（距離・重複を除外）→地図の薄い○→選んで追加（種別・説明・出典）→1回で取り消し',
             isinstance(nb, dict) and all(nb.get(k) for k in ('found', 'v162', 'v163', 'dup', 'layer', 'listed', 'btn', 'added', 'bus', 'closed', 'keyword', 'undone')), str(nb)[:600])
 
+        # v164: 場所を動かす：印は引きずれない → 編集画面の「場所を動かす」→ タップした所へ／ここに置く／やめる／取消で戻る
+        mv = page.evaluate("""async ()=>{ try{
+            const keepU = undoStack.length, keepD = _dirty, keepV = viewMode, keepC = leafMap.getCenter(), keepZ = leafMap.getZoom(); viewMode = false;
+            const wp = wps.find(w => w.type !== 'node' && w.type !== 'start' && w.type !== 'goal' && w.marker); if (!wp) return 'no wp';
+            const out = {};
+            out.noDrag = wps.filter(w => w.type !== 'node' && w.marker).every(w => w.marker.options.draggable === false && !(w.marker.dragging && w.marker.dragging.enabled()));
+            const id = wp.id, lat0 = wp.lat, lng0 = wp.lng;
+            openModal(id); startMoveSpot();
+            out.bar = document.getElementById('moveBar').classList.contains('show') && _moveWp === wp && document.body.classList.contains('moving') && !document.getElementById('mOver').classList.contains('show')
+                      && getComputedStyle(document.getElementById('moveBar')).display === 'flex' && getComputedStyle(document.getElementById('movePin')).display === 'block';
+            out.ghost = document.getElementById('movePin').innerHTML.length > 20 && leafMap.getCenter().distanceTo([lat0, lng0]) < 5;
+            const tgt = L.latLng(lat0 + 0.0006, lng0 + 0.0004);
+            onMapClick({latlng: tgt, originalEvent:{clientX:100, clientY:300}});
+            out.moved = Math.abs(wp.lat - tgt.lat) < 0.0003 && Math.abs(wp.lng - tgt.lng) < 0.0003 && !_moveWp && !document.body.classList.contains('moving') && !document.getElementById('moveBar').classList.contains('show') && wp.marker.getLatLng().distanceTo(tgt) < 40;
+            undoLast(); const w1 = wps.find(w => w.id === id); out.undone = !!w1 && Math.abs(w1.lat - lat0) < 1e-9 && Math.abs(w1.lng - lng0) < 1e-9;
+            openModal(id); startMoveSpot(); _moveCancel();
+            const w2 = wps.find(w => w.id === id); out.cancel = !_moveWp && Math.abs(w2.lat - lat0) < 1e-9 && !document.body.classList.contains('moving') && document.getElementById('movePin').innerHTML === '';
+            openModal(id); startMoveSpot(); const c = L.latLng(lat0 + 0.0005, lng0 - 0.0005); leafMap.setView(c, leafMap.getZoom(), {animate:false}); _moveHere();
+            const w3 = wps.find(w => w.id === id); out.here = !!w3 && Math.abs(w3.lat - c.lat) < 0.0003 && Math.abs(w3.lng - c.lng) < 0.0003 && !_moveWp;
+            undoLast();
+            openModal(id); startMoveSpot(); setMode('wp'); out.modeCancels = !_moveWp && !document.body.classList.contains('moving');
+            const w4 = wps.find(w => w.id === id); out.same = !!w4 && Math.abs(w4.lat - lat0) < 1e-9;
+            undoStack.length = keepU; _dirty = keepD; viewMode = keepV; leafMap.setView(keepC, keepZ, {animate:false}); document.querySelectorAll('#toastBox .toast').forEach(e => e.remove());
+            return out;
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        chk('機能', '場所を動かす：印は引きずれない → 編集画面の「場所を動かす」→ タップした所へ／ここに置く／やめる／道具の切り替えでやめる／取消で戻る',
+            isinstance(mv, dict) and all(mv.get(k) for k in ('noDrag', 'bar', 'ghost', 'moved', 'undone', 'cancel', 'here', 'modeCancels', 'same')), str(mv)[:300])
+
         # v143: 発見：貼る→端末に残る→印とカード→送るファイル→作者が取り込む→消す。編集画面では印を出さない
         fd = page.evaluate("""async ()=>{ try{
             const keepV = viewMode, keepCls = document.body.className, keepId = currentCourseId, keepD = _dirty, keepLS = lsAvail() ? localStorage.getItem(LS.finds) : null;
@@ -2520,7 +2553,7 @@ def functional_checks(index_path):
             toggleViewMode();
             const withM = wps.filter(x => x.marker && x.marker.dragging).length;
             const restored = w('#mobileWpBtn') > 0 && !document.body.classList.contains('viewing')
-              && wps.filter(x => x.marker && x.marker.dragging && x.marker.dragging.enabled()).length === withM;
+              && wps.filter(x => x.marker && x.marker.dragging && x.marker.dragging.enabled()).length === wps.filter(x => x.marker && x.marker.dragging && x.type === 'node').length;   // v164：スポットはもともと動かない。戻るのは node だけ
             return {viewing, hidden, backHit, added, picker, modal, dragOn, restored};
           }catch(e){ return 'ERR:'+e.message; } }""")
         chk('機能', '閲覧中は編集の操作が押せず、地図タップ・編集画面・印の移動が効かない',

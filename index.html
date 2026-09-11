@@ -275,6 +275,19 @@ html,body{touch-action:manipulation;min-height:calc(100% + var(--sat));font-fami
 /* カスタム道路描画UI */
 #crFinishBar{display:none;position:fixed;top:calc(50px + var(--sat));left:50%;transform:translateX(-50%);background:#fff;border:1.5px solid #1565C0;border-radius:8px;padding:6px 14px;z-index:2000;gap:10px;align-items:center;box-shadow:0 2px 12px rgba(0,0,0,.2)}
 #crFinishBar.show{display:flex}
+/* 場所を動かす（v164） */
+#moveBar{display:none;position:fixed;top:calc(60px + var(--sat));left:50%;transform:translateX(-50%);width:min(560px,calc(100% - 24px));z-index:1400;background:#fff;border:2px solid var(--brand);border-radius:14px;padding:10px 12px;box-shadow:0 6px 24px rgba(0,0,0,.25);gap:10px;align-items:center;flex-wrap:wrap}
+#moveBar.show{display:flex}
+#moveBar .mv-t{flex:1 1 200px;font-size:12.5px;font-weight:700;color:#231C14;line-height:1.5}
+#moveBar .mv-acts{display:flex;gap:8px;margin-left:auto}
+#moveBar .mv-b{border:1.5px solid #C4B89A;background:#fff;color:#231C14;border-radius:10px;padding:0 14px;min-height:var(--tap);font-family:inherit;font-size:14px;font-weight:800;cursor:pointer}
+#moveBar .mv-b.go{background:var(--brand-grad);border-color:transparent;color:#fff}
+#movePin{display:none;position:fixed;z-index:1350;pointer-events:none;transform:translate(-50%,-50%);filter:drop-shadow(0 8px 10px rgba(0,0,0,.38))}
+#movePin.show{display:block}
+#movePin .mp-dot{position:absolute;left:50%;top:50%;width:6px;height:6px;margin:-3px 0 0 -3px;border-radius:50%;background:#fff;border:2px solid #E84040;box-sizing:content-box}
+body.moving #modeHint{display:none!important}
+.m-move{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;width:100%;margin:0 0 12px;padding:10px 12px;border:1.5px solid #C4B89A;border-radius:10px;background:#fff;color:var(--brand);font-family:inherit;font-weight:800;font-size:14px;cursor:pointer;text-align:left;min-height:var(--tap)}
+.m-move small{flex-basis:100%;font-size:11px;font-weight:normal;color:var(--t-sub);padding-left:22px}
 /* 写真プレビュー */
 .photo-strip{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
 .photo-thumb{position:relative;width:72px;height:72px;border-radius:6px;overflow:hidden;border:1px solid #D4C4A8;flex-shrink:0}
@@ -1565,6 +1578,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
       <div id="mTypeChips"></div>   <!-- 種別の選び方（v128）：よく使う4つを大きく、残りは畳む。値は上の select に入れる -->
       <div id="mTypeHint" class="tc-hint" hidden></div>
       <label class="m-switch"><input type="checkbox" id="mOnRoute"><span><span class="m-sw-t">歩く順の番号をつける（道順に入れる）</span><small>外すと「立ち寄り先」になり、道順には入りません（印は種類の絵だけ）</small></span></label>
+      <button type="button" class="m-move tap" id="mMove" onclick="startMoveSpot()"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4"/><path d="M12 18v4"/><path d="M2 12h4"/><path d="M18 12h4"/><circle cx="12" cy="12" r="4"/></svg><span>地図の上で場所を動かす</span><small>印は指で引きずっても動きません（v164）</small></button>   <!-- v164 -->
       <label>名前（地図に出ます）</label><input id="mName" placeholder="例：飯見の棚田">
       <div style="font-size:11px;font-weight:bold;color:var(--t-sub);margin-bottom:5px">写真（最大12枚・撮るか選ぶ）</div>
       <div id="mPhotoStrip" class="photo-strip"></div>
@@ -1614,6 +1628,9 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
 <div id="wpTypePicker"></div>
 
 <!-- カスタム道路描画 完了バー -->
+<!-- 場所を動かす（v164）：タップした所へ、または地図をずらして真ん中の印を合わせて「ここに置く」 -->
+<div id="moveBar" role="status"><span class="mv-t">置きたい場所をタップ。または地図をずらして、真ん中の印を合わせる</span><span class="mv-acts"><button type="button" class="mv-b" onclick="_moveCancel()">やめる</button><button type="button" class="mv-b go" onclick="_moveHere()">ここに置く</button></span></div>
+<div id="movePin" aria-hidden="true"></div>
 <div id="crFinishBar">
   <span style="font-size:11px;color:#1565C0;font-weight:bold">🛤 道路描画中 — クリックで点を追加</span>
 </div>
@@ -2001,6 +2018,7 @@ let routeCasing = null;    // ルート線の白いふち（表示専用。デ�
 let routeDirs   = null;    // 進行方向の三角（表示専用）
 let hitOverlays = [];      // per-segment hit overlays — prevents segment misattribution
 let viaVisible  = true;
+let _moveWp = null;        // 「場所を動かす」中のスポット（v164）。null なら動かしていない
 let _vpDragged  = false;   // 調整点ドラッグ直後フラグ（クリックでメニューを開かないため）
 let _vpLastDragEnd = 0;    // 調整点を最後にドラッグした時刻（直後のクリック誤判定を防ぐ）
 let mode        = 'wp';
@@ -2560,6 +2578,7 @@ window.addEventListener('DOMContentLoaded', () => {
   if (e.key === 'Escape' && document.getElementById('elevDetailPanel')?.style.display === 'block') {
     closeElevModal(); return;
   }
+    if (e.key === 'Escape' && _moveWp) { _moveCancel(); return; }   // v164
     if (e.key === 'Escape') { hideCtxMenu(); hideWpPicker(); return; }
     if ((e.metaKey || e.ctrlKey) && e.key === 'z') {
       e.preventDefault();
@@ -2873,7 +2892,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v163';
+const APP_VERSION = 'v164';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -3426,6 +3445,7 @@ function _roEnd(e){
 
 function onMapClick(e) {
   if (viewMode) return;              // 閲覧中は地図をタップしても何も置かない
+  if (_moveWp) { _moveCommit(e.latlng); return; }   // 場所を動かす（v164）：タップした所へ
   if (lineDragging) return;
   if (_customOn() && _customMode_) return; // 作成/編集モード中はタップで点を追加しない
   if (mode === 'draw' || _drawActive) return; // なぞり描き中はタップでWP/VP追加しない
@@ -3652,7 +3672,9 @@ function addWp(lat, lng, type) {
 function buildWpMarker(wp) {
   const sz  = _wpSize();
   const anc = [sz[0]/2, sz[1]/2];
-  const m = L.marker([wp.lat, wp.lng], {draggable:true, icon:wpIcon(wp,sz,anc), zIndexOffset:1000}).addTo(leafMap);
+  // v164：スポットは指で引きずっても動かない（Footpath と同じ。何かのはずみで動くのを防ぐ）。動かすのは編集画面の「場所を動かす」から。
+  // 描いた道の点（node）だけは通り道の点と同じ扱いで、今までどおり引きずれる
+  const m = L.marker([wp.lat, wp.lng], {draggable: wp.type === 'node', icon:wpIcon(wp,sz,anc), zIndexOffset:1000}).addTo(leafMap);
 
   m.on('dragstart', () => saveSnapshot());
   m.on('drag', () => { wp.lat=m.getLatLng().lat; wp.lng=m.getLatLng().lng; redrawStraight(); });
@@ -4209,6 +4231,7 @@ function toggleManualMode() {
 }
 
 function toggleViewMode() {
+  if (_moveWp) _moveCancel();          // v164
   viewMode = !viewMode;
   const btn = document.getElementById('btnView');
   if (btn) btn.classList.toggle('on', viewMode);
@@ -4234,7 +4257,7 @@ function toggleViewMode() {
 function _applyViewLock() {
   const on = !!viewMode;
   document.body.classList.toggle('viewing', on);
-  [...wps, ...vps].forEach(x => { if (x.marker && x.marker.dragging) (on ? x.marker.dragging.disable() : x.marker.dragging.enable()); });
+  [...wps.filter(w => w.type === 'node'), ...vps].forEach(x => { if (x.marker && x.marker.dragging) (on ? x.marker.dragging.disable() : x.marker.dragging.enable()); });   // スポットはもともと動かない（v164）
   const t = document.getElementById('btnViewTxt');
   if (t) t.textContent = on ? '編集にもどる' : '歩く人の見え方';
   const b = document.getElementById('btnView');
@@ -4677,7 +4700,7 @@ function _lockAllMarkers() {
   vps.forEach(v => { try { if (v.marker && v.marker.dragging && v.marker.dragging.enabled()) v.marker.dragging.disable(); } catch(_){} });
 }
 function _unlockAllMarkers() {
-  wps.forEach(w => { try { if (w.marker && w.marker.dragging && !w.marker.dragging.enabled()) w.marker.dragging.enable(); } catch(_){} });
+  wps.forEach(w => { try { if (w.type === 'node' && w.marker && w.marker.dragging && !w.marker.dragging.enabled()) w.marker.dragging.enable(); } catch(_){} });   // v164：戻すのは node だけ
   vps.forEach(v => { try { if (v.marker && v.marker.dragging && !v.marker.dragging.enabled()) v.marker.dragging.enable(); } catch(_){} });
 }
 
@@ -5014,6 +5037,47 @@ function toggleViaVisibility() {
 /* ============================================================
    LONG PRESS (mobile)
    ============================================================ */
+/* ===== 場所を動かす（v164・Footpath に倣う）：印は引きずらない。編集画面の「場所を動かす」→ タップした所へ／地図をずらして「ここに置く」 =====
+   ・動かす間は元の印を薄くし、画面の真ん中に同じ印を出す（地図をずらすと印は画面に固定されたまま）
+   ・他の操作（道具の切り替え・歩く人の見え方・別の画面を開く・Esc）で自動的にやめる。置いたら「取消」で戻せる */
+function startMoveSpot(){
+  if (editId === null) return;
+  const wp = wps.find(w => w.id === editId); if (!wp || !wp.marker) return;
+  closeModal();
+  _closeAllPopups();
+  _moveWp = wp;
+  document.body.classList.add('moving');
+  try { wp.marker.setOpacity(0.35); } catch(_) {}
+  const pin = document.getElementById('movePin');
+  if (pin) { const ic = wpIcon(wp); pin.innerHTML = (ic.options.html || '') + '<span class="mp-dot"></span>'; pin.classList.add('show'); _movePinPlace(); }
+  const bar = document.getElementById('moveBar'); if (bar) bar.classList.add('show');
+  leafMap.setView([wp.lat, wp.lng], leafMap.getZoom(), {animate:false});   // まず今の場所を真ん中に。ここから指でずらす
+}
+function _movePinPlace(){
+  const pin = document.getElementById('movePin'); if (!pin || !leafMap) return;
+  const r = leafMap.getContainer().getBoundingClientRect();
+  pin.style.left = (r.left + r.width / 2) + 'px'; pin.style.top = (r.top + r.height / 2) + 'px';
+}
+function _moveEnd(){
+  const wp = _moveWp; _moveWp = null;
+  document.body.classList.remove('moving');
+  if (wp && wp.marker) { try { wp.marker.setOpacity(1); } catch(_) {} }
+  const pin = document.getElementById('movePin'); if (pin) { pin.classList.remove('show'); pin.innerHTML = ''; }
+  const bar = document.getElementById('moveBar'); if (bar) bar.classList.remove('show');
+  return wp;
+}
+function _moveCancel(){ _moveEnd(); }
+function _moveHere(){ if (_moveWp && leafMap) _moveCommit(leafMap.getCenter()); }
+function _moveCommit(latlng){
+  const wp = _moveEnd(); if (!wp || !latlng) return;
+  const s = _snapCustom(latlng.lat, latlng.lng);
+  saveSnapshot();
+  wp.lat = s[0]; wp.lng = s[1];
+  if (wp.marker) wp.marker.setLatLng(s);
+  redrawStraight(); clearCache(); scheduleRouting();
+  redrawList(); updateTooltip(wp); if (typeof scheduleAutoLabels === 'function') scheduleAutoLabels();
+  showToast('動かしました（「取消」で戻せます）');
+}
 function addWpLongPress(wp) {
   const el = wp.marker ? wp.marker.getElement() : null;
   if (!el) return;
@@ -6102,6 +6166,7 @@ function _buildTypeOptions(wp) {
 
 // 全ての設定ウィンドウ/ポップアップを閉じる（排他制御用）
 function _closeAllPopups(except) {
+  if (_moveWp) _moveCancel();          // 場所を動かす途中なら、やめる（v164）
   if (except !== 'modal'  && typeof closeModal       === 'function') { const m=document.getElementById('mOver'); if (m && m.classList.contains('show')) closeModal(); }
   if (except !== 'ctx'    && typeof hideCtxMenu       === 'function') hideCtxMenu();
   if (except !== 'picker' && typeof hideWpPicker      === 'function') hideWpPicker();
@@ -6722,6 +6787,7 @@ async function saveSheetAsImage() {
    MODE / UNDO / CLEAR
    ============================================================ */
 function setMode(m) {
+  if (_moveWp) _moveCancel();          // v164
   if (_customMode_) { _customMode_=false; _customTraceMode=false; _activeHandle=null; exitDrawMode(); _setMarkersClickable(true); _showDrawBar(false); _renderCustom(); _syncCustomMenu(); }
   // なぞり描きモードからの離脱時は必ず終了処理
   if (mode === 'draw' && m !== 'draw') exitDrawMode();
