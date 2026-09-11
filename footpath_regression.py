@@ -447,6 +447,11 @@ def static_checks(src):
     # --- v157: 番号の丸と種類の丸を横に並べる（オーナー指摘：iPhone で片方しか見えない）---
     chk('静的', '番号つきで種類がある地点：地図は「種類の丸＋右上に番号の小丸」、一覧・並べ替え・配布シート・カードは番号と種類を並べて出す',
         'class="wp-num"' in src and 'class="wp-dot cat"' in src and 'class="ro-badge cat"' in src and 'class="sh-cat"' in src and 'class="vip-dot vip-dot2"' in src and '_catBadge' not in src and 'wp-pair' not in src)
+    # --- v166: 高低差グラフのなぞり＋勾配の色分け（Footpath に倣う）---
+    chk('静的', '高低差グラフ：なぞると距離・標高・勾配（帯の見出し・地図の印・PC のグラフ）、やや急／急の面の色、凡例。道順が変わったら印を消す。フリックと競合しない',
+        'function _elevPointAt' in src and 'function _gradeAtD' in src and 'function _scrubAttach' in src and 'function _gradeFills' in src and "_scrubAttach(svg, 'band')" in src and "_scrubAttach(svg, 'pc')" in src
+        and 'id="mobileElevLegend"' in src and 'const GRADE_MID = 4, GRADE_STEEP = 8;' in src and "_elevData = null; if (typeof _scrubClear === 'function') _scrubClear();" in src
+        and 'if (_scrubOn) { sy=null; return; }' in src and 'className:\'scrub-tt\'' in src)
     # --- v165: はじめかた（3つの入口・周辺の情報を最初の選択肢に）---
     chk('静的', 'はじめかた：スポットが無い編集画面に3つの入口（タップして置く・指でなぞる・周辺の情報）。初回だけの制限はやめ、周辺の情報はスポットが無ければ地図の真ん中から探す',
         'function _syncStartChooser' in src and 'function startChoose' in src and src.count('class="ft-opt tap"') == 3 and "startChoose('nearby')" in src and 'id="nbNoSpot"' in src
@@ -619,7 +624,7 @@ def static_checks(src):
     # --- v133: 高低差グラフに「いまここ」（ロードマップ 段階2-4）---
     chk('静的', '高低差の帯に「いまここ」の丸がある（位置が入ったときだけ・一番上に描く）',
         'class="ev-here"' in src and 'function _elevHerePoint' in src and 'function _drawElevHere' in src
-        and src.index('stroke="#C0A882" stroke-width="0.8"/>`+\n    here;') > 0)
+        and src.index('stroke="#C0A882" stroke-width="0.8"/>`+\n    here + _scrubSvg(') > 0)   # v166：なぞりの印は「いまここ」の後（一番上）
     chk('静的', 'スタンプの札は次のスポットの帯の下', '#nextBar:not([hidden]) ~ #stampBar{top:' in src)
     chk('静的', '往復コースでも進みを取り違えない（候補を束ね、前回の進みに近いものを選ぶ）',
         'function _routeCandidates' in src and 'const ROUTE_AMBIG_M' in src and "_routeProgress(lat, lng, _walkPos ? _walkPos.along : null)" in src)
@@ -2373,6 +2378,33 @@ def functional_checks(index_path):
           }catch(e){ return 'ERR:'+e.message; } }""")
         chk('機能', '周辺の情報：候補（距離・重複を除外）→地図の薄い○→選んで追加（種別・説明・出典）→1回で取り消し',
             isinstance(nb, dict) and all(nb.get(k) for k in ('found', 'v162', 'v163', 'dup', 'layer', 'listed', 'btn', 'added', 'bus', 'closed', 'keyword', 'undone')), str(nb)[:600])
+
+        # v166: 高低差グラフのなぞり：距離→標高・勾配・位置、帯をなぞると見出し・地図の印・縦線、離すと消える、勾配の面
+        scr = page.evaluate("""async ()=>{ try{
+            if (!_elevData) return 'no elev';
+            const {pts, elevs} = _elevData; const dists = _calcElevDists(pts); const total = dists[dists.length-1];
+            const out = {};
+            const p = _elevPointAt(total * 0.5);
+            out.point = !!p && Math.abs(p.d - total * 0.5) < 1 && typeof p.e === 'number' && typeof p.grade === 'number' && Math.abs(p.lat - pts[p.i][0]) < 0.01 && Math.abs(p.lng - pts[p.i][1]) < 0.01;
+            const p0 = _elevPointAt(0), pe = _elevPointAt(total * 9); out.ends = !!p0 && p0.d === 0 && Math.abs(p0.e - elevs[0]) < 0.01 && !!pe && Math.abs(pe.d - total) < 0.01;
+            _setElevExpanded(true); await new Promise(r => setTimeout(r, 80));
+            const svg = document.getElementById('mobileElevSvg'); const r = svg.getBoundingClientRect();
+            const x = r.left + r.width * 0.6, y = r.top + r.height * 0.5;
+            const ev = (type, dx) => new PointerEvent(type, {clientX: x + dx, clientY: y, pointerId: 7, pointerType: 'touch', isPrimary: true, bubbles: true, cancelable: true});
+            svg.dispatchEvent(ev('pointerdown', 0)); svg.dispatchEvent(ev('pointermove', 12));
+            const st = document.getElementById('mobileElevStats').textContent;
+            out.scrub = !!_scrub && _scrub.d > 0 && _scrub.d < total && !!_scrubMk && leafMap.hasLayer(_scrubMk) && st.indexOf('km') >= 0 && st.indexOf('%') >= 0 && svg.innerHTML.indexOf('ev-scrub') >= 0 && _scrubOn === true;
+            svg.dispatchEvent(ev('pointerup', 12));
+            out.held = !!_scrub && _scrubOn === false && !!_scrubTimer;   // 指を離してもしばらく残る
+            _scrubClear();
+            out.cleared = !_scrub && !_scrubMk && document.getElementById('mobileElevStats').textContent === _elevStatsText() && svg.innerHTML.indexOf('ev-scrub') < 0;
+            const steep = dists.some((x, i) => i > 0 && Math.abs(_gradeAtD(dists, elevs, (dists[i-1] + x) / 2)) >= GRADE_MID);
+            out.grade = (svg.innerHTML.indexOf('ev-grade') >= 0) === steep;
+            _setElevExpanded(false);
+            return out;
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        chk('機能', '高低差のなぞり：距離→標高・勾配・位置、帯をなぞると見出し・地図の印・縦線、離してもしばらく残る、消える、勾配の面',
+            isinstance(scr, dict) and all(scr.get(k) for k in ('point', 'ends', 'scrub', 'held', 'cleared', 'grade')), str(scr)[:240])
 
         # v164: 場所を動かす：印は引きずれない → 編集画面の「場所を動かす」→ タップした所へ／ここに置く／やめる／取消で戻る
         mv = page.evaluate("""async ()=>{ try{

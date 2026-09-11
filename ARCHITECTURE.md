@@ -406,3 +406,8 @@ CONSTANTS(904) → STATE(968) → STORAGE(1015) → 版のお知らせ(1021) →
 ## はじめかた（v165）
 - `#firstTip` は「3つの入口」。表示条件は `_syncStartChooser()` 1か所（スポット0・編集中・なぞり中でない・配布リンクでない・×で閉じていない）。`redrawList()` の先頭で呼ぶので、増減のたびに自動で出入りする。`_scDismissed` は `loadCourseData`／`newCourse` で戻す。
 - 周辺の情報はスポットが無いときも動く（`_nbAnchorBounds` と `_nbDistToCourse` が地図の中心へ落ちる）。
+
+## 高低差のなぞりと勾配の色（v166）
+- 標高の補間 `_elevAtD(dists, elevs, x)`、勾配 `_gradeAtD(dists, elevs, x)`（前後 `SCRUB_WIN_M` の平均）、位置つき `_elevPointAt(d)`（`_elevData._dists` にキャッシュ）。
+- 帯と PC のグラフは描くたびに `_elevLayout.band/pc` に余白と幅を覚え、`_scrubAttach` の pointer イベントが x → 距離に直して `_scrubTo(d)`。描画関数の最後に `_scrubSvg` を足す（「いまここ」より上）。
+- 面の色は `_gradeFills`（同じ色が続く区間は1つの path）。しきい値は `GRADE_MID`／`GRADE_STEEP`、色は `GRADE_COL` の1か所。
