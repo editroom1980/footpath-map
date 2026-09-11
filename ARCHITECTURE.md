@@ -416,3 +416,9 @@ CONSTANTS(904) → STATE(968) → STORAGE(1015) → 版のお知らせ(1021) →
 - `_tryRouter` が `steps=true` で取り、`co.cues = _cuesFromLegs(legs)` を座標配列に付けて返す。`getCachedRoute` のキャッシュ・ミス時だけ `_cueCache[key]` に入る（ヒット時は経路サーバを呼ばない＝v119 の不変条件）。
 - 道順に沿った一覧は `_routeCues()`：今の道順の区間キー（`_routesInUse`）の曲がり角を `_lastRouteCoords` の最寄り頂点（`CUE_SNAP_M` 以内）に寄せ、`_routeCum` の累積距離で並べる。`_cueList` に（座標参照＋`_cueVer`）でキャッシュ。
 - 出口は3つ：配布シート `_sheetCuesHtml`、歩く人の帯 `_nextCueInfo`（`renderNextBar` 内・分岐の案内が無いときだけ）、古いコース用 `fetchCuesNow`（編集画面のシートからだけ）。
+
+## 道を変更（v169）
+- 通り道の点（`vps`）は**見えない・引きずれない**。案内（`vp.guide`）を付けた点だけ `_vpVisibleAt` が true。表示の反映は `_applyVpVis`。`viaVisible` は常に true のまま（描いた道の点＝node の表示に使う）。
+- 「道を変更」（`mode==='via'`）では `_syncMapDrag()` が地図のドラッグを止める。地図の容器の `pointerdown` を `_initLineHold` が受け、`_nearRoute`（線から `LINE_HIT_PX` 以内）なら `_hold` を作る → 動いたら `_holdGrab` で点を作り（既にある点は `LINE_GRAB_PX` でつかむ）`_holdMove` で動かし、`_holdEnd` で `_snapCustom`→順序の取り直し→`clearCache(); scheduleRouting()`。動かさず `LINE_HOLD_MS` 押さえて離すと `showViaCtxMenu`。
+- 当たり判定の線（`hitOverlays`）は `interactive:false`。旧 `onSegmentHitDown` は使っていない（残してある）。
+- 広域（`z < ROUTE_SOLID_Z`）は `_routeDash()` が null、`_drawRouteBody` が切れ端と三角を作らない＝実線。
