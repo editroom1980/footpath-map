@@ -396,3 +396,4 @@ CONSTANTS(904) → STATE(968) → STORAGE(1015) → 版のお知らせ(1021) →
 - OpenStreetMap（Overpass）：`nwr["name"]` に除外条件を付けた1本の問い合わせ＋名前の無い実用物。種類分けは `_nbKindOf(tags)`。
 - 国土数値情報：`data/ksj/index.json`（県コード・範囲・入っているデータ）→ `data/ksj/<pref>/<code>.json`（`items:[[lat,lng,name,sub],…]`）。`KSJ_KIND` で種類へ。変換は `tools/ksj_convert.py`。
 - Wikipedia geosearch、名前検索時は Nominatim（bounded）。Google は使わない。
+- 種類の対応（v163）：`NEARBY_KINDS[].t` がこのアプリの種類。周辺の情報で拾える種類（お店・神社・史跡・展望・公園・学校・公民館・病院・施設・トイレ・駐車場・バス停・地名・Wikipedia）は全部 `WT` に対応する種類がある。**取り込んだものを `other` に落とさない**（オーナー指示）。名前から種類を推定する `NAME_TYPE_HINTS` は先勝ちなので、「病院」（院＝寺院より先）「道の駅」（駅＝バス停より先）の順序に注意。

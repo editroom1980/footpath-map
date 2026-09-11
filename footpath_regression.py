@@ -447,6 +447,11 @@ def static_checks(src):
     # --- v157: 番号の丸と種類の丸を横に並べる（オーナー指摘：iPhone で片方しか見えない）---
     chk('静的', '番号つきで種類がある地点：地図は「種類の丸＋右上に番号の小丸」、一覧・並べ替え・配布シート・カードは番号と種類を並べて出す',
         'class="wp-num"' in src and 'class="wp-dot cat"' in src and 'class="ro-badge cat"' in src and 'class="sh-cat"' in src and 'class="vip-dot vip-dot2"' in src and '_catBadge' not in src and 'wp-pair' not in src)
+    # --- v163: 取り込んだものは対応する種類で（バス停・駅／病院・医院／施設・会社・宿／地名・集落）---
+    chk('静的', '種類にバス停・駅／病院・医院／施設・会社・宿／地名・集落があり（絵つき・テーマ4つ全部に色）、周辺の情報の種類は全部それぞれの種類へ（その他に落とさない）',
+        all("v:'" + k in src for k in ('bus', 'hospital', 'facility', 'place')) and all(k + ':' in src.split('const TYPE_ICON = {')[1].split('};')[0] for k in ('bus', 'hospital', 'facility', 'place'))
+        and "t:'other'}" not in src.split('const NEARBY_KINDS = [')[1].split('];')[0] and "P04:'hospital'" in src and "['bus',     ['駅','バス停','停留所']]" in src
+        and all(src.count(k + ":'#") >= 4 for k in ('bus', 'hospital', 'facility', 'place')) and src.index("['hospital',[") < src.index("['shrine',  ["))
     # --- v156: スマホにも「いまの道具の案内」---
     chk('静的', 'スマホでも、なぞる・通り道・道を描く を選んでいる間は上に一言の案内（ふだんは出さない・歩く人には出さない）',
         'id="modeHint"' in src and 'function _syncModeHint' in src and 'body.viewing #modeHint,body.viewonly #modeHint{display:none!important}' in src)
@@ -650,7 +655,7 @@ def static_checks(src):
         and "b.textContent = '元に戻す';" in src)
     # --- v129: 種別の追加（学校・幼稚園／公民館・集会所）と、大きく出す4つの入れ替え ---
     chk('静的', '種別に学校・幼稚園と公民館・集会所がある（○の記号つき）',
-        "v:'school',  l:'学校・幼稚園'" in src and "v:'hall',    l:'公民館・集会所'" in src and "school:  {d:" in src and "hall:    {d:" in src)   # v155: 絵に
+        "v:'school',  l:'学校・幼稚園'" in src and "v:'hall',    l:'公民館・役所・郵便局'" in src and "school:  {d:" in src and "hall:    {d:" in src)   # v155: 絵に
     # --- v127: 開くのを速く（道順と標高を同梱し、開くときは経路サーバも標高サーバも呼ばない）---
     chk('静的', '書き出し専用の2ライブラリは後回しで読む（Leaflet は先）',
         '<script defer src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas' in src
@@ -2319,25 +2324,29 @@ def functional_checks(index_path):
                 {type:'node', id:5, lat:c.lat + 0.2, lon:c.lng, tags:{amenity:'cafe', name:'遠いカフェ'}},
                 {type:'way', id:6, center:{lat:c.lat + 0.0008, lon:c.lng + 0.0004}, tags:{building:'industrial', name:'(株)検査製作所'}},
                 {type:'node', id:7, lat:c.lat - 0.0011, lon:c.lng - 0.0013, tags:{amenity:'police', name:'検査交番'}},
-                {type:'node', id:8, lat:c.lat + 0.0003, lon:c.lng - 0.0009, tags:{place:'hamlet', name:'検査集落'}}]}), {status:200});
+                {type:'node', id:8, lat:c.lat + 0.0003, lon:c.lng - 0.0009, tags:{place:'hamlet', name:'検査集落'}},
+                {type:'node', id:10, lat:c.lat + 0.0021, lon:c.lng - 0.0017, tags:{highway:'bus_stop', name:'検査バス停'}},
+                {type:'node', id:11, lat:c.lat - 0.0019, lon:c.lng + 0.0021, tags:{amenity:'hospital', name:'検査病院'}}]}), {status:200});
               if (u.indexOf('wikipedia') >= 0) { if (u.indexOf('geosearch') >= 0) return new Response(JSON.stringify({query:{geosearch:[{pageid:99, title:'飯見の棚田', lat:c.lat + 0.0005, lon:c.lng - 0.0005}]}}), {status:200});
                 return new Response(JSON.stringify({query:{pages:{'99':{pageid:99, title:'飯見の棚田', extract:'飯見の棚田は兵庫県宍粟市にある棚田である。日本の棚田百選に選ばれている。'}}}}), {status:200}); }
               return keepFetch(url, opts); };
-            viewMode = false; openNearbySheet(); _nb.radius = 2000; _nbKinds().add('wiki'); _nbKinds().add('facility'); _nbKinds().add('place'); _ksjIndex = null; for (const k in _ksjSets) delete _ksjSets[k];
+            viewMode = false; openNearbySheet(); _nb.radius = 2000; _nbKinds().add('wiki'); _nbKinds().add('facility'); _nbKinds().add('place'); _nbKinds().add('bus'); _nbKinds().add('hospital'); _ksjIndex = null; for (const k in _ksjSets) delete _ksjSets[k];
             document.getElementById('nbKw').value = '';
             await nearbySearch();
             const names = _nb.cands.map(x => x.name);
             const out = {names: names.slice(0, 16), status: document.getElementById('nbStatus').textContent.slice(0, 60), found: names.includes('縁側カフェ') && names.includes('トイレ') && names.includes('飯見の棚田') && !names.includes('遠いカフェ'),
                          v162: names.includes('(株)検査製作所') && names.includes('検査交番') && names.includes('検査集落') && names.includes('検査小学校') && names.includes('検査駐在所')
                                && _nb.cands.find(x => x.name === '(株)検査製作所').kind === 'facility' && _nb.cands.find(x => x.name === '検査交番').kind === 'hall' && _nb.cands.find(x => x.name === '検査集落').kind === 'place' && _nb.cands.find(x => x.name === '検査小学校').src === '国土数値情報' && /国土数値情報/.test(_nb.cands.find(x => x.name === '検査小学校').desc),
+                         v163: (function(){ const ty = n => (_nb.cands.find(x => x.name === n) || {}).type; return ty('検査バス停') === 'bus' && ty('検査病院') === 'hospital' && ty('(株)検査製作所') === 'facility' && ty('検査集落') === 'place' && ty('検査交番') === 'hall' && _guessType('波賀病院') === 'hospital' && _guessType('姫路駅') === 'bus' && _guessType('道の駅みなみ波賀') === 'shop' && _guessType('民宿はが') === 'facility'; })(),
                          dup: !names.includes((w0.name || '').split('\\n')[0]) || (w0.name || '') === '',
                          layer: !!_nbLayer && _nbLayer.getLayers().length === _nb.cands.length,
                          listed: document.querySelectorAll('#nbList .nb-item').length === _nb.cands.length};
-            _nbToggle(_nb.cands.find(x => x.name === '縁側カフェ').id); _nbToggle(_nb.cands.find(x => x.name === '飯見の棚田').id);
-            out.btn = document.getElementById('nbAdd').textContent === '選んだ 2 件を追加';
+            _nbToggle(_nb.cands.find(x => x.name === '縁側カフェ').id); _nbToggle(_nb.cands.find(x => x.name === '飯見の棚田').id); _nbToggle(_nb.cands.find(x => x.name === '検査バス停').id);
+            out.btn = document.getElementById('nbAdd').textContent === '選んだ 3 件を追加';
             addNearbySelected();
-            const a = wps.find(w => w.name === '縁側カフェ'), b = wps.find(w => w.name === '飯見の棚田');
-            out.added = wps.length === n0 + 2 && !!a && a.type === 'shop' && a.onRoute === false && a.tel === '0790-00-0000' && a.desc.indexOf('営業時間') >= 0 && a.desc.indexOf('（情報：OpenStreetMap）') >= 0 && !!a.marker
+            const a = wps.find(w => w.name === '縁側カフェ'), b = wps.find(w => w.name === '飯見の棚田'), bs = wps.find(w => w.name === '検査バス停');
+            out.bus = !!bs && bs.type === 'bus' && _sheetLegend().indexOf('バス停・駅') >= 0 && (bs.marker.getElement().innerHTML.indexOf('<svg') >= 0);
+            out.added = wps.length === n0 + 3 && !!a && a.type === 'shop' && a.onRoute === false && a.tel === '0790-00-0000' && a.desc.indexOf('営業時間') >= 0 && a.desc.indexOf('（情報：OpenStreetMap）') >= 0 && !!a.marker
                         && !!b && b.type === 'history' && b.desc.indexOf('棚田百選') >= 0 && b.desc.indexOf('Wikipedia「飯見の棚田」') >= 0;
             out.closed = document.getElementById('nearbySheet').style.display === 'none' && !_nbLayer;
             // 名前で探す：OSM の名前検索＋Nominatim＋国土数値情報の名前一致
@@ -2349,7 +2358,7 @@ def functional_checks(index_path):
             return out;
           }catch(e){ return 'ERR:'+e.message; } }""")
         chk('機能', '周辺の情報：候補（距離・重複を除外）→地図の薄い○→選んで追加（種別・説明・出典）→1回で取り消し',
-            isinstance(nb, dict) and all(nb.get(k) for k in ('found', 'v162', 'dup', 'layer', 'listed', 'btn', 'added', 'closed', 'keyword', 'undone')), str(nb)[:600])
+            isinstance(nb, dict) and all(nb.get(k) for k in ('found', 'v162', 'v163', 'dup', 'layer', 'listed', 'btn', 'added', 'bus', 'closed', 'keyword', 'undone')), str(nb)[:600])
 
         # v143: 発見：貼る→端末に残る→印とカード→送るファイル→作者が取り込む→消す。編集画面では印を出さない
         fd = page.evaluate("""async ()=>{ try{
