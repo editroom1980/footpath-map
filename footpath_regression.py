@@ -529,10 +529,11 @@ def static_checks(src):
         src.count('class="mob-mode-l"') == 4 and src.count('class="cc-act-l"') == 3 and 'ファイルから読み込む（コース・GPX・発見）' in src)
     chk('静的', '最初の案内に「赤い線を引っぱると道順が変わる」がある', '道順を変えたいときは「道を変更」で赤い線を引っぱります。' in src)
     # --- v148: 手数を減らす（自動保存・道具の整理・スポット編集の畳み込み）---
-    chk('静的', '未保存フラグは _markDirty() だけが立て、自動保存を予約する（直接 _dirty = true は無い）',
-        src.count('_dirty = true') == 1 and 'function _markDirty(){ _dirty = true; scheduleAutoSave(); }' in src and 'const AUTOSAVE_MS = 1500;' in src and "saveCourse({quiet:true})" in src)
-    chk('静的', '保存ボタンは状態表示（保存済み／保存中…／保存できず）になり、一覧に戻るときは先に自動保存する',
-        "st === 'saved' ? '保存済み' : st === 'saving' ? '保存中…'" in src and 'await autoSaveNow(); }   // 自動で保存してから戻る' in src and '.hbtn-save.is-saved{' in src)
+    chk('静的', '未保存フラグは _markDirty() だけが立て、勝手には保存しない（v170：自動保存なし・直接 _dirty = true は無い）',
+        src.count('_dirty = true') == 1 and "function _markDirty(){ _dirty = true; _setSaveState('dirty'); }" in src and 'AUTOSAVE_MS' not in src and 'function scheduleAutoSave' not in src and "saveCourse({quiet:true})" in src)
+    chk('静的', '保存ボタンは状態表示（保存済み／保存中…／保存できず）。一覧に戻るときは必ず確認（v170）',
+        "st === 'saved' ? '保存済み' : st === 'saving' ? '保存中…'" in src and '_askSaveBack();                               // v170' in src and '.hbtn-save.is-saved{' in src
+        and 'id="sbSave"' in src and 'id="sbNoSave"' in src and 'id="sbCancel"' in src)
     chk('静的', 'スマホの下の道具は スポット・なぞる・道を変更・道を描く の4つ（文字つき・この順・v169）。詳細に重複させない（v154・オーナー指摘）',
         src.index('id="mobileWpBtn"') < src.index('id="mobileDrawBtn"') < src.index('id="mobileViaBtn"') < src.index('id="mobileCustomBtn"') and src.count('class="mob-mode ') == 4 and src.count('class="mob-mode-l"') == 4 and 'id="mobileViaBtn" class="mob-mode tap" onclick="setMode(\'via\')"' in src
         and 'id="mobileCustomBtn" class="mob-mode tap" onclick="toggleCustomMode()"' in src and src.count('id="mobileViaBtn"') == 1)
@@ -597,7 +598,7 @@ def static_checks(src):
     chk('静的', 'スポットの削除は確認ダイアログではなく10秒の「元に戻す」', "confirm('このスポットを削除しますか？')" not in src and 'function undoDeleteWp' in src
         and "if (undoStack.length !== u.len)" in src)
     chk('静的', '「配る」の写真つきスポットから、写真の無いスポットへ飛べる', 'function shareInfoPhoto' in src and 'onclick="shareInfoPhoto()"' in src)
-    chk('静的', '並べ替えの件数は「描いた道の点」を数えず、点の行は控えめ', "v('mmReorderN', String(_stampTargets().length));" in src and "' ro-node'" in src)
+    chk('静的', '並べ替えの件数は「描いた道の点」を数えず、点の行は控えめ', "v('mmReorderN', _stampTargets().length + ' か所');" in src and "' ro-node'" in src)
     chk('静的', '種別チップの畳んだ側はこのコースで使った順', "(used[b] || 0) - (used[a] || 0)" in src)
     chk('静的', '通知は1つの箱に積む（重ならない・3つまで）', "box.id = 'toastBox'" in src and "while (box.children.length > 3)" in src)
     # --- v139: 協会式のコース情報（F2）---
@@ -2276,13 +2277,26 @@ def functional_checks(index_path):
         chk('機能', '置き場所（GitHub のアップロード画面）の URL：<user>.github.io/<repo>/ のときだけ',
             gh == ['https://github.com/editroom1980/footpath-map/upload/main', 'https://github.com/editroom1980/footpath-map/upload/main', None, None], str(gh)[:200])
 
-        # v148: 自動保存：変更→1.5秒で保存され、ボタンが「保存済み」になる。くわしい設定は中身があるときだけ開く
+        # v170: 勝手に保存しない：変更しても待っても保存されない／「保存」で保存される／一覧に戻るときは確認（保存せずに戻る・キャンセル）／くわしい設定は中身があるときだけ開く
         asv = page.evaluate("""async ()=>{ try{
             const keepFlag = window.__noAutoSave, keepId = currentCourseId, keepCourses = getCourses(), keepD = _dirty, keepName = courseInfo.name;
-            window.__noAutoSave = false; courseInfo.name = courseInfo.name || '自動保存検査';
-            _markDirty(); const out = {dirtyLabel: document.querySelector('.mob-save').textContent === '保存', pending: !!_autoSaveT};
-            await new Promise(r => setTimeout(r, AUTOSAVE_MS + 900));
+            window.__noAutoSave = false; courseInfo.name = courseInfo.name || '保存検査';
+            const before = JSON.stringify(getCourses());
+            _markDirty();
+            const out = {dirtyLabel: document.querySelector('.mob-save').textContent === '保存', noTimer: !_autoSaveT && typeof window.scheduleAutoSave === 'undefined'};
+            await new Promise(r => setTimeout(r, 2500));
+            out.notSaved = _dirty === true && _saveState === 'dirty' && JSON.stringify(getCourses()) === before;
+            await saveCourse();
             out.saved = _dirty === false && _saveState === 'saved' && document.querySelector('.mob-save').textContent === '保存済み' && getCourses().some(c => c.id === currentCourseId);
+            // 一覧に戻る：未保存なら確認が出る。キャンセルで戻らない／保存せずに戻るで戻る
+            _markDirty(); await backToS1();
+            const dlg = document.getElementById('saveBackDlg');
+            out.asks = !!dlg && getComputedStyle(dlg).display !== 'none' && getComputedStyle(document.getElementById('s2')).display !== 'none';
+            dlg.querySelector('#sbCancel').click();
+            out.cancel = getComputedStyle(dlg).display === 'none' && getComputedStyle(document.getElementById('s2')).display !== 'none' && _dirty === true;
+            await backToS1(); dlg.querySelector('#sbNoSave').click();
+            out.back = getComputedStyle(document.getElementById('s1')).display !== 'none' && _dirty === false;
+            document.getElementById('s1').style.display = 'none'; document.getElementById('s2').style.display = 'flex';
             // くわしい設定：空なら閉じ、電話があれば開く
             const w = wps.find(x => x.type !== 'node'); const keepTel = w.tel; w.tel = ''; w.dwell = 0; openModal(w.id); out.closedWhenEmpty = document.getElementById('mMore').open === false; closeModal();
             w.tel = '090-0000-0000'; openModal(w.id); out.openWhenTel = document.getElementById('mMore').open === true; closeModal(); w.tel = keepTel;
@@ -2290,8 +2304,8 @@ def functional_checks(index_path):
             window.__noAutoSave = keepFlag; setCourses(keepCourses); currentCourseId = keepId; _dirty = keepD; courseInfo.name = keepName; _setSaveState(keepD ? 'dirty' : 'saved');
             return out;
           }catch(e){ return 'ERR:'+e.message; } }""")
-        chk('機能', '自動保存：変更→1.5秒で保存済みになる／くわしい設定は中身があるときだけ開く',
-            isinstance(asv, dict) and all(asv.get(k) for k in ('dirtyLabel', 'pending', 'saved', 'closedWhenEmpty', 'openWhenTel')), str(asv)[:220])
+        chk('機能', '勝手に保存しない（v170）：待っても保存されない／「保存」で保存／一覧に戻るときに確認（キャンセル・保存せずに戻る）／くわしい設定は中身があるときだけ開く',
+            isinstance(asv, dict) and all(asv.get(k) for k in ('dirtyLabel', 'noTimer', 'notSaved', 'saved', 'asks', 'cancel', 'back', 'closedWhenEmpty', 'openWhenTel')), str(asv)[:300])
 
         # v147: 改変の可否の門と保存／ゴールの1枚の合成
         ge = page.evaluate("""async ()=>{ try{

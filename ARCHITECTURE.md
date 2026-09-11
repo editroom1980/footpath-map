@@ -377,7 +377,7 @@ CONSTANTS(904) → STATE(968) → STORAGE(1015) → 版のお知らせ(1021) →
 
 これらは**実機確認が必要**。作業報告では必ずその旨を書く。
 
-## 自動保存（v148）
+## 保存（v148→v170）
 - 未保存フラグ `_dirty` を立てるのは `_markDirty()` だけ（`saveSnapshot()` と、スナップショットを取らない設定変更）。立てると `AUTOSAVE_MS` 後に `saveCourse({quiet:true})`。
 - 保存できないとき（容量いっぱい）は `_saveState='error'` でボタンが赤くなり、`_dirty` は残る。閲覧中・コース名なし・`window.__noAutoSave`（検査）では予約しない。
 - `_persistDerivedQuietly()`（道順・標高の静かな書き戻し）は `_dirty` が消えたあとにだけ働くので、自動保存と競合しない。
@@ -422,3 +422,7 @@ CONSTANTS(904) → STATE(968) → STORAGE(1015) → 版のお知らせ(1021) →
 - 「道を変更」（`mode==='via'`）では `_syncMapDrag()` が地図のドラッグを止める。地図の容器の `pointerdown` を `_initLineHold` が受け、`_nearRoute`（線から `LINE_HIT_PX` 以内）なら `_hold` を作る → 動いたら `_holdGrab` で点を作り（既にある点は `LINE_GRAB_PX` でつかむ）`_holdMove` で動かし、`_holdEnd` で `_snapCustom`→順序の取り直し→`clearCache(); scheduleRouting()`。動かさず `LINE_HOLD_MS` 押さえて離すと `showViaCtxMenu`。
 - 当たり判定の線（`hitOverlays`）は `interactive:false`。旧 `onSegmentHitDown` は使っていない（残してある）。
 - 広域（`z < ROUTE_SOLID_Z`）は `_routeDash()` が null、`_drawRouteBody` が切れ端と三角を作らない＝実線。
+
+## 保存のきまり（v170）
+- **自動保存はしない**。`_markDirty()` は `_dirty` を立てて保存ボタンの表示を変えるだけ。保存の入口は「保存」ボタン（`saveCourse()`）と `_askSaveBack()`（一覧に戻るとき）の2つだけ。
+- `_persistDerivedQuietly()`（道順・標高のキャッシュ）は今までどおり `_dirty` が false のときだけ書く＝利用者の編集を勝手に保存はしない。

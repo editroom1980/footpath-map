@@ -1901,7 +1901,6 @@ const SHARE_CHECKS = [
   {k:'contact', l:'問い合わせ先を書いた（困ったときの連絡先）', auto:'contact'},
 ];
 const GOAL_IMG_MAX = 1280;   // ゴールの1枚（記念写真）の長辺（v147）
-const AUTOSAVE_MS = 1500;    // 変更からこれだけ静かなら自動で保存（v148・「保存」を意識させない）
 const TYPE_BIG = ['view', 'history', 'shop', 'shrine'];   // v162：「地点」は選択肢から外した（種類なし＝既定。番号は種類と別に付く）
 /* 名前から種類を決める（v160・Footpath に倣う：名前を入れれば絵が決まる。人に分類を考えさせない）。上から順に最初に当たったもの */
 const NAME_TYPE_HINTS = [
@@ -2675,9 +2674,8 @@ async function newCourse() {
 
 async function backToS1() {
   if (_customMode_) { showToast('作成・編集モードを終了してください'); return; }
-  if (_dirty && courseInfo && courseInfo.name && !window.__noAutoSave) { await autoSaveNow(); }   // 自動で保存してから戻る（v148）
   if (!_dirty) { _doBackToS1(); return; }
-  _askSaveBack();
+  _askSaveBack();                               // v170：勝手に保存せず、ここで必ず確認する
 }
 function _doBackToS1() {
   if (_followOn) stopFollowMode(true);   // 地図画面を離れたら追従を止める（電池のため）
@@ -2940,7 +2938,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v169';
+const APP_VERSION = 'v170';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -4551,10 +4549,11 @@ function _syncMmValues(){
     const ls = LABEL_SIZE_LABELS[_labelSizeIdx] || LABEL_SIZE_LABELS[0], ws = WP_SIZE_LABELS[_wpSizeIdx] || WP_SIZE_LABELS[0];
     v('mmValSize', ls === ws ? ls : `文字 ${ls}・印 ${ws}`);
     v('mmValSpd', (WALK_SPEEDS[_walkSpeedIdx] || 4).toFixed(1) + ' km/h');
-    v('mmReorderN', String(_stampTargets().length));   // 「描いた道の点」は数えない（B4・v140）
+    v('mmReorderN', _stampTargets().length + ' か所');   // 「描いた道の点」は数えない（B4・v140）
     v('mmKokoroe', (courseInfo.kokoroe || '').trim() ? '追記あり' : '標準'); v('mmKokoroe2', (courseInfo.kokoroe || '').trim() ? '追記あり' : '標準');
-    v('mmInfo', viewMode ? (_courseInfoCount() ? '見る' : 'なし') : `${_courseInfoCount()} / ${COURSE_INFO_FIELDS.length}`); v('mmInfo2', `${_courseInfoCount()} / ${COURSE_INFO_FIELDS.length}`);   // 歩く人には件数より「見る」（v153）
-    const _wd = ((document.getElementById('iDesc') || {}).value || '').trim() ? 1 : 0; v('mmWrite', `${_wd + Math.min(1, _courseInfoCount()) + ((courseInfo.kokoroe || '').trim() ? 1 : 0)} / 3 書いた`);
+    v('mmFinds', (typeof finds !== 'undefined' ? finds.length : 0) + ' 件');
+    v('mmInfo', viewMode ? (_courseInfoCount() ? '見る' : 'なし') : (_courseInfoCount() ? `${_courseInfoCount()} / ${COURSE_INFO_FIELDS.length}` : 'まだ')); v('mmInfo2', _courseInfoCount() ? `${_courseInfoCount()} / ${COURSE_INFO_FIELDS.length}` : 'まだ');   // 歩く人には件数より「見る」（v153）
+    const _wd = ((document.getElementById('iDesc') || {}).value || '').trim() ? 1 : 0; const _wn = _wd + Math.min(1, _courseInfoCount()) + ((courseInfo.kokoroe || '').trim() ? 1 : 0); v('mmWrite', _wn === 0 ? 'まだ' : _wn + ' / 3');   // v170：「書いた」を外す
     v('mmTheme', _themeName());
   } catch(_) {}
 }
@@ -7017,15 +7016,11 @@ function _makeSnapshot() {
   };
 }
 
-/* 未保存フラグ（v148）：立てるのはここだけ。立てたら自動保存を予約する（AUTOSAVE_MS 静かなら保存） */
-let _autoSaveT = null, _saveState = 'saved';   // saved / dirty / saving / error
-function _markDirty(){ _dirty = true; scheduleAutoSave(); }
-function scheduleAutoSave(){
-  if (window.__noAutoSave || viewMode || !courseInfo || !courseInfo.name) { _setSaveState('dirty'); return; }
-  clearTimeout(_autoSaveT); _setSaveState('dirty');
-  _autoSaveT = setTimeout(autoSaveNow, AUTOSAVE_MS);
-}
-async function autoSaveNow(){
+/* 未保存フラグ（v148）：立てるのはここだけ。v170：**勝手に保存しない**（オーナー指摘「保存を押さなくても保存され、元に戻せなくなる」）。
+   保存するのは「保存」ボタンと、一覧に戻るときの確認だけ。閉じようとしたときはブラウザが確認する（beforeunload） */
+let _autoSaveT = null, _saveState = 'saved';   // saved / dirty / saving / error（_autoSaveT は据え置き＝常に null）
+function _markDirty(){ _dirty = true; _setSaveState('dirty'); }
+async function autoSaveNow(){   // 呼ぶのは「保存して戻る」だけ（v170：時間では呼ばない）
   clearTimeout(_autoSaveT); _autoSaveT = null;
   if (!_dirty || viewMode || !courseInfo || !courseInfo.name) return _dirty === false;
   _setSaveState('saving');
@@ -7039,7 +7034,7 @@ function _setSaveState(st){
   document.querySelectorAll('.hbtn-save, .mob-save').forEach(b => {
     b.classList.toggle('is-saved', st === 'saved'); b.classList.toggle('is-error', st === 'error');
     const sp = b.querySelector('span'); if (sp) sp.textContent = t; else b.textContent = t;
-    b.title = st === 'saved' ? '保存されています（変えると自動で保存します）' : st === 'error' ? '保存できませんでした。押してもう一度' : '押すとすぐ保存します（放っておいても自動で保存します）';
+    b.title = st === 'saved' ? 'この内容は保存されています' : st === 'error' ? '保存できませんでした。押してもう一度' : 'まだ保存していません。押すと保存します（一覧に戻るときにも確認します）';
   });
 }
 function saveSnapshot() {
