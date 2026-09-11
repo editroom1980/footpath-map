@@ -283,6 +283,7 @@ html,body{touch-action:manipulation;min-height:calc(100% + env(safe-area-inset-t
 .vip-handle{width:36px;height:4px;border-radius:2px;background:#D9C7B0;margin:2px auto 12px}
 .vip-hdr{display:flex;align-items:center;gap:10px;margin-bottom:10px}
 .vip-dot{width:34px;height:34px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:bold;font-size:14px}
+.vip-cat{display:flex;align-items:center;gap:4px;font-size:11.5px;font-weight:500;color:var(--t-sub);margin-top:2px}
 .vip-name{font-size:16px;font-weight:bold;color:#2C1B0E;flex:1;line-height:1.3}
 .vip-close{width:28px;height:28px;background:#EEE8DE;border:none;border-radius:50%;font-size:14px;cursor:pointer;flex-shrink:0}
 .vip-say{flex-shrink:0;min-height:36px;padding:0 12px;border:1.5px solid #E3DCD1;border-radius:18px;background:#fff;font-family:inherit;font-size:12.5px;font-weight:700;color:#2C2620;cursor:pointer}
@@ -312,6 +313,10 @@ body.embed #s2, body.embed #mapArea, body.embed #mapWrap{height:100%!important;m
 #mobileFindBtn[hidden],#btnFind[hidden],#mmFindsRow[hidden],#btnGoal[hidden],#mmGoalRow[hidden],#mmKokoroeRow[hidden],#mmInfoRow[hidden]{display:none!important}
 /* スポットの編集：くわしい設定（v148） */
 .m-more{border:1px solid #E6DCCB;border-radius:10px;padding:0 10px;margin:4px 0 10px;background:#FCFAF6}
+.m-switch{display:flex!important;align-items:center;gap:10px;background:#FCFAF6;border:1px solid #E6DCCB;border-radius:10px;padding:8px 10px;margin:6px 0 10px;cursor:pointer;font-weight:normal!important}
+.m-switch input{width:22px!important;height:22px;margin:0!important;padding:0!important;accent-color:var(--brand);flex:none}
+.m-sw-t{display:block;font-size:13px;font-weight:700;color:#4A2E0E}
+.m-switch small{display:block;font-size:11px;color:var(--t-sub);line-height:1.4}
 .m-more summary{cursor:pointer;list-style:none;min-height:var(--tap);display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:#4A2E0E}
 .m-more summary::-webkit-details-marker{display:none}
 .m-more summary::before{content:'▸';font-size:12px;color:var(--t-sub)}
@@ -386,6 +391,11 @@ body.embed #s2, body.embed #mapArea, body.embed #mapWrap{height:100%!important;m
 .th-two{display:flex;gap:16px;flex-wrap:wrap}
 .pp-val{margin-left:auto;font-size:12px;color:var(--t-sub);font-weight:500}
 @media (min-width:769px){.fsh{left:50%;right:auto;bottom:auto;top:50%;transform:translate(-50%,-50%);width:460px;max-width:calc(100vw - 32px);border-radius:16px;padding:18px 20px 20px}.fsh .ds-dh{display:none}}
+/* 印の中の絵（v155） */
+.wp-mk.svg,.wp-stk-badge.svg{display:flex;align-items:center;justify-content:center;line-height:1!important}
+.wp-mk svg,.wp-stk-badge svg,.wp-dot svg,.tc-dot svg,.vip-dot svg,.sh-lgm svg,.ro-badge svg,.nb-dot svg{display:block}
+.wp-cat{position:absolute;right:-7px;top:-7px;border-radius:50%;background:#fff;border:1.5px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;line-height:1}
+.wp-mk.svg .wp-visited{line-height:14px}
 .wp-visited{position:absolute;right:-3px;top:-3px;width:14px;height:14px;border-radius:50%;background:var(--ok);
   color:#fff;font-size:9px;line-height:14px;text-align:center;border:1.5px solid #fff;font-weight:700}
 #embedBar{position:absolute;top:0;left:0;right:0;z-index:1200;display:none;align-items:center;gap:8px;
@@ -1524,6 +1534,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
     <div class="m-body">
       <label>種別</label><select id="mType"></select>
       <div id="mTypeChips"></div>   <!-- 種別の選び方（v128）：よく使う4つを大きく、残りは畳む。値は上の select に入れる -->
+      <label class="m-switch"><input type="checkbox" id="mOnRoute"><span><span class="m-sw-t">歩く順の番号をつける（道順に入れる）</span><small>外すと「立ち寄り先」になり、道順には入りません（印は種類の絵だけ）</small></span></label>
       <label>名前（地図に出ます）</label><input id="mName" placeholder="例：飯見の棚田">
       <div style="font-size:11px;font-weight:bold;color:var(--t-sub);margin-bottom:5px">写真（最大12枚・撮るか選ぶ）</div>
       <div id="mPhotoStrip" class="photo-strip"></div>
@@ -1541,10 +1552,6 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
         <label>滞在時間（分・所要時間に足します）</label>
         <input type="number" id="mDwell" min="0" max="480" step="5" value="0" placeholder="0">
         <div style="font-size:11px;font-weight:bold;color:var(--t-sub);margin-bottom:4px">道順</div>
-        <label style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:normal;cursor:pointer;margin-bottom:5px">
-          <input type="checkbox" id="mOnRoute" style="width:auto;padding:0;margin:0">
-          このスポットを道順に入れる（外すと「立ち寄らない場所」になります）
-        </label>
         <label style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:normal;cursor:pointer;margin-bottom:5px">
           <input type="checkbox" id="mFitBefore" checked style="width:auto;padding:0;margin:0">
           前の区間を道に沿わせる
@@ -1657,11 +1664,11 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
 const COLOR = { brand:'#B8440A', ok:'#0E6B3C', sub:'#6B6055' };
 
 const WT = [
-  {v:'course',  l:'コースポイント', c:'#A8551F'},
+  {v:'spot',    l:'地点',           c:'#A8551F'},   // v155：種類なし（番号だけ）。旧データの 'course' はこれに読み替える
   {v:'start',   l:'スタート',                    c:'#0E6B3C'},
   {v:'goal',    l:'ゴール',                      c:'#B71C1C'},
   {v:'view',    l:'ビュースポット',              c:'#1565C0'},
-  {v:'shop',    l:'飲食店・ショップ ★',          c:'#AD1457'},   // 濃赤(ゴール)と紛らわしかった → 濃ピンクへ
+  {v:'shop',    l:'飲食店・ショップ',            c:'#AD1457'},   // 濃赤(ゴール)と紛らわしかった → 濃ピンクへ
   {v:'shrine',  l:'神社・寺院',                  c:'#6D4C41'},
   {v:'history', l:'史跡・記念碑',                c:'#8E24AA'},   // 橙茶(コースポイント)と紛らわしかった → 紫へ
   {v:'park',    l:'公園・自然',                  c:'#00796B'},   // 緑(スタート)と紛らわしかった → ティールへ
@@ -1672,7 +1679,48 @@ const WT = [
   {v:'other',   l:'その他',                      c:'#5F5F5F'},
   {v:'node',    l:'描いた道の点',                c:'#444444'},
 ];
-const SYM = {start:'S',goal:'G',view:'◎',shop:'★',shrine:'⛩',history:'碑',park:'🌿',school:'学',hall:'公',toilet:'WC',parking:'P',other:'●',node:''};
+const LEGACY_TYPE = {course:'spot'};   // v155：昔の種類名の読み替え
+function _normType(t){ return LEGACY_TYPE[t] || t || 'spot'; }
+/* 種類の絵（v155）。漢字の印（学・公・碑…）をやめ、誰にでも分かる線画にした。24×24。白い線で丸の中に描く。
+   数字（歩く順）は種類と別に付く（_isNumbered）。spot＝種類なし（数字だけ） */
+const TYPE_ICON = {
+  view:    {d:'<path d="M2.5 12c2.6-4 5.8-6 9.5-6s6.9 2 9.5 6c-2.6 4-5.8 6-9.5 6s-6.9-2-9.5-6z"/><circle cx="12" cy="12" r="3"/>'},                       // 目＝眺め
+  shop:    {d:'<path d="M6 3v5a2.5 2.5 0 0 0 5 0V3"/><path d="M8.5 3v18"/><path d="M18 3c-2.2 2.2-3 5-3 8.5H18V21"/>'},                                     // フォークとナイフ
+  shrine:  {d:'<path d="M3 5.5c3 1.3 15 1.3 18 0"/><path d="M5 9.5h14"/><path d="M7 6v15"/><path d="M17 6v15"/>'},                                          // 鳥居
+  history: {d:'<path d="M12 3l3.5 3.5h-7z"/><path d="M9.5 6.5v10h5v-10"/><path d="M6.5 16.5h11"/><path d="M4.5 20.5h15"/>'},                              // 碑
+  park:    {d:'<path d="M12 2.5l5.5 7.5h-3l4.5 6h-5.5v5.5h-3V16H5l4.5-6h-3z"/>', fill:true},                                                              // 木
+  school:  {d:'<path d="M4 21V10l8-5 8 5v11"/><path d="M9 21v-6h6v6"/><path d="M12 5V2h4v2.5h-4"/>'},                                                     // 校舎と旗
+  hall:    {d:'<path d="M3 21h18"/><path d="M4 21V11h16v10"/><path d="M8 11V7l4-3 4 3v4"/><path d="M11 21v-4h2v4"/><path d="M6.5 15h2M15.5 15h2"/>'},   // 公民館
+  toilet:  {d:'<circle cx="8" cy="4.5" r="1.8"/><path d="M5.8 7.5h4.4v6H9.4V20H6.6v-6.5H5.8z"/><circle cx="16" cy="4.5" r="1.8"/><path d="M13.3 7.5h5.4l1.3 6.5h-1.6V20h-4.8v-6h-1.6z"/>', fill:true},   // トイレ
+  parking: {d:'<path d="M8 20V4h5a4 4 0 0 1 0 8H8"/>'},                                                                                                   // P
+  other:   {d:'<circle cx="12" cy="12" r="3.5"/>', fill:true},
+};
+function _typeSvg(type, px, color){
+  const ic = TYPE_ICON[type]; if (!ic) return '';
+  const c = color || '#fff';
+  return `<svg viewBox="0 0 24 24" width="${px}" height="${px}" aria-hidden="true" ${ic.fill ? `fill="${c}" stroke="${c}" stroke-width="1"` : `fill="none" stroke="${c}" stroke-width="2.2"`} stroke-linecap="round" stroke-linejoin="round">${ic.d}</svg>`;
+}
+function _onRouteOf(wp){ return wp.onRoute === true || ((wp.type === 'spot' || wp.type === 'course') && wp.onRoute !== false); }
+function _isNumbered(wp){ return !!wp && wp.type !== 'start' && wp.type !== 'goal' && wp.type !== 'node' && _onRouteOf(wp); }
+/* 丸の中身：S／G／歩く順の数字／種類の絵。txt は文字だけの場面（帯・高低差の目盛り）用 */
+function _markInner(wp, px){
+  if (wp.type === 'start') return {html:'S', txt:'S', svg:false};
+  if (wp.type === 'goal')  return {html:'G', txt:'G', svg:false};
+  if (_isNumbered(wp)) { const n = String(courseNum(wp) || '?'); return {html:n, txt:n, svg:false}; }
+  const svg = _typeSvg(wp.type, px);
+  return svg ? {html:svg, txt:'', svg:true} : {html:'●', txt:'', svg:false};
+}
+function _wpMarkHtml(wp, px){ return _markInner(wp, px).html; }
+function _markTxt(wp){ return _markInner(wp, 0).txt; }
+function _typeMarkHtml(type, px, color){   // 種類そのものの印（凡例・種類の選択）
+  if (type === 'start') return 'S'; if (type === 'goal') return 'G'; if (type === 'spot' || type === 'course') return '1';
+  return _typeSvg(type, px, color) || '●';
+}
+function _catBadge(wp, px){   // 番号つきで種類があるとき、右上に種類の絵（白丸に色の線）
+  if (!_isNumbered(wp) || !TYPE_ICON[wp.type]) return '';
+  const t = WT.find(x => x.v === wp.type) || WT[0];
+  return `<span class="wp-cat" style="width:${px}px;height:${px}px">${_typeSvg(wp.type, Math.round(px * 0.72), t.c)}</span>`;
+}
 /* 歩く人の心得（v137・フットパス特化 F1）。日本フットパス協会の3か条（田畑や私有地には立ち入らない／ゴミは必ず持ち帰る／
    動植物や農作物を採らない）を土台に、英国 Countryside Code の3見出し（配慮する・守る・楽しむ）で並べる。地域の追記はコースごと（courseInfo.kokoroe） */
 const KOKOROE = [
@@ -1726,10 +1774,10 @@ const NEARBY_KIND_DEFAULT_OFF = ['bus'];             // 最初は外しておく
    組み合わせ（preset）＝道順の線の色＋印の色。線の色・点線／実線・太さは個別にも変えられる */
 const THEMES = [
   {id:'std',      l:'標準',   n:'いまの色',                          route:'#E84040', pal:null},
-  {id:'satoyama', l:'里山',   n:'土と緑。田畑や林の道に',            route:'#2E7D32', pal:{course:'#6D4C41', start:'#1B5E20', goal:'#B71C1C', view:'#00695C', shop:'#AD1457', shrine:'#4E342E', history:'#7B1FA2', park:'#33691E', school:'#00838F', hall:'#3E2723', toilet:'#546E7A', parking:'#283593', other:'#616161'}},
-  {id:'umi',      l:'海と空', n:'青を基調に。川や海辺の道に',        route:'#1976D2', pal:{course:'#0D47A1', start:'#00695C', goal:'#C62828', view:'#01579B', shop:'#C2185B', shrine:'#5D4037', history:'#6A1B9A', park:'#2E7D32', school:'#00838F', hall:'#37474F', toilet:'#607D8B', parking:'#303F9F', other:'#757575'}},
-  {id:'aki',      l:'秋',     n:'紅葉の暖色。里の秋の道に',          route:'#D84315', pal:{course:'#BF360C', start:'#33691E', goal:'#B71C1C', view:'#EF6C00', shop:'#AD1457', shrine:'#4E342E', history:'#6A1B9A', park:'#558B2F', school:'#00838F', hall:'#3E2723', toilet:'#546E7A', parking:'#3949AB', other:'#5F5F5F'}},
-  {id:'mono',     l:'白黒',   n:'白黒コピー向け。印は形と番号で見分ける', route:'#222222', pal:{course:'#222222', start:'#333333', goal:'#000000', view:'#555555', shop:'#444444', shrine:'#333333', history:'#555555', park:'#666666', school:'#444444', hall:'#222222', toilet:'#777777', parking:'#555555', other:'#888888'}},
+  {id:'satoyama', l:'里山',   n:'土と緑。田畑や林の道に',            route:'#2E7D32', pal:{spot:'#6D4C41', start:'#1B5E20', goal:'#B71C1C', view:'#00695C', shop:'#AD1457', shrine:'#4E342E', history:'#7B1FA2', park:'#33691E', school:'#00838F', hall:'#3E2723', toilet:'#546E7A', parking:'#283593', other:'#616161'}},
+  {id:'umi',      l:'海と空', n:'青を基調に。川や海辺の道に',        route:'#1976D2', pal:{spot:'#0D47A1', start:'#00695C', goal:'#C62828', view:'#01579B', shop:'#C2185B', shrine:'#5D4037', history:'#6A1B9A', park:'#2E7D32', school:'#00838F', hall:'#37474F', toilet:'#607D8B', parking:'#303F9F', other:'#757575'}},
+  {id:'aki',      l:'秋',     n:'紅葉の暖色。里の秋の道に',          route:'#D84315', pal:{spot:'#BF360C', start:'#33691E', goal:'#B71C1C', view:'#EF6C00', shop:'#AD1457', shrine:'#4E342E', history:'#6A1B9A', park:'#558B2F', school:'#00838F', hall:'#3E2723', toilet:'#546E7A', parking:'#3949AB', other:'#5F5F5F'}},
+  {id:'mono',     l:'白黒',   n:'白黒コピー向け。印は形と番号で見分ける', route:'#222222', pal:{spot:'#222222', start:'#333333', goal:'#000000', view:'#555555', shop:'#444444', shrine:'#333333', history:'#555555', park:'#666666', school:'#444444', hall:'#222222', toilet:'#777777', parking:'#555555', other:'#888888'}},
 ];
 const THEME_ROUTE_COLORS = ['#E84040', '#D84315', '#F57F17', '#2E7D32', '#1976D2', '#6A1B9A', '#AD1457', '#222222'];
 const THEME_WIDTHS = {thin:0.75, std:1, thick:1.4};
@@ -1745,7 +1793,7 @@ const SHARE_CHECKS = [
 ];
 const GOAL_IMG_MAX = 1280;   // ゴールの1枚（記念写真）の長辺（v147）
 const AUTOSAVE_MS = 1500;    // 変更からこれだけ静かなら自動で保存（v148・「保存」を意識させない）
-const TYPE_BIG = ['course', 'view', 'history', 'shop'];   // 編集画面で大きく出す「よく使う4つ」（オーナー指定・v129）。残りは畳む
+const TYPE_BIG = ['spot', 'view', 'history', 'shop'];   // 編集画面で大きく出す「よく使う4つ」（オーナー指定・v129）。残りは畳む
 const LINE_STYLE = {color:'#E84040', weight:4, dashArray:'8,5', opacity:.9, lineJoin:'round', lineCap:'round', smoothFactor:0};
 const DBL_GAP_PX = 2;        // 往復で重なる区間：2本の線の間隔(px)
 const ROUTE_CASING_ADD = 3;  // ルート線の白いふちの太さ（赤い線に足すpx）。表示専用
@@ -2749,7 +2797,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v154';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
+const APP_VERSION = 'v155';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
 }catch(_){} });
@@ -3229,10 +3277,9 @@ function _renderReorder(){
   let cn=1;
   const rows = wps.map((wp,idx)=>{
     const t=WT.find(x=>x.v===wp.type)||WT[0];
-    const sym = wp.type==='course' ? (cn++) : (SYM[wp.type]||'\u25CF');
     const lbl = wp.name || ('\uFF08'+t.l+'\uFF09');
     return '<div class="ro-row'+(wp.type==='node'?' ro-node':'')+'" data-id="'+escHtml(String(wp.id))+'" data-idx="'+idx+'">'
-      +'<div class="ro-badge" style="background:'+t.c+'">'+escHtml(String(sym))+'</div>'
+      +'<div class="ro-badge" style="background:'+t.c+'">'+_wpMarkHtml(wp, 12)+'</div>'
       +'<div class="ro-label">'+escHtml(lbl)+'</div>'
       +'<div class="ro-handle" aria-label="\u30C9\u30E9\u30C3\u30B0\u3057\u3066\u4E26\u3079\u66FF\u3048"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 8h16"/><path d="M4 12h16"/><path d="M4 16h16"/></svg></div>'
       +'</div>';
@@ -3310,7 +3357,7 @@ function onMapClick(e) {
   if (mode==='wp') {
     if (_wpPickerLatlng !== null) { hideWpPicker(); return; } // ピッカー表示中は閉じて終了
     // 1タップで置く（v128）：まず「コースポイント」として置く。種類と名前は○を押してあとから
-    addWp(e.latlng.lat, e.latlng.lng, 'course');
+    addWp(e.latlng.lat, e.latlng.lng, 'spot');
     if (_placeHintCount < 2) { _placeHintCount++; showToast('置きました。○を押すと種類と名前を変えられます'); }
     return;
   }
@@ -3474,7 +3521,7 @@ function showWpTypePicker(lat, lng, e) {
       if (t.v === 'goal'  && wps.some(w => w.type === 'goal'))  return false;
       return true;
     }).map(t => {
-      const isCourse = t.v === 'course';
+      const isCourse = t.v === 'spot';
       const style = isCourse
         ? 'font-weight:bold;color:var(--brand);border-bottom:1px solid #EEE8DE;margin-bottom:2px;padding-bottom:7px'
         : '';
@@ -3512,7 +3559,7 @@ function addWpFromPicker(type) {
 }
 
 function addWp(lat, lng, type) {
-  type = type || 'course';
+  type = _normType(type);
   dismissFirstTip();                      // 最初の1つを置いたら案内は役目を終える
   { const _s=_snapCustom(lat,lng); lat=_s[0]; lng=_s[1]; }   // 細道スナップ(失敗時は元座標)
   if (!_boundsAnchor) _setAnchor(lat, lng, false);  // 地域未指定時は最初のWPを基準点に
@@ -3570,8 +3617,9 @@ function wpIcon(wp, sz, anc) {
       html:`<div style="width:${d}px;height:${d}px;border-radius:50%;background:#444;border:2px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.55);cursor:grab"></div>`,
       iconSize:[d,d], iconAnchor:[d/2,d/2]});
   }
-  const t   = WT.find(x=>x.v===wp.type)||WT[0];
-  const sym = wp.type==='course' ? (courseNum(wp)||'?') : (SYM[wp.type]||'●');
+  const t = WT.find(x=>x.v===wp.type)||WT[0];
+  const m = _markInner(wp, Math.round(sz[0] * 0.6));          // S/G・歩く順の数字・種類の絵（v155）
+  const cat = _catBadge(wp, Math.round(sz[0] * 0.5));          // 番号つきに種類があれば右上に小さな絵
   // 閲覧モードで訪問済みなら、○の右上に小さなチェックを付ける（スタンプラリー）
   const stamp = (viewMode && _visits && _visits[wp.id]) ? '<span class="wp-visited">✓</span>' : '';
   if (_stickerOn() && wp.photos && wp.photos[0]) {                       // シール（v142）
@@ -3579,15 +3627,16 @@ function wpIcon(wp, sz, anc) {
     if (!stk) _ensureSticker(wp);                                        // できたら setIcon で置き換わる
     else {
       const d = _stickerSize()[0], b = Math.max(16, Math.round(d * 0.42));
+      const bm = _markInner(wp, Math.round(b * 0.62));
       const more = wp._clusterN > 1 ? `<span class="wp-stk-more">+${wp._clusterN - 1}</span>` : '';
       return L.divIcon({className:'',
-        html:`<div class="wp-sticker" data-sticker="1" style="width:${d}px;height:${d}px;background-image:url(${stk})"><div class="wp-stk-badge" data-wtype="${wp.type||'course'}" style="background:${t.c};width:${b}px;height:${b}px;line-height:${b-3}px;font-size:${_wpFont(b, sym)}px">${sym}</div>${stamp}${more}</div>`,
+        html:`<div class="wp-sticker" data-sticker="1" style="width:${d}px;height:${d}px;background-image:url(${stk})"><div class="wp-stk-badge${bm.svg ? ' svg' : ''}" data-wtype="${wp.type}" style="background:${t.c};width:${b}px;height:${b}px;line-height:${b-3}px;font-size:${_wpFont(b, bm.txt || '●')}px">${bm.html}</div>${stamp}${more}</div>`,
         iconSize:[d,d], iconAnchor:[d/2,d/2]});
     }
   }
   return L.divIcon({
     className:'',
-    html:`<div data-wtype="${wp.type||'course'}" style="position:relative;width:${sz[0]}px;height:${sz[1]}px;border-radius:50%;background:${t.c};color:#fff;text-align:center;line-height:${sz[1]-4}px;font-size:${_wpFont(sz[0], sym)}px;font-weight:bold;border:2.5px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.45);cursor:pointer">${sym}${stamp}</div>`,
+    html:`<div data-wtype="${wp.type}" class="wp-mk${m.svg ? ' svg' : ''}" style="position:relative;width:${sz[0]}px;height:${sz[1]}px;border-radius:50%;background:${t.c};color:#fff;text-align:center;line-height:${sz[1]-4}px;font-size:${_wpFont(sz[0], m.txt || '●')}px;font-weight:bold;border:2.5px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.45);cursor:pointer">${m.html}${cat}${stamp}</div>`,
     iconSize:sz, iconAnchor:anc
   });
 }
@@ -3596,12 +3645,12 @@ function wpIcon(wp, sz, anc) {
 // 型に関わらずonRoute=trueであればルートに含める
 // → コースポイント→スタート変更時もルートが変わらない
 function routeWps() {
-  return wps.filter(w => w.onRoute !== false && (w.onRoute === true || w.type === 'course'));
+  return wps.filter(w => _onRouteOf(w));   // v155：種類に関係なく「道順に入っている」もの
 }
 
 function courseNum(wp) {
   // ルート接続中のcourseタイプのみ番号付け対象
-  const list = wps.filter(w=>w.type==='course' && w.onRoute !== false);
+  const list = wps.filter(w => _isNumbered(w));   // v155：番号は種類と別（道順に入っていれば付く）
   const i    = list.findIndex(w=>w.id===wp.id);
   return i>=0 ? i+1 : null;
 }
@@ -3933,7 +3982,7 @@ function _nodeConvertToWp(wpId) {
   const wp = wps.find(w => w.id === wpId);
   if (!wp) return;
   saveSnapshot();
-  wp.type = 'course';
+  wp.type = 'spot';
   refreshIcons(); redrawStraight(); redrawList(); scheduleRouting();
   showToast('スポットに変えました');
 }
@@ -4162,9 +4211,9 @@ function _dirName(brg) { return ['北', '北東', '東', '南東', '南', '南�
 function _fmtDistM(d) { return d >= 950 ? (d / 1000).toFixed(1) + 'km' : (d >= 100 ? Math.round(d / 10) * 10 : Math.round(d)) + 'm'; }
 function _spotLabel(wp) {
   const t = WT.find(x => x.v === wp.type) || WT[0];
-  const n = wp.type === 'course' ? courseNum(wp) : null;
-  const mark = n ? (n >= 1 && n <= 20 ? String.fromCharCode(0x245F + n) : String(n)) : (SYM[wp.type] || '●');
-  return mark + ' ' + (wp.name || t.l).split('\n')[0];
+  const n = _isNumbered(wp) ? courseNum(wp) : null;
+  const mark = n ? (n >= 1 && n <= 20 ? String.fromCharCode(0x245F + n) : String(n)) : (wp.type === 'start' ? 'S' : wp.type === 'goal' ? 'G' : '');
+  return (mark ? mark + ' ' : '') + (wp.name || t.l).split('\n')[0];
 }
 function _spotsAlongRoute() {   // 往復で2回通るスポットは、進みごとに1つずつ（行きも帰りも「次」になる）
   const out = [];
@@ -4194,7 +4243,7 @@ function _arrivedSpot() {
 /* 区間ごとの目安の分数（S→①、①→②…）。番号のついたコースポイントと出発・到着の間だけ（見どころは区間の単位にしない）。
    コース沿いの距離÷歩く速さ。登りと滞在は含めない（v138） */
 function _segmentMinutes() {
-  const spots = _spotsAlongRoute().filter(sp => sp.wp.type === 'start' || sp.wp.type === 'goal' || sp.wp.type === 'course');
+  const spots = _spotsAlongRoute().filter(sp => sp.wp.type === 'start' || sp.wp.type === 'goal' || _isNumbered(sp.wp));
   const out = [];
   for (let i = 1; i < spots.length; i++) {
     const d = spots[i].along - spots[i-1].along;
@@ -5853,10 +5902,9 @@ function redrawList() {
   if (wps.length===0) { if(empty)empty.style.display=''; return; }
   if (empty) empty.style.display = 'none';
 
-  let cn = 1;
   wps.forEach(wp => {
     const t   = WT.find(x=>x.v===wp.type)||WT[0];
-    const sym = wp.type==='course' ? cn++ : (SYM[wp.type]||'●');
+    const sym = _wpMarkHtml(wp, 13);   // v155：数字か種類の絵
     const lbl = wp.name || `（${t.l}）`;
 
     const row = document.createElement('div');
@@ -5918,9 +5966,8 @@ function _renderTypeChips() {
   const cur = sel.value, opts = [...sel.options].map(o => o.value);
   const chip = (v, big) => {
     const t = WT.find(x => x.v === v) || {l: v, c: '#888'};
-    const sym = v === 'course' ? '1' : (SYM[v] || '●');
     return `<button type="button" class="tc-chip${big ? ' big' : ''}${v === cur ? ' on' : ''}" onclick="_pickType('${v}')">`
-         + `<span class="tc-dot" style="background:${t.c}">${escHtml(sym)}</span>${escHtml(t.l)}</button>`;
+         + `<span class="tc-dot" style="background:${t.c}">${_typeMarkHtml(v, 12)}</span>${escHtml(t.l)}</button>`;
   };
   const bigs = TYPE_BIG.filter(v => opts.includes(v));
   const used = {}; wps.forEach(w => { used[w.type] = (used[w.type] || 0) + 1; });
@@ -6035,8 +6082,7 @@ function openModal(id) {
   document.getElementById('mDesc2').value  = wp.desc;
   document.getElementById('mTel').value    = wp.tel;
   document.getElementById('mDwell').value   = wp.dwell || 0;
-  // onRoute: 未設定の場合はtype==='course'をデフォルトとして表示
-  const _onRouteDefault = (wp.onRoute !== undefined) ? (wp.onRoute !== false) : (wp.type === 'course');
+  const _onRouteDefault = _onRouteOf(wp);   // v155：種類に関係なく「道順に入っているか」
   document.getElementById('mOnRoute').checked = _onRouteDefault;
   document.getElementById('mFitBefore').checked = (wp.fitBefore !== false);
   document.getElementById('mFitAfter').checked  = (wp.fitAfter  !== false);
@@ -6044,7 +6090,7 @@ function openModal(id) {
   _modalPhotos = [...(wp.photos || [])];
   renderModalPhotos();
   const _more = document.getElementById('mMore');   // くわしい設定は、何か入っているときだけ開いておく（v148）
-  if (_more) _more.open = !!((_nameParts[1] || '').trim() || (wp.tel || '').trim() || (wp.dwell || 0) > 0 || (wp.labelDir && wp.labelDir !== 'auto') || wp.fitBefore === false || wp.fitAfter === false || wp.onRoute === false);   // 置いたときの既定（道順に入れる・道に沿う・名札は自動）から変えてあるときだけ
+  if (_more) _more.open = !!((_nameParts[1] || '').trim() || (wp.tel || '').trim() || (wp.dwell || 0) > 0 || (wp.labelDir && wp.labelDir !== 'auto') || wp.fitBefore === false || wp.fitAfter === false);   // 置いたときの既定（道順に入れる・道に沿う・名札は自動）から変えてあるときだけ
   document.getElementById('mOver').classList.add('show');
   setTimeout(()=>document.getElementById('mName').focus(), 50);
 }
@@ -6059,7 +6105,7 @@ function saveModal() {
   const wp = wps.find(w=>w.id===editId);
   if (!wp) return;
   const _oldType   = wp.type;
-  const _oldOnRoute = wp.onRoute !== false && (wp.onRoute === true || wp.type === 'course');
+  const _oldOnRoute = _onRouteOf(wp);
   wp.type  = document.getElementById('mType').value;
   const _n1 = document.getElementById('mName').value.trim();
   const _n2 = (document.getElementById('mName2')?.value||'').trim();
@@ -6186,6 +6232,7 @@ async function _captureMapCanvas() {
           '.leaflet-tooltip{box-shadow:none!important;border:none!important;opacity:1!important}',
           // WPアイコン: box-shadowを除去
           '.leaflet-marker-icon div{box-shadow:none!important}',
+          '.leaflet-marker-icon span.wp-cat{box-shadow:none!important}',
         ].join('');
         clonedDoc.head.appendChild(_fix);
         // ツールチップ背景色をインラインで確定（type別の色を適用）
@@ -6439,13 +6486,13 @@ function _sheetScale(cssWidth) {
 
 // 凡例：このコースで実際に使っている種別だけを、地図と同じ○で並べる
 function _sheetLegend() {
+  const rows = [];
+  if (wps.some(w => _isNumbered(w))) rows.push('<div class="sh-lg"><span class="sh-lgm" style="background:' + ((WT.find(x => x.v === 'spot') || WT[0]).c) + '">1</span><span>歩く順の番号（道順の地点）</span></div>');
   const used = [];
-  wps.forEach(w => { const t = w.type || 'course'; if (t !== 'node' && used.indexOf(t) < 0) used.push(t); });
-  const rows = used.map(v => {
+  wps.forEach(w => { const t = w.type; if (t === 'node' || t === 'spot' || t === 'course') return; if (used.indexOf(t) < 0) used.push(t); });
+  used.forEach(v => {
     const t = WT.find(x => x.v === v) || WT[0];
-    const sym = v === 'course' ? '1' : (SYM[v] || '●');
-    return '<div class="sh-lg"><span class="sh-lgm" style="background:' + t.c + '">' + escHtml(sym) + '</span>'
-         + '<span>' + escHtml(t.l) + '</span></div>';
+    rows.push('<div class="sh-lg"><span class="sh-lgm" style="background:' + t.c + '">' + _typeMarkHtml(v, 12) + '</span><span>' + escHtml(t.l) + '</span></div>');
   });
   rows.push('<div class="sh-lg"><span class="sh-lgline">'
     + '<svg width="27" height="10" viewBox="0 0 27 10">'
@@ -6461,9 +6508,9 @@ function _sheetHtml(imgUrl, cssWidth) {
   const time = (document.getElementById('timeDisp') || {}).textContent || '';
   const desc = ((document.getElementById('iDesc') || {}).value || '').trim();
   const spots = wps.filter(w => w.type !== 'node' && w.name && w.name.trim()).map(w => {
-    const n = w.type === 'course' ? courseNum(w) : null;
-    const mark = n ? n : (SYM[w.type] || '・');
-    return '<div class="sh-spot"><b>' + escHtml(mark) + '</b><span>' + escHtml(w.name.replace(/\n/g, ' ')) + '</span></div>';
+    const m = _markInner(w, 11);                       // 数字・S/G・種類の絵（v155）
+    const mark = m.svg ? _typeSvg(w.type, 11, (WT.find(x => x.v === w.type) || WT[0]).c) : escHtml(m.html);
+    return '<div class="sh-spot"><b>' + mark + '</b><span>' + escHtml(w.name.replace(/\n/g, ' ')) + '</span></div>';
   }).join('');
   const attr = (BASEMAPS[_baseMapId] || {}).attribution || '';
   const link = _shareLinkOf(currentCourseId);      // 配布リンクを作ってあればQRを載せる
@@ -6728,7 +6775,7 @@ function ctxConvertToWp() {
 
   // 新しいWPを作成してwpAの直後に挿入
   idW++;
-  const newWp = {id:idW, type:'course', name:'', desc:'', tel:'', dwell:0,
+  const newWp = {id:idW, type:'spot', name:'', desc:'', tel:'', dwell:0,
                  fitBefore:true, fitAfter:true,
                  lat:vp.lat, lng:vp.lng,
                  photos:[], labelDir:'auto', labelWrap:false, marker:null};
@@ -6919,11 +6966,11 @@ function showViewInfo(wpId) {
   const wp = wps.find(w => w.id === wpId);
   if (!wp) return;
   const t   = WT.find(x => x.v === wp.type) || WT[0];
-  const sym = wp.type==='course' ? (courseNum(wp)||'?') : (SYM[wp.type]||'●');
+  const catLine = (wp.type !== 'spot' && wp.type !== 'start' && wp.type !== 'goal') ? `<div class="vip-cat">${_typeSvg(wp.type, 12, t.c)}<span>${escHtml(t.l)}</span></div>` : '';
 
   let html2 = `<div class="vip-handle"></div><div class="vip-hdr">
-    <div class="vip-dot" style="background:${t.c}">${escHtml(String(sym))}</div>
-    <div class="vip-name">${escHtml(wp.name || t.l)}</div>
+    <div class="vip-dot" style="background:${t.c}">${_wpMarkHtml(wp, 18)}</div>
+    <div class="vip-name">${escHtml(wp.name || t.l)}${catLine}</div>
     ${_canSpeak() ? `<button class="vip-say tap" id="vipSay" onclick="speakSpot(${wp.id})" aria-label="読み上げ">🔊 読み上げ</button>` : ''}
     <button class="vip-close" onclick="closeViewInfo()">✕</button>
   </div>`;
@@ -7210,7 +7257,7 @@ function _thRender(){
   const box = document.getElementById('thPresets');
   box.innerHTML = THEMES.map(t => { const pal = t.pal || WT_BASE;
     return '<button type="button" class="th-card tap' + (t.id === _thEdit.preset ? ' on' : '') + '" onclick="_thPick(\'preset\',\'' + t.id + '\')">'
-      + '<span class="th-strip"><i style="background:' + t.route + '"></i>' + ['course', 'start', 'view', 'shop', 'shrine'].map(v => '<b style="background:' + (pal[v] || WT_BASE[v]) + '"></b>').join('') + '</span>'
+      + '<span class="th-strip"><i style="background:' + t.route + '"></i>' + ['spot', 'start', 'view', 'shop', 'shrine'].map(v => '<b style="background:' + (pal[v] || WT_BASE[v]) + '"></b>').join('') + '</span>'
       + '<span class="th-l">' + escHtml(t.l) + '</span><small>' + escHtml(t.n) + '</small></button>'; }).join('');
   document.getElementById('thRoute').innerHTML = THEME_ROUTE_COLORS.map(c => '<button type="button" class="th-chip' + (c.toLowerCase() === route.toLowerCase() ? ' on' : '') + '" style="background:' + c + '" onclick="_thPick(\'route\',\'' + c + '\')" aria-label="' + c + '"></button>').join('');
   document.querySelectorAll('#thDash button').forEach(b => b.classList.toggle('on', (b.getAttribute('data-v') === 'dash') === _thEdit.dash));
@@ -7346,7 +7393,7 @@ function _nbSelectAll(on){ _nb.sel = new Set(on ? _nb.cands.map(c => c.id) : [])
 function _nbRenderList(){
   const box = document.getElementById('nbList'); if (!box) return;
   box.innerHTML = _nb.cands.map(c => { const t = WT.find(x => x.v === c.type) || WT[0]; const kl = (NEARBY_KINDS.find(k => k.k === c.kind) || {}).l || '';
-    return '<button type="button" class="nb-item tap' + (_nb.sel.has(c.id) ? ' on' : '') + '" onclick="_nbToggle(\'' + c.id + '\')"><span class="nb-ck">' + (_nb.sel.has(c.id) ? '✓' : '') + '</span><span class="nb-dot" style="background:' + t.c + '">' + escHtml(String(SYM[c.type] || '●')) + '</span><span class="nb-t"><b>' + escHtml(c.name) + '</b><small>' + escHtml(kl + '・コースから ' + _fmtDistM(c.dist) + '・' + c.src) + '</small></span></button>'; }).join('');
+    return '<button type="button" class="nb-item tap' + (_nb.sel.has(c.id) ? ' on' : '') + '" onclick="_nbToggle(\'' + c.id + '\')"><span class="nb-ck">' + (_nb.sel.has(c.id) ? '✓' : '') + '</span><span class="nb-dot" style="background:' + t.c + '">' + _typeMarkHtml(c.type, 12) + '</span><span class="nb-t"><b>' + escHtml(c.name) + '</b><small>' + escHtml(kl + '・コースから ' + _fmtDistM(c.dist) + '・' + c.src) + '</small></span></button>'; }).join('');
   const n = _nb.sel.size, btn = document.getElementById('nbAdd'); if (btn) { btn.disabled = !n; btn.textContent = n ? '選んだ ' + n + ' 件を追加' : '選んだものを追加'; }
   const sa = document.getElementById('nbSelAll'); if (sa) sa.hidden = !_nb.cands.length;
 }
@@ -7945,10 +7992,7 @@ function _drawElevChart(pts, elevs) {
     rw.forEach((wp,i)=>{
       const xp=(PL+xi(wpD[i]*sc)).toFixed(1);
       // マップと同じラベル: start→S, goal→G, course→courseNum, 他→SYM先頭文字
-      const _lbl = wp.type==='start'  ? 'S' :
-                   wp.type==='goal'   ? 'G' :
-                   wp.type==='course' ? (courseNum(wp)||'?') :
-                   (SYM[wp.type]||'●').substring(0,1);
+      const _lbl = _markTxt(wp);   // v155：S・G・歩く順の数字。種類だけの地点は丸のみ
       const _fs  = String(_lbl).length > 1 ? '6.5' : '7.5';
       const _col = (WT.find(x=>x.v===wp.type)||WT[0]).c;
       wpMarks+=`<line x1="${xp}" y1="${PT}" x2="${xp}" y2="${PT+iH}" stroke="${_col}" stroke-width="1" stroke-dasharray="3,3" opacity="0.6"/>`;
@@ -8075,7 +8119,7 @@ function _drawElevBand() {
     rw.forEach((wp,i)=>{
       if (wp.type==='node') return;   // 端点nodeは高低差グラフに表示しない
       const xp=(PL+xi(wpD[i]*sc)).toFixed(1);
-      const lbl = wp.type==='start'?'S':wp.type==='goal'?'G':wp.type==='course'?(courseNum(wp)||'?'):(SYM[wp.type]||'').substring(0,1);
+      const lbl = _markTxt(wp);   // v155
       const col=(WT.find(x=>x.v===wp.type)||WT[0]).c;
       extra+=`<line x1="${xp}" y1="${PT}" x2="${xp}" y2="${PT+iH}" stroke="${col}" stroke-width="1" stroke-dasharray="3,3" opacity="0.5"/>`;
       extra+=`<circle cx="${xp}" cy="${PT}" r="${mr}" fill="${col}"/>`;
@@ -8326,7 +8370,8 @@ function loadCourseData(data) {
         labelDir:  (w.labelDir && w.labelDir !== 'top') ? w.labelDir : 'auto',
         labelWrap: !!w.labelWrap,
         // onRoute: 保存値を尊重。旧データはtype===courseをデフォルト
-        onRoute:   w.onRoute !== undefined ? w.onRoute !== false : w.type === 'course',
+        type:      _normType(w.type),                                           // v155：旧 'course' → 'spot'
+        onRoute:   w.onRoute !== undefined ? w.onRoute !== false : (w.type === 'course' || w.type === 'spot'),
         photos:    w.photos    || [],
         marker:    null
       };
@@ -8514,7 +8559,7 @@ function parseGpx(text, fallbackName){
     const lat = _gpxNum(el, 'lat'), lng = _gpxNum(el, 'lon');
     if (lat === null || lng === null) return;
     const type = _gpxText(el, 'type');
-    wps.push({ id: ++id, type: known.indexOf(type) >= 0 ? type : 'course',
+    wps.push({ id: ++id, type: known.indexOf(type) >= 0 ? _normType(type) : 'spot',
                name: _gpxText(el, 'name'), desc: _gpxText(el, 'desc'), tel: '', dwell: 0,
                fitBefore: true, fitAfter: true, onRoute: true,
                lat: lat, lng: lng, labelDir: 'auto', photos: [] });
@@ -8564,7 +8609,7 @@ function _escXml(s) {
 }
 function _gpxWptName(w) {
   if (w.name && w.name.trim()) return w.name.trim().replace(/\n/g, ' ');
-  if (w.type === 'course') { const n = courseNum(w); return n ? ('地点' + n) : '地点'; }
+  if (_isNumbered(w)) { const n = courseNum(w); return n ? ('地点' + n) : '地点'; }
   const t = WT.find(x => x.v === w.type);
   return (t && t.l) || '地点';
 }
@@ -8577,7 +8622,7 @@ function buildGpx() {
       '  <wpt lat="' + Number(w.lat).toFixed(6) + '" lon="' + Number(w.lng).toFixed(6) + '">\n'
     + '    <name>' + _escXml(_gpxWptName(w)) + '</name>\n'
     + (w.desc ? '    <desc>' + _escXml(w.desc) + '</desc>\n' : '')
-    + '    <type>' + _escXml(w.type || 'course') + '</type>\n'
+    + '    <type>' + _escXml(w.type || 'spot') + '</type>\n'
     + '  </wpt>').join('\n');
   const trkpts = (coords || []).map(c =>
       '      <trkpt lat="' + Number(c[0]).toFixed(6) + '" lon="' + Number(c[1]).toFixed(6) + '"></trkpt>').join('\n');

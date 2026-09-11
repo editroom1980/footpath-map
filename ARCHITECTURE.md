@@ -381,3 +381,8 @@ CONSTANTS(904) → STATE(968) → STORAGE(1015) → 版のお知らせ(1021) →
 - 未保存フラグ `_dirty` を立てるのは `_markDirty()` だけ（`saveSnapshot()` と、スナップショットを取らない設定変更）。立てると `AUTOSAVE_MS` 後に `saveCourse({quiet:true})`。
 - 保存できないとき（容量いっぱい）は `_saveState='error'` でボタンが赤くなり、`_dirty` は残る。閲覧中・コース名なし・`window.__noAutoSave`（検査）では予約しない。
 - `_persistDerivedQuietly()`（道順・標高の静かな書き戻し）は `_dirty` が消えたあとにだけ働くので、自動保存と競合しない。
+
+## 番号と種類（v155）
+- `wp.type` は種類だけ（`spot`＝種類なし）。歩く順の番号は `_isNumbered(wp)`＝start/goal/node 以外で道順に入っている（`_onRouteOf`）もの。`courseNum` はその並び順。
+- 印の中身は `_markInner(wp, px)`（S／G／数字／種類の絵 `TYPE_ICON`）。文字だけの場面は `_markTxt(wp)`。凡例・種類の選択は `_typeMarkHtml(type)`。
+- 旧データの `type:'course'` は `_normType()` で `spot` に読み替える（`LEGACY_TYPE`）。保存は新しい名前で書く。

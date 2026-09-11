@@ -428,13 +428,20 @@ def static_checks(src):
     # --- v128: スポットを置くのを1タップに（ロードマップ 段階1-4）---
     _omc = src[src.index('function onMapClick(e) {'):src.index('function onMapClick(e) {') + 1200]
     chk('静的', '地図タップで即「コースポイント」として置く（選択画面も編集画面も開かない）',
-        "addWp(e.latlng.lat, e.latlng.lng, 'course');" in _omc and 'showWpTypePicker(e.latlng' not in _omc and 'openModal(' not in _omc)
+        "addWp(e.latlng.lat, e.latlng.lng, 'spot');" in _omc and 'showWpTypePicker(e.latlng' not in _omc and 'openModal(' not in _omc)
     chk('静的', '編集画面の種別は「よく使う4つを大きく、残りは畳む」',
-        "const TYPE_BIG = ['course', 'view', 'history', 'shop']" in src and 'id="mTypeChips"' in src and 'function _renderTypeChips' in src
+        "const TYPE_BIG = ['spot', 'view', 'history', 'shop']" in src and 'id="mTypeChips"' in src and 'function _renderTypeChips' in src
         and '#mType{display:none}' in src)
     chk('静的', '選べる種類の出どころは _buildTypeOptions のまま（チップは select を読む）',
         "const cur = sel.value, opts = [...sel.options].map(o => o.value);" in src and 'function _buildTypeOptions' in src)
     chk('静的', '最初の案内が「種類と名前はあとから」を伝える', '種類と名前は、○を押してあとから決められます' in src)
+    # --- v155: 番号と種類の分離・漢字の印をやめて絵に（オーナー指示）---
+    chk('静的', '種類の絵（TYPE_ICON）があり、漢字の印（学・公・碑・WC）は無い。旧 course は spot に読み替える',
+        'const TYPE_ICON = {' in src and all(k + ':' in src.split('const TYPE_ICON = {')[1].split('};')[0] for k in ('view','shop','shrine','history','park','school','hall','toilet','parking','other'))
+        and "const SYM = {" not in src and "LEGACY_TYPE = {course:'spot'}" in src and "type:      _normType(w.type)," in src)
+    chk('静的', '番号は種類と別（_isNumbered＝道順に入っていれば付く）。印は数字＋種類の小さな絵、凡例は「歩く順の番号」＋種類', 
+        'function _isNumbered' in src and 'function _catBadge' in src and '歩く順の番号（道順の地点）' in src and 'const list = wps.filter(w => _isNumbered(w));' in src)
+    chk('静的', 'スポットの編集：番号のスイッチ（道順に入れる）を上に出す', 'class="m-switch"' in src and src.index('id="mOnRoute"') < src.index('id="mName"'))
     # --- v154: ノッチ／ステータスバーに重ならない（致命的・オーナー指摘）---
     chk('静的', 'ホーム画面のアプリでステータスバーが画面に重ならない（viewport-fit=cover 無し・status-bar は default）。配布シートは安全域ぶん空け、外側タップと Esc で閉じる',
         'viewport-fit=cover' not in src and 'content="default"' in src and 'padding:calc(16px + env(safe-area-inset-top)) 16px' in src
@@ -623,7 +630,7 @@ def static_checks(src):
         and "b.textContent = '元に戻す';" in src)
     # --- v129: 種別の追加（学校・幼稚園／公民館・集会所）と、大きく出す4つの入れ替え ---
     chk('静的', '種別に学校・幼稚園と公民館・集会所がある（○の記号つき）',
-        "v:'school',  l:'学校・幼稚園'" in src and "v:'hall',    l:'公民館・集会所'" in src and "school:'学'" in src and "hall:'公'" in src)
+        "v:'school',  l:'学校・幼稚園'" in src and "v:'hall',    l:'公民館・集会所'" in src and "school:  {d:" in src and "hall:    {d:" in src)   # v155: 絵に
     # --- v127: 開くのを速く（道順と標高を同梱し、開くときは経路サーバも標高サーバも呼ばない）---
     chk('静的', '書き出し専用の2ライブラリは後回しで読む（Leaflet は先）',
         '<script defer src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas' in src
@@ -1754,7 +1761,7 @@ def functional_checks(index_path):
               const pk = document.getElementById('wpTypePicker');
               if (_wpPickerLatlng !== null || (pk && getComputedStyle(pk).display !== 'none')) switches++;
             }
-            const added = wps.length - n0, allCourse = wps.slice(n0).every(w => w.type === 'course');
+            const added = wps.length - n0, allCourse = wps.slice(n0).every(w => w.type === 'spot');
             const w = wps[wps.length - 1]; openModal(w.id);
             const bigs = [...document.querySelectorAll('#mTypeChips .tc-chip.big')].map(b => b.textContent.trim());
             const restHidden = !document.querySelector('#mTypeChips .tc-row.rest');
@@ -1773,8 +1780,8 @@ def functional_checks(index_path):
           }catch(e){ return 'ERR:'+e.message; } }""")
         chk('機能', '10個置くのに画面切替0回。編集画面は4つ大きく、残りは畳んだ中から選べる',
             isinstance(pl, dict) and pl.get('added') == 10 and pl.get('allCourse') and pl.get('switches') == 0
-            and pl.get('bigs') == ['1コースポイント', '◎ビュースポット', '碑史跡・記念碑', '★飲食店・ショップ ★'] and pl.get('restHidden')
-            and pl.get('restN', 0) >= 5 and pl.get('selVal') == 'parking' and pl.get('onChip') == 'P駐車場' and pl.get('savedType') == 'parking',
+            and pl.get('bigs') == ['1地点', 'ビュースポット', '史跡・記念碑', '飲食店・ショップ'] and pl.get('restHidden')
+            and pl.get('restN', 0) >= 5 and pl.get('selVal') == 'parking' and pl.get('onChip') == '駐車場' and pl.get('savedType') == 'parking',
             str(pl)[:260])
 
         # v130: コースを削除すると「元に戻す」が出て、押すと同じ位置・同じ中身で戻る。10秒たつと確定
@@ -2079,7 +2086,7 @@ def functional_checks(index_path):
             // 種別の並び：駐車場を2つ置くと畳んだ側の先頭になる
             const p1 = addWp(35.1529, 134.4459, 'parking'), p2 = addWp(35.1531, 134.4461, 'parking');
             openModal(p1.id); document.querySelector('#mTypeChips .tc-more').click();
-            out.order = (document.querySelector('#mTypeChips .tc-row.rest .tc-chip') || {}).textContent.trim() === 'P駐車場';
+            out.order = (document.querySelector('#mTypeChips .tc-row.rest .tc-chip') || {}).textContent.trim() === '駐車場';
             closeModal();
             // 後片付け
             wps.slice().forEach(x => { if (!keepW.includes(x) && x.marker) leafMap.removeLayer(x.marker); });
@@ -2089,6 +2096,25 @@ def functional_checks(index_path):
           }catch(e){ return 'ERR:'+e.message; } }""")
         chk('機能', 'スポット削除の「元に戻す」が戻し、別の操作の後は案内し、通知は重ならず、種別はこのコースで使った順',
             isinstance(b1, dict) and all(b1.get(k) for k in ('gone', 'toast', 'back', 'guarded', 'stacked', 'order')), str(b1)[:220])
+
+        # v155: 道順に入った神社は番号＋鳥居の小さな絵、外すと鳥居だけ。帯の文字は①。凡例に番号の行と種類の行
+        nm = page.evaluate("""()=>{ try{
+            const keepU = undoStack.length, keepD = _dirty, n0 = wps.length;
+            const c = leafMap.getCenter();
+            const w = addWp(c.lat + 0.001, c.lng + 0.001, 'shrine'); w.name = '検査の神社'; w.onRoute = true; refreshIcons(); updateTooltip(w);
+            const el = w.marker.getElement();
+            const out = {numbered: _isNumbered(w) && /^\\d+$/.test((el.querySelector('.wp-mk') || {}).firstChild ? el.querySelector('.wp-mk').firstChild.textContent : ''), badge: !!el.querySelector('.wp-cat svg'), label: /^[①-⑳]/.test(_spotLabel(w))};
+            w.onRoute = false; refreshIcons(); const el2 = w.marker.getElement();
+            out.iconOnly = !_isNumbered(w) && !!el2.querySelector('.wp-mk.svg svg') && !el2.querySelector('.wp-cat') && !/^[①-⑳]/.test(_spotLabel(w));
+            const lg = _sheetLegend(); out.legend = lg.indexOf('歩く順の番号') >= 0 && lg.indexOf('<svg') >= 0 && lg.indexOf('神社・寺院') >= 0;
+            out.oldType = _normType('course') === 'spot' && _normType('view') === 'view';
+            deleteWp(w.id); undoStack.length = keepU; _dirty = keepD; refreshIcons(); redrawList(); closeViewInfo();
+            document.querySelectorAll('#undoToast, #toastBox .toast').forEach(e => e.remove());
+            out.back = wps.length === n0;
+            return out;
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        chk('機能', '番号と種類の分離：道順の神社は数字＋小さな鳥居、外すと鳥居だけ。帯は①、凡例に番号と種類、旧 course は spot',
+            isinstance(nm, dict) and all(nm.get(k) for k in ('numbered', 'badge', 'label', 'iconOnly', 'legend', 'oldType', 'back')), str(nm)[:240])
 
         # v152: 作る人のメニューには「コースのことを書く」、歩く人には心得・情報の行
         wr = page.evaluate("""()=>{ try{
@@ -2178,12 +2204,12 @@ def functional_checks(index_path):
         # v145: テーマ：適用で印・線・凡例の色が変わり、実線・太さも効き、保存に入り、標準に戻る
         th = page.evaluate("""()=>{ try{
             const keepT = courseInfo.theme || null, keepD = _dirty, keepLRC = _lastRouteCoords;
-            const cw = wps.find(w => w.type === 'course') || wps.find(w => w.type !== 'node');
+            const cw = wps.find(w => w.type === 'spot') || wps.find(w => w.type !== 'node');
             applyTheme(null); const w0 = _routeWeight(), c0 = (WT.find(t => t.v === cw.type) || {}).c;
             applyTheme({preset:'mono', dash:false, width:'thick'});
-            const out = {color: WT.find(t => t.v === 'course').c === '#222222' && LINE_STYLE.color === '#222222', solid: _routeDash() === null, thick: Math.abs(_routeWeight() / w0 - 1.4) < 0.01,
+            const out = {color: WT.find(t => t.v === 'spot').c === '#222222' && LINE_STYLE.color === '#222222', solid: _routeDash() === null, thick: Math.abs(_routeWeight() / w0 - 1.4) < 0.01,
                          legend: _sheetLegend().indexOf('#222222') >= 0, icon: (function(){ const el = cw.marker && cw.marker.getElement(); return !el || el.innerHTML.indexOf('#222222') >= 0; })(), name: _themeName() === '白黒（実線・太）'};
-            applyTheme({preset:'aki', route:'#1976D2'}); out.custom = LINE_STYLE.color === '#1976D2' && WT.find(t => t.v === 'course').c === '#BF360C' && _themeName() === '秋（線の色）';
+            applyTheme({preset:'aki', route:'#1976D2'}); out.custom = LINE_STYLE.color === '#1976D2' && WT.find(t => t.v === 'spot').c === '#BF360C' && _themeName() === '秋（線の色）';
             courseInfo.theme = {preset:'aki', route:'#1976D2', dash:true, width:'std'}; out.saved = buildCurrentSaveData().theme.preset === 'aki' && buildCurrentSaveData().theme.route === '#1976D2';
             courseInfo.theme = null; out.omit = buildCurrentSaveData().theme === undefined;
             applyTheme(null); out.back = (WT.find(t => t.v === cw.type) || {}).c === c0 && LINE_STYLE.color === '#E84040' && _routeDash() !== null && Math.abs(_routeWeight() - w0) < 0.01 && _sheetLegend().indexOf('#E84040') >= 0;
