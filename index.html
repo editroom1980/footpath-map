@@ -276,6 +276,19 @@ html,body{touch-action:manipulation;min-height:calc(100% + var(--sat));font-fami
 #crFinishBar{display:none;position:fixed;top:calc(50px + var(--sat));left:50%;transform:translateX(-50%);background:#fff;border:1.5px solid #1565C0;border-radius:8px;padding:6px 14px;z-index:2000;gap:10px;align-items:center;box-shadow:0 2px 12px rgba(0,0,0,.2)}
 #crFinishBar.show{display:flex}
 .vp-hold{border-radius:50%;background:var(--brand);border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.45)}   /* 道を変更：つかんでいる点（v169） */
+/* スポットを置く確認（v171） */
+.wp-ghost{border-radius:50%;background:var(--brand);opacity:.55;border:3px dashed #fff;box-shadow:0 2px 10px rgba(0,0,0,.4);animation:wpGhost 1.2s ease-in-out infinite}
+@keyframes wpGhost{0%,100%{transform:scale(1)}50%{transform:scale(1.14)}}
+@media (prefers-reduced-motion:reduce){.wp-ghost{animation:none}}
+#addWpDlg{display:none;position:fixed;left:50%;transform:translateX(-50%);bottom:calc(96px + var(--sab));width:min(360px,calc(100% - 24px));z-index:4500;background:#fff;border-radius:16px;padding:14px 16px 12px;box-shadow:0 8px 30px rgba(0,0,0,.3)}
+#addWpDlg.show{display:block}
+#addWpDlg .aw-t{font-size:15px;font-weight:800;color:#231C14}
+#addWpDlg .aw-d{font-size:11.5px;color:var(--t-sub);margin-top:5px;line-height:1.55}
+#addWpDlg .aw-b{display:flex;gap:8px;margin-top:12px}
+#addWpDlg .aw-b button{flex:1;min-height:var(--tap);border:none;border-radius:11px;font-family:inherit;font-size:15px;font-weight:800;cursor:pointer}
+#addWpDlg .aw-no{background:#EEE5D8;color:#4A2E0E}
+#addWpDlg .aw-yes{background:var(--brand-grad);color:#fff}
+body.viewing #addWpDlg,body.viewonly #addWpDlg{display:none!important}
 /* 場所を動かす（v164） */
 #moveBar{display:none;position:fixed;top:calc(60px + var(--sat));left:50%;transform:translateX(-50%);width:min(560px,calc(100% - 24px));z-index:1400;background:#fff;border:2px solid var(--brand);border-radius:14px;padding:10px 12px;box-shadow:0 6px 24px rgba(0,0,0,.25);gap:10px;align-items:center;flex-wrap:wrap}
 #moveBar.show{display:flex}
@@ -1260,7 +1273,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
       <div id="firstTip" role="dialog" aria-label="はじめかた">
         <button type="button" class="ft-x tap" onclick="closeStartChooser()" aria-label="閉じる">×</button>
         <div class="ft-t">まっさらな地図です。<br>どれから始めますか？</div>
-        <button type="button" class="ft-opt tap" onclick="startChoose('tap')"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11a3 3 0 1 0 6 0a3 3 0 0 0 -6 0" /><path d="M17.657 16.657l-4.243 4.243a2 2 0 0 1 -2.827 0l-4.244 -4.243a8 8 0 1 1 11.314 0" /></svg><b>地図をタップして置く</b><small>置いた場所は道に沿ってつながります。種類と名前は、○を押してあとから決められます。道順を変えたいときは「道を変更」で赤い線を引っぱります。</small></button>
+        <button type="button" class="ft-opt tap" onclick="startChoose('tap')"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11a3 3 0 1 0 6 0a3 3 0 0 0 -6 0" /><path d="M17.657 16.657l-4.243 4.243a2 2 0 0 1 -2.827 0l-4.244 -4.243a8 8 0 1 1 11.314 0" /></svg><b>地図を長押しして置く</b><small>置いた場所は道に沿ってつながります。種類と名前は、○を押してあとから決められます。道順を変えたいときは「道を変更」で赤い線を引っぱります。</small></button>
         <button type="button" class="ft-opt tap" onclick="startChoose('draw')"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 19a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" /><path d="M19 7a2 2 0 1 0 0 -4a2 2 0 0 0 0 4" /><path d="M11 19h5.5a3.5 3.5 0 0 0 0 -7h-8a3.5 3.5 0 0 1 0 -7h4.5" /></svg><b>指でなぞって描く</b><small>歩く道を指でなぞると、そのとおりにコースになります</small></button>
         <button type="button" class="ft-opt tap" onclick="startChoose('nearby')"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/><path d="M8.5 11h5"/><path d="M11 8.5v5"/></svg><b>周辺の情報を取り込む</b><small>地図の周りのお店・神社・史跡・バス停などを探して、選んだものを置きます</small></button>
         <div class="ft-n">あとからでも、下の道具とメニューで同じことができます</div>
@@ -1666,6 +1679,12 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
 <!-- 場所を動かす（v164）：タップした所へ、または地図をずらして真ん中の印を合わせて「ここに置く」 -->
 <div id="moveBar" role="status"><span class="mv-t">置きたい場所をタップ。または地図をずらして、真ん中の印を合わせる</span><span class="mv-acts"><button type="button" class="mv-b" onclick="_moveCancel()">やめる</button><button type="button" class="mv-b go" onclick="_moveHere()">ここに置く</button></span></div>
 <div id="movePin" aria-hidden="true"></div>
+<!-- スポットを置く確認（v171）：長押しした場所に薄い○を出して「ここに置く」か聞く -->
+<div id="addWpDlg" role="dialog" aria-label="スポットを置く">
+  <div class="aw-t">ここにスポットを追加しますか？</div>
+  <div class="aw-d">歩く順の番号が付き、道順もつながります（あとで「取消」で戻せます）</div>
+  <div class="aw-b"><button type="button" class="aw-no tap" onclick="_closeAddWp()">やめる</button><button type="button" class="aw-yes tap" onclick="addWpHere()">追加する</button></div>
+</div>
 <div id="crFinishBar">
   <span style="font-size:11px;color:#1565C0;font-weight:bold">🛤 道路描画中 — クリックで点を追加</span>
 </div>
@@ -1680,7 +1699,8 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
     <div class="help-section">
       <h3>📍 スポットを置く・直す</h3>
       <ul>
-        <li>地図をクリック／タップ → その場に「コースポイント」が置かれます（番号は自動・道順も自動）</li>
+        <li>スマホ：置きたい場所を**長押し** → 「ここにスポットを追加しますか？」→「追加する」（うっかり置かないように確認します）</li>
+        <li>PC：地図をクリック → その場に置かれます（番号は自動・道順も自動）</li>
         <li>○をクリック／タップ → 種類・名前・写真・説明を直します（電話・滞在時間などは「くわしい設定」。削除もここ）</li>
         <li>左の一覧（PC）や「スポットの並べ替え」（スマホ）で順番を変えると、道順も付いてきます</li>
         <li>「周辺の情報を取り込む」（PC：その他／スマホ：メニュー）で、お店・史跡・学校などを地図から探して置けます</li>
@@ -1840,6 +1860,7 @@ const GUIDE_CAUTIONS = {car:'車が多い', slip:'滑りやすい', nosignal:'�
 const GUIDE_AHEAD_M  = 120;   // 帯で知らせ始める距離
 const GUIDE_HERE_M   = 20;    // これ以内で「ここを左」
 const GUIDE_PASSED_M = 25;    // これだけ過ぎたら「この道で合っています」
+const WP_ADD_HOLD_MS = 450, WP_ADD_MOVE_PX = 10;   // スポットを置く（v171）：指で押さえる時間／動いたとみなす距離。うっかり置かないように
 const LINE_HOLD_MS = 450, LINE_HIT_PX = 16, LINE_GRAB_PX = 22, LINE_MOVE_PX = 6;   // 道を変更（v169）：動かさず押さえて設定が開くまでの時間／線とみなす幅／既にある点をつかむ距離／動いたとみなす距離
 const ROUTE_SOLID_Z = 15;     // これより広域では道順の線を実線・三角なしで描く（v169：破線が崩れて見えるため）
 /* 曲がり角の案内（v167・Footpath のキューシートに倣う）：経路サーバの steps から、曲がる所だけを拾う */
@@ -2062,6 +2083,7 @@ let hitOverlays = [];      // per-segment hit overlays — prevents segment misa
 let viaVisible  = false;   // v169：描いた道の点（node）も見せない（オーナー指示「点は存在するが見えないものに」）。通り道の点は _vpVisibleAt が決める
 let _moveWp = null;        // 「場所を動かす」中のスポット（v164）。null なら動かしていない
 let _hold = null, _holdHintShown = false, _viaTapHint = false;   // 道を変更の長押し（v169）
+let _wpAdd = null, _lastTouchAt = 0, _tapHintAt = 0;   // スポットを置く確認（v171）
 let _vpDragged  = false;   // 調整点ドラッグ直後フラグ（クリックでメニューを開かないため）
 let _vpLastDragEnd = 0;    // 調整点を最後にドラッグした時刻（直後のクリック誤判定を防ぐ）
 let mode        = 'wp';
@@ -2623,6 +2645,7 @@ window.addEventListener('DOMContentLoaded', () => {
   if (e.key === 'Escape' && document.getElementById('elevDetailPanel')?.style.display === 'block') {
     closeElevModal(); return;
   }
+    if (e.key === 'Escape' && _wpAdd) { _closeAddWp(); return; }   // v171
     if (e.key === 'Escape' && _moveWp) { _moveCancel(); return; }   // v164
     if (e.key === 'Escape') { hideCtxMenu(); hideWpPicker(); return; }
     if ((e.metaKey || e.ctrlKey) && e.key === 'z') {
@@ -2808,6 +2831,7 @@ function initMap() {
   _loadCustom(); _renderCustom();   // 細道（手描きの道）を読込・描画
   leafMap.on('click', onMapClick);
   _initLineHold();                        // 道を変更：赤い線の長押し（v169）
+  _initWpAddHold();                       // スポット：長押し→確認して置く（v171）
   leafMap.on('movestart', hideCtxMenu);
   leafMap.on('zoomend', _customScaleWeights);
   leafMap.on('zoomend', () => { if (typeof scheduleAutoLabels === 'function') scheduleAutoLabels(); });
@@ -2938,7 +2962,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v170';
+const APP_VERSION = 'v171';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -3500,6 +3524,7 @@ function onMapClick(e) {
   if (document.getElementById('mOver')?.classList.contains('show')) return;
   if (mode==='wp') {
     if (_wpPickerLatlng !== null) { hideWpPicker(); return; } // ピッカー表示中は閉じて終了
+    if (Date.now() - _lastTouchAt < 900) { _tapWpHint(); return; }   // v171：指でタップしただけでは置かない（長押し→確認）
     // 1タップで置く（v128）：まず「コースポイント」として置く。種類と名前は○を押してあとから
     addWp(e.latlng.lat, e.latlng.lng, 'spot');
     if (_placeHintCount < 2) { _placeHintCount++; showToast('置きました。○を押すと種類と名前を変えられます'); }
@@ -3649,7 +3674,7 @@ function startChoose(k) {
   closeStartChooser();
   if (k === 'draw') { setMode('draw'); return; }
   if (k === 'nearby') { openNearbySheet(); return; }
-  setMode('wp'); showToast('地図をタップすると、そこにスポットが置けます');
+  setMode('wp'); showToast('置きたい場所を長押しすると、スポットを置けます');
 }
 
 /* ============================================================
@@ -5117,6 +5142,45 @@ function _syncMapDrag(){
   const lock = (mode === 'via' && !viewMode) || _drawActive || !!(_hold && _hold.active);
   try { if (lock) leafMap.dragging.disable(); else leafMap.dragging.enable(); } catch(_) {}
 }
+/* スポットを置く（v171・オーナー指摘「タップで即追加されてルートも変わる」）：
+   指では**長押し（WP_ADD_HOLD_MS）→確認**してから置く。PC のクリックは今までどおりすぐ置く（マウスは狙って押せるため） */
+function _tapWpHint(){ const n = Date.now(); if (n - _tapHintAt < 4000) return; _tapHintAt = n; showToast('置きたい場所を長押しすると、スポットを置けます'); }
+function _initWpAddHold(){
+  const el = leafMap && leafMap.getContainer(); if (!el || el._wpAddInit) return; el._wpAddInit = true;
+  let t = null, x0 = 0, y0 = 0, pid = null;
+  const cancel = () => { if (t) { clearTimeout(t); t = null; } pid = null; };
+  el.addEventListener('pointerdown', e => {
+    if (e.pointerType === 'mouse') return;
+    _lastTouchAt = Date.now();
+    cancel();
+    if (mode !== 'wp' || viewMode || _drawActive || _customMode_ || _moveWp || _wpAdd) return;
+    if (e.target && e.target.closest && e.target.closest('.leaflet-marker-icon, .leaflet-control, #ctxMenu, #wpTypePicker, .leaflet-popup')) return;
+    if (document.getElementById('mOver')?.classList.contains('show')) return;
+    x0 = e.clientX; y0 = e.clientY; pid = e.pointerId;
+    t = setTimeout(() => { t = null; _askAddWp(leafMap.mouseEventToLatLng({clientX: x0, clientY: y0})); }, WP_ADD_HOLD_MS);
+  });
+  document.addEventListener('pointermove', e => { if (pid === null || e.pointerId !== pid) return; _lastTouchAt = Date.now(); if (Math.hypot(e.clientX - x0, e.clientY - y0) > WP_ADD_MOVE_PX) cancel(); });
+  const up = e => { if (pid !== null && e.pointerId === pid) { _lastTouchAt = Date.now(); cancel(); } };
+  document.addEventListener('pointerup', up); document.addEventListener('pointercancel', up);
+}
+function _askAddWp(ll){
+  if (!ll || _wpAdd) return;
+  try { if (navigator.vibrate) navigator.vibrate(12); } catch(_) {}
+  const sz = _wpSize()[0];
+  const m = L.marker(ll, {icon: L.divIcon({className:'', html:`<div class="wp-ghost" style="width:${sz}px;height:${sz}px"></div>`, iconSize:[sz,sz], iconAnchor:[sz/2,sz/2]}), interactive:false, zIndexOffset:3000}).addTo(leafMap);
+  _wpAdd = {ll, marker: m};
+  const dlg = document.getElementById('addWpDlg'); if (dlg) dlg.classList.add('show');
+}
+function _closeAddWp(){
+  if (_wpAdd) { try { leafMap.removeLayer(_wpAdd.marker); } catch(_) {} _wpAdd = null; }
+  const dlg = document.getElementById('addWpDlg'); if (dlg) dlg.classList.remove('show');
+}
+function addWpHere(){
+  const a = _wpAdd; if (!a) return;
+  _closeAddWp();
+  addWp(a.ll.lat, a.ll.lng, 'spot');
+  showToast('置きました。○を押すと種類と名前を変えられます（「取消」で戻せます）');
+}
 function _initLineHold(){
   const el = leafMap && leafMap.getContainer(); if (!el || el._holdInit) return; el._holdInit = true;
   el.addEventListener('pointerdown', e => {
@@ -6337,6 +6401,7 @@ function _buildTypeOptions(wp) {
 // 全ての設定ウィンドウ/ポップアップを閉じる（排他制御用）
 function _closeAllPopups(except) {
   if (_moveWp) _moveCancel();          // 場所を動かす途中なら、やめる（v164）
+  if (_wpAdd) _closeAddWp();           // スポットを置く確認の途中なら、やめる（v171）
   if (except !== 'modal'  && typeof closeModal       === 'function') { const m=document.getElementById('mOver'); if (m && m.classList.contains('show')) closeModal(); }
   if (except !== 'ctx'    && typeof hideCtxMenu       === 'function') hideCtxMenu();
   if (except !== 'picker' && typeof hideWpPicker      === 'function') hideWpPicker();
@@ -6959,6 +7024,7 @@ async function saveSheetAsImage() {
    ============================================================ */
 function setMode(m) {
   if (_moveWp) _moveCancel();          // v164
+  if (_wpAdd) _closeAddWp();           // v171
   if (_customMode_) { _customMode_=false; _customTraceMode=false; _activeHandle=null; exitDrawMode(); _setMarkersClickable(true); _showDrawBar(false); _renderCustom(); _syncCustomMenu(); }
   // なぞり描きモードからの離脱時は必ず終了処理
   if (mode === 'draw' && m !== 'draw') exitDrawMode();
@@ -6974,14 +7040,14 @@ function setMode(m) {
   // なぞり描きモードへの遷移時は開始処理
   if (m === 'draw') { _customTraceMode=false; enterDrawMode(); }
   const msgs = {
-    'wp':       'クリックでスポットを追加',
+    'wp':       'クリックでスポットを追加（スマホは長押し）',
     'via':      '道を変更：赤い線を引っぱると道順が曲がる（地図は固定）',
     'draw':     '指でなぞって描く：地図をなぞるとコースになる',
     'road':     '道を描いています：クリックで点を追加',
     'road-edit':'道を編集中：点をドラッグで移動／右クリックで削除',
   };
   const long = {
-    'wp':       'クリックでスポットを追加／赤いルート線をドラッグすると道順を変えられます',
+    'wp':       'クリックでスポットを追加（スマホは長押しして確認）／道順を変えるときは「道を変更」',
     'via':      '赤い線を引っぱると、そこを通るように道順が変わります。この間は地図が固定されます。線を動かさず押さえて離すと、その点の設定（分岐の案内・消す）が開きます',
     'draw':     '地図を指でなぞるとコースを描けます',
     'road':     'クリックで点を追加し、完了ボタンで確定します',

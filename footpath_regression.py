@@ -447,6 +447,11 @@ def static_checks(src):
     # --- v157: 番号の丸と種類の丸を横に並べる（オーナー指摘：iPhone で片方しか見えない）---
     chk('静的', '番号つきで種類がある地点：地図は「種類の丸＋右上に番号の小丸」、一覧・並べ替え・配布シート・カードは番号と種類を並べて出す',
         'class="wp-num"' in src and 'class="wp-dot cat"' in src and 'class="ro-badge cat"' in src and 'class="sh-cat"' in src and 'class="vip-dot vip-dot2"' in src and '_catBadge' not in src and 'wp-pair' not in src)
+    # --- v171: スポットは長押し→確認してから置く（オーナー指摘「タップで即追加される」）---
+    chk('静的', 'スマホは長押し→「ここにスポットを追加しますか？」→追加する。タップでは置かず案内を出す。PC のクリックは今までどおり',
+        'function _initWpAddHold' in src and 'function _askAddWp' in src and 'function addWpHere' in src and 'id="addWpDlg"' in src and 'ここにスポットを追加しますか？' in src
+        and 'const WP_ADD_HOLD_MS = 450' in src and 'if (Date.now() - _lastTouchAt < 900) { _tapWpHint(); return; }' in src and 'class="wp-ghost"' in src
+        and '<b>地図を長押しして置く</b>' in src and 'body.viewing #addWpDlg,body.viewonly #addWpDlg{display:none!important}' in src)
     # --- v169: メニュー整理・スポットを左端・「道を変更」（線の長押し→引っぱる）・通り道の点は見えない・道に沿わせる ---
     chk('静的', 'メニュー：項目ごとに絵、短い言葉、「詳細」（説明なし）。「通り道の点を表示」は廃止。道を変更＝線の長押し（_initLineHold）。通り道の点は引きずれず、案内の無い点は見えない',
         src.count('class="mm-ic"') >= 14 and 'mm-map-l">コースの説明を書く<' in src and 'mm-map-l">順番・逆回り・周回<' in src and 'mm-map-l">色・シール・文字<' in src and '>詳細<i>' in src
@@ -1770,7 +1775,7 @@ def functional_checks(index_path):
         page.evaluate("()=>{ leafMap.invalidateSize(); }")
         chk('機能', 'PC（1024px）：文字なしボタン0・同じ文字のボタン0・上バー1行、道具3群とポップオーバーが動く',
             isinstance(pc3, dict) and pc3.get('noText') == [] and pc3.get('dup') == [] and pc3.get('nBtn', 0) >= 8
-            and pc3.get('hdrH', 99) <= 60 and pc3.get('railIn') and pc3.get('hint') == 'クリックでスポットを追加'
+            and pc3.get('hdrH', 99) <= 60 and pc3.get('railIn') and pc3.get('hint') == 'クリックでスポットを追加（スマホは長押し）'
             and pc3.get('popMapOpen') and pc3.get('bm') == 'gsi_photo' and pc3.get('pill') == '航空写真'
             and pc3.get('legendOpen') and pc3.get('legendRows', 0) >= 2 and pc3.get('moreOpen') and pc3.get('moreRows') == 11
             and pc3.get('manualFlip') and pc3.get('hintVia') == '道を変更：赤い線を引っぱると道順が曲がる（地図は固定）'
@@ -2438,6 +2443,35 @@ def functional_checks(index_path):
           }catch(e){ return 'ERR:'+e.message; } }""")
         chk('機能', '高低差のなぞり：距離→標高・勾配・位置、帯をなぞると見出し・地図の印・縦線、離してもしばらく残る、消える、勾配の面',
             isinstance(scr, dict) and all(scr.get(k) for k in ('point', 'ends', 'scrub', 'held', 'cleared', 'grade')), str(scr)[:240])
+
+        # v171: スポットを置く：指のタップでは置かない／長押しで確認が出る／やめる／追加する／取消で戻る
+        aw = page.evaluate("""async ()=>{ try{
+            const keepMode = mode, keepU = undoStack.length, keepD = _dirty, keepV = viewMode, n0 = wps.length; viewMode = false; setMode('wp'); _closeAddWp();
+            const el = leafMap.getContainer(), r = el.getBoundingClientRect(), x = r.width * 0.5, y = r.height * 0.45;
+            const pe = (type, dx, dy) => new PointerEvent(type, {clientX: r.left + x + dx, clientY: r.top + y + dy, pointerId: 3, pointerType: 'touch', isPrimary: true, bubbles: true, cancelable: true});
+            const wait = ms => new Promise(res => setTimeout(res, ms));
+            const out = {};
+            // 指でタップ（すぐ離す）→ 置かない
+            el.dispatchEvent(pe('pointerdown', 0, 0)); document.dispatchEvent(pe('pointerup', 0, 0)); await wait(60);
+            onMapClick({latlng: leafMap.containerPointToLatLng(L.point(x, y)), originalEvent:{}});
+            out.tapNoAdd = wps.length === n0 && !_wpAdd;
+            // 長押し→確認が出る。やめる→置かない
+            el.dispatchEvent(pe('pointerdown', 0, 0)); await wait(WP_ADD_HOLD_MS + 150);
+            out.asks = !!_wpAdd && document.getElementById('addWpDlg').classList.contains('show') && wps.length === n0;
+            document.dispatchEvent(pe('pointerup', 0, 0));
+            _closeAddWp(); out.cancel = !_wpAdd && !document.getElementById('addWpDlg').classList.contains('show') && wps.length === n0;
+            // 長押し→追加する→1つ増える／取消で戻る
+            el.dispatchEvent(pe('pointerdown', 10, 10)); await wait(WP_ADD_HOLD_MS + 150); document.dispatchEvent(pe('pointerup', 10, 10));
+            addWpHere(); out.added = wps.length === n0 + 1 && wps[wps.length - 1].type === 'spot' && !_wpAdd;
+            undoLast(); out.undone = wps.length === n0;
+            // 指を動かしたら確認は出ない（地図を動かしたいとき）
+            el.dispatchEvent(pe('pointerdown', 0, 0)); await wait(120); document.dispatchEvent(pe('pointermove', 40, 40)); await wait(WP_ADD_HOLD_MS + 150);
+            out.moveNoAsk = !_wpAdd; document.dispatchEvent(pe('pointerup', 40, 40));
+            _closeAddWp(); setMode(keepMode === 'draw' || keepMode === 'via' ? 'wp' : keepMode); undoStack.length = keepU; _dirty = keepD; viewMode = keepV; document.querySelectorAll('#toastBox .toast').forEach(e => e.remove());
+            return out;
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        chk('機能', 'スポットを置く：指のタップでは置かない／長押しで確認／やめる／追加する／取消で戻る／指を動かしたら確認を出さない',
+            isinstance(aw, dict) and all(aw.get(k) for k in ('tapNoAdd', 'asks', 'cancel', 'added', 'undone', 'moveNoAsk')), str(aw)[:260])
 
         # v169: 道を変更：地図は固定／線の外は何も起きない／線を引っぱると点ができて曲がる（見えない・引きずれない）／押さえて離すと設定／スポットの道具では起きない／タップでは置かない／取消で戻る／広域は実線
         hd = page.evaluate("""async ()=>{ try{
