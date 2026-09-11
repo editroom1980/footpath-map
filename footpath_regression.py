@@ -447,6 +447,11 @@ def static_checks(src):
     # --- v157: 番号の丸と種類の丸を横に並べる（オーナー指摘：iPhone で片方しか見えない）---
     chk('静的', '番号つきで種類がある地点：地図は「種類の丸＋右上に番号の小丸」、一覧・並べ替え・配布シート・カードは番号と種類を並べて出す',
         'class="wp-num"' in src and 'class="wp-dot cat"' in src and 'class="ro-badge cat"' in src and 'class="sh-cat"' in src and 'class="vip-dot vip-dot2"' in src and '_catBadge' not in src and 'wp-pair' not in src)
+    # --- v176: 歩く人のカードの写真は「貼ってある」見た目に（オーナー指示）---
+    chk('静的', 'カードの写真は白いふち＋テープ＋少し傾けて貼った見た目。写真が取り出せなければ枠も出さない',
+        'class=\\"vip-ph\\"' in src.replace('\\', '') or 'class="vip-ph"' in src)
+    chk('静的', 'カードの写真の見た目（テープ・傾き・角の丸み）が CSS にある',
+        '.vip-ph::before{' in src and '.vip-ph:nth-child(even){transform:rotate(' in src and '.vip-ph:empty{display:none}' in src and '.vip-ph:only-child img{height:190px}' in src)
     # --- v174: 道順を直す（引き直す・まっすぐ結ぶ・手直しを消す）---
     chk('静的', '道順を直す：区間ごとに「道なり」「まっすぐ」、全部の引き直し。入口はスマホのメニューと PC の「その他」',
         'function openFixRouteSheet' in src and 'function fixSectionAuto' in src and 'function fixSectionStraight' in src and 'function fixAllRoutes' in src and 'function _routeSections' in src
@@ -2458,6 +2463,23 @@ def functional_checks(index_path):
           }catch(e){ return 'ERR:'+e.message; } }""")
         chk('機能', '高低差のなぞり：距離→標高・勾配・位置、帯をなぞると見出し・地図の印・縦線、離してもしばらく残る、消える、勾配の面',
             isinstance(scr, dict) and all(scr.get(k) for k in ('point', 'ends', 'scrub', 'held', 'cleared', 'grade')), str(scr)[:240])
+
+        # v176: 歩く人のカード：写真が「貼ってある」見た目（1枚ずつ枠に入って傾いている）
+        vp6 = page.evaluate("""async ()=>{ try{
+            const keepV = viewMode; viewMode = true;
+            const wp = wps.find(w => w.photos && w.photos.length); if (!wp) return 'no photo';
+            showViewInfo(wp.id); await new Promise(r => setTimeout(r, 400));
+            const panel = document.getElementById('viewInfoPanel');
+            const frames = panel.querySelectorAll('.vip-ph');
+            const st = frames.length ? getComputedStyle(frames[0]) : null;
+            const out = {shown: panel.classList.contains('show'), frames: frames.length === wp.photos.length,
+                         tilted: !!st && st.transform !== 'none', white: !!st && /255, 255, 255/.test(st.backgroundColor),
+                         img: frames.length ? frames[0].querySelectorAll('img').length === 1 : false};
+            closeViewInfo(); viewMode = keepV;
+            return out;
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        chk('機能', '歩く人のカード：写真は1枚ずつ白い枠に入り、少し傾いて貼ってあるように出る',
+            isinstance(vp6, dict) and all(vp6.get(k) for k in ('shown', 'frames', 'tilted', 'white', 'img')), str(vp6)[:220])
 
         # v174: 道順を直す：区間の一覧／道なりに引き直す（点が消える）／まっすぐ結ぶ／全部引き直す／取消で戻る
         fx = page.evaluate("""async ()=>{ try{

@@ -337,9 +337,21 @@ body.moving #modeHint{display:none!important}
 .vip-say.on{background:var(--brand-soft);border-color:var(--brand);color:var(--brand)}
 .vip-desc{font-size:13px;color:#444;line-height:1.7;margin-bottom:8px;white-space:pre-wrap}
 .vip-tel a{font-size:13px;color:#1a6fc4;display:block;margin-bottom:10px}
-.vip-photos{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
-.vip-photos img{width:calc(50% - 4px);max-width:200px;height:140px;object-fit:cover;border-radius:8px;cursor:pointer}
-.vip-photos img:only-child{width:100%;max-width:100%;height:210px}
+/* 歩く人のカードの写真（v176）：白いふちとテープで「貼ってある」見た目に。少しだけ傾ける */
+.vip-photos{display:flex;flex-wrap:wrap;gap:18px 12px;margin:18px 4px 6px;padding-top:6px}
+.vip-ph{position:relative;display:block;width:calc(50% - 12px);max-width:200px;padding:7px 7px 20px;background:#fff;border-radius:3px;
+        box-shadow:0 3px 12px rgba(60,40,20,.22),0 0 0 1px rgba(0,0,0,.05);transform:rotate(-1.8deg);transition:transform .18s ease}
+.vip-ph:nth-child(even){transform:rotate(1.7deg)}
+.vip-ph:nth-child(3n){transform:rotate(-0.7deg)}
+.vip-ph:active{transform:rotate(0deg) scale(1.03)}
+.vip-ph::before{content:'';position:absolute;left:50%;top:-8px;width:52px;height:17px;margin-left:-26px;border-radius:2px;
+        background:linear-gradient(180deg,rgba(233,199,142,.9),rgba(212,168,104,.8));box-shadow:0 1px 3px rgba(0,0,0,.16);transform:rotate(-2.5deg)}
+.vip-ph:nth-child(even)::before{transform:rotate(3deg)}
+.vip-ph:empty{display:none}
+.vip-photos img{display:block;width:100%;height:118px;object-fit:cover;border-radius:2px;cursor:pointer;background:#F3EEE6}
+.vip-ph:only-child{width:100%;max-width:100%}
+.vip-ph:only-child img{height:190px}
+@media (prefers-reduced-motion:reduce){.vip-ph{transition:none}}
 /* 埋め込み表示（?embed=1）：ホームページの中に置くので、地図だけを見せる */
 body.embed #hdr, body.embed #sidebar, body.embed #tbar, body.embed #pcHint, body.embed #pcTr, body.embed #pcBl, body.embed #mobileTopBar, body.embed #mobileShelf,
 body.embed #mobileElevBand, body.embed #viewBadge, body.embed #mobileRbtns{display:none!important}
@@ -2987,7 +2999,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v175';
+const APP_VERSION = 'v176';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -7505,7 +7517,7 @@ function showViewInfo(wpId) {
   </div>`;
   if (wp.photos && wp.photos.length) {
     html2 += '<div class="vip-photos">';
-    wp.photos.forEach(p => { html2 += `<img ${_photoAttr(p)} onclick="openFullPhoto(this.src)" loading="lazy">`; });
+    wp.photos.forEach(p => { html2 += `<span class="vip-ph"><img ${_photoAttr(p)} onclick="openFullPhoto(this.src)" loading="lazy"></span>`; });   // v176：シールのように貼った見た目
     html2 += '</div>';
   }
   if (wp.desc) html2 += `<div class="vip-desc">${escHtml(wp.desc)}</div>`;
