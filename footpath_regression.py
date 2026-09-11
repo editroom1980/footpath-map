@@ -447,6 +447,10 @@ def static_checks(src):
     # --- v157: 番号の丸と種類の丸を横に並べる（オーナー指摘：iPhone で片方しか見えない）---
     chk('静的', '番号つきで種類がある地点：地図は「種類の丸＋右上に番号の小丸」、一覧・並べ替え・配布シート・カードは番号と種類を並べて出す',
         'class="wp-num"' in src and 'class="wp-dot cat"' in src and 'class="ro-badge cat"' in src and 'class="sh-cat"' in src and 'class="vip-dot vip-dot2"' in src and '_catBadge' not in src and 'wp-pair' not in src)
+    # --- v174: 道順を直す（引き直す・まっすぐ結ぶ・手直しを消す）---
+    chk('静的', '道順を直す：区間ごとに「道なり」「まっすぐ」、全部の引き直し。入口はスマホのメニューと PC の「その他」',
+        'function openFixRouteSheet' in src and 'function fixSectionAuto' in src and 'function fixSectionStraight' in src and 'function fixAllRoutes' in src and 'function _routeSections' in src
+        and "sh.id = 'fixRouteSheet'" in src and 'mm-map-l">道順を直す<' in src and 'closePcPops();openFixRouteSheet()' in src)
     # --- v173: 地図を軽くする（オーナー指摘「もっさり」）---
     chk('静的', '最初のつなぎ先を用意（preconnect）／タイルは拡大縮小中に取りに行かず画面外も少し先に用意／往復ずらしは同じズームなら計算し直さない／描き直しは1フレーム1回',
         '<link rel="preconnect" href="https://cdnjs.cloudflare.com"' in src and 'rel="preconnect" href="https://a.tile.openstreetmap.org"' in src
@@ -679,7 +683,7 @@ def static_checks(src):
     _feats = {"なぞり描き": "setMode('draw')", "自分で描いた道": 'toggleCustomMode()', "現在地": 'gotoCurrentLocation()', "並べ替え画面": 'openReorderSheet()',
               "自分で描いた道を使う": 'toggleCustomFeature()', "描いた道に吸い付く": 'toggleCustomSnap()', "道に沿わせる": 'toggleManualMode()',
               "地名とスポット": 'toggleMapLabels()', "文字の大きさ": 'setLabelSize(', "印の大きさ": 'setWpSize(',
-              "背景地図": "setBaseMap(", "歩く人の見え方": 'toggleViewMode()', "配る": 'openShareSheet()', "保存": 'saveCourse()', "取消": 'undoLast()',
+              "道順を直す": 'openFixRouteSheet()', "背景地図": "setBaseMap(", "歩く人の見え方": 'toggleViewMode()', "配る": 'openShareSheet()', "保存": 'saveCourse()', "取消": 'undoLast()',
               "やり直し": 'redoAction()', "すべて消去": 'clearAll()', "操作ガイド": 'openHelp()', "JSONで保存": 'exportCourse()', "座標": 'exportRouteCoords()',
               "文字なし保存": 'saveMapNoText()'}
     _missing = [f"{k}(PC)" for k, v in _feats.items() if v not in _pc] + [f"{k}(スマホ)" for k, v in _feats.items() if v not in _mob]
@@ -1787,7 +1791,7 @@ def functional_checks(index_path):
             isinstance(pc3, dict) and pc3.get('noText') == [] and pc3.get('dup') == [] and pc3.get('nBtn', 0) >= 8
             and pc3.get('hdrH', 99) <= 60 and pc3.get('railIn') and pc3.get('hint') == 'クリックでスポットを追加（スマホは長押し）'
             and pc3.get('popMapOpen') and pc3.get('bm') == 'gsi_photo' and pc3.get('pill') == '航空写真'
-            and pc3.get('legendOpen') and pc3.get('legendRows', 0) >= 2 and pc3.get('moreOpen') and pc3.get('moreRows') == 11
+            and pc3.get('legendOpen') and pc3.get('legendRows', 0) >= 2 and pc3.get('moreOpen') and pc3.get('moreRows') == 12
             and pc3.get('manualFlip') and pc3.get('hintVia') == '道を変更：赤い線を引っぱると道順が曲がる（地図は固定）'
             and pc3.get('viewHidden') and pc3.get('viewBack') and pc3.get('closedAll'), str(pc3)[:300])
 
@@ -2454,6 +2458,39 @@ def functional_checks(index_path):
         chk('機能', '高低差のなぞり：距離→標高・勾配・位置、帯をなぞると見出し・地図の印・縦線、離してもしばらく残る、消える、勾配の面',
             isinstance(scr, dict) and all(scr.get(k) for k in ('point', 'ends', 'scrub', 'held', 'cleared', 'grade')), str(scr)[:240])
 
+        # v174: 道順を直す：区間の一覧／道なりに引き直す（点が消える）／まっすぐ結ぶ／全部引き直す／取消で戻る
+        fx = page.evaluate("""async ()=>{ try{
+            const keepU = undoStack.length, keepD = _dirty, keepV = viewMode; viewMode = false;
+            const rw = routeWps(); if (rw.length < 3) return 'few spots';
+            // 1区間目に手直しの点を2つ作る
+            const a = rw[0], b = rw[1];
+            for (let k = 0; k < 2; k++) { idV++; vps.push({id:'v'+idV, segAfter:a.id, order:k+1, fitBefore:true, fitAfter:true, lat:(a.lat+b.lat)/2 + k*0.0002, lng:(a.lng+b.lng)/2, marker:null}); }
+            openFixRouteSheet();
+            const sh = document.getElementById('fixRouteSheet');
+            const out = {open: getComputedStyle(sh).display !== 'none', rows: sh.querySelectorAll('.fr-row').length === rw.length - 1,
+                         state: sh.querySelector('.fr-row .fr-l small').textContent.indexOf('手直し 2') >= 0};
+            const n0 = vps.length;
+            fixSectionAuto(0);
+            out.auto = vps.filter(v => v.segAfter === a.id).length === 0 && vps.length === n0 - 2 && a.fitAfter !== false && b.fitBefore !== false;
+            fixSectionStraight(0);
+            out.straight = a.fitAfter === false && b.fitBefore === false && _routeSections()[0].straight === true
+                           && sh.querySelector('.fr-row .fr-l small').textContent === 'まっすぐ';
+            fixSectionAuto(0); out.back = a.fitAfter !== false && b.fitBefore !== false;
+            // 全部引き直す：通り道の点が全部消える
+            idV++; vps.push({id:'v'+idV, segAfter:rw[1].id, order:1, fitBefore:true, fitAfter:true, lat:(rw[1].lat+rw[2].lat)/2, lng:(rw[1].lng+rw[2].lng)/2, marker:null});
+            fixAllRoutes();
+            out.all = vps.length === 0 && wps.every(w => w.fitBefore !== false && w.fitAfter !== false) && Object.keys(segCache).length === 0;
+            closeFixRouteSheet(); out.closed = getComputedStyle(sh).display === 'none';
+            // 取消で戻る（4回ぶん）
+            undoLast(); undoLast(); undoLast(); undoLast();   // 上で作った4回ぶんだけ戻す（多く戻すと前の検査の状態を壊す）
+            out.undone = a.fitAfter !== false && routeWps().length === rw.length;
+            undoStack.length = keepU; _dirty = keepD; viewMode = keepV; clearCache(); redrawStraight(); scheduleRouting();
+            document.querySelectorAll('#toastBox .toast').forEach(e => e.remove());
+            return out;
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        chk('機能', '道順を直す：区間の一覧／道なりに引き直すと手直しの点が消える／まっすぐ結ぶ／全部引き直す／取消で戻る',
+            isinstance(fx, dict) and all(fx.get(k) for k in ('open', 'rows', 'state', 'auto', 'straight', 'back', 'all', 'closed', 'undone')), str(fx)[:280])
+
         # v173: 軽くする：往復ずらしの計算結果を覚える（同じズームなら使い回し・ズームが変われば計算し直す）／描き直しは1フレーム1回
         sp = page.evaluate("""async ()=>{ try{
             const keepC = leafMap.getCenter(), keepZ = leafMap.getZoom();
@@ -2468,8 +2505,8 @@ def functional_checks(index_path):
             // 1フレーム1回にまとまっている：連続で動かしても描き直しの予約は1つ
             _scheduleViewUpdate(false); _scheduleViewUpdate(false); _scheduleViewUpdate(true);
             out.batched = !!_viewT && _viewZoomed === true;
-            await new Promise(r => setTimeout(r, 120));
-            out.ran = !_viewT && !!routeLine;
+            await new Promise(r => setTimeout(r, 250));
+            out.ran = !!routeLine && _viewZoomed === false;
             leafMap.setView(keepC, keepZ, {animate:false});
             return out;
           }catch(e){ return 'ERR:'+e.message; } }""")

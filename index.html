@@ -928,6 +928,17 @@ body.viewing #modeHint,body.viewonly #modeHint{display:none!important}
 .mob-stat-u{font-size:10px;color:var(--t-sub)}
 .mob-stat-s{font-size:10px;color:#E2DDD4}
 .cust-handle{width:20px;height:20px;border-radius:50%;background:#fff;border:2.5px solid #E8731C;box-shadow:0 1px 3px rgba(0,0,0,.35);box-sizing:border-box;cursor:grab}
+#fixRouteSheet{display:none;position:fixed;left:0;right:0;bottom:0;z-index:3200;max-height:60vh;overflow-y:auto;-webkit-overflow-scrolling:touch;background:#fff;border-radius:14px 14px 0 0;box-shadow:0 -4px 20px rgba(0,0,0,.18);padding:10px 14px calc(14px + var(--sab))}
+#fixRouteSheet .fr-head{display:flex;align-items:center;justify-content:space-between;font-size:14px;font-weight:800;color:#4A2E0E;padding:2px 0 6px}
+#fixRouteSheet .fr-close{border:none;background:var(--brand);color:#fff;border-radius:8px;font-size:13px;font-weight:700;padding:6px 14px;font-family:inherit;cursor:pointer}
+#fixRouteSheet .fr-hint{font-size:11px;color:#9b948c;line-height:1.5;padding-bottom:8px}
+#fixRouteSheet .fr-row{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:0.5px solid rgba(0,0,0,.06)}
+#fixRouteSheet .fr-l{flex:1;min-width:0}
+#fixRouteSheet .fr-l b{display:block;font-size:13px;color:#2C2620;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#fixRouteSheet .fr-l small{font-size:11px;color:var(--t-sub)}
+#fixRouteSheet .fr-b{flex:none;min-height:38px;padding:0 12px;border:1.5px solid #D4C4A8;border-radius:10px;background:#FAF6EE;color:#4A2E0E;font-family:inherit;font-size:12.5px;font-weight:700;cursor:pointer}
+#fixRouteSheet .fr-none{color:#999;padding:14px;text-align:center;font-size:12px}
+#fixRouteSheet .fr-all{width:100%;margin-top:12px;min-height:var(--tap);border:none;border-radius:12px;background:var(--brand-grad);color:#fff;font-family:inherit;font-size:14px;font-weight:800;cursor:pointer}
 #reorderSheet .ro-head{display:flex;align-items:center;justify-content:space-between;font-size:14px;font-weight:700;color:#4A2E0E;padding:2px 0 6px}
 #reorderSheet .ro-close{border:none;background:var(--brand);color:#fff;border-radius:8px;font-size:13px;font-weight:700;padding:6px 14px}
 #reorderSheet .ro-hint{font-size:11px;color:#9b948c;padding-bottom:6px}
@@ -1159,6 +1170,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
       <button class="pp-row ed" onclick="closePcPops();openNearbySheet()" title="OpenStreetMap と Wikipedia から、コースの周りのお店・史跡・学校などを候補にして選んで置く">周辺の情報を取り込む（お店・史跡・学校…）</button>
       <button class="pp-row ed" onclick="closePcPops();reverseCourse()" title="スポットの順番を逆にして、スタートとゴールを入れ替える">逆回りにする</button>
       <button class="pp-row ed" onclick="closePcPops();loopCourse()" title="出発点にゴールを置いて、帰りの道順を自動で引く">出発点に戻る周回にする</button>
+      <button class="pp-row ed" onclick="closePcPops();openFixRouteSheet()" title="区間ごとに、道なりに引き直す（手直しの点を消す）／まっすぐ結ぶ">道順を直す（引き直す・まっすぐ・消す）</button>
       <button class="pp-row" onclick="closePcPops();exportCourse()">JSONで保存（バックアップ）</button>
       <button class="pp-row" onclick="closePcPops();exportRouteCoords()">座標を書き出す（調査用）</button>
       <button class="pp-row" onclick="closePcPops();saveMapNoText()">文字なしで画像保存</button>
@@ -1532,6 +1544,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
         <div class="mm-sec">コース</div>
         <div class="mm-maplist">
           <div class="mm-map" onclick="openMmSub('write')" data-edit="1"><span class="mm-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l10.5-10.5a2.828 2.828 0 1 0-4-4L4 16v4"/><path d="M13.5 6.5l4 4"/></svg></span><span class="mm-map-l">コースの説明を書く</span><span class="mm-v" id="mmWrite">›</span></div>
+          <div class="mm-map" onclick="closeMobileMenu();openFixRouteSheet()" data-edit="1"><span class="mm-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8.1 8.1 0 0 0 -15.5 -2m-.5 -4v4h4"/><path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4"/></svg></span><span class="mm-map-l">道順を直す</span><span class="mm-v">›</span></div>
           <div class="mm-map" onclick="closeMobileMenu();openReorderSheet()" data-edit="1"><span class="mm-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 6h9"/><path d="M11 12h9"/><path d="M12 18h8"/><path d="M4 16a2 2 0 1 1 4 0c0 .6-.5 1-1 1.5L4 20h4"/><path d="M6 10V4L4 6"/></svg></span><span class="mm-map-l">順番・逆回り・周回</span><span class="mm-v" id="mmReorderN">›</span></div>
           <div class="mm-map" onclick="closeMobileMenu();openNearbySheet()" data-edit="1"><span class="mm-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7"/><path d="M21 21l-6-6"/></svg></span><span class="mm-map-l">周辺の情報を取り込む</span><span class="mm-v">›</span></div>
           <div class="mm-map" onclick="closeMobileMenu();saveMapOffline()" title="このコースの範囲の地図を端末に保存します（圏外でも表示できます）"><span class="mm-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/><path d="M7 11l5 5 5-5"/><path d="M12 4v12"/></svg></span><span class="mm-map-l">地図を持ち歩く</span><span class="mm-v">›</span></div>
@@ -1725,6 +1738,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
         <li>線の上でない所を触っても何も起きません。地図を動かしたいときは「スポット」に戻します</li>
         <li>線を動かさず押さえて離すと、その点の設定が開きます：分岐（←↑→）や注意（車・滑る・圏外・獣）の案内を付ける／点を消す。案内を付けた点だけ印が出ます</li>
         <li>もう一度直したいときは、同じ所を引っぱると点をつかめます。戻すには「取消」</li>
+        <li>直した道を元に戻すには、メニュー（PC：その他）の「**道順を直す**」→ その区間の「道なり」。「まっすぐ」を選ぶと2点を直線で結びます。下の「全部の道順を引き直す」で全部やり直せます</li>
         <li>農道・山道など地図に無い道は、点を細かく置くか、「詳細」の「描いた道を使う」で道を描いてください</li>
       </ul>
     </div>
@@ -2968,7 +2982,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v173';
+const APP_VERSION = 'v174';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -3434,6 +3448,68 @@ function shareInfoDesc(){
   if (typeof openDescSheet === 'function') openDescSheet();
 }
 
+/* ===== 道順を直す（v174・オーナー指示「道を消したり、繋いだり、引き直したりする機能」）=====
+   区間（スポットとスポットの間）ごとに、道なりに引き直す／まっすぐ結ぶ／手直し（通り道の点）を消す。
+   全部まとめて引き直すこともできる（経路サーバに聞き直す）。どれも「取消」で戻せる */
+function _routeSections(){
+  const rw = routeWps(), out = [];
+  for (let i = 0; i < rw.length - 1; i++) {
+    const a = rw[i], b = rw[i+1], sv = segVpsOf(a.id, a, b);
+    out.push({i, a, b, vps: sv, straight: a.fitAfter === false && b.fitBefore === false});
+  }
+  return out;
+}
+function _sectionClear(sec){   // その区間の手直し（通り道の点）を消す
+  sec.vps.forEach(v => { if (v.marker) { try { leafMap.removeLayer(v.marker); } catch(_) {} } const k = vps.indexOf(v); if (k >= 0) vps.splice(k, 1); });
+}
+function fixSectionAuto(i){
+  const sec = _routeSections()[i]; if (!sec) return;
+  saveSnapshot();
+  _sectionClear(sec);
+  sec.a.fitAfter = true; sec.b.fitBefore = true;
+  clearCache(); redrawStraight(); scheduleRouting(); redrawList(); _renderFixRoute();
+  showToast('この区間を道なりに引き直しました（「取消」で戻せます）');
+}
+function fixSectionStraight(i){
+  const sec = _routeSections()[i]; if (!sec) return;
+  saveSnapshot();
+  _sectionClear(sec);
+  sec.a.fitAfter = false; sec.b.fitBefore = false;
+  clearCache(); redrawStraight(); scheduleRouting(); redrawList(); _renderFixRoute();
+  showToast('この区間をまっすぐ結びました（「取消」で戻せます）');
+}
+function fixAllRoutes(){
+  if (routeWps().length < 2) { showToast('スポットが2つ以上あるときに使えます'); return; }
+  saveSnapshot();
+  vps.forEach(v => { if (v.marker) { try { leafMap.removeLayer(v.marker); } catch(_) {} } });
+  vps.length = 0;
+  wps.forEach(w => { w.fitBefore = true; w.fitAfter = true; });
+  segCache = {}; _cueCache = {}; _cueVer++;          // 経路サーバに聞き直す
+  redrawStraight(); scheduleRouting(); redrawList(); _renderFixRoute();
+  showToast('全部の道順を引き直しています…（「取消」で戻せます）');
+}
+function openFixRouteSheet(){
+  if (viewMode) { showToast('道順は編集画面で直せます'); return; }
+  _closeAllPopups();
+  let sh = document.getElementById('fixRouteSheet');
+  if (!sh) { sh = document.createElement('div'); sh.id = 'fixRouteSheet'; document.body.appendChild(sh); }
+  _renderFixRoute(); sh.style.display = 'block';
+}
+function closeFixRouteSheet(){ const sh = document.getElementById('fixRouteSheet'); if (sh) sh.style.display = 'none'; }
+function _renderFixRoute(){
+  const sh = document.getElementById('fixRouteSheet'); if (!sh || sh.style.display === 'none') return;
+  const secs = _routeSections();
+  const rows = secs.map(sec => {
+    const state = sec.straight ? 'まっすぐ' : (sec.vps.length ? '手直し ' + sec.vps.length : '道なり');
+    return '<div class="fr-row"><div class="fr-l"><b>' + escHtml(_spotLabel(sec.a)) + ' → ' + escHtml(_spotLabel(sec.b)) + '</b><small>' + state + '</small></div>'
+         + '<button type="button" class="fr-b tap" onclick="fixSectionAuto(' + sec.i + ')">道なり</button>'
+         + '<button type="button" class="fr-b tap" onclick="fixSectionStraight(' + sec.i + ')">まっすぐ</button></div>';
+  }).join('');
+  sh.innerHTML = '<div class="fr-head"><span>道順を直す</span><button class="fr-close tap" onclick="closeFixRouteSheet()">完了</button></div>'
+    + '<div class="fr-hint">区間ごとに、道なりに引き直す（手直しの点を消す）か、まっすぐ結ぶかを選べます</div>'
+    + '<div class="fr-list">' + (rows || '<div class="fr-none">スポットを2つ以上置くと、区間が出ます</div>') + '</div>'
+    + '<button type="button" class="fr-all tap" onclick="fixAllRoutes()">全部の道順を引き直す（手直しを全部消す）</button>';
+}
 function openReorderSheet(){
   let sh=document.getElementById('reorderSheet');
   if(!sh){
