@@ -20,6 +20,13 @@
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" href="icon-192.png">
+<!-- 先につなぎ先を用意しておく（v173）：最初の地図タイルとライブラリが早く出る -->
+<link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+<link rel="preconnect" href="https://a.tile.openstreetmap.org" crossorigin>
+<link rel="preconnect" href="https://b.tile.openstreetmap.org" crossorigin>
+<link rel="dns-prefetch" href="https://c.tile.openstreetmap.org">
+<link rel="dns-prefetch" href="https://cyberjapandata.gsi.go.jp">
+<link rel="dns-prefetch" href="https://basemaps.cartocdn.com">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <style>
 :root{--sat:env(safe-area-inset-top,0px);--sab:env(safe-area-inset-bottom,0px)}   /* 安全域（ノッチ・ホームバー）。v161：押す部品はこれで下げ、地図はその下まで広げる */
@@ -2783,7 +2790,9 @@ function _hideMapMsg(){ const el=document.getElementById('mapMsg'); if(el)el.sty
 
 function _makeBaseLayer(id){
   const c = BASEMAPS[id] || BASEMAPS[BASEMAP_DEFAULT];
-  const opt = { attribution:c.attribution, maxNativeZoom:c.maxNativeZoom, maxZoom:c.maxZoom, crossOrigin:'anonymous' };
+  const opt = { attribution:c.attribution, maxNativeZoom:c.maxNativeZoom, maxZoom:c.maxZoom, crossOrigin:'anonymous',
+                updateWhenZooming:false,   // 拡大縮小の途中は取りに行かない（v173：指を動かしている間が軽くなる）
+                keepBuffer:3 };            // 画面の外も少し先に用意しておく（動かした先が白くならない）
   if (c.subdomains) opt.subdomains = c.subdomains;
   return L.tileLayer(c.url, opt);
 }
@@ -2838,21 +2847,13 @@ function initMap() {
   _initLineHold();                        // 道を変更：赤い線の長押し（v169）
   _initWpAddHold();                       // スポット：長押し→確認して置く（v171）
   leafMap.on('movestart', hideCtxMenu);
-  leafMap.on('zoomend', _customScaleWeights);
-  leafMap.on('zoomend', () => { if (typeof scheduleAutoLabels === 'function') scheduleAutoLabels(); });
+  leafMap.on('zoomend', () => _scheduleViewUpdate(true));   // v173：拡大縮小したあとの描き直しは1回にまとめる
   const _dsc = document.getElementById('iDesc');
   if (_dsc && !_dsc._dirtyHooked) {          // 説明を書き換えたら「未保存」にする（これまで拾えていなかった）
     _dsc._dirtyHooked = true;
     _dsc.addEventListener('input', () => { _markDirty(); });
   }
-  leafMap.on('zoomend', _redrawRouteOffset);   // 往復ずらし表示をズームに追従して再計算
-  leafMap.on('zoomend', () => {                 // 広域のすっきり表示（v159）：印の大きさ→束ね→名札の順
-    const k = _zoomK(); if (k !== _lastZoomK) { _lastZoomK = k; refreshIcons(); wps.forEach(w => updateTooltip(w)); }
-    _declutter();
-  });
-  leafMap.on('moveend', () => {               // 三角は画面内だけ作るので、動かしたら作り直す
-    if (routeLine && _routeLineBase) _drawRouteBody(_buildDisplayCoords(_routeLineBase));
-  });
+  leafMap.on('moveend', () => _scheduleViewUpdate(false));   // 三角は画面内だけ作るので、動かしたら作り直す
   canvasRenderer = L.canvas({padding: 0.5}); // Canvas renderer for polylines
 
   // 画面回転・リサイズ時に地図サイズを再計算（横向きで地図がずれるのを防ぐ）
@@ -2967,7 +2968,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v172';
+const APP_VERSION = 'v173';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -5561,8 +5562,11 @@ function _dashPeriodPx(){ return (DASH_ON + DASH_OFF) * _routeK(); }        // �
 function _dashGapCenterPx(){ return (DASH_ON + DASH_OFF / 2) * _routeK(); } // 最初の切れ目の中央
 function _routeSolidAtZoom(){ return !!leafMap && leafMap.getZoom() < ROUTE_SOLID_Z; }   // 広域は実線（v169）
 function _routeDash(){ if (_themeSolid() || _routeSolidAtZoom()) return null; const k = _routeK(); return (DASH_ON*k).toFixed(1) + ',' + (DASH_OFF*k).toFixed(1); }   // 実線のテーマなら破線なし（v145）
+let _dispMemo = null;   // 往復ずらし表示の計算結果（v173）。{base, z, w, dbl, out}
 function _buildDisplayCoords(coords){
   if(!_dblOn || !coords || coords.length<3 || !leafMap) return coords;
+  const _mz = leafMap.getZoom(), _mw = _routeWeight();
+  if (_dispMemo && _dispMemo.base === coords && _dispMemo.z === _mz && _dispMemo.w === _mw) return _dispMemo.out;   // 地図を動かしただけなら結果は同じ（ズームで決まる）
   const n=coords.length;
   // 往復検出：別区間が近接(≤DMm)かつ逆向きなら「行き帰り」とみなす（道路ルーティングの座標ズレに強い）。空間グリッドでO(n)化。
   const mPerDeg=111320, DM=10;
@@ -5579,7 +5583,7 @@ function _buildDisplayCoords(coords){
       for(const k of arr){ if(Math.abs(k-i)<2) continue;
         const ex=mx[i]-mx[k], ey=my[i]-my[k];
         if(ex*ex+ey*ey<=DM*DM && (dir[i][0]*dir[k][0]+dir[i][1]*dir[k][1])<-0.5){ dbl[i]=true; dbl[i+1]=true; any=true; found=true; break; } } } }
-  if(!any) return coords;                         // 往復が無ければ完全に従来どおり
+  if(!any) { _dispMemo = {base:coords, z:_mz, w:_mw, out:coords}; return coords; }   // 往復が無ければ完全に従来どおり
   // 検出の小さな抜け（1点だけ未検出）を埋める＝オフセットON/OFFによる折れを防ぐ
   for(let pass=0; pass<2; pass++){ for(let i=1;i<n-1;i++){ if(!dbl[i] && dbl[i-1] && dbl[i+1]) dbl[i]=true; } }
   // 片側オフセット量。px基準(線幅比例)を基本としつつ、地理基準(m)の下限を併用する。
@@ -5616,6 +5620,7 @@ function _buildDisplayCoords(coords){
     out.push(toLL(L.point(p.x+nx*offPx, p.y+ny*offPx)));
     i++;
   }
+  _dispMemo = {base:coords, z:_mz, w:_mw, out};
   return out;
 }
 /* 進行方向の小さな三角。ルート線の上に一定の間隔で置く。
@@ -5736,6 +5741,28 @@ function _drawRouteBody(disp){
     fillOpacity:1, opacity:1, lineJoin:'round', interactive:false, renderer: canvasRenderer}).addTo(leafMap);
 }
 
+/* 地図を動かした・拡大縮小したあとの描き直し（v173）。zoomend と moveend は続けて起きるので、
+   1フレームに1回だけまとめてやる＝指を動かしている間の引っかかりを減らす */
+let _viewT = null, _viewZoomed = false;
+function _scheduleViewUpdate(zoomed){
+  if (zoomed) _viewZoomed = true;
+  if (_viewT) return;
+  const run = () => { _viewT = null; const z = _viewZoomed; _viewZoomed = false; _applyViewUpdate(z); };
+  _viewT = (typeof requestAnimationFrame === 'function') ? requestAnimationFrame(run) : setTimeout(run, 16);
+}
+function _applyViewUpdate(zoomed){
+  try {
+    if (zoomed) {
+      _customScaleWeights();
+      _redrawRouteOffset();                         // 往復ずらし表示をズームに追従して再計算
+      const k = _zoomK(); if (k !== _lastZoomK) { _lastZoomK = k; refreshIcons(); wps.forEach(w => updateTooltip(w)); }   // 広域のすっきり表示（v159）
+      _declutter();
+      if (typeof scheduleAutoLabels === 'function') scheduleAutoLabels();
+    } else if (routeLine && _routeLineBase) {
+      _drawRouteBody(_buildDisplayCoords(_routeLineBase));
+    }
+  } catch(_) {}
+}
 function _redrawRouteOffset(){
   if(!routeLine) return;
   try{

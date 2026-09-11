@@ -426,3 +426,7 @@ CONSTANTS(904) → STATE(968) → STORAGE(1015) → 版のお知らせ(1021) →
 ## 保存のきまり（v170）
 - **自動保存はしない**。`_markDirty()` は `_dirty` を立てて保存ボタンの表示を変えるだけ。保存の入口は「保存」ボタン（`saveCourse()`）と `_askSaveBack()`（一覧に戻るとき）の2つだけ。
 - `_persistDerivedQuietly()`（道順・標高のキャッシュ）は今までどおり `_dirty` が false のときだけ書く＝利用者の編集を勝手に保存はしない。
+
+## 地図の描き直し（v173）
+- `zoomend`／`moveend` は `_scheduleViewUpdate(zoomed)` だけを呼ぶ。実際の処理は `_applyViewUpdate` で 1 フレームに 1 回。**ここに処理を足すときは、拡大縮小のときだけ要るものか、動かしたときも要るものかを分けて入れる**。
+- `_buildDisplayCoords` は `_dispMemo`（道順の配列・ズーム・線の太さ）で結果を使い回す。往復ずらしの中身を変えたら `_dispMemo = null;` を忘れない。

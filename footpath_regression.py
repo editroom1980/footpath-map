@@ -69,7 +69,7 @@ def chk(cat, name, ok, detail=''):
 # ----------------------------------------------------------------------
 def static_checks(src):
     c = src.count('cdnjs')
-    chk('静的', 'CDN参照は4つ（leaflet css/js・html2canvas・QR）', c == 4, f'count={c}')
+    chk('静的', 'CDN参照は5つ（preconnect・leaflet css/js・html2canvas・QR）', c == 5, f'count={c}')
     chk('静的', 'CDNはすべて版を固定',
         len(re.findall(r'cdnjs\.cloudflare\.com/ajax/libs/[^/]+/\d+\.\d+(?:\.\d+)?/', src)) == 4)
     chk('静的', 'leaflet-rotate を使っていない', 'leaflet-rotate' not in src)
@@ -447,6 +447,12 @@ def static_checks(src):
     # --- v157: 番号の丸と種類の丸を横に並べる（オーナー指摘：iPhone で片方しか見えない）---
     chk('静的', '番号つきで種類がある地点：地図は「種類の丸＋右上に番号の小丸」、一覧・並べ替え・配布シート・カードは番号と種類を並べて出す',
         'class="wp-num"' in src and 'class="wp-dot cat"' in src and 'class="ro-badge cat"' in src and 'class="sh-cat"' in src and 'class="vip-dot vip-dot2"' in src and '_catBadge' not in src and 'wp-pair' not in src)
+    # --- v173: 地図を軽くする（オーナー指摘「もっさり」）---
+    chk('静的', '最初のつなぎ先を用意（preconnect）／タイルは拡大縮小中に取りに行かず画面外も少し先に用意／往復ずらしは同じズームなら計算し直さない／描き直しは1フレーム1回',
+        '<link rel="preconnect" href="https://cdnjs.cloudflare.com"' in src and 'rel="preconnect" href="https://a.tile.openstreetmap.org"' in src
+        and 'updateWhenZooming:false' in src and 'keepBuffer:3' in src and 'let _dispMemo = null;' in src and '_dispMemo.base === coords && _dispMemo.z === _mz' in src
+        and 'function _scheduleViewUpdate' in src and "leafMap.on('zoomend', () => _scheduleViewUpdate(true));" in src and "leafMap.on('moveend', () => _scheduleViewUpdate(false));" in src
+        and src.count("leafMap.on('zoomend'") == 1 and src.count("leafMap.on('moveend'") == 1)
     # --- v172: 現在地はゆっくり広がる輪（パルス）で出す（ルートプランナーに倣う）---
     chk('静的', '現在地は青い丸＋ゆっくり広がる輪。動きを減らす設定では輪を止める',
         'function _makeGpsMarker' in src and 'class="me-pulse"' in src and 'class="me-dot"' in src and '@keyframes mePulse' in src
@@ -590,7 +596,7 @@ def static_checks(src):
         and 'const MAX = PHOTO_MAX_PX;' in src and 'PHOTO_MAX_PER_SPOT - _modalPhotos.length' in src)
     chk('静的', 'シールは wpIcon の枝で描き、名札の位置はシールの大きさに合わせ、束ねた印を押すと寄る',
         'class="wp-sticker" data-sticker="1"' in src and '_wpIconSize(wp)[1] / 2 + 4' in src and 'if (wp._clusterN > 1) { leafMap.setView(' in src
-        and "_declutter();\n  });" in src)   # v159: ズームの処理は _declutter にまとめた
+        and '      _declutter();\n' in src)   # v159→v173: ズームの処理は _applyViewUpdate の中の _declutter にまとめた
     chk('静的', 'シールの ON/OFF はコースに保存され（stickers）、PC・スマホの「地図の見せ方」に行がある',
         'stickers: courseInfo.stickers ? true : undefined' in src and 'stickers: data.stickers === true' in src and 'id="btnStickers"' in src and 'id="mmSwStickers"' in src)
     chk('静的', 'シールの鍵（s:）は片づけで消さない・一覧に写真の枚数', "used.add('s:' + id)" in src and 'class="wp-ph"' in src)
@@ -2447,6 +2453,28 @@ def functional_checks(index_path):
           }catch(e){ return 'ERR:'+e.message; } }""")
         chk('機能', '高低差のなぞり：距離→標高・勾配・位置、帯をなぞると見出し・地図の印・縦線、離してもしばらく残る、消える、勾配の面',
             isinstance(scr, dict) and all(scr.get(k) for k in ('point', 'ends', 'scrub', 'held', 'cleared', 'grade')), str(scr)[:240])
+
+        # v173: 軽くする：往復ずらしの計算結果を覚える（同じズームなら使い回し・ズームが変われば計算し直す）／描き直しは1フレーム1回
+        sp = page.evaluate("""async ()=>{ try{
+            const keepC = leafMap.getCenter(), keepZ = leafMap.getZoom();
+            const base = _routeLineBase || _lastRouteCoords; if (!base || base.length < 3) return 'no route';
+            _dispMemo = null;
+            const a = _buildDisplayCoords(base), b = _buildDisplayCoords(base);
+            const out = {memo: a === b};
+            leafMap.setZoom(keepZ - 2, {animate:false}); await new Promise(r => setTimeout(r, 250));
+            const c = _buildDisplayCoords(base);
+            out.zoomRecalc = (base.length < 3) || (c !== a) || (a === base);   // ズームが変われば計算し直す（往復が無いコースは同じ配列でよい）
+            leafMap.setZoom(keepZ, {animate:false}); await new Promise(r => setTimeout(r, 250));
+            // 1フレーム1回にまとまっている：連続で動かしても描き直しの予約は1つ
+            _scheduleViewUpdate(false); _scheduleViewUpdate(false); _scheduleViewUpdate(true);
+            out.batched = !!_viewT && _viewZoomed === true;
+            await new Promise(r => setTimeout(r, 120));
+            out.ran = !_viewT && !!routeLine;
+            leafMap.setView(keepC, keepZ, {animate:false});
+            return out;
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        chk('機能', '軽くする：往復ずらしは同じズームなら使い回し・ズームが変われば計算し直す／描き直しは1フレームに1回',
+            isinstance(sp, dict) and all(sp.get(k) for k in ('memo', 'zoomRecalc', 'batched', 'ran')), str(sp)[:200])
 
         # v171: スポットを置く：指のタップでは置かない／長押しで確認が出る／やめる／追加する／取消で戻る
         aw = page.evaluate("""async ()=>{ try{
