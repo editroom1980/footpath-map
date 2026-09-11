@@ -441,12 +441,18 @@ def static_checks(src):
         and 'class="mh-mag tap' in src and 'id="btnMagnet"' in src and 'function reverseCourse' in src and 'function loopCourse' in src
         and 'closePcPops();reverseCourse()' in src and 'closeReorderSheet();loopCourse()' in src)
     # --- v159: 広域のすっきり表示（優先度つき衝突判定・オーナー指摘）---
-    chk('静的', '広域：印は優先順に束ねて「+n」、名札は置けなければ隠す、印はズームで小さく、通り道の点は隠す',
+    chk('静的', '広域：印は優先順に束ねて「+n」、名札は一律（置けなくても隠さない・v168）、印はズームで小さく、通り道の点は隠す',
         'function _declutter' in src and 'function _labelAllowedAt' in src and 'function _zoomKFor' in src and '* _zoomK());' in src and 'function _moreBadge' in src
-        and "it.wp._labelHidden = true; _syncLabelVis(it.wp); return; }" in src and 'function _vpVisibleAt' in src and "const k = _zoomK(); if (k !== _lastZoomK)" in src)
+        and "if (!chosen) chosen = {dir: cur, rect: _labelRect(it.cx, it.cy, it.w, it.h, cur, off)};" in src and 'function _vpVisibleAt' in src and "const k = _zoomK(); if (k !== _lastZoomK)" in src)
     # --- v157: 番号の丸と種類の丸を横に並べる（オーナー指摘：iPhone で片方しか見えない）---
     chk('静的', '番号つきで種類がある地点：地図は「種類の丸＋右上に番号の小丸」、一覧・並べ替え・配布シート・カードは番号と種類を並べて出す',
         'class="wp-num"' in src and 'class="wp-dot cat"' in src and 'class="ro-badge cat"' in src and 'class="sh-cat"' in src and 'class="vip-dot vip-dot2"' in src and '_catBadge' not in src and 'wp-pair' not in src)
+    # --- v168: オーナー指摘3つ（帯の開閉・広域の印の大きさ・名札は一律）---
+    chk('静的', '高低差の帯：右端のボタンと見出しのタップで開閉、なぞり／フリック／ちょんと触るを区別。印は広域でもっと小さく（z16 .8／z15 .65／z14 .55／それ以下 .45・シールも）。名札は z15 以上で全部、未満は無し、置けなくても隠さない',
+        '<button type="button" class="mob-elev-chev tap" id="mobileElevChev"' in src and 'onclick="_toggleElevBand()"' in src and 'function _toggleElevBand' in src and 'SCRUB_HOLD_START_MS' in src and 'if (_scrubGesture) { _scrubGesture = false; return; }' in src
+        and 'const ZOOM_SCALE = [[17, 1], [16, .8], [15, .65], [14, .55], [0, .45]];' in src and '* _zoomK()); return [d, d]; }' in src
+        and 'function _moreBadge(wp, px){' in src and src.count('_moreBadge(wp, sz[0])') == 2 and src.count('(isMobile() ? 18 : 13) * _zoomK())') == 2 and 'vps.forEach(v => _syncVpIcon(v));' in src
+        and 'const DECL_LABEL_ALL_Z = 15;' in src and 'function _labelAllowedAt(wp, z){ return z >= DECL_LABEL_ALL_Z; }' in src and 'DECL_LABEL_NUM_Z' not in src and "it.wp._labelHidden = true" not in src)
     # --- v167: 曲がり角の案内（Footpath のキューシートに倣う）---
     chk('静的', '曲がり角：経路サーバに steps を求め、曲がる所だけを区間ごとに覚え（保存データ cues）、配布シートの一覧と歩く人の帯（分岐の案内が無いとき）に出す。古いコースは編集画面でだけ裏で取りに行く',
         "'?overview=full&geometries=geojson&steps=true'" in src and 'function _cuesFromLegs' in src and 'function _routeCues' in src and 'function _sheetCuesHtml' in src and 'function _nextCueInfo' in src
@@ -456,7 +462,7 @@ def static_checks(src):
     chk('静的', '高低差グラフ：なぞると距離・標高・勾配（帯の見出し・地図の印・PC のグラフ）、やや急／急の面の色、凡例。道順が変わったら印を消す。フリックと競合しない',
         'function _elevPointAt' in src and 'function _gradeAtD' in src and 'function _scrubAttach' in src and 'function _gradeFills' in src and "_scrubAttach(svg, 'band')" in src and "_scrubAttach(svg, 'pc')" in src
         and 'id="mobileElevLegend"' in src and 'const GRADE_MID = 4, GRADE_STEEP = 8;' in src and "_elevData = null; if (typeof _scrubClear === 'function') _scrubClear();" in src
-        and 'if (_scrubOn) { sy=null; return; }' in src and 'className:\'scrub-tt\'' in src)
+        and 'if (_scrubGesture) { _scrubGesture = false; return; }' in src and 'className:\'scrub-tt\'' in src)
     # --- v165: はじめかた（3つの入口・周辺の情報を最初の選択肢に）---
     chk('静的', 'はじめかた：スポットが無い編集画面に3つの入口（タップして置く・指でなぞる・周辺の情報）。初回だけの制限はやめ、周辺の情報はスポットが無ければ地図の真ん中から探す',
         'function _syncStartChooser' in src and 'function startChoose' in src and src.count('class="ft-opt tap"') == 3 and "startChoose('nearby')" in src and 'id="nbNoSpot"' in src
@@ -2186,14 +2192,14 @@ def functional_checks(index_path):
             _declutter(); autoPlaceLabels();
             const shown = wps.filter(w => w.marker && !w._clusterHidden && !w._labelHidden && w.name && w.marker.getTooltip()).length;
             out.labelsThinned = made.some(w => w._clusterHidden || w._labelHidden) && shown >= 1;
-            out.rules = _labelAllowedAt({type:'start'}, 13) === false && _labelAllowedAt({type:'start'}, 14) === true && _labelAllowedAt({type:'view', onRoute:false}, 14) === false && _labelAllowedAt({type:'view', onRoute:false}, 15) === true && _labelAllowedAt({type:'spot', onRoute:true}, 14) === true && _labelAllowedAt({type:'spot', onRoute:true}, 13) === false;
-            out.scale = _zoomKFor(17) === 1 && _zoomKFor(15) === .9 && _zoomKFor(14) === .8 && _zoomKFor(11) === .7 && !_vpVisibleAt({}, 14) && _vpVisibleAt({guide:{kind:'turn'}}, 14) && _vpVisibleAt({}, 15);
+            out.rules = _labelAllowedAt({type:'start'}, 14) === false && _labelAllowedAt({type:'start'}, 15) === true && _labelAllowedAt({type:'view', onRoute:false}, 14) === false && _labelAllowedAt({type:'view', onRoute:false}, 15) === true && _labelAllowedAt({type:'spot', onRoute:true}, 14) === false && _labelAllowedAt({type:'spot', onRoute:true}, 15) === true && !made.some(w => !w._clusterHidden && w._labelHidden);   // v168：一律。置けなくても隠さない
+            out.scale = _zoomKFor(17) === 1 && _zoomKFor(16) === .8 && _zoomKFor(15) === .65 && _zoomKFor(14) === .55 && _zoomKFor(11) === .45 && Math.abs(_stickerSize()[0] - Math.round((isMobile() ? 46 : 40) * WP_SIZES[_wpSizeIdx] * _zoomK())) <= 1 && !_vpVisibleAt({}, 14) && _vpVisibleAt({guide:{kind:'turn'}}, 14) && _vpVisibleAt({}, 15);
             made.forEach(w => { try { leafMap.removeLayer(w.marker); } catch(_) {} const i = wps.indexOf(w); if (i >= 0) wps.splice(i, 1); });
             undoStack.length = keepU; _dirty = keepD; refreshIcons(); redrawList(); scheduleAutoLabels();
             out.back = wps.length === n0;
             return out;
           }catch(e){ return 'ERR:'+e.message; } }""")
-        chk('機能', '広域：重なる印は「+4」に束ね、離せば戻る。置けない名札は隠す。ズーム別のルールと大きさ',
+        chk('機能', '広域：重なる印は「+4」に束ね、離せば戻る。名札は一律（z15〜全部・それより広域は無し）。ズーム別の大きさ',
             isinstance(dc, dict) and all(dc.get(k) for k in ('one', 'badge', 'apart', 'labelsThinned', 'rules', 'scale', 'back')), str(dc)[:240])
 
         # v156: 道具の案内：スポットでは無し、通り道・なぞるで出て、スポットに戻すと消える
@@ -2410,6 +2416,28 @@ def functional_checks(index_path):
           }catch(e){ return 'ERR:'+e.message; } }""")
         chk('機能', '高低差のなぞり：距離→標高・勾配・位置、帯をなぞると見出し・地図の印・縦線、離してもしばらく残る、消える、勾配の面',
             isinstance(scr, dict) and all(scr.get(k) for k in ('point', 'ends', 'scrub', 'held', 'cleared', 'grade')), str(scr)[:240])
+
+        # v168: 帯の開閉：縦の指はフリック（開く）、横の指はなぞり（開閉しない）、ちょんと触ると場所を見る、ボタンで開閉
+        bd = page.evaluate("""async ()=>{ try{
+            if (!_elevData) return 'no elev';
+            _scrubClear(); _setElevExpanded(false); await new Promise(r => setTimeout(r, 600));
+            const svg = document.getElementById('mobileElevSvg'), band = document.getElementById('mobileElevBand'); const r = svg.getBoundingClientRect();
+            const x = r.left + r.width * 0.5, y = r.top + r.height * 0.5;
+            const pe = (type, dx, dy) => new PointerEvent(type, {clientX: x + dx, clientY: y + dy, pointerId: 9, pointerType: 'touch', isPrimary: true, bubbles: true, cancelable: true});
+            const te = (type, dx, dy) => { const t = new Touch({identifier: 9, target: svg, clientX: x + dx, clientY: y + dy}); return new TouchEvent(type, {touches: type === 'touchend' ? [] : [t], changedTouches: [t], bubbles: true, cancelable: true}); };
+            const gesture = (dx, dy) => { svg.dispatchEvent(pe('pointerdown', 0, 0)); svg.dispatchEvent(te('touchstart', 0, 0)); svg.dispatchEvent(pe('pointermove', dx / 2, dy / 2)); svg.dispatchEvent(te('touchmove', dx / 2, dy / 2)); svg.dispatchEvent(pe('pointermove', dx, dy)); svg.dispatchEvent(te('touchmove', dx, dy)); svg.dispatchEvent(pe('pointerup', dx, dy)); svg.dispatchEvent(te('touchend', dx, dy)); };
+            const out = {};
+            gesture(0, -40); await new Promise(r => setTimeout(r, 500)); out.flickOpens = _elevExpanded === true && !_scrub;
+            gesture(30, 0); out.scrubKeeps = _elevExpanded === true && !!_scrub && _scrubOn === false && !!_scrubTimer; _scrubClear();
+            gesture(0, 40); await new Promise(r => setTimeout(r, 500)); out.flickCloses = _elevExpanded === false && !_scrub;
+            svg.dispatchEvent(pe('pointerdown', 0, 0)); svg.dispatchEvent(te('touchstart', 0, 0)); svg.dispatchEvent(pe('pointerup', 0, 0)); svg.dispatchEvent(te('touchend', 0, 0));
+            out.tapLooks = !!_scrub && _elevExpanded === false; _scrubClear();
+            document.getElementById('mobileElevChev').click(); await new Promise(r => setTimeout(r, 500)); out.button = _elevExpanded === true;
+            document.getElementById('mobileElevChev').click(); await new Promise(r => setTimeout(r, 500)); out.button2 = _elevExpanded === false;
+            return out;
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        chk('機能', '高低差の帯：縦の指で開閉、横の指はなぞり（開閉しない）、ちょんと触ると場所を見る、右端のボタンで開閉',
+            isinstance(bd, dict) and all(bd.get(k) for k in ('flickOpens', 'scrubKeeps', 'flickCloses', 'tapLooks', 'button', 'button2')), str(bd)[:240])
 
         # v164: 場所を動かす：印は引きずれない → 編集画面の「場所を動かす」→ タップした所へ／ここに置く／やめる／取消で戻る
         mv = page.evaluate("""async ()=>{ try{

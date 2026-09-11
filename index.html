@@ -987,7 +987,8 @@ body.viewing #modeHint,body.viewonly #modeHint{display:none!important}
 .mob-elev-hl{display:flex;align-items:center;gap:6px}
 .mob-elev-hl span{font-size:11px;color:#8A8077;font-weight:500}
 .mob-elev-hl strong{font-size:12px;color:var(--brand);font-family:'Plus Jakarta Sans',sans-serif;font-weight:800}
-.mob-elev-chev{color:var(--t-sub);font-size:15px;display:flex}
+.mob-elev-chev{color:var(--t-sub);font-size:15px;display:flex;align-items:center;justify-content:center;width:44px;height:36px;margin:-6px -12px -6px 0;border:none;background:transparent;border-radius:10px;cursor:pointer;font-family:inherit}   /* v168：右端の開閉ボタン */
+.mob-elev-chev:active{background:#F3EBDF}
 #mobileElevBand{cursor:pointer}
 /* シェルフのモードボタン洗練 */
 .mob-more{width:40px;height:40px;border-radius:12px;background:#F7F3ED;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#6A645E;font-size:19px;border:none;cursor:pointer}
@@ -1291,9 +1292,9 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
       </div>
       <!-- モバイル: 高低差バンド（上フリックでせり上げ） -->
       <div id="mobileElevBand">
-        <div id="mobileElevGrip">
+        <div id="mobileElevGrip" onclick="_toggleElevBand()">
           <div class="mob-elev-hl"><span>高低差</span><strong id="mobileElevStats"></strong></div>
-          <span class="mob-elev-chev" id="mobileElevChev"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6 -6l6 6" /></svg></span>
+          <button type="button" class="mob-elev-chev tap" id="mobileElevChev" aria-label="高低差グラフを開く／閉じる"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6 -6l6 6" /></svg></button>
         </div>
         <div id="mobileElevStatsRow"></div>
         <svg id="mobileElevSvg" preserveAspectRatio="none"></svg>
@@ -1805,7 +1806,11 @@ function _typeMarkHtml(type, px, color){   // 種類そのものの印（凡例�
 function _spotColor(){ return (WT.find(x => x.v === 'spot') || WT[0]).c; }   // 歩く順の番号の丸の色（種類に関係なく同じ）
 function _hasCatIcon(wp){ return !!TYPE_ICON[wp.type]; }
 /* 番号つきで種類もある地点（v158・オーナー指示）：大きな丸＝種類の絵（種類の色）、右上の小さな丸＝歩く順の番号（番号の色） */
-function _moreBadge(wp){ return wp._clusterN > 1 ? `<span class="wp-more">+${wp._clusterN - 1}</span>` : ''; }   // 束ねた印（v159）
+function _moreBadge(wp, px){   // 束ねた印（v159）。v168：印の大きさに合わせて小さく
+  if (!(wp._clusterN > 1)) return '';
+  const b = Math.max(12, Math.round((px || 36) * 0.5));
+  return `<span class="wp-more" style="min-width:${b}px;height:${b}px;line-height:${b - 3}px;font-size:${Math.max(8, Math.round(b * 0.56))}px;right:${-Math.round(b * 0.45)}px;bottom:${-Math.round(b * 0.4)}px">+${wp._clusterN - 1}</span>`;
+}
 function _numBadge(wp, px){
   if (!_isNumbered(wp) || !_hasCatIcon(wp)) return '';
   const n = String(courseNum(wp) || '?');
@@ -1848,7 +1853,7 @@ const FIND_COLOR = '#2E7D32', FIND_WORD_MAX = 30, FIND_BY_MAX = 12, FIND_POS_FRE
    OpenStreetMap（Overpass API）と Wikipedia（ja）から、コースの周りのお店・史跡・学校などを候補として出し、選んだものだけスポットにする */
 const NEARBY_OVERPASS   = ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter'];
 const NEARBY_WIKI       = 'https://ja.wikipedia.org/w/api.php';
-const SCRUB_WIN_M = 75, SCRUB_HOLD_MS = 3000;     // 高低差のなぞり（v166）：勾配は前後 75m（計150m）の平均（標高データの粗さをならす）／指を離してから印を残す時間
+const SCRUB_WIN_M = 75, SCRUB_HOLD_MS = 3000, SCRUB_HOLD_START_MS = 220, SCRUB_MOVE_PX = 8, SCRUB_FLICK_PX = 12;   // v168：押さえてから／横に動かしてからなぞる、縦ならフリック     // 高低差のなぞり（v166）：勾配は前後 75m（計150m）の平均（標高データの粗さをならす）／指を離してから印を残す時間
 const GRADE_MID = 4, GRADE_STEEP = 8;              // 勾配の色分け（v166）%：やや急／急
 const GRADE_COL = {mid:'#D97706', steep:'#DC2626'};
 const NEARBY_TIMEOUT_MS = 20000, NEARBY_MAX = 300, NEARBY_DUP_M = 15, NEARBY_DESC_MAX = 160, NEARBY_KW_RADIUS = 10000, NEARBY_MERGE_M = 60;
@@ -1993,11 +1998,9 @@ const WP_SIZES = [1, 1.25, 1.5];           // 基準(スマホ36px/PC30px)に対
    ・ラベルは4方向を試して置けなければ隠す。広域では種類だけの地点のラベルを先に外す
    ・広域では印を小さく、通り道の点は隠す（案内つきは残す） */
 const DECL_OVERLAP     = 0.85;   // 中心間の距離が「印の大きさ×これ」より近ければ重なりとみなす（ほぼ触れたら束ねる）
-const DECL_LABEL_ALL_Z = 14;     // これより広域では名札を全部消す（v161・オーナー指示）
-const DECL_LABEL_NUM_Z = 14;     // 番号つき地点のラベルを出す最小ズーム
-const DECL_LABEL_CAT_Z = 15;     // 種類だけの地点のラベルを出す最小ズーム
+const DECL_LABEL_ALL_Z = 15;     // 名札はこのズーム以上で全部出し、それより広域では全部消す（v168・オーナー指示「一律で」。段階分けはやめた）
 const DECL_VP_Z        = 15;     // 通り道の点を出す最小ズーム
-const ZOOM_SCALE = [[16, 1], [15, .9], [14, .8], [0, .7]];   // 印の大きさの倍率（ズーム別・上から順に当てる）
+const ZOOM_SCALE = [[17, 1], [16, .8], [15, .65], [14, .55], [0, .45]];   // 印の大きさの倍率（ズーム別・上から順に当てる）。v168：広域では地図が見えるように小さく（詳しく見るときは拡大する）
 const WP_SIZE_LABELS = ['標準','大','特大'];
 // --- localStorage 保存キー（増減・改名時はこの1か所だけ直す）---
 const LS = {
@@ -2933,7 +2936,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v167';
+const APP_VERSION = 'v168';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -3756,7 +3759,7 @@ function wpIcon(wp, sz, anc) {
   if (!anc) anc = [sz[0]/2, sz[1]/2];
   // なぞりの端点(node)：調整点と同じ灰色の点（番号・S/Gなし）
   if (wp.type === 'node') {
-    const d = isMobile() ? 18 : 13;
+    const d = Math.max(8, Math.round((isMobile() ? 18 : 13) * _zoomK()));   // v168：広域では小さく
     return L.divIcon({className:'',
       html:`<div style="width:${d}px;height:${d}px;border-radius:50%;background:#444;border:2px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.55);cursor:grab"></div>`,
       iconSize:[d,d], iconAnchor:[d/2,d/2]});
@@ -3766,9 +3769,9 @@ function wpIcon(wp, sz, anc) {
   // 閲覧モードで訪問済みなら、○の右上に小さなチェックを付ける（スタンプラリー）
   const stamp = (viewMode && _visits && _visits[wp.id]) ? '<span class="wp-visited">✓</span>' : '';
   if (_isNumbered(wp) && _hasCatIcon(wp) && !(_stickerOn() && wp.photos && wp.photos[0])) {   // 番号＋種類：種類の丸＋右上に番号の小丸（v158）
-    const bsz = Math.max(18, Math.round(sz[0] * 0.6));
+    const bsz = Math.max(14, Math.round(sz[0] * 0.55));   // 番号の小丸（v168：小さな印でも丸からはみ出しすぎない）
     return L.divIcon({className:'',
-      html:`<div data-wtype="${wp.type}" class="wp-mk svg hasnum" style="position:relative;width:${sz[0]}px;height:${sz[1]}px;border-radius:50%;background:${t.c};color:#fff;border:2.5px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.45);cursor:pointer">${_typeSvg(wp.type, Math.round(sz[0] * 0.6))}${_numBadge(wp, bsz)}${stamp}${_moreBadge(wp)}</div>`,
+      html:`<div data-wtype="${wp.type}" class="wp-mk svg hasnum" style="position:relative;width:${sz[0]}px;height:${sz[1]}px;border-radius:50%;background:${t.c};color:#fff;border:2.5px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.45);cursor:pointer">${_typeSvg(wp.type, Math.round(sz[0] * 0.6))}${_numBadge(wp, bsz)}${stamp}${_moreBadge(wp, sz[0])}</div>`,
       iconSize:sz, iconAnchor:anc});
   }
   if (_stickerOn() && wp.photos && wp.photos[0]) {                       // シール（v142）
@@ -3785,7 +3788,7 @@ function wpIcon(wp, sz, anc) {
   }
   return L.divIcon({
     className:'',
-    html:`<div data-wtype="${_isNumbered(wp) ? 'spot' : wp.type}" class="wp-mk${m.svg ? ' svg' : ''}" style="position:relative;width:${sz[0]}px;height:${sz[1]}px;border-radius:50%;background:${_isNumbered(wp) ? _spotColor() : t.c};color:#fff;text-align:center;line-height:${sz[1]-4}px;font-size:${_wpFont(sz[0], m.txt || '●')}px;font-weight:bold;border:2.5px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.45);cursor:pointer">${m.html}${stamp}${_moreBadge(wp)}</div>`,
+    html:`<div data-wtype="${_isNumbered(wp) ? 'spot' : wp.type}" class="wp-mk${m.svg ? ' svg' : ''}" style="position:relative;width:${sz[0]}px;height:${sz[1]}px;border-radius:50%;background:${_isNumbered(wp) ? _spotColor() : t.c};color:#fff;text-align:center;line-height:${sz[1]-4}px;font-size:${_wpFont(sz[0], m.txt || '●')}px;font-weight:bold;border:2.5px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.45);cursor:pointer">${m.html}${stamp}${_moreBadge(wp, sz[0])}</div>`,
     iconSize:sz, iconAnchor:anc
   });
 }
@@ -3806,6 +3809,7 @@ function courseNum(wp) {
 
 function refreshIcons() {
   wps.forEach(wp => { if(wp.marker) wp.marker.setIcon(wpIcon(wp)); });
+  vps.forEach(v => _syncVpIcon(v));   // 通り道の点もズームに合わせる（v168）
   _clusterStickers();
 }
 
@@ -3901,7 +3905,7 @@ function autoPlaceLabels(){
         const hit = placed.some(p => _rectsOverlap(r, p)) || blockers.some(b => _rectsOverlap(r, b));
         if (!hit) { chosen = {dir: d, rect: r}; break; }
       }
-      if (!chosen) { it.wp._labelHidden = true; _syncLabelVis(it.wp); return; }   // どこにも置けない名札は隠す（重ねない・v159）
+      if (!chosen) chosen = {dir: cur, rect: _labelRect(it.cx, it.cy, it.w, it.h, cur, off)};   // 置き場所が無くても隠さない（v168・一律）。重なりは広域で全部消えることで避ける
       placed.push(chosen.rect);
       if (chosen.dir !== cur) { it.wp._autoDir = chosen.dir; moved++; }
     });
@@ -3958,10 +3962,10 @@ function addVp(lat, lng) {
 
 /* 通り道の点の印。案内（分岐・注意）が付いていれば、矢印か「!」の少し大きい印（v141） */
 function _vpIcon(vp) {
-  const sz = isMobile() ? 18 : 13;
+  const sz = Math.max(8, Math.round((isMobile() ? 18 : 13) * _zoomK()));   // v168：広域では小さく
   const g = vp.guide;
   if (!g) return L.divIcon({className:'', html:`<div style="width:${sz}px;height:${sz}px;border-radius:50%;background:#444;border:2px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.55);cursor:grab"></div>`, iconSize:[sz,sz], iconAnchor:[sz/2,sz/2]});
-  const big = isMobile() ? 26 : 22;
+  const big = Math.max(16, Math.round((isMobile() ? 26 : 22) * _zoomK()));
   const turn = g.kind !== 'caution';
   const glyph = turn ? ({left:'←', straight:'↑', right:'→'}[g.dir] || '↑') : '!';
   return L.divIcon({className:'', html:`<div class="vp-guide${turn ? '' : ' vp-caution'}" style="width:${big}px;height:${big}px;line-height:${big-4}px;font-size:${Math.round(big*0.6)}px">${glyph}</div>`, iconSize:[big,big], iconAnchor:[big/2,big/2]});
@@ -7362,7 +7366,7 @@ const _stickerWait = new Map();  // 作成中の鍵→できたら印を置き�
 function _stickerOn(){ return !!(courseInfo && courseInfo.stickers); }
 function _stickerKey(p){ return _isPhotoRef(p) ? 's:' + p.slice(PHOTO_REF.length) : p; }
 function _stickerOf(p){ return _stickerMem.get(_stickerKey(p)) || ''; }
-function _stickerSize(){ const base = isMobile() ? 46 : 40; const d = Math.round(base * (WP_SIZES[_wpSizeIdx] || WP_SIZES[0])); return [d, d]; }
+function _stickerSize(){ const base = isMobile() ? 46 : 40; const d = Math.round(base * (WP_SIZES[_wpSizeIdx] || WP_SIZES[0]) * _zoomK()); return [d, d]; }   // v168：シールも広域では小さく
 function _wpIconSize(wp){ return (_stickerOn() && wp.type !== 'node' && wp.photos && wp.photos[0] && _stickerOf(wp.photos[0])) ? _stickerSize() : _wpSize(); }
 function _makeSticker(dataUrl){
   return new Promise(res => {
@@ -7438,11 +7442,7 @@ function _applyVpVis(vp, z){
   const el = vp.marker.getElement(); if (el) el.style.pointerEvents = on ? '' : 'none';
 }
 /* ラベル（名札）の表示／非表示：束ねて隠した印と、置き場所が無くて隠した名札の両方を見る */
-function _labelAllowedAt(wp, z){
-  if (z < DECL_LABEL_ALL_Z) return false;                      // 広域では名札を全部消す（v161）
-  if (wp.type === 'start' || wp.type === 'goal') return true;
-  return _isNumbered(wp) ? z >= DECL_LABEL_NUM_Z : z >= DECL_LABEL_CAT_Z;
-}
+function _labelAllowedAt(wp, z){ return z >= DECL_LABEL_ALL_Z; }   // 種類や番号で分けない（v168）
 function _syncLabelVis(wp){
   const tt = wp.marker && wp.marker.getTooltip && wp.marker.getTooltip(); const te = tt && tt.getElement && tt.getElement();
   if (te) te.style.display = (wp._clusterHidden || wp._labelHidden) ? 'none' : '';
@@ -8474,7 +8474,7 @@ function _elevHerePoint(dists, elevs, totalM) {
    グラフを指でなぞる（PC はマウスを載せる）と、その場所の 距離・標高・勾配 が帯の見出しと地図の印に出る。
    面の色：|勾配| が GRADE_MID%〜 で琥珀、GRADE_STEEP%〜 で赤（上りも下りも）。区間の勾配は前後1点を含めた移動平均 */
 const _elevLayout = {band:null, pc:null};   // 描いたときの余白と幅（なぞりの x → 距離 に使う）
-let _scrub = null, _scrubMk = null, _scrubOn = false, _scrubTimer = null;
+let _scrub = null, _scrubMk = null, _scrubOn = false, _scrubTimer = null, _scrubGesture = false;   // _scrubGesture：この指はなぞり（フリックで開閉しない）
 function _elevStatsText(){ const el = (_elevData || {}).elevs || []; const asc = el.reduce((s,e,i)=>i>0&&e>el[i-1]?s+(e-el[i-1]):s,0); return `+${Math.round(asc)}m`; }
 function _elevAtD(dists, elevs, x){   // 距離 x の標高（線形補間）
   const total = dists[dists.length-1] || 1; x = Math.max(0, Math.min(total, x));
@@ -8545,9 +8545,23 @@ function _scrubAttach(svg, which){   // 帯（band）と PC のグラフ（pc）
   const at = e => { const Lo = _elevLayout[which]; if (!Lo) return null; const r = svg.getBoundingClientRect(); if (!(r.width > 0)) return null;
     let x; if (which === 'pc') { const sc = Math.min(r.width / Lo.W, r.height / Lo.H) || 1; x = (e.clientX - r.left - (r.width - Lo.W * sc) / 2) / sc; } else x = (e.clientX - r.left) * (Lo.W / r.width);
     return Math.max(0, Math.min(1, (x - Lo.PL) / Lo.iW)) * Lo.totalM; };
-  svg.addEventListener('pointerdown', e => { if (e.pointerType === 'mouse' && e.button !== 0) return; pressed = true; _scrubOn = true; clearTimeout(_scrubTimer); try { svg.setPointerCapture(e.pointerId); } catch(_) {} const d = at(e); if (d != null) _scrubTo(d); e.preventDefault(); });
-  svg.addEventListener('pointermove', e => { if (!pressed && e.pointerType !== 'mouse') return; const d = at(e); if (d != null) _scrubTo(d); });
-  const up = e => { if (!pressed) return; pressed = false; _scrubOn = false; if (e.pointerType === 'mouse' && which === 'pc') return; clearTimeout(_scrubTimer); _scrubTimer = setTimeout(_scrubClear, SCRUB_HOLD_MS); };
+  // 指（v168）：横に動かす・少し押さえる＝なぞり、縦に動かす＝帯の開閉フリック（帯の touch 側に任せる）、ちょんと触る＝その場所を見る
+  let decided = null, x0 = 0, y0 = 0, holdT = null;
+  const startScrub = e => { decided = 'scrub'; _scrubOn = true; _scrubGesture = true; clearTimeout(_scrubTimer); try { svg.setPointerCapture(e.pointerId); } catch(_) {} const d = at(e); if (d != null) _scrubTo(d); };
+  svg.addEventListener('pointerdown', e => { if (e.pointerType === 'mouse' && e.button !== 0) return; pressed = true; decided = null; x0 = e.clientX; y0 = e.clientY;
+    if (e.pointerType === 'mouse') { startScrub(e); return; }
+    clearTimeout(holdT); holdT = setTimeout(() => { if (pressed && decided === null) startScrub(e); }, SCRUB_HOLD_START_MS); });
+  svg.addEventListener('pointermove', e => {
+    if (!pressed && e.pointerType !== 'mouse') return;
+    if (pressed && decided === null) { const dx = Math.abs(e.clientX - x0), dy = Math.abs(e.clientY - y0);
+      if (dy > SCRUB_FLICK_PX && dy > dx) { decided = 'flick'; clearTimeout(holdT); return; }
+      if (dx > SCRUB_MOVE_PX) { clearTimeout(holdT); startScrub(e); } else return; }
+    if (decided === 'flick') return;
+    const d = at(e); if (d != null) _scrubTo(d); });
+  const up = e => { if (!pressed) return; pressed = false; clearTimeout(holdT);
+    if (decided === null) { const d = at(e); if (d != null) { clearTimeout(_scrubTimer); _scrubTo(d); } decided = 'tap'; }   // ちょんと触る＝その場所を見る
+    _scrubOn = false; if (decided === 'flick') return;
+    if (e.pointerType === 'mouse' && which === 'pc') return; clearTimeout(_scrubTimer); _scrubTimer = setTimeout(_scrubClear, SCRUB_HOLD_MS); };
   svg.addEventListener('pointerup', up); svg.addEventListener('pointercancel', up);
   svg.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse' && !pressed) _scrubClear(); });
 }
@@ -8660,6 +8674,7 @@ const ICO_UP = '<svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="curren
 const ICO_DN = '<svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7l6 6l4 -4l8 8" /> <path d="M21 10l0 7l-7 0" /></svg>';
 const ICO_ARRDR = '<svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7 L6 7 L11 16 Q12 18 13 16 L18 7 L21 7" /></svg>';
 
+function _toggleElevBand(){ _closeAllPopups('elev'); _setElevExpanded(!_elevExpanded); }   // 見出しのタップ・右端のボタン（v168）
 function _setElevExpanded(b) {
   const band = document.getElementById('mobileElevBand');
   if (!band) { _elevExpanded = b; _drawElevBand(); return; }
@@ -8694,12 +8709,13 @@ function _initElevFlick() {
   // フリックで開閉（上スワイプ=展開／下スワイプ=折りたたみ）。タップでは開閉しない＝
   // 開こうとして窓を外しても、地図がパンされるだけで調整点が作られない（誤操作防止）。
   let sx=null, sy=null, ex=0, ey=0, st=0, lastTouchEnd=0;
-  const TH = 24;   // この縦移動量を超えたらフリックと判定
-  const begin  = (x,y) => { if (_scrubOn) { sy=null; return; } sx=x; sy=y; ex=x; ey=y; st=Date.now(); };   // なぞり中は開閉しない（v166）
+  const TH = 18;   // この縦移動量を超えたらフリックと判定（v168：開きやすく）
+  const begin  = (x,y) => { _scrubGesture = false; sx=x; sy=y; ex=x; ey=y; st=Date.now(); };
   const moveTo = (x,y) => { if(sy===null) return; ex=x; ey=y; };
   const finish = () => {
     if (sy===null) return;
     const dx = ex - sx, dy = ey - sy; sy=null;
+    if (_scrubGesture) { _scrubGesture = false; return; }   // なぞりだった指では開閉しない（v168）
     if (Math.abs(dy) > TH && Math.abs(dy) > Math.abs(dx)) {   // 縦方向のフリックのみ反応
       _closeAllPopups('elev');
       _setElevExpanded(dy < 0);   // 上フリック→展開 / 下フリック→折りたたみ
@@ -9427,7 +9443,7 @@ function _wpFont(sz, sym){
 function _labelSize(){ return LABEL_SIZES[_labelSizeIdx] || LABEL_SIZES[0]; }
 
 // スポット○の現在の直径(px)。基準(スマホ36/PC30)×段階倍率。○内文字とラベル位置もこの値から算出
-function _zoomKFor(z){ for (const [zz, k] of ZOOM_SCALE) if (z >= zz) return k; return .7; }
+function _zoomKFor(z){ for (const [zz, k] of ZOOM_SCALE) if (z >= zz) return k; return .45; }
 function _zoomK(){ return _zoomKFor(leafMap ? leafMap.getZoom() : 16); }
 function _wpSize(){
   const base = isMobile() ? 36 : 30;
