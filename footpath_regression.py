@@ -382,7 +382,7 @@ def static_checks(src):
         if not _t and 'aria-label' not in _m.group(1): _miss.append(_m.group(1)[:50])
     chk('静的', '文字の無いボタンすべてに読み上げ名がある（HTMLとJSの雛形）', not _miss, str(_miss)[:160])
     chk('静的', 'ページ全体の拡大は止める（ホーム画面アプリでボタンがはみ出したため・v135）。文字の大きさはアプリ内の設定で',
-        'maximum-scale=1.0, user-scalable=no, viewport-fit=cover' in src and 'html,body{touch-action:manipulation;' in src and 'function _unzoomPage' in src)
+        'maximum-scale=1.0, user-scalable=no' in src and 'viewport-fit=cover' not in src and 'apple-mobile-web-app-status-bar-style" content="default"' in src and 'html,body{touch-action:manipulation;' in src and 'function _unzoomPage' in src)
     chk('静的', '地図の上だけは指の操作を Leaflet に渡す', '#map{touch-action:none}' in src)
     chk('静的', '出発点・到着点のつなぎ区間も同梱する', 'if (startWp && startWp.id !== rw[0].id) pairs.push' in src)
     chk('静的', '近すぎる「ふつうの三角」を飛ばすきまりがある', 'const DIR_MIN_DASHES' in src)
@@ -435,6 +435,10 @@ def static_checks(src):
     chk('静的', '選べる種類の出どころは _buildTypeOptions のまま（チップは select を読む）',
         "const cur = sel.value, opts = [...sel.options].map(o => o.value);" in src and 'function _buildTypeOptions' in src)
     chk('静的', '最初の案内が「種類と名前はあとから」を伝える', '種類と名前は、○を押してあとから決められます' in src)
+    # --- v154: ノッチ／ステータスバーに重ならない（致命的・オーナー指摘）---
+    chk('静的', 'ホーム画面のアプリでステータスバーが画面に重ならない（viewport-fit=cover 無し・status-bar は default）。配布シートは安全域ぶん空け、外側タップと Esc で閉じる',
+        'viewport-fit=cover' not in src and 'content="default"' in src and 'padding:calc(16px + env(safe-area-inset-top)) 16px' in src
+        and "if (e.target === ov) closePrintSheet();" in src and "e.key === 'Escape'" in src)
     # --- v153: 画面の骨組みの検査（閉じ忘れを二度と出さない）＋小さな手直し ---
     _a = src.index('<body'); _b = src.index('<script src=', _a)
     _mk = re.sub(r'<script\b.*?</script>', '', src[_a:_b], flags=re.S)
@@ -460,16 +464,16 @@ def static_checks(src):
         "if (!name) { alert('コース名を入れてください。');" in src and 'function _herePos' in src and 'const c = area ? await geocode(area) : await _herePos();' in src
         and 'id="s1Start"' not in src and 'id="s1Goal"' not in src)
     chk('静的', 'スマホの下の道具と一覧のカードのボタンに文字が付いている（アイコンだけにしない）',
-        src.count('class="mob-mode-l"') == 2 and src.count('class="cc-act-l"') == 3 and 'ファイルから読み込む（コース・GPX・発見）' in src)
+        src.count('class="mob-mode-l"') == 4 and src.count('class="cc-act-l"') == 3 and 'ファイルから読み込む（コース・GPX・発見）' in src)
     chk('静的', '最初の案内に「赤い線を引っぱると道順が変わる」がある', '道順を変えたいときは、赤い線を指で引っぱります。' in src)
     # --- v148: 手数を減らす（自動保存・道具の整理・スポット編集の畳み込み）---
     chk('静的', '未保存フラグは _markDirty() だけが立て、自動保存を予約する（直接 _dirty = true は無い）',
         src.count('_dirty = true') == 1 and 'function _markDirty(){ _dirty = true; scheduleAutoSave(); }' in src and 'const AUTOSAVE_MS = 1500;' in src and "saveCourse({quiet:true})" in src)
     chk('静的', '保存ボタンは状態表示（保存済み／保存中…／保存できず）になり、一覧に戻るときは先に自動保存する',
         "st === 'saved' ? '保存済み' : st === 'saving' ? '保存中…'" in src and 'await autoSaveNow(); }   // 自動で保存してから戻る' in src and '.hbtn-save.is-saved{' in src)
-    chk('静的', 'スマホの下の道具は「なぞる」「スポット」だけ。通り道の点・道を描くは上級者向けへ（id は据え置き）',
-        src.count('class="mob-mode ') == 2 and 'id="mobileViaBtn" onclick="setMode(\'via\');closeMobileMenu()' in src and 'id="mobileCustomBtn" onclick="toggleCustomMode();_syncMobileMenu()"' in src
-        and src.index('id="mmAdv"') < src.index('id="mobileViaBtn"'))
+    chk('静的', 'スマホの下の道具は なぞる・スポット・通り道・道を描く の4つ（文字つき）。上級者向けに重複させない（v154・オーナー指摘）',
+        src.count('class="mob-mode ') == 4 and src.count('class="mob-mode-l"') == 4 and 'id="mobileViaBtn" class="mob-mode tap" onclick="setMode(\'via\')"' in src
+        and 'id="mobileCustomBtn" class="mob-mode tap" onclick="toggleCustomMode()"' in src and src.count('id="mobileViaBtn"') == 1)
     chk('静的', 'スポットの編集は 種別→名前→写真→説明 の順で、2行目・電話・滞在・道順・名札の位置は「くわしい設定」に畳む',
         src.index('id="mName"') < src.index('id="mPhotoStrip"') < src.index('id="mDesc2"') < src.index('<details id="mMore"') < src.index('id="mTel"') and "_more.open = !!(" in src)
     # --- v147: 改変の可否（noEdit）＋ゴールの1枚（F7）---
@@ -601,7 +605,7 @@ def static_checks(src):
     _missing = [f"{k}(PC)" for k, v in _feats.items() if v not in _pc] + [f"{k}(スマホ)" for k, v in _feats.items() if v not in _mob]
     chk('静的', '機種だけで使えない機能が0（地図を持ち歩く・現在地追従はスマホ専用でよい）', not _missing, str(_missing)[:200])
     chk('静的', 'PCの左の道具に「なぞる」「道を描く」、下に「現在地」、左の欄に「並べ替え」がある',
-        'id="btnDraw" onclick="setMode(\'draw\')"' in src and 'id="btnCustom" onclick="toggleCustomMode();closePcPops()"' in src
+        'id="btnDraw" onclick="setMode(\'draw\')"' in src and 'id="btnCustom" onclick="toggleCustomMode()"' in src
         and 'id="btnGps" onclick="gotoCurrentLocation()"' in src and 'class="wp-ro-btn drag-hint" onclick="openReorderSheet()"' in src)
     chk('静的', '高低差の詳細は最初の1回で開く（実際の表示で判定）', "var isOpen = getComputedStyle(panel).display !== 'none';" in src)
     # --- v130: 言葉の言い換え（ロードマップ 段階1-5）と、コース削除の「元に戻す」---
@@ -610,7 +614,7 @@ def static_checks(src):
     _left = [w for w in _old_words if w in src]
     chk('静的', '画面に出る旧語（調整点・細道・なぞり・手動・スナップ・閲覧モード・ウェイポイント）が残っていない', not _left, str(_left)[:160])
     chk('静的', '新しい語が入っている（通り道の点・自分で描いた道・指でなぞって描く・道に沿わせない・描いた道に吸い付く・スポット）',
-        all(w in src for w in ['<span class="mm-tog-l">通り道の点を置く</span>', 'aria-label="指でなぞって描く"', '<span class="mm-tog-l">道を描く（地図に無い道）</span>', '<span class="mm-tog-l">道に沿わせない</span>',
+        all(w in src for w in ['aria-label="通り道の点"', 'aria-label="指でなぞって描く"', 'aria-label="自分で描いた道"', '<span class="mm-tog-l">道に沿わせない</span>',
                                '<span class="mm-tog-l">描いた道に吸い付く</span>', '<span>スポットの編集</span>', '👁 歩く人の見え方', "l:'描いた道の点'"]))
     chk('静的', '操作ガイドが今の画面の語で書かれている', '<h3>📍 スポットを置く・直す</h3>' in src and '<h3>↔ 通り道の点（道順を細かく指定する）</h3>' in src
         and '<h3>💾 保存・配る</h3>' in src and 'ウェイポイントの追加・編集' not in src)
@@ -680,8 +684,8 @@ def static_checks(src):
         "(w.labelDir && w.labelDir !== 'top') ? w.labelDir : 'auto'" in src)
     # --- v105: ツールバーの分かりにくさ（UI点検 01・14の一部）---
     rail_labels = re.findall(r'class="rl-btn[^"]*" id="btn(?:Wp|Via)"[^>]*>[\s\S]*?<span>([^<]*)</span>', src)
-    chk('静的', '「通り道の点を置く」は上級者向けに移り、左の道具は「スポット」だけ（v148）。「通り道の点を表示」と文字が別',
-        rail_labels == ['スポット'] and 'id="btnToggleVia"' in src and '>通り道の点を表示<span class="pp-sw">' in src and '>通り道の点を置く（クリックした所を通る）<span class="pp-sw">' in src, str(rail_labels))
+    chk('静的', '「通り道」と「通り道の点を表示」の文字が別（同じ文字のボタンが並ばない）',
+        rail_labels == ['スポット', '通り道'] and 'id="btnToggleVia"' in src and '>通り道の点を表示<span class="pp-sw">' in src, str(rail_labels))
     chk('静的', '案内文にマウスを乗せると全文が出る', "el.title = long[m] || ''" in src)
     chk('静的', '画面を開いた直後の案内も短い文にそろえている',
         '<span id="tbar-st" title=' in src and 'クリックでウェイポイント追加' not in src)
@@ -1697,7 +1701,7 @@ def functional_checks(index_path):
             isinstance(pc3, dict) and pc3.get('noText') == [] and pc3.get('dup') == [] and pc3.get('nBtn', 0) >= 8
             and pc3.get('hdrH', 99) <= 60 and pc3.get('railIn') and pc3.get('hint') == 'クリックでスポットを追加'
             and pc3.get('popMapOpen') and pc3.get('bm') == 'gsi_photo' and pc3.get('pill') == '航空写真'
-            and pc3.get('legendOpen') and pc3.get('legendRows', 0) >= 2 and pc3.get('moreOpen') and pc3.get('moreRows') == 12
+            and pc3.get('legendOpen') and pc3.get('legendRows', 0) >= 2 and pc3.get('moreOpen') and pc3.get('moreRows') == 10
             and pc3.get('manualFlip') and pc3.get('hintVia') == 'ルート線の上をクリックして道順を変える'
             and pc3.get('viewHidden') and pc3.get('viewBack') and pc3.get('closedAll'), str(pc3)[:300])
 
