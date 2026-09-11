@@ -515,7 +515,7 @@ body.viewonly #descSec.view-desc textarea{background:#F9F7F4;border-color:#E6DCC
 .sh-foot{margin-top:10px;padding-top:6px;border-top:1px solid #EFE7DA;font-size:9.5px;color:#8A7A63;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
 @media (max-width:760px){#sheetOver{padding:calc(10px + var(--sat)) 10px calc(10px + var(--sab))}.sh-body{grid-template-columns:1fr}#printSheet{padding:12px}}
 #sheetOver .sheet-actions .sh-btn{min-height:var(--tap)}
-@media print{
+@media print{.sh-nop{display:none!important}
   body > *:not(#sheetOver){display:none!important}
   #sheetOver{position:static!important;display:block!important;background:#fff!important;padding:0!important;overflow:visible!important}
   #sheetOver .sheet-actions{display:none!important}
@@ -936,8 +936,18 @@ body.viewing #modeHint,body.viewonly #modeHint{display:none!important}
 #nextBar .nb-guide{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13px}
 #nextBar .nb-guide b{font-weight:800;color:var(--brand)}
 #nextBar .nb-guide.caution b{color:#B87503}
+#nextBar .nb-cue{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13px}
+#nextBar .nb-cue b{font-weight:800;color:var(--brand)}
 .vip-gdir{font-size:40px;line-height:1;color:var(--brand);font-weight:800}
 .sh-guides{margin-top:10px;padding-top:8px;border-top:1px solid #EFE7DA}
+.sh-cues{margin-top:10px;padding-top:8px;border-top:1px solid #EFE7DA}
+.sh-cl{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:3px 14px;font-size:10.5px;line-height:1.5}
+.sh-cl div{display:flex;align-items:center;gap:6px;min-width:0}
+.sh-cl .sh-cd{min-width:40px;color:var(--t-sub);font-variant-numeric:tabular-nums}
+.sh-cl b{color:var(--brand);font-size:13px}
+.sh-cl span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sh-cue-none{font-size:10.5px;color:var(--t-sub);line-height:1.6}
+.sh-cue-btn{border:1.5px solid var(--brand);background:#fff;color:var(--brand);border-radius:8px;padding:4px 10px;margin:0 6px;font-family:inherit;font-weight:800;font-size:11px;cursor:pointer}
 .sh-gl{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:10.5px;line-height:1.5}
 .sh-gl div{display:flex;align-items:center;gap:6px}
 .sh-gl b{color:var(--brand);font-size:13px}
@@ -1824,6 +1834,10 @@ const GUIDE_CAUTIONS = {car:'車が多い', slip:'滑りやすい', nosignal:'�
 const GUIDE_AHEAD_M  = 120;   // 帯で知らせ始める距離
 const GUIDE_HERE_M   = 20;    // これ以内で「ここを左」
 const GUIDE_PASSED_M = 25;    // これだけ過ぎたら「この道で合っています」
+/* 曲がり角の案内（v167・Footpath のキューシートに倣う）：経路サーバの steps から、曲がる所だけを拾う */
+const CUE_MODS = {uturn:['折り返す','↩'], 'sharp left':['鋭角に左へ','↙'], left:['左へ','←'], 'slight left':['ゆるく左へ','↖'], 'slight right':['ゆるく右へ','↗'], right:['右へ','→'], 'sharp right':['鋭角に右へ','↘']};
+const CUE_TYPES = {turn:'turn', fork:'fork', 'end of road':'end', merge:'merge', continue:'cont', roundabout:'ra', rotary:'ra', 'roundabout turn':'ra'};
+const CUE_MERGE_M = 8, CUE_SNAP_M = 30, CUE_AHEAD_M = 120, CUE_SHEET_MAX = 40;   // 同じ場所の重複／道順の頂点に寄せる許容／帯で知らせ始める距離／シートに載せる上限
 /* 写真（v142）：保存は長辺 PHOTO_MAX_PX の JPEG（描き直して保存するので EXIF＝撮影場所などの情報は残らない）。
    シール＝スポットの1枚目の写真を STICKER_PX 角に切り出した地図の印。近いシールは STICKER_CLUSTER_PX 以内で束ねる */
 const PHOTO_MAX_PX = 1024, PHOTO_QUALITY = 0.66, PHOTO_MAX_PER_SPOT = 12;
@@ -2081,6 +2095,8 @@ let _modalPhotos= [];      // モーダル編集中の写真
 let lineDragging= false;
 let dragSrcId   = null;
 let segCache    = {};
+let _cueCache   = {};      // 区間キー → 曲がり角 [[lat,lng,種類,向き,道の名前],…]（v167）。保存データの cues に入る
+let _cueVer = 0, _cueList = null, _cueBusy = new Set();   // _routeCues のキャッシュと、裏で取りに行っている区間
 let canvasRenderer = null;
 let ctxVpId        = null;  // via point whose context menu is open
 let _ctxNodeId     = null;  // 端点nodeメニュー対象   // Canvas renderer for html2canvas compatibility
@@ -2917,7 +2933,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v166';
+const APP_VERSION = 'v167';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -4413,6 +4429,7 @@ function renderNextBar() {
   _nextWpId = here ? here.id : (info ? info.wp.id : null);
   if (lb) lb.textContent = here ? '到着' : '次のスポット';
   const gi = _nextGuideInfo(info ? (info.along != null ? info.along : null) : null);
+  const ci = gi ? null : _nextCueInfo(info ? (info.along != null ? info.along : null) : null);   // 分岐の案内が無いときだけ曲がり角（v167）
   _guidePassCheck();
   if (gi) { _guideShown[gi.vp.id] = true; _activeGuideId = gi.vp.id; } else _activeGuideId = null;
   if (!info) { tx.textContent = _walkPos ? (here ? _spotLabel(here) + '　ゴールに着きました' : 'ゴールに着きました') : '◎を押すと、次のスポットまでの距離が出ます'; ar.style.visibility = _walkPos ? 'visible' : 'hidden'; ar.style.transform = '';
@@ -4421,7 +4438,8 @@ function renderNextBar() {
   tx.innerHTML = (here ? '<div class="nb-name"><b>' + escHtml(_spotLabel(here)) + '</b>　次：' + escHtml(info.label) + '</div>'
                        : '<div class="nb-name">次：<b>' + escHtml(info.label) + '</b></div>')
                + (gi ? '<div class="nb-guide' + (gi.g.kind === 'caution' ? ' caution' : '') + '">' + escHtml(_guideGlyph(gi.g)) + ' <b>' + (gi.here ? escHtml(_guideText(gi.g)) : (gi.g.kind === 'caution' ? 'この先' + Math.round(gi.dist / 10) * 10 + 'm ' + escHtml(_guideText(gi.g)) : Math.round(gi.dist / 10) * 10 + 'm先 ' + escHtml(GUIDE_DIRS[gi.g.dir] || 'まっすぐ'))) + '</b>' + (gi.g.note ? '：' + escHtml(gi.g.note) : '') + '</div>'
-                     : '<div class="nb-dist"> まで <b>' + info.distText + '</b>' + (info.straight ? '（直線）' : '') + '・約' + info.min + '分<span class="nb-dir">' + info.dirText + '</span></div>');
+                     : ci ? '<div class="nb-cue">' + escHtml(ci.q.glyph) + ' <b>' + Math.round(ci.dist / 10) * 10 + 'm先 ' + escHtml(ci.q.text) + '</b></div>'
+               : '<div class="nb-dist"> まで <b>' + info.distText + '</b>' + (info.straight ? '（直線）' : '') + '・約' + info.min + '分<span class="nb-dir">' + info.dirText + '</span></div>');
   ar.style.visibility = 'visible';
   ar.style.transform = 'rotate(' + Math.round(info.rot) + 'deg)';
 }
@@ -5896,8 +5914,79 @@ async function buildRoutedCoords() {
 async function getCachedRoute(key, pts) {
   if (segCache[key]) return segCache[key];
   const coords = await fetchOSRM(key, pts);
-  if (!coords.fallback) segCache[key] = coords;   // 直線に逃げた結果は覚えない（復旧後に道なりへ戻すため）
+  if (!coords.fallback) { segCache[key] = coords; if (coords.cues) { _cueCache[key] = coords.cues; _cueVer++; } }   // 直線に逃げた結果は覚えない（復旧後に道なりへ戻すため）
   return coords;
+}
+/* 曲がり角（v167）。経路サーバの steps → 曲がる所だけ [lat, lng, 種類, 向き, 道の名前]。まっすぐ・出発・到着は入れない */
+function _cuesFromLegs(legs){
+  const out = [];
+  (legs || []).forEach(leg => (leg.steps || []).forEach(st => {
+    const m = st.maneuver || {}, t = CUE_TYPES[m.type]; if (!t || !m.location) return;
+    let mod = m.modifier || '';
+    if (t === 'ra') mod = String(m.exit || '');
+    else if (!CUE_MODS[mod]) return;
+    out.push([+(+m.location[1]).toFixed(6), +(+m.location[0]).toFixed(6), t, mod, String(st.name || '').slice(0, 40)]);
+  }));
+  return out;
+}
+/* 保存してある道順にはまだ曲がり角が無い（v167 より前に作ったコース）。開くときに経路サーバを呼ばない決まり（v119）は守り、
+   配布シートの「道順から作る」を押したときだけ、編集画面で区間ごとに取りに行く。歩く人の端末（配布リンク）からは取りに行かない */
+function _cueBackfill(key, pts){
+  if (_cueCache[key] !== undefined || _cueBusy.has(key)) return Promise.resolve();
+  if (document.body.classList.contains('viewonly') || document.body.classList.contains('embed')) return Promise.resolve();
+  _cueBusy.add(key);
+  return fetchOSRM(key, pts).then(co => { if (co && !co.fallback && co.cues) { _cueCache[key] = co.cues; _cueVer++; _persistDerivedQuietly(); } })
+    .catch(() => {}).finally(() => _cueBusy.delete(key));
+}
+async function fetchCuesNow(){   // 今の道順の区間の曲がり角を取りに行き、開いている配布シートの一覧を差し替える
+  if (document.body.classList.contains('viewonly') || document.body.classList.contains('embed')) return 0;
+  const jobs = [];
+  Object.keys(_routesInUse()).forEach(k => { if (_cueCache[k] !== undefined || _cueBusy.has(k)) return; const m = k.split(/[;,]/).map(Number); jobs.push(_cueBackfill(k, [{lat:m[1], lng:m[0]}, {lat:m[3], lng:m[2]}])); });
+  if (jobs.length) { showToast('曲がり角を調べています…（' + jobs.length + ' 区間）'); await Promise.all(jobs); }
+  const sec = document.querySelector('#printSheet .sh-cues'); if (sec) sec.outerHTML = _sheetCuesHtml();
+  if (jobs.length) showToast(_routeCues().length ? '曲がり角の一覧を作りました（保存すると配布先にも入ります）' : '曲がり角を取れませんでした（通信できる場所で試してください）');
+  return jobs.length;
+}
+function _cuesInUse(){   // 今の道順の区間ぶんだけ（保存データの cues）
+  const out = {}; Object.keys(_routesInUse()).forEach(k => { const c = _cueCache[k]; if (Array.isArray(c) && c.length) out[k] = c; }); return out;
+}
+function _cueText(q){
+  const m = CUE_MODS[q.mod]; let text, glyph = m ? m[1] : '•';
+  if (q.t === 'ra') { text = 'ロータリー（環状交差点）を' + (q.mod ? q.mod + '番目の出口へ' : '回って出る'); glyph = '⟳'; }
+  else if (!m) text = '進む';
+  else text = (q.t === 'fork' ? '二股を' : q.t === 'end' ? '突き当たりを' : q.t === 'merge' ? '合流して' : '') + m[0];
+  if (q.name) text += '（' + q.name + '）';
+  return {text, glyph};
+}
+function _routeCues(){   // 今の道順に沿った曲がり角（出発点からの距離順）[{d, lat, lng, t, mod, name, text, glyph}]
+  const c = _lastRouteCoords; if (!c || c.length < 2) return [];
+  if (_cueList && _cueList.ref === c && _cueList.ver === _cueVer) return _cueList.list;
+  if (_routeCumRef !== c) { _routeCum = [0]; for (let i = 1; i < c.length; i++) _routeCum[i] = _routeCum[i-1] + _distM(c[i-1], c[i]); _routeCumRef = c; }
+  const out = [];
+  Object.keys(_routesInUse()).forEach(k => (_cueCache[k] || []).forEach(q => {
+    let bi = -1, bd = CUE_SNAP_M;   // 曲がり角の位置は道順の頂点と一致する → 一番近い頂点の距離を使う
+    for (let i = 0; i < c.length; i++) { const d = _distM(c[i], q); if (d < bd) { bd = d; bi = i; } }
+    if (bi < 0) return;
+    out.push({d: _routeCum[bi], lat: q[0], lng: q[1], t: q[2], mod: q[3], name: q[4] || ''});
+  }));
+  out.sort((a, b) => a.d - b.d);
+  const kept = []; out.forEach(q => { const last = kept[kept.length-1]; if (last && Math.abs(last.d - q.d) <= CUE_MERGE_M) return; Object.assign(q, _cueText(q)); kept.push(q); });
+  _cueList = {ref: c, ver: _cueVer, list: kept};
+  return kept;
+}
+function _nextCueInfo(nextSpotAlong){   // 歩く人：次の曲がり角（分岐の案内が無いときだけ帯に出す）
+  if (!_walkPos) return null;
+  const a = _walkPos.along || 0, nq = _routeCues().find(q => q.d > a + GUIDE_HERE_M); if (!nq) return null;
+  const d = nq.d - a; if (d > CUE_AHEAD_M) return null;
+  if (nextSpotAlong != null && nq.d > nextSpotAlong) return null;
+  return {q: nq, dist: d};
+}
+function _sheetCuesHtml(){   // 配布シート：曲がり角の一覧（無ければ、編集画面でだけ「道順から作る」ボタン。印刷には出ない）
+  const cues = _routeCues();
+  if (!cues.length) { const canFetch = !document.body.classList.contains('viewonly') && !document.body.classList.contains('embed') && Object.keys(_routesInUse()).length > 0;
+    return canFetch ? '<div class="sh-cues sh-nop"><div class="sh-sec">曲がり角</div><div class="sh-cue-none">この道順にはまだ曲がり角の一覧がありません。<button type="button" class="sh-cue-btn tap" onclick="fetchCuesNow()">道順から作る</button>（区間ごとに経路サーバへ問い合わせます）</div></div>' : ''; }
+  const rows = cues.slice(0, CUE_SHEET_MAX).map(q => '<div><span class="sh-cd">' + _fmtDistM(q.d) + '</span><b>' + escHtml(q.glyph) + '</b><span>' + escHtml(q.text) + '</span></div>');
+  return '<div class="sh-cues"><div class="sh-sec">曲がり角（出発点からの距離。道順から自動で作成）</div><div class="sh-cl">' + rows.join('') + (cues.length > CUE_SHEET_MAX ? '<div>…ほか ' + (cues.length - CUE_SHEET_MAX) + ' か所</div>' : '') + '</div></div>';
 }
 
 let _routeWarnAt = 0;   // 経路サーバの不通を知らせた時刻（連続通知を抑えるため）
@@ -5916,12 +6005,14 @@ async function _tryRouter(i, coordStr) {
   const ctrl = new AbortController();
   const tid  = setTimeout(() => ctrl.abort(), ROUTER_TIMEOUT_MS);
   try {
-    const res = await fetch(r.base + coordStr + '?overview=full&geometries=geojson', {signal: ctrl.signal});
+    const res = await fetch(r.base + coordStr + '?overview=full&geometries=geojson&steps=true', {signal: ctrl.signal});   // steps＝曲がり角（v167）
     clearTimeout(tid);
     if (!res.ok) return null;
     const data = await res.json();
     if (data.code === 'Ok' && data.routes?.[0]) {
-      return data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
+      const co = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
+      co.cues = _cuesFromLegs(data.routes[0].legs);   // 曲がり角（v167）
+      return co;
     }
     return null;
   } catch (_) { clearTimeout(tid); return null; }
@@ -6746,6 +6837,7 @@ function _sheetHtml(imgUrl, cssWidth) {
     +   '</div>'
     + '</div>'
     + _sheetGuidesHtml()
+    + _sheetCuesHtml()
     + (function(){ const segs = _segmentMinutes(); return segs.length
         ? '<div class="sh-segs"><div class="sh-sec">区間の目安（' + _walkSpeed() + 'km/h' + (_walkSpeed() <= 3 ? '・立ち止まる前提' : '') + '）</div><div class="sh-seg-l">'
           + segs.map(g => escHtml(g.from) + '→' + escHtml(g.to) + ' <b>' + g.min + '分</b>').join('　') + '</div></div>' : ''; })()
@@ -8210,10 +8302,11 @@ function _persistDerivedQuietly() {
     const list = getCourses();
     const c = list.find(x => x && x.id === currentCourseId);
     if (!c) return false;
-    const routes = _routesInUse(), elevs = _elevsInUse();
+    const routes = _routesInUse(), elevs = _elevsInUse(), cues = _cuesInUse();
     const same = (a, b) => JSON.stringify(a || {}) === JSON.stringify(b || {});
     let changed = false;
     if (Object.keys(routes).length && !same(c.routes, routes)) { c.routes = routes; changed = true; }
+    if (Object.keys(cues).length   && !same(c.cues,   cues))   { c.cues   = cues;   changed = true; }   // v167
     if (Object.keys(elevs).length  && !same(c.elevs,  elevs))  { c.elevs  = elevs;  changed = true; }
     return changed ? setCourses(list) : false;
   } catch(_) { return false; }
@@ -8647,6 +8740,7 @@ function buildCurrentSaveData() {
     customRoads: customRoads.map(r=>({id:r.id,name:r.name,coords:r.coords})),
     customPaths: (customPaths||[]).map(p=>({id:p.id, pts:(p.pts||[]).map(pt=>pt.slice())})),
     routes:  _routesInUse(),   // 区間ごとの道順。開くときに経路サーバを呼ばずに済ませる（v119）
+    cues:    _cuesInUse(),     // 区間ごとの曲がり角（v167）。無ければ書かない
     elevs:   _elevsInUse(),    // 点ごとの標高。開くときに標高サーバを呼ばずに済ませる（v127）
     maxWpId: idW,
     maxVpNum:idV,
@@ -8834,6 +8928,8 @@ function loadCourseData(data) {
         if (Array.isArray(c) && c.length >= 2) segCache[k] = c.map(q => [+q[0], +q[1]]);
       });
     }
+    _cueCache = {}; _cueBusy = new Set(); _cueVer++;   // 曲がり角（v167）
+    if (data.cues && typeof data.cues === 'object') Object.keys(data.cues).forEach(k => { const c = data.cues[k]; if (Array.isArray(c)) _cueCache[k] = c; });
     elevCache = {};
     if (data.elevs && typeof data.elevs === 'object') {
       Object.keys(data.elevs).forEach(k => { const v = +data.elevs[k]; if (isFinite(v)) elevCache[k] = v; });

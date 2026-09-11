@@ -411,3 +411,8 @@ CONSTANTS(904) → STATE(968) → STORAGE(1015) → 版のお知らせ(1021) →
 - 標高の補間 `_elevAtD(dists, elevs, x)`、勾配 `_gradeAtD(dists, elevs, x)`（前後 `SCRUB_WIN_M` の平均）、位置つき `_elevPointAt(d)`（`_elevData._dists` にキャッシュ）。
 - 帯と PC のグラフは描くたびに `_elevLayout.band/pc` に余白と幅を覚え、`_scrubAttach` の pointer イベントが x → 距離に直して `_scrubTo(d)`。描画関数の最後に `_scrubSvg` を足す（「いまここ」より上）。
 - 面の色は `_gradeFills`（同じ色が続く区間は1つの path）。しきい値は `GRADE_MID`／`GRADE_STEEP`、色は `GRADE_COL` の1か所。
+
+## 曲がり角（v167）
+- `_tryRouter` が `steps=true` で取り、`co.cues = _cuesFromLegs(legs)` を座標配列に付けて返す。`getCachedRoute` のキャッシュ・ミス時だけ `_cueCache[key]` に入る（ヒット時は経路サーバを呼ばない＝v119 の不変条件）。
+- 道順に沿った一覧は `_routeCues()`：今の道順の区間キー（`_routesInUse`）の曲がり角を `_lastRouteCoords` の最寄り頂点（`CUE_SNAP_M` 以内）に寄せ、`_routeCum` の累積距離で並べる。`_cueList` に（座標参照＋`_cueVer`）でキャッシュ。
+- 出口は3つ：配布シート `_sheetCuesHtml`、歩く人の帯 `_nextCueInfo`（`renderNextBar` 内・分岐の案内が無いときだけ）、古いコース用 `fetchCuesNow`（編集画面のシートからだけ）。

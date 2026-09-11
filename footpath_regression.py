@@ -358,7 +358,7 @@ def static_checks(src):
     chk('静的', '保存データに区間ごとの道順が入る', 'routes:  _routesInUse(),' in src and 'function _routesInUse' in src)
     chk('静的', '読み込み時に道順を先に入れる', "if (data.routes && typeof data.routes === 'object')" in src)
     chk('静的', '直線に逃げた区間は覚えない・保存しない',
-        's.fallback = true' in src and 'if (!coords.fallback) segCache[key] = coords;' in src and 'c.fallback' in src)
+        's.fallback = true' in src and 'if (!coords.fallback) { segCache[key] = coords;' in src and 'c.fallback' in src)
     chk('静的', '区間キーの式は1か所（_segKey）', 'function _segKey' in src and src.count('toFixed(6)};${') == 1)
     # --- v120: 閲覧中は編集の操作を受け付けない（ロードマップ 段階0-2）---
     chk('静的', '閲覧中に編集の操作を隠すCSSがある', 'body.viewing #tbar .ed' in src and 'function _applyViewLock' in src)
@@ -447,6 +447,11 @@ def static_checks(src):
     # --- v157: 番号の丸と種類の丸を横に並べる（オーナー指摘：iPhone で片方しか見えない）---
     chk('静的', '番号つきで種類がある地点：地図は「種類の丸＋右上に番号の小丸」、一覧・並べ替え・配布シート・カードは番号と種類を並べて出す',
         'class="wp-num"' in src and 'class="wp-dot cat"' in src and 'class="ro-badge cat"' in src and 'class="sh-cat"' in src and 'class="vip-dot vip-dot2"' in src and '_catBadge' not in src and 'wp-pair' not in src)
+    # --- v167: 曲がり角の案内（Footpath のキューシートに倣う）---
+    chk('静的', '曲がり角：経路サーバに steps を求め、曲がる所だけを区間ごとに覚え（保存データ cues）、配布シートの一覧と歩く人の帯（分岐の案内が無いとき）に出す。古いコースは編集画面でだけ裏で取りに行く',
+        "'?overview=full&geometries=geojson&steps=true'" in src and 'function _cuesFromLegs' in src and 'function _routeCues' in src and 'function _sheetCuesHtml' in src and 'function _nextCueInfo' in src
+        and 'cues:    _cuesInUse(),' in src and 'function _cueBackfill' in src and 'async function fetchCuesNow' in src and 'if (segCache[key]) return segCache[key];' in src and "document.body.classList.contains('viewonly') || document.body.classList.contains('embed')) return Promise.resolve();" in src
+        and 'class="nb-cue"' in src and '+ _sheetCuesHtml()' in src and "if (Object.keys(cues).length   && !same(c.cues,   cues))" in src)
     # --- v166: 高低差グラフのなぞり＋勾配の色分け（Footpath に倣う）---
     chk('静的', '高低差グラフ：なぞると距離・標高・勾配（帯の見出し・地図の印・PC のグラフ）、やや急／急の面の色、凡例。道順が変わったら印を消す。フリックと競合しない',
         'function _elevPointAt' in src and 'function _gradeAtD' in src and 'function _scrubAttach' in src and 'function _gradeFills' in src and "_scrubAttach(svg, 'band')" in src and "_scrubAttach(svg, 'pc')" in src
@@ -680,7 +685,7 @@ def static_checks(src):
     chk('静的', '保存データに elevs が入り、読み込みで戻す', 'elevs:   _elevsInUse(),' in src and 'function _elevsInUse' in src
         and "if (data.elevs && typeof data.elevs === 'object')" in src)
     chk('静的', '計算し終えた道順・標高を静かに書き足す（未保存の編集がある間は書かない）',
-        'function _persistDerivedQuietly' in src and src.count('_persistDerivedQuietly();') == 2
+        'function _persistDerivedQuietly' in src and src.count('_persistDerivedQuietly();') == 3
         and 'if (_dirty || currentCourseId == null || !lsAvail()) return false;' in src)
     chk('静的', '標高が揃っていれば2秒待たずに描く', "_elevAllCached(combined) ? 0 : 2000" in src)
     try:
@@ -2653,6 +2658,53 @@ def functional_checks(index_path):
             isinstance(rt, dict) and rt.get('calls1', 0) >= 3 and rt.get('keys') == 3 and rt.get('shape') is True
             and rt.get('calls2', 99) == 0 and rt.get('pts2') == rt.get('pts1') and rt.get('pts1', 0) >= 7,
             str(rt)[:190])
+
+        # v167: 曲がり角：steps → 区間ごとの曲がり角 → 道順に沿った一覧（距離順）・配布シート・歩く人の帯・保存と読み戻し・古いコースの裏取得
+        cue = page.evaluate("""()=>{ return (async()=>{ try{
+            const snapshot = buildCurrentSaveData(), keepWalk = _walkPos, keepV = viewMode;
+            const origFetch = window.fetch; let calls = 0;
+            window.fetch = (u, o) => { const url = String((u && u.url) ? u.url : u);
+              if (url.indexOf('/route/v1/') < 0) return origFetch(u, o);
+              calls++;
+              const m = url.match(/([\\d.]+),([\\d.]+);([\\d.]+),([\\d.]+)\\?/);
+              const mid = [(+m[1] + +m[3]) / 2 + 0.0004, (+m[2] + +m[4]) / 2];
+              const geo = {code:'Ok', routes:[{geometry:{coordinates:[[+m[1],+m[2]], mid, [+m[3],+m[4]]]},
+                legs:[{steps:[{maneuver:{type:'depart', modifier:'straight', location:[+m[1],+m[2]]}, name:'', distance:80},
+                              {maneuver:{type:'turn', modifier:'left', location:mid}, name:'検査通り', distance:80},
+                              {maneuver:{type:'arrive', location:[+m[3],+m[4]]}, name:'', distance:0}]}]}]};
+              return Promise.resolve({ok:true, json:()=>Promise.resolve(geo)}); };
+            _clearAllMarkers(); wps.length = 0; vps.length = 0; segCache = {}; _cueCache = {}; _cueVer++;
+            _routerDeadUntil = 0; _routerDead = []; _routerIdx = 0; viewMode = false;
+            courseInfo = {name:'曲がり角テスト', area:'', start:'', goal:''};
+            addWp(35.1512,134.4440,'spot'); addWp(35.1520,134.4450,'spot'); addWp(35.1535,134.4462,'spot');
+            await doRouting();
+            const cues = _routeCues();
+            const out = {n: cues.length, calls1: calls};
+            out.list = cues.length === 2 && cues[0].d < cues[1].d && cues.every(q => q.text === '左へ（検査通り）' && q.glyph === '←' && q.d > 0);
+            const sh = _sheetCuesHtml(); out.sheet = sh.indexOf('曲がり角') >= 0 && sh.split('左へ（検査通り）').length === 3 && sh.indexOf('sh-cd') >= 0;
+            const saved = buildCurrentSaveData(); out.saved = Object.keys(saved.cues || {}).length === 2 && Object.values(saved.cues).every(a => Array.isArray(a) && a.length === 1 && a[0].length === 5 && a[0][3] === 'left');
+            _walkPos = {lat:35.1512, lng:134.4440, along: cues[0].d - 60, at: Date.now()};
+            const c1 = _nextCueInfo(null); out.next = !!c1 && c1.q === cues[0] && Math.abs(c1.dist - 60) < 1;
+            _walkPos = {lat:35.1512, lng:134.4440, along: cues[1].d - 50, at: Date.now()};
+            const c2 = _nextCueInfo(null); out.next2 = !!c2 && c2.q === cues[1] && Math.abs(c2.dist - 50) < 1;
+            const c3 = _nextCueInfo(cues[1].d - 10); out.beforeSpot = c3 === null;   // 次のスポットより先の曲がり角は出さない
+            _walkPos = keepWalk;
+            // 読み戻し：cues が入っていれば経路サーバを呼ばずに一覧が出る
+            calls = 0; _cueCache = {}; _cueVer++; loadCourseData(saved); await new Promise(r => setTimeout(r, 2500));
+            out.restored = _routeCues().length === 2 && calls === 0;
+            // 古いコース（cues 無し）：開いただけでは経路サーバを呼ばない（v119 の決まり）。シートの「道順から作る」で取り、歩く人（viewonly）では取らない
+            const old = JSON.parse(JSON.stringify(saved)); delete old.cues;
+            calls = 0; loadCourseData(old); await new Promise(r => setTimeout(r, 2500));
+            out.noAuto = calls === 0 && _routeCues().length === 0 && _sheetCuesHtml().indexOf('fetchCuesNow()') >= 0;
+            await fetchCuesNow(); out.backfill = calls === 2 && _routeCues().length === 2;
+            document.body.classList.add('viewonly'); _cueCache = {}; _cueVer++; calls = 0; await fetchCuesNow();
+            out.noBackfillForWalker = calls === 0 && _routeCues().length === 0 && _sheetCuesHtml() === ''; document.body.classList.remove('viewonly');
+            window.fetch = origFetch; viewMode = keepV;
+            loadCourseData(snapshot); await new Promise(r => setTimeout(r, 2500));
+            return out;
+          }catch(e){ return 'ERR:'+e.message; } })(); }""")
+        chk('機能', '曲がり角：steps→区間ごと→道順に沿った一覧・配布シート・歩く人の帯（次の曲がり角）・保存と読み戻し・古いコースは編集画面でだけ裏で取る',
+            isinstance(cue, dict) and all(cue.get(k) for k in ('list', 'sheet', 'saved', 'next', 'next2', 'beforeSpot', 'restored', 'noAuto', 'backfill', 'noBackfillForWalker')), str(cue)[:260])
 
         # v118: スマホの説明画面と、パソコンの欄が同じ中身になる
         dsc = page.evaluate("""()=>{ try{
