@@ -402,3 +402,7 @@ CONSTANTS(904) → STATE(968) → STORAGE(1015) → 版のお知らせ(1021) →
 - スポットの Leaflet マーカーは `draggable: wp.type === 'node'`。**node 以外を draggable にしない**（`_applyViewLock`／`_unlockAllMarkers` も node だけ戻す）。
 - 動かす流れは `startMoveSpot()`（編集画面から）→ `_moveWp` にスポットを入れ、`#moveBar`・`#movePin`（画面の真ん中に固定した同じ印）を出し、元の印を薄くする → `onMapClick` の先頭で `_moveCommit(latlng)`、または「ここに置く」で `_moveHere()`（地図の中心）。置くときは `_snapCustom` → `saveSnapshot` → 座標更新 → `clearCache(); scheduleRouting()`。
 - 途中でやめる入口：`_closeAllPopups`・`setMode`・`toggleViewMode`・Esc。新しい画面や道具を足すときは `_closeAllPopups()` を通せば自動的にやめる。
+
+## はじめかた（v165）
+- `#firstTip` は「3つの入口」。表示条件は `_syncStartChooser()` 1か所（スポット0・編集中・なぞり中でない・配布リンクでない・×で閉じていない）。`redrawList()` の先頭で呼ぶので、増減のたびに自動で出入りする。`_scDismissed` は `loadCourseData`／`newCourse` で戻す。
+- 周辺の情報はスポットが無いときも動く（`_nbAnchorBounds` と `_nbDistToCourse` が地図の中心へ落ちる）。

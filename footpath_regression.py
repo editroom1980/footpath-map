@@ -447,6 +447,10 @@ def static_checks(src):
     # --- v157: 番号の丸と種類の丸を横に並べる（オーナー指摘：iPhone で片方しか見えない）---
     chk('静的', '番号つきで種類がある地点：地図は「種類の丸＋右上に番号の小丸」、一覧・並べ替え・配布シート・カードは番号と種類を並べて出す',
         'class="wp-num"' in src and 'class="wp-dot cat"' in src and 'class="ro-badge cat"' in src and 'class="sh-cat"' in src and 'class="vip-dot vip-dot2"' in src and '_catBadge' not in src and 'wp-pair' not in src)
+    # --- v165: はじめかた（3つの入口・周辺の情報を最初の選択肢に）---
+    chk('静的', 'はじめかた：スポットが無い編集画面に3つの入口（タップして置く・指でなぞる・周辺の情報）。初回だけの制限はやめ、周辺の情報はスポットが無ければ地図の真ん中から探す',
+        'function _syncStartChooser' in src and 'function startChoose' in src and src.count('class="ft-opt tap"') == 3 and "startChoose('nearby')" in src and 'id="nbNoSpot"' in src
+        and 'if (best === Infinity && leafMap)' in src and 'function redrawList() {\n  _syncStartChooser();' in src and 'localStorage.setItem(LS.tipSeen' not in src)
     # --- v164: 印は引きずっても動かない。動かすのは編集画面の「場所を動かす」から（Footpath に倣う）---
     chk('静的', 'スポットの印は引きずれない（node だけ draggable）。編集画面に「場所を動かす」、帯（やめる・ここに置く）と真ん中の印があり、タップ・Esc・道具の切り替えで扱う',
         "{draggable: wp.type === 'node', icon:wpIcon(wp,sz,anc)" in src and 'id="mMove"' in src and 'id="moveBar"' in src and 'id="movePin"' in src and 'function startMoveSpot' in src and 'function _moveCommit' in src
@@ -1429,25 +1433,30 @@ def functional_checks(index_path):
               });
             return out; }""")
 
-        # v107: 使い方案内は「まだ何も置いていない初回」だけ出て、1つ置くと消える
+        # v165: はじめかた（v107 の使い方案内を置き換え）：スポットが無いと3つの入口。周辺の情報は地図の真ん中から。1つ置くと消える
         tip = page.evaluate("""()=>{ try{
-            const keepW = wps.slice(); wps.length = 0;
-            localStorage.removeItem(LS.tipSeen);
+            const keepW = wps.slice(); wps.length = 0; _scDismissed = false;
             const el = document.getElementById('firstTip');
-            const keepView = viewMode; viewMode = false;
-            maybeShowFirstTip(); const shownEmpty = getComputedStyle(el).display !== 'none';
-            const w = addWp(35.1521, 134.4452, 'course');            // 1つ置く
+            const keepView = viewMode, keepMode = mode; viewMode = false;
+            _syncStartChooser(); const shownEmpty = getComputedStyle(el).display !== 'none' && el.querySelectorAll('.ft-opt').length === 3;
+            startChoose('nearby'); const nearby = document.getElementById('nearbySheet').style.display === 'block' && getComputedStyle(el).display === 'none';
+            const ns = document.getElementById('nbNoSpot'); const noSpot = !!ns && ns.hidden === false; closeNearbySheet();
+            const c = leafMap.getCenter(); const keepLRC = _lastRouteCoords; _lastRouteCoords = null;
+            const dist = _nbDistToCourse(c.lat + 0.001, c.lng); _lastRouteCoords = keepLRC;
+            const fromCenter = dist > 90 && dist < 130;
+            _scDismissed = false; _syncStartChooser(); const shownAgain = getComputedStyle(el).display !== 'none';
+            startChoose('draw'); const draw = mode === 'draw' && getComputedStyle(el).display === 'none'; setMode('wp');
+            _scDismissed = false; _syncStartChooser();
+            const w = addWp(35.1521, 134.4452, 'spot');            // 1つ置く
             const hidAfterAdd = getComputedStyle(el).display === 'none';
-            const flag = !!localStorage.getItem(LS.tipSeen);
-            maybeShowFirstTip(); const shownAgain = getComputedStyle(el).display !== 'none';
             if (w.marker) leafMap.removeLayer(w.marker);
-            wps.length = 0; keepW.forEach(x => wps.push(x)); viewMode = keepView;
-            redrawStraight();          // 検査のために消した線を引き直す（後の検査が線を見るため）
-            return {shownEmpty:shownEmpty, hidAfterAdd:hidAfterAdd, flag:flag, shownAgain:shownAgain};
+            wps.length = 0; keepW.forEach(x => wps.push(x)); viewMode = keepView; setMode(keepMode === 'draw' ? 'wp' : keepMode);
+            redrawStraight(); redrawList();          // 検査のために消した線を引き直す（後の検査が線を見るため）
+            document.querySelectorAll('#toastBox .toast').forEach(e => e.remove());
+            return {shownEmpty, nearby, noSpot, fromCenter, shownAgain, draw, hidAfterAdd, hiddenNow: getComputedStyle(el).display === 'none'};
           }catch(e){ return 'ERR:'+e.message; } }""")
-        chk('機能', '使い方案内は初回だけ出て、1つ置くと消える',
-            isinstance(tip, dict) and tip.get('shownEmpty') is True and tip.get('hidAfterAdd') is True
-            and tip.get('flag') is True and tip.get('shownAgain') is False, str(tip)[:170])
+        chk('機能', 'はじめかた：スポットが無いと3つの入口が出る → 周辺の情報（スポットが無ければ地図の真ん中から）／指でなぞる／1つ置くと消える',
+            isinstance(tip, dict) and all(tip.get(k) for k in ('shownEmpty', 'nearby', 'noSpot', 'fromCenter', 'shownAgain', 'draw', 'hidAfterAdd', 'hiddenNow')), str(tip)[:220])
 
         bad_tap = [t for t in taps if not t['ok']]
         chk('機能', '主要なボタンは 44px 四方のどこを押しても反応する',

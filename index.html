@@ -555,6 +555,16 @@ body.offline #offlineBadge{display:block}
   font-size:15px;font-weight:800;background:var(--brand-grad);color:#fff;cursor:pointer;min-height:var(--tap)}
 #firstTip .ft-n,#walkTip .ft-n{font-size:11px;color:var(--t-sub);margin-top:10px}
 body.viewonly #firstTip,body.embed #firstTip{display:none!important}
+/* はじめかた（v165） */
+#firstTip{text-align:left;padding:18px 16px 12px;width:min(360px,calc(100% - 32px))}
+#firstTip .ft-t{text-align:center;margin:0 0 12px;font-size:16.5px}
+#firstTip .ft-x{position:absolute;top:6px;right:6px;width:36px;height:36px;border:none;background:transparent;color:var(--t-sub);font-size:22px;line-height:1;cursor:pointer;border-radius:50%}
+#firstTip .ft-opt{display:grid;grid-template-columns:28px 1fr;grid-template-rows:auto auto;column-gap:10px;align-items:center;width:100%;margin:0 0 8px;padding:10px 12px;border:1.5px solid #C4B89A;border-radius:12px;background:#fff;color:#231C14;font-family:inherit;text-align:left;cursor:pointer;min-height:var(--tap)}
+#firstTip .ft-opt .svgi{grid-row:1/3;width:24px;height:24px;color:var(--brand)}
+#firstTip .ft-opt b{font-size:15px;font-weight:800}
+#firstTip .ft-opt small{font-size:11.5px;color:var(--t-sub);line-height:1.5}
+#firstTip .ft-opt:active{background:#FBF3EA}
+#firstTip .ft-n{text-align:center;margin-top:4px}
 
 /* コースの説明を書く画面（スマホ。パソコンは左側の欄で書ける）*/
 #descScrim{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:3400;display:none}
@@ -1224,12 +1234,14 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
         </div>
       </div>
       <!-- 最初の1回だけ出す使い方案内（スポット0個のとき） -->
-      <div id="firstTip">
-        <div class="ft-ic">📍</div>
-        <div class="ft-t">地図をタップして<br>最初の場所を置いてみましょう</div>
-        <div class="ft-d">置いた場所は、自動で道に沿ってつながります。<br>種類と名前は、○を押してあとから決められます。<br>道順を変えたいときは、赤い線を指で引っぱります。</div>
-        <button class="ft-b" onclick="dismissFirstTip()">はじめる</button>
-        <div class="ft-n">この案内は最初の1回だけ出ます</div>
+      <!-- はじめかた（v165）：スポットが1つも無い編集画面に3つの入口を出す。周辺の情報の取り込みは作り始めの最初の選択肢（オーナー指示） -->
+      <div id="firstTip" role="dialog" aria-label="はじめかた">
+        <button type="button" class="ft-x tap" onclick="closeStartChooser()" aria-label="閉じる">×</button>
+        <div class="ft-t">まっさらな地図です。<br>どれから始めますか？</div>
+        <button type="button" class="ft-opt tap" onclick="startChoose('tap')"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11a3 3 0 1 0 6 0a3 3 0 0 0 -6 0" /><path d="M17.657 16.657l-4.243 4.243a2 2 0 0 1 -2.827 0l-4.244 -4.243a8 8 0 1 1 11.314 0" /></svg><b>地図をタップして置く</b><small>置いた場所は道に沿ってつながります。種類と名前は、○を押してあとから決められます。道順を変えたいときは、赤い線を指で引っぱります。</small></button>
+        <button type="button" class="ft-opt tap" onclick="startChoose('draw')"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 19a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" /><path d="M19 7a2 2 0 1 0 0 -4a2 2 0 0 0 0 4" /><path d="M11 19h5.5a3.5 3.5 0 0 0 0 -7h-8a3.5 3.5 0 0 1 0 -7h4.5" /></svg><b>指でなぞって描く</b><small>歩く道を指でなぞると、そのとおりにコースになります</small></button>
+        <button type="button" class="ft-opt tap" onclick="startChoose('nearby')"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/><path d="M8.5 11h5"/><path d="M11 8.5v5"/></svg><b>周辺の情報を取り込む</b><small>地図の周りのお店・神社・史跡・バス停などを探して、選んだものを置きます</small></button>
+        <div class="ft-n">あとからでも、下の道具とメニューで同じことができます</div>
       </div>
 
       <!-- 配布リンクを開いた人への最初の1回の案内（閲覧専用のときだけ） -->
@@ -1368,6 +1380,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
         <label class="kk-l">種類</label>
         <div class="nb-kinds" id="nbKinds"></div>
         <button class="ds-btn nb-go" id="nbSearch" onclick="nearbySearch()">探す</button>
+        <div class="ds-n" id="nbNoSpot" style="margin-top:8px;color:var(--brand);font-weight:700" hidden>まだスポットが無いので、いま見えている地図の真ん中の周りを探します（先に地図をずらしておくと、その場所で探せます）</div>
         <div class="ds-n" id="nbStatus" style="margin-top:8px"></div>
         <div class="nb-tools"><button type="button" class="f-ghost tap" id="nbSelAll" onclick="_nbSelectAll(_nb.sel.size < _nb.cands.length)" hidden>全部選ぶ／外す</button></div>
         <div id="nbList" class="nb-list"></div>
@@ -2596,6 +2609,7 @@ async function newCourse() {
   if (!name) { alert('コース名を入れてください。'); document.getElementById('s1Name').focus(); return; }   // v149：必須はコース名だけ
   courseInfo  = {name, area, start:'', goal:'', kokoroe:'', info:{}};
   currentCourseId = null;
+  _scDismissed = false;    // 新しいコース＝はじめかたを出す（v165）
   clearTimeout(_autoSaveT); _autoSaveT = null; _setSaveState('dirty');   // 新しいコース＝まだ保存されていない（v148）
   if (typeof loadFinds === 'function') loadFinds();   // 発見の印を片づける（v143）
   if (typeof applyTheme === 'function') applyTheme(null, {quiet:true});   // 色を標準に戻す（v145）
@@ -2892,7 +2906,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v164';
+const APP_VERSION = 'v165';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -3585,19 +3599,25 @@ async function saveMapNoText() {
    ・スポットが0個のときだけ出す。1つ置いたら消える
    ・「はじめる」を押すか、最初のスポットを置いた時点で以後は出さない
    ============================================================ */
-function maybeShowFirstTip() {
-  const el = document.getElementById('firstTip');
-  if (!el) return;
-  const seen = (function(){ try { return localStorage.getItem(LS.tipSeen); } catch(_) { return '1'; } })();
-  const hide = seen || wps.length > 0 || viewMode
-            || document.body.classList.contains('viewonly')
-            || document.body.classList.contains('embed');
+/* はじめかた（v165・オーナー指示「周辺の情報の取り込みは、マップを作り始めの最初の選択肢で」）：
+   スポットが1つも無い編集画面に、3つの入口（タップして置く／指でなぞる／周辺の情報を取り込む）を出す。
+   選ぶか×で閉じると、そのコースを開いている間は出ない。1つ置くと消える。コースを開き直す・新しく作ると、また出る（初回だけではない） */
+let _scDismissed = false;
+function _syncStartChooser() {
+  const el = document.getElementById('firstTip'); if (!el) return;
+  const empty = !wps.some(w => w.type !== 'node');
+  const hide = _scDismissed || !empty || viewMode || mode === 'draw' || (typeof _drawActive !== 'undefined' && _drawActive)
+            || document.body.classList.contains('viewonly') || document.body.classList.contains('embed');
   el.style.display = hide ? 'none' : 'block';
 }
-function dismissFirstTip() {
-  try { localStorage.setItem(LS.tipSeen, '1'); } catch(_) {}
-  const el = document.getElementById('firstTip');
-  if (el) el.style.display = 'none';
+function maybeShowFirstTip() { _syncStartChooser(); }
+function dismissFirstTip() { const el = document.getElementById('firstTip'); if (el) el.style.display = 'none'; }
+function closeStartChooser() { _scDismissed = true; dismissFirstTip(); }
+function startChoose(k) {
+  closeStartChooser();
+  if (k === 'draw') { setMode('draw'); return; }
+  if (k === 'nearby') { openNearbySheet(); return; }
+  setMode('wp'); showToast('地図をタップすると、そこにスポットが置けます');
 }
 
 /* ============================================================
@@ -6044,6 +6064,7 @@ function updateDistanceAndTime(coords) {
    WAYPOINT LIST (draggable reorder)
    ============================================================ */
 function redrawList() {
+  _syncStartChooser();   // スポットが0ならはじめかたを出す（v165）
   const cont  = document.getElementById('wpList');
   const empty = document.getElementById('wpEmpty');
   cont.querySelectorAll('.wp-row').forEach(r=>r.remove());
@@ -7523,6 +7544,7 @@ function _nbDistToCourse(lat, lng){   // コース（道順の線があればそ
   const c = _lastRouteCoords;
   if (c && c.length > 1) { for (let i = 0; i < c.length; i += Math.max(1, Math.floor(c.length / 800))) { const d = haversine(lat, lng, c[i][0], c[i][1]); if (d < best) best = d; } }
   _stampTargets().forEach(w => { const d = haversine(lat, lng, w.lat, w.lng); if (d < best) best = d; });
+  if (best === Infinity && leafMap) { const c = leafMap.getCenter(); best = haversine(lat, lng, c.lat, c.lng); }   // スポットが無ければ地図の真ん中から（v165）
   return best;
 }
 function _nbKindOf(tags){   // OpenStreetMap のタグ → この画面の種類（v162：会社・病院・役所・地名も拾う）
@@ -7692,6 +7714,7 @@ function openNearbySheet(){
   _closeAllPopups();
   const r = document.getElementById('nbRadius'); if (r && !r.children.length) r.innerHTML = NEARBY_RADII.map(v => '<button type="button" data-v="' + v + '" onclick="_nbPick(\'radius\',' + v + ')">' + (v >= 1000 ? (v / 1000) + ' km' : v + ' m') + '</button>').join('');
   _nbRenderControls(); _nbRenderList(); _nbRenderLayer();
+  const ns = document.getElementById('nbNoSpot'); if (ns) ns.hidden = _stampTargets().length > 0;   // v165
   if (!_nb.cands.length) _nbSetStatus('');
   document.getElementById('nearbyScrim').style.display = 'block'; document.getElementById('nearbySheet').style.display = 'block';
 }
@@ -8614,6 +8637,7 @@ function _fitCourseToScreen(data){
   }
 }
 function loadCourseData(data) {
+  _scDismissed = false;    // 開き直したらはじめかたを出し直せる（v165）
   courseInfo = {name:data.name, area:data.area, start:data.start||'', goal:data.goal||'', kokoroe:data.kokoroe||'', info:(data.info && typeof data.info === 'object') ? Object.assign({}, data.info) : {}, stickers: data.stickers === true, theme:(data.theme && typeof data.theme === 'object') ? Object.assign({}, data.theme) : null, check:(data.check && typeof data.check === 'object') ? Object.assign({}, data.check) : {}, noEdit: data.noEdit === true};
   applyTheme(courseInfo.theme, {quiet:true});   // 印と線を作る前に色を決める（v145）
   currentCourseId = data.id;
