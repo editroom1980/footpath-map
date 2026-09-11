@@ -382,7 +382,7 @@ def static_checks(src):
         if not _t and 'aria-label' not in _m.group(1): _miss.append(_m.group(1)[:50])
     chk('静的', '文字の無いボタンすべてに読み上げ名がある（HTMLとJSの雛形）', not _miss, str(_miss)[:160])
     chk('静的', 'ページ全体の拡大は止める（ホーム画面アプリでボタンがはみ出したため・v135）。文字の大きさはアプリ内の設定で',
-        'maximum-scale=1.0, user-scalable=no' in src and 'viewport-fit=cover' not in src and 'apple-mobile-web-app-status-bar-style" content="default"' in src and 'html,body{touch-action:manipulation;' in src and 'function _unzoomPage' in src)
+        'maximum-scale=1.0, user-scalable=no' in src and 'html,body{touch-action:manipulation;' in src and 'function _unzoomPage' in src)
     chk('静的', '地図の上だけは指の操作を Leaflet に渡す', '#map{touch-action:none}' in src)
     chk('静的', '出発点・到着点のつなぎ区間も同梱する', 'if (startWp && startWp.id !== rw[0].id) pairs.push' in src)
     chk('静的', '近すぎる「ふつうの三角」を飛ばすきまりがある', 'const DIR_MIN_DASHES' in src)
@@ -458,8 +458,11 @@ def static_checks(src):
         'function _isNumbered' in src and 'function _numBadge' in src and '歩く順の番号（道順の地点）' in src and 'const list = wps.filter(w => _isNumbered(w));' in src)
     chk('静的', 'スポットの編集：番号のスイッチ（道順に入れる）を上に出す', 'class="m-switch"' in src and src.index('id="mOnRoute"') < src.index('id="mName"'))
     # --- v154: ノッチ／ステータスバーに重ならない（致命的・オーナー指摘）---
-    chk('静的', 'ホーム画面のアプリでステータスバーが画面に重ならない（viewport-fit=cover 無し・status-bar は default）。配布シートは安全域ぶん空け、外側タップと Esc で閉じる',
-        'viewport-fit=cover' not in src and 'content="default"' in src and 'padding:calc(16px + env(safe-area-inset-top)) 16px' in src
+    chk('静的', '地図はノッチの下まで広げ（viewport-fit=cover・透明ステータスバー）、押す部品は全部 --sat で下げる。配布シートは外側タップと Esc で閉じる',
+        'viewport-fit=cover' in src and 'content="black-translucent"' in src and ':root{--sat:env(safe-area-inset-top,0px);--sab:env(safe-area-inset-bottom,0px)}' in src
+        and all(re.search(r'#' + i + r'\{[^}]*var\(--sat\)', src) for i in ('modeHint', 'viewBadge', 'offlineBadge', 'crFinishBar', 'helpModal', 'sheetOver', 'nextBar', 'updBar'))
+        and re.search(r'#mobileTopBar\{[^}]*var\(--sat\)', src) and 'padding:var(--sat) 0 var(--sab)' in src
+        and src.split("get('debug')")[0].count('env(safe-area-inset-top') == 1   # :root の定義だけ（他は var(--sat) 経由）
         and "if (e.target === ov) closePrintSheet();" in src and "e.key === 'Escape'" in src)
     # --- v153: 画面の骨組みの検査（閉じ忘れを二度と出さない）＋小さな手直し ---
     _a = src.index('<body'); _b = src.index('<script src=', _a)
@@ -467,7 +470,7 @@ def static_checks(src):
     _unbal = [t for t in ('div', 'span', 'button', 'label', 'details', 'ul', 'li', 'select', 'textarea') if len(re.findall(r'<' + t + r'\b', _mk)) != _mk.count('</' + t + '>')]
     chk('静的', '画面の骨組み（body の HTML）でタグの開きと閉じが釣り合っている', not _unbal, str(_unbal))
     chk('静的', 'スマホでは「歩く人の見え方」の札を上の帯の下に出す。歩く人のメニューの「コースの情報」は件数でなく「見る」',
-        '@media (max-width:768px){#viewBadge{top:72px}}' in src and "v('mmInfo', viewMode ? (_courseInfoCount() ? '見る' : 'なし')" in src)
+        '@media (max-width:768px){#viewBadge{top:calc(72px + var(--sat))}}' in src and "v('mmInfo', viewMode ? (_courseInfoCount() ? '見る' : 'なし')" in src)
     # --- v152: 手数を減らす④（メニューの「コースのことを書く」にまとめる）---
     chk('静的', 'スマホのメニュー：説明・情報・心得（書く側）は2階層目「コースのことを書く」に。歩く人には心得・情報の行を残す',
         'data-sub="write"' in src and "write:'コースのことを書く'" in src and 'id="mmKokoroeRow"' in src and 'id="mmInfoRow"' in src
@@ -2152,7 +2155,7 @@ def functional_checks(index_path):
             _declutter(); autoPlaceLabels();
             const shown = wps.filter(w => w.marker && !w._clusterHidden && !w._labelHidden && w.name && w.marker.getTooltip()).length;
             out.labelsThinned = made.some(w => w._clusterHidden || w._labelHidden) && shown >= 1;
-            out.rules = _labelAllowedAt({type:'start'}, 3) === true && _labelAllowedAt({type:'view', onRoute:false}, 14) === false && _labelAllowedAt({type:'view', onRoute:false}, 15) === true && _labelAllowedAt({type:'spot', onRoute:true}, 13) === true && _labelAllowedAt({type:'spot', onRoute:true}, 12) === false;
+            out.rules = _labelAllowedAt({type:'start'}, 13) === false && _labelAllowedAt({type:'start'}, 14) === true && _labelAllowedAt({type:'view', onRoute:false}, 14) === false && _labelAllowedAt({type:'view', onRoute:false}, 15) === true && _labelAllowedAt({type:'spot', onRoute:true}, 14) === true && _labelAllowedAt({type:'spot', onRoute:true}, 13) === false;
             out.scale = _zoomKFor(17) === 1 && _zoomKFor(15) === .9 && _zoomKFor(14) === .8 && _zoomKFor(11) === .7 && !_vpVisibleAt({}, 14) && _vpVisibleAt({guide:{kind:'turn'}}, 14) && _vpVisibleAt({}, 15);
             made.forEach(w => { try { leafMap.removeLayer(w.marker); } catch(_) {} const i = wps.indexOf(w); if (i >= 0) wps.splice(i, 1); });
             undoStack.length = keepU; _dirty = keepD; refreshIcons(); redrawList(); scheduleAutoLabels();
@@ -3001,6 +3004,17 @@ def webkit_checks(index_path):
             page.evaluate("() => closeMobileMenu()")
             chk('WebKit', 'iPhone と同じエンジンで編集画面とメニューが開き、横にはみ出さない',
                 r2['wps'] > 5 and not r2['bad'] and r2['sw'] <= r2['iw'] + 1 and r2['menu'] and not errs, str(r2)[:200] + (' err:' + errs[0][:80] if errs else ''))
+            # v161: ノッチ（安全域 59px）を偽装：地図は上端から、押す部品は 59px より下
+            page.goto(url + '?nosw=1&safe=59', wait_until='domcontentloaded')
+            page.wait_for_function("() => { try { return getCourses().length > 0; } catch(e){ return false; } }", timeout=30000)
+            page.evaluate("() => loadCourseData(getCourses()[0])"); page.wait_for_timeout(1200)
+            r3 = page.evaluate("""() => { const vis = b => { const s = getComputedStyle(b); if (s.display === 'none' || s.visibility === 'hidden') return false; const r = b.getBoundingClientRect(); return r.width > 0 && r.height > 0; };
+                const tops = [...document.querySelectorAll('#mobileTopBar button, #mobileTopBar .mob-back, #mobileRbtns button')].filter(vis).map(b => Math.round(b.getBoundingClientRect().top));
+                const map = document.getElementById('map').getBoundingClientRect();
+                setMode('via'); const hint = document.getElementById('modeHint').getBoundingClientRect(); setMode('wp');
+                return {mapTop: Math.round(map.top), minTop: Math.min(...tops), n: tops.length, hintTop: Math.round(hint.top), sat: getComputedStyle(document.documentElement).getPropertyValue('--sat').trim()}; }""")
+            chk('WebKit', 'ノッチ（安全域59px）でも地図は上端から広がり、上のボタンと道具の案内は安全域より下に出る',
+                r3['mapTop'] <= 0 and r3['n'] >= 3 and r3['minTop'] >= 59 and r3['hintTop'] >= 59 + 44, str(r3)[:200])
             b.close()
     except Exception as e:
         chk('WebKit', 'WebKit の検査が最後まで走る', False, str(e).splitlines()[0][:160])
