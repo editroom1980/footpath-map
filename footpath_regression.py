@@ -435,6 +435,15 @@ def static_checks(src):
     chk('静的', '選べる種類の出どころは _buildTypeOptions のまま（チップは select を読む）',
         "const cur = sel.value, opts = [...sel.options].map(o => o.value);" in src and 'function _buildTypeOptions' in src)
     chk('静的', '最初の案内が「種類と名前はあとから」を伝える', '種類と名前は、○を押してあとから決められます' in src)
+    # --- v160: Footpath に倣う3つ（名前から種類・磁石・逆回り／周回）---
+    chk('静的', '名前から種類を自動で（手で選んだら変えない）。磁石は道具の案内とPCの左の道具に。逆回り／周回は PC「その他」と並べ替えの上に',
+        'const NAME_TYPE_HINTS = [' in src and 'function _guessType' in src and 'id="mTypeHint"' in src and "if (sel.value !== 'spot' && !_typeAuto) return;" in src
+        and 'class="mh-mag tap' in src and 'id="btnMagnet"' in src and 'function reverseCourse' in src and 'function loopCourse' in src
+        and 'closePcPops();reverseCourse()' in src and 'closeReorderSheet();loopCourse()' in src)
+    # --- v159: 広域のすっきり表示（優先度つき衝突判定・オーナー指摘）---
+    chk('静的', '広域：印は優先順に束ねて「+n」、名札は置けなければ隠す、印はズームで小さく、通り道の点は隠す',
+        'function _declutter' in src and 'function _labelAllowedAt' in src and 'function _zoomKFor' in src and '* _zoomK());' in src and 'function _moreBadge' in src
+        and "it.wp._labelHidden = true; _syncLabelVis(it.wp); return; }" in src and 'function _vpVisibleAt' in src and "const k = _zoomK(); if (k !== _lastZoomK)" in src)
     # --- v157: 番号の丸と種類の丸を横に並べる（オーナー指摘：iPhone で片方しか見えない）---
     chk('静的', '番号つきで種類がある地点：地図は「種類の丸＋右上に番号の小丸」、一覧・並べ替え・配布シート・カードは番号と種類を並べて出す',
         'class="wp-num"' in src and 'class="wp-dot cat"' in src and 'class="ro-badge cat"' in src and 'class="sh-cat"' in src and 'class="vip-dot vip-dot2"' in src and '_catBadge' not in src and 'wp-pair' not in src)
@@ -529,7 +538,7 @@ def static_checks(src):
         and 'const MAX = PHOTO_MAX_PX;' in src and 'PHOTO_MAX_PER_SPOT - _modalPhotos.length' in src)
     chk('静的', 'シールは wpIcon の枝で描き、名札の位置はシールの大きさに合わせ、束ねた印を押すと寄る',
         'class="wp-sticker" data-sticker="1"' in src and '_wpIconSize(wp)[1] / 2 + 4' in src and 'if (wp._clusterN > 1) { leafMap.setView(' in src
-        and "leafMap.on('zoomend', _clusterStickers);" in src)
+        and "_declutter();\n  });" in src)   # v159: ズームの処理は _declutter にまとめた
     chk('静的', 'シールの ON/OFF はコースに保存され（stickers）、PC・スマホの「地図の見せ方」に行がある',
         'stickers: courseInfo.stickers ? true : undefined' in src and 'stickers: data.stickers === true' in src and 'id="btnStickers"' in src and 'id="mmSwStickers"' in src)
     chk('静的', 'シールの鍵（s:）は片づけで消さない・一覧に写真の枚数', "used.add('s:' + id)" in src and 'class="wp-ph"' in src)
@@ -1275,8 +1284,9 @@ def functional_checks(index_path):
             // 近接した4点に長めの名前を付ける（既定はすべて「上」＝重なる）
             const names = ['見晴らしの丘展望台', '飯見の棚田入口', '加茂神明神社の参道', '休憩所とトイレ'];
             const made = [];
+            const keepZ = leafMap.getZoom(); leafMap.setView(c, 18, {animate:false});   // v159: 印が束ねられない間隔（約50m）にし、名札だけが重なる状態を作る
             names.forEach((n, i) => {
-              const w = addWp(c.lat + (i % 2) * 0.00022, c.lng + Math.floor(i / 2) * 0.00030, 'course');
+              const w = addWp(c.lat + (i % 2) * 0.00045, c.lng + Math.floor(i / 2) * 0.0005, 'course');
               w.name = n; w._autoDir = null; updateTooltip(w); made.push(w);
             });
             const rects = () => made.map(w => {
@@ -1297,7 +1307,7 @@ def functional_checks(index_path):
             autoPlaceLabels();
             const keptManual = made[0]._autoDir === null || made[0]._autoDir === undefined;
             made.forEach(w => { if (w.marker) leafMap.removeLayer(w.marker); });
-            wps.length = 0; keepW.forEach(w => wps.push(w));
+            wps.length = 0; keepW.forEach(w => wps.push(w)); leafMap.setView(c, keepZ, {animate:false});
             return {before:before, after:after, moved:moved, keptManual:keptManual};
           }catch(e){ return 'ERR:'+e.message; } }""")
         ok_lb = (isinstance(lb, dict) and lb.get('before', 0) > 0
@@ -1714,7 +1724,7 @@ def functional_checks(index_path):
             isinstance(pc3, dict) and pc3.get('noText') == [] and pc3.get('dup') == [] and pc3.get('nBtn', 0) >= 8
             and pc3.get('hdrH', 99) <= 60 and pc3.get('railIn') and pc3.get('hint') == 'クリックでスポットを追加'
             and pc3.get('popMapOpen') and pc3.get('bm') == 'gsi_photo' and pc3.get('pill') == '航空写真'
-            and pc3.get('legendOpen') and pc3.get('legendRows', 0) >= 2 and pc3.get('moreOpen') and pc3.get('moreRows') == 10
+            and pc3.get('legendOpen') and pc3.get('legendRows', 0) >= 2 and pc3.get('moreOpen') and pc3.get('moreRows') == 12
             and pc3.get('manualFlip') and pc3.get('hintVia') == 'ルート線の上をクリックして道順を変える'
             and pc3.get('viewHidden') and pc3.get('viewBack') and pc3.get('closedAll'), str(pc3)[:300])
 
@@ -2102,6 +2112,55 @@ def functional_checks(index_path):
           }catch(e){ return 'ERR:'+e.message; } }""")
         chk('機能', 'スポット削除の「元に戻す」が戻し、別の操作の後は案内し、通知は重ならず、種別はこのコースで使った順',
             isinstance(b1, dict) and all(b1.get(k) for k in ('gone', 'toast', 'back', 'guarded', 'stacked', 'order')), str(b1)[:220])
+
+        # v160: 名前→種類の判定／逆回りでスポットの順と S・G が入れ替わり取消で戻る／周回で出発点にゴールが付く
+        fp = page.evaluate("""()=>{ try{
+            const out = {guess: _guessType('加茂神明神社') === 'shrine' && _guessType('市立戸原小学校') === 'school' && _guessType('宇原公民館') === 'hall' && _guessType('待避所') === null && _guessType('飯見の棚田') === 'park' && _guessType('縁側カフェ') === 'shop' && _guessType('宇原城跡') === 'history' && _guessType('公衆トイレ') === 'toilet' && _guessType('') === null};
+            const keepU = undoStack.length, keepD = _dirty; const ids0 = wps.map(w => w.id), types0 = wps.map(w => w.type), nv = vps.length;
+            reverseCourse(); const ids1 = wps.map(w => w.id);
+            out.reversed = ids1.join(',') === ids0.slice().reverse().join(',') && vps.length === nv
+                        && (types0.indexOf('start') < 0 || wps[ids1.indexOf(ids0[types0.indexOf('start')])].type === 'goal');
+            undoLast(); out.undone = wps.map(w => w.id).join(',') === ids0.join(',') && wps.map(w => w.type).join(',') === types0.join(',');
+            // 周回：検査用の3点（S・地点・G を 200m 間隔）に入れ替えて確かめ、元に戻す
+            const keepWps = wps.slice(), keepIdW = idW, c2 = leafMap.getCenter();
+            const mk = (id, type, dlat) => { const w = {id, type, name:'', desc:'', tel:'', dwell:0, fitBefore:true, fitAfter:true, onRoute:true, lat:c2.lat + dlat, lng:c2.lng, photos:[], labelDir:'auto', marker:null}; buildWpMarker(w); return w; };
+            wps.length = 0; [mk(-9201, 'start', 0), mk(-9202, 'spot', 0.002), mk(-9203, 'goal', 0.004)].forEach(w => wps.push(w));
+            const n0 = wps.length; loopCourse(); const last = wps[wps.length - 1];
+            out.looped = wps.length === n0 + 1 && last.type === 'goal' && Math.abs(last.lat - wps[0].lat) < 1e-9 && wps.filter(w => w.type === 'goal').length === 1 && wps[2].type === 'spot';
+            wps.forEach(w => { try { if (w.marker) leafMap.removeLayer(w.marker); } catch(_) {} });
+            wps.length = 0; keepWps.forEach(w => wps.push(w)); idW = keepIdW; refreshIcons(); redrawList();
+            out.undone2 = wps.length === keepWps.length;
+            undoStack.length = keepU; _dirty = keepD; document.querySelectorAll('#toastBox .toast').forEach(e => e.remove());
+            return out;
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        chk('機能', '名前から種類／逆回り（順と S・G が入れ替わり取消で戻る）／出発点に戻る周回', isinstance(fp, dict) and all(fp.get(k) for k in ('guess', 'reversed', 'undone', 'looped', 'undone2')), str(fp)[:220])
+
+        # v159: 重なる印は上位に束ねて「+n」、離せば戻る。名札は置き場所が無ければ隠す。広域のルールと印の大きさ
+        dc = page.evaluate("""async ()=>{ try{
+            const keepU = undoStack.length, keepD = _dirty, n0 = wps.length, c = leafMap.getCenter();
+            const px = (dx, dy) => leafMap.layerPointToLatLng(leafMap.latLngToLayerPoint(c).add([dx, dy]));
+            const mk = (id, ll, name) => { const w = {id, type:'spot', name, desc:'', tel:'', dwell:0, fitBefore:true, fitAfter:true, onRoute:true, lat:ll.lat, lng:ll.lng, photos:[], labelDir:'auto', marker:null}; wps.push(w); buildWpMarker(w); return w; };
+            const made = [0, 1, 2, 3, 4].map(i => mk(-9100 - i, px(i * 3, 0), '重なり検査' + i));
+            _declutter();
+            const vis = made.filter(w => w.marker.getElement().style.opacity !== '0');
+            const out = {one: vis.length === 1, badge: (vis[0] && (vis[0].marker.getElement().querySelector('.wp-more') || {}).textContent) === '+4'};
+            made.forEach((w, i) => { const ll = px(i * 90, 0); w.lat = ll.lat; w.lng = ll.lng; w.marker.setLatLng(ll); });
+            _declutter(); out.apart = made.every(w => w.marker.getElement().style.opacity !== '0' && !w.marker.getElement().querySelector('.wp-more'));
+            // 名札：2つ並べて片方しか置けなければ隠す（長い名前・8px 間隔）
+            made.forEach(w => { w.name = 'とても長い名前の名札で重なりを確かめる地点'; updateTooltip(w); });
+            made.forEach((w, i) => { const ll = px(i * 8, 0); w.lat = ll.lat; w.lng = ll.lng; w.marker.setLatLng(ll); });
+            _declutter(); autoPlaceLabels();
+            const shown = wps.filter(w => w.marker && !w._clusterHidden && !w._labelHidden && w.name && w.marker.getTooltip()).length;
+            out.labelsThinned = made.some(w => w._clusterHidden || w._labelHidden) && shown >= 1;
+            out.rules = _labelAllowedAt({type:'start'}, 3) === true && _labelAllowedAt({type:'view', onRoute:false}, 14) === false && _labelAllowedAt({type:'view', onRoute:false}, 15) === true && _labelAllowedAt({type:'spot', onRoute:true}, 13) === true && _labelAllowedAt({type:'spot', onRoute:true}, 12) === false;
+            out.scale = _zoomKFor(17) === 1 && _zoomKFor(15) === .9 && _zoomKFor(14) === .8 && _zoomKFor(11) === .7 && !_vpVisibleAt({}, 14) && _vpVisibleAt({guide:{kind:'turn'}}, 14) && _vpVisibleAt({}, 15);
+            made.forEach(w => { try { leafMap.removeLayer(w.marker); } catch(_) {} const i = wps.indexOf(w); if (i >= 0) wps.splice(i, 1); });
+            undoStack.length = keepU; _dirty = keepD; refreshIcons(); redrawList(); scheduleAutoLabels();
+            out.back = wps.length === n0;
+            return out;
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        chk('機能', '広域：重なる印は「+4」に束ね、離せば戻る。置けない名札は隠す。ズーム別のルールと大きさ',
+            isinstance(dc, dict) and all(dc.get(k) for k in ('one', 'badge', 'apart', 'labelsThinned', 'rules', 'scale', 'back')), str(dc)[:240])
 
         # v156: 道具の案内：スポットでは無し、通り道・なぞるで出て、スポットに戻すと消える
         mh = page.evaluate("""()=>{ try{

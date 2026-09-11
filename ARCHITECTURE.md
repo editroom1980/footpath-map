@@ -386,3 +386,8 @@ CONSTANTS(904) → STATE(968) → STORAGE(1015) → 版のお知らせ(1021) →
 - `wp.type` は種類だけ（`spot`＝種類なし）。歩く順の番号は `_isNumbered(wp)`＝start/goal/node 以外で道順に入っている（`_onRouteOf`）もの。`courseNum` はその並び順。
 - 印の中身は `_markInner(wp, px)`（S／G／数字／種類の絵 `TYPE_ICON`）。文字だけの場面は `_markTxt(wp)`。凡例・種類の選択は `_typeMarkHtml(type)`。
 - 旧データの `type:'course'` は `_normType()` で `spot` に読み替える（`LEGACY_TYPE`）。保存は新しい名前で書く。
+
+## 広域のすっきり表示（v159）
+- `_declutter()`（zoomend・refreshIcons・表示切替から）：印を優先順に束ね（`_clusterN`／`_clusterHidden`）、通り道の点の表示を `_vpVisibleAt` で決める。`_clusterStickers` は同じ関数の旧名。
+- `autoPlaceLabels()`：束ねて隠した印の名札は対象外。`_labelAllowedAt(wp, z)` で広域の足切り、4方向に置けなければ `_labelHidden`。表示の反映は `_syncLabelVis`。
+- `_wpSize()` は `ZOOM_SCALE` の倍率を含む。ズームの段が変わったら `refreshIcons()`＋全 `updateTooltip()`。
