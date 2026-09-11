@@ -395,8 +395,9 @@ body.embed #s2, body.embed #mapArea, body.embed #mapWrap{height:100%!important;m
 /* 印の中の絵（v155） */
 .wp-mk.svg,.wp-stk-badge.svg{display:flex;align-items:center;justify-content:center;line-height:1!important}
 .wp-mk svg,.wp-stk-badge svg,.wp-dot svg,.tc-dot svg,.vip-dot svg,.sh-lgm svg,.ro-badge svg,.nb-dot svg{display:block}
-.wp-pair{display:flex;align-items:center;gap:2px}
-.wp-cat2{flex:none}
+.wp-num{position:absolute;right:-9px;top:-9px;border-radius:50%;color:#fff;font-weight:800;text-align:center;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4);font-family:inherit}
+.wp-mk.hasnum{overflow:visible}
+.wp-mk.hasnum .wp-visited{top:auto;bottom:-4px;right:-4px}   /* 番号の小丸と重ならないように下へ */
 .wp-dot.cat,.ro-badge.cat{width:18px;height:18px;margin-left:3px}   /* 一覧：番号の丸の横に種類の丸（v157） */
 .wp-mk.svg .wp-visited{line-height:14px}
 .wp-visited{position:absolute;right:-3px;top:-3px;width:14px;height:14px;border-radius:50%;background:var(--ok);
@@ -1727,12 +1728,11 @@ function _typeMarkHtml(type, px, color){   // 種類そのものの印（凡例�
 }
 function _spotColor(){ return (WT.find(x => x.v === 'spot') || WT[0]).c; }   // 歩く順の番号の丸の色（種類に関係なく同じ）
 function _hasCatIcon(wp){ return !!TYPE_ICON[wp.type]; }
-/* 番号つきで種類もある地点：番号の丸（番号の色）と種類の丸（種類の色）を横に並べる（v157・オーナー指摘：別々に見せる） */
-function _pairHtml(wp, sz, stamp){
-  const t = WT.find(x => x.v === wp.type) || WT[0];
-  const n = String(courseNum(wp) || '?'), c2 = Math.round(sz * 0.78);
-  return `<div class="wp-pair" style="width:${sz + 2 + c2}px;height:${sz}px"><div data-wtype="spot" class="wp-mk" style="position:relative;width:${sz}px;height:${sz}px;border-radius:50%;background:${_spotColor()};color:#fff;text-align:center;line-height:${sz-4}px;font-size:${_wpFont(sz, n)}px;font-weight:bold;border:2.5px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.45);cursor:pointer">${n}${stamp}</div>`
-       + `<div data-wtype="${wp.type}" class="wp-mk svg wp-cat2" style="width:${c2}px;height:${c2}px;border-radius:50%;background:${t.c};border:2.5px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.45);cursor:pointer">${_typeSvg(wp.type, Math.round(c2 * 0.62))}</div></div>`;
+/* 番号つきで種類もある地点（v158・オーナー指示）：大きな丸＝種類の絵（種類の色）、右上の小さな丸＝歩く順の番号（番号の色） */
+function _numBadge(wp, px){
+  if (!_isNumbered(wp) || !_hasCatIcon(wp)) return '';
+  const n = String(courseNum(wp) || '?');
+  return `<span class="wp-num" style="width:${px}px;height:${px}px;line-height:${px - 3}px;font-size:${_wpFont(px, n)}px;background:${_spotColor()}">${n}</span>`;
 }
 /* 歩く人の心得（v137・フットパス特化 F1）。日本フットパス協会の3か条（田畑や私有地には立ち入らない／ゴミは必ず持ち帰る／
    動植物や農作物を採らない）を土台に、英国 Countryside Code の3見出し（配慮する・守る・楽しむ）で並べる。地域の追記はコースごと（courseInfo.kokoroe） */
@@ -2810,7 +2810,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v157';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
+const APP_VERSION = 'v158';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
 }catch(_){} });
@@ -3634,9 +3634,11 @@ function wpIcon(wp, sz, anc) {
   const m = _markInner(wp, Math.round(sz[0] * 0.6));          // S/G・歩く順の数字・種類の絵（v155）
   // 閲覧モードで訪問済みなら、○の右上に小さなチェックを付ける（スタンプラリー）
   const stamp = (viewMode && _visits && _visits[wp.id]) ? '<span class="wp-visited">✓</span>' : '';
-  if (_isNumbered(wp) && _hasCatIcon(wp) && !(_stickerOn() && wp.photos && wp.photos[0])) {   // 番号＋種類：2つの丸を横に（v157）
-    const c2 = Math.round(sz[0] * 0.78);
-    return L.divIcon({className:'', html:_pairHtml(wp, sz[0], stamp), iconSize:[sz[0] + 2 + c2, sz[1]], iconAnchor:anc});
+  if (_isNumbered(wp) && _hasCatIcon(wp) && !(_stickerOn() && wp.photos && wp.photos[0])) {   // 番号＋種類：種類の丸＋右上に番号の小丸（v158）
+    const bsz = Math.max(18, Math.round(sz[0] * 0.6));
+    return L.divIcon({className:'',
+      html:`<div data-wtype="${wp.type}" class="wp-mk svg hasnum" style="position:relative;width:${sz[0]}px;height:${sz[1]}px;border-radius:50%;background:${t.c};color:#fff;border:2.5px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.45);cursor:pointer">${_typeSvg(wp.type, Math.round(sz[0] * 0.6))}${_numBadge(wp, bsz)}${stamp}</div>`,
+      iconSize:sz, iconAnchor:anc});
   }
   if (_stickerOn() && wp.photos && wp.photos[0]) {                       // シール（v142）
     const stk = _stickerOf(wp.photos[0]);
@@ -6250,6 +6252,7 @@ async function _captureMapCanvas() {
           '.leaflet-tooltip{box-shadow:none!important;border:none!important;opacity:1!important}',
           // WPアイコン: box-shadowを除去
           '.leaflet-marker-icon div{box-shadow:none!important}',
+          '.leaflet-marker-icon span.wp-num{box-shadow:none!important}',
         ].join('');
         clonedDoc.head.appendChild(_fix);
         // ツールチップ背景色をインラインで確定（type別の色を適用）
