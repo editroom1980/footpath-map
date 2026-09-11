@@ -417,7 +417,7 @@ CONSTANTS(904) → STATE(968) → STORAGE(1015) → 版のお知らせ(1021) →
 - 道順に沿った一覧は `_routeCues()`：今の道順の区間キー（`_routesInUse`）の曲がり角を `_lastRouteCoords` の最寄り頂点（`CUE_SNAP_M` 以内）に寄せ、`_routeCum` の累積距離で並べる。`_cueList` に（座標参照＋`_cueVer`）でキャッシュ。
 - 出口は3つ：配布シート `_sheetCuesHtml`、歩く人の帯 `_nextCueInfo`（`renderNextBar` 内・分岐の案内が無いときだけ）、古いコース用 `fetchCuesNow`（編集画面のシートからだけ）。
 
-## 道を変更（v169）
+## 道を変更（v169→v178）
 - 通り道の点（`vps`）は**見えない・引きずれない**。案内（`vp.guide`）を付けた点だけ `_vpVisibleAt` が true。表示の反映は `_applyVpVis`。`viaVisible` は常に true のまま（描いた道の点＝node の表示に使う）。
 - 「道を変更」（`mode==='via'`）では `_syncMapDrag()` が地図のドラッグを止める。地図の容器の `pointerdown` を `_initLineHold` が受け、`_nearRoute`（線から `LINE_HIT_PX` 以内）なら `_hold` を作る → 動いたら `_holdGrab` で点を作り（既にある点は `LINE_GRAB_PX` でつかむ）`_holdMove` で動かし、`_holdEnd` で `_snapCustom`→順序の取り直し→`clearCache(); scheduleRouting()`。動かさず `LINE_HOLD_MS` 押さえて離すと `showViaCtxMenu`。
 - 当たり判定の線（`hitOverlays`）は `interactive:false`。旧 `onSegmentHitDown` は使っていない（残してある）。
@@ -432,3 +432,7 @@ CONSTANTS(904) → STATE(968) → STORAGE(1015) → 版のお知らせ(1021) →
 ## 地図の描き直し（v173）
 - `zoomend`／`moveend` は `_scheduleViewUpdate(zoomed)` だけを呼ぶ。実際の処理は `_applyViewUpdate` で 1 フレームに 1 回。**ここに処理を足すときは、拡大縮小のときだけ要るものか、動かしたときも要るものかを分けて入れる**。
 - `_buildDisplayCoords` は `_dispMemo`（道順の配列・ズーム・線の太さ）で結果を使い回す。往復ずらしの中身を変えたら `_dispMemo = null;` を忘れない。
+
+## 変更点の出し入れ（v178）
+- `_vpEditing()`（`mode==='via'` かつ編集中）が true の間だけ、通り道の点が見えて `dragging` が有効になる。切り替えは `_syncVpEdit()`（`setMode` から呼ぶ）→ 各点の `_syncVpIcon` と `_applyVpVis`。
+- 点を1つ作る道は `_makeVpOnRoute(lat, lng, snap)` の1本だけ（線のタップ `_viaTapAdd` と、線の引っぱり `_holdGrab` の両方がここを通る）。順番（`order`）はここで決めたものを後から変えない。

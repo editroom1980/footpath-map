@@ -447,10 +447,15 @@ def static_checks(src):
     # --- v157: 番号の丸と種類の丸を横に並べる（オーナー指摘：iPhone で片方しか見えない）---
     chk('静的', '番号つきで種類がある地点：地図は「種類の丸＋右上に番号の小丸」、一覧・並べ替え・配布シート・カードは番号と種類を並べて出す',
         'class="wp-num"' in src and 'class="wp-dot cat"' in src and 'class="ro-badge cat"' in src and 'class="sh-cat"' in src and 'class="vip-dot vip-dot2"' in src and '_catBadge' not in src and 'wp-pair' not in src)
+    # --- v178: 「道を変更」で変更点を出し、足す・動かす・消す（オーナー指示）---
+    chk('静的', '道を変更の間だけ変更点が出てつまめる（大きめの茶色い点）。線をタップで足す、点をタップで消す・案内。道具を変えると隠れる',
+        'function _vpEditing' in src and 'function _syncVpEdit' in src and 'function _viaTapAdd' in src and 'function _makeVpOnRoute' in src
+        and "if (_vpEditing()) d.enable(); else d.disable();" in src and '.vp-dot.vp-edit{' in src and 'class="vp-dot${edit' in src
+        and "if (typeof _syncVpEdit === 'function') _syncVpEdit();" in src)
     # --- v177: 引っぱったあと道順が行ったり来たりしない（オーナー指摘）---
     chk('静的', '線を引っぱったとき、順番はつかんだ場所で決めたまま（引っぱった先で決め直さない）。つかんだ所の古い手直しは引っぱった距離ぶん外す（案内付きは残す）',
         'function _sweepOldVps' in src and 'const removed = _sweepOldVps(vp, h.grab);' in src and 'v.segAfter === vp.segAfter && v.id !== vp.id && !v.guide' in src
-        and 'const LINE_SWEEP_MIN_M = 30, LINE_SWEEP_MAX_M = 400;' in src and 'h.grab = {lat: sLat, lng: sLng};' in src
+        and 'const LINE_SWEEP_MIN_M = 30, LINE_SWEEP_MAX_M = 400;' in src and 'h.grab = {lat: vp.lat, lng: vp.lng};' in src
         and 'if (wa) vp.order = calcVpOrder(vp.lat, vp.lng, vps.filter(v => v.segAfter === vp.segAfter && v.id !== vp.id), wa, wb); } catch(_) {}\n    clearCache()' not in src)
     # --- v176: 歩く人のカードの写真は「貼ってある」見た目に（オーナー指示）---
     chk('静的', 'カードの写真は白いふち＋テープ＋少し傾けて貼った見た目。写真が取り出せなければ枠も出さない',
@@ -482,7 +487,7 @@ def static_checks(src):
         src.count('class="mm-ic"') >= 14 and 'mm-map-l">コースの説明を書く<' in src and 'mm-map-l">順番・逆回り・周回<' in src and 'mm-map-l">色・シール・文字<' in src and '>詳細<i>' in src
         and 'ふだんは触らなくて' not in src and '上級者向け' not in src and 'toggleViaVisibility' not in src and 'mmSwVia' not in src
         and 'function _initLineHold' in src and 'function _holdGrab' in src and 'function _syncMapDrag' in src and 'function _initMenuFlick' in src and 'function _routeSolidAtZoom' in src and 'const ROUTE_SOLID_Z = 15;' in src and 'const LINE_HOLD_MS = 450' in src and '_initLineHold();                        // 道を変更' in src
-        and 'draggable:false,   // v169' in src and 'function _vpVisibleAt(vp, z){ return !!(vp && vp.guide); }' in src and "if (mode==='via' && !_viaTapHint)" in src
+        and 'draggable:false,   // v169' in src and 'function _vpVisibleAt(vp, z){ return _vpEditing() || !!(vp && vp.guide); }' in src and "if (mode==='via') _viaTapAdd(e);" in src
         and 'mob-mode-l">道を変更<' in src and '>道を変更</span>' in src and 'interactive:false}).addTo(leafMap);\n    hitOverlays.push(ov);' in src)
     # --- v168: オーナー指摘3つ（帯の開閉・広域の印の大きさ・名札は一律）---
     chk('静的', '高低差の帯：右端のボタンと見出しのタップで開閉、なぞり／フリック／ちょんと触るを区別。印は広域でもっと小さく（z16 .8／z15 .65／z14 .55／それ以下 .45・シールも）。名札は z15 以上で全部、未満は無し、置けなくても隠さない',
@@ -550,7 +555,7 @@ def static_checks(src):
     chk('静的', '配布用リンクの画面は 書き出す→置く→配る の3手順。埋め込みは畳む。GitHub Pages なら置き場所（アップロード画面）を開くボタン',
         'id="shGh"' in src and 'function _ghUploadUrlFor' in src and "<details class=\"sd-more\">" in src and src.index('class="sd-more"') < src.index('id="shEmbed"'))
     chk('静的', '操作ガイドが今の画面に合っている（線を引っぱる・自動保存・歩く人の画面）',
-        '赤い線を指（マウス）で引っぱる → そこを通るように道順が変わります' in src and '保存は自動です' in src and '<h3>🚶 歩く人の画面でできること（配布リンク）</h3>' in src and '「通り道」を選んで地図をクリック' not in src)
+        '道順の**変更点（茶色いまるい点）が出て**' in src and '保存は「保存」ボタンで行います（勝手には保存しません）' in src and '<h3>🚶 歩く人の画面でできること（配布リンク）</h3>' in src and '「通り道」を選んで地図をクリック' not in src)
     # --- v149: 手数を減らす②（新しいコースは名前だけ・道具とカードに文字・案内に線の引っぱり）---
     chk('静的', '新しいコースはコース名だけ必須。エリアが空なら現在地、取れなければ今の地図の場所。スタート・ゴール地点の欄は無い',
         "if (!name) { alert('コース名を入れてください。');" in src and 'function _herePos' in src and 'const c = area ? await geocode(area) : await _herePos();' in src
@@ -1803,7 +1808,7 @@ def functional_checks(index_path):
             and pc3.get('hdrH', 99) <= 60 and pc3.get('railIn') and pc3.get('hint') == 'クリックでスポットを追加（スマホは長押し）'
             and pc3.get('popMapOpen') and pc3.get('bm') == 'gsi_photo' and pc3.get('pill') == '航空写真'
             and pc3.get('legendOpen') and pc3.get('legendRows', 0) >= 2 and pc3.get('moreOpen') and pc3.get('moreRows') == 12
-            and pc3.get('manualFlip') and pc3.get('hintVia') == '道を変更：赤い線を引っぱると道順が曲がる（地図は固定）'
+            and pc3.get('manualFlip') and pc3.get('hintVia') == '道を変更：茶色い点を動かす／赤い線をクリックで点を足す（地図は固定）'
             and pc3.get('viewHidden') and pc3.get('viewBack') and pc3.get('closedAll'), str(pc3)[:300])
 
         # v127: 標高は同じ点を二度取りに行かない。elevs を読み込むと0回。静かな書き足しは routes/elevs だけ・未保存中は書かない
@@ -2469,6 +2474,45 @@ def functional_checks(index_path):
         chk('機能', '高低差のなぞり：距離→標高・勾配・位置、帯をなぞると見出し・地図の印・縦線、離してもしばらく残る、消える、勾配の面',
             isinstance(scr, dict) and all(scr.get(k) for k in ('point', 'ends', 'scrub', 'held', 'cleared', 'grade')), str(scr)[:240])
 
+        # v178: 道を変更：線のタップで点が増える／点をつまんで動かせる／点のタップで設定（消す）／道具を変えると隠れる
+        ve = page.evaluate("""async ()=>{ try{
+            const keepMode = mode, keepU = undoStack.length, keepD = _dirty, keepV = viewMode, keepArr = vps.slice(); viewMode = false;
+            setMode('via'); hideCtxMenu();
+            const c = _lastRouteCoords; if (!c || c.length < 10) return 'no route';
+            const mid = c[Math.floor(c.length / 2)]; leafMap.setView(mid, 17, {animate:false}); await new Promise(r => setTimeout(r, 250));
+            const n0 = vps.length;
+            const out = {};
+            // 見える・つまめる
+            const shown = vps.filter(v => v.marker && v.marker.getElement() && v.marker.getElement().style.opacity !== '0');
+            out.visible = vps.length === 0 || shown.length === vps.length;
+            out.draggable = vps.length === 0 || vps.every(v => v.marker && v.marker.dragging && v.marker.dragging.enabled());
+            // 線のタップで増える
+            onMapClick({latlng: L.latLng(mid[0], mid[1]), originalEvent:{clientX:0, clientY:0}});
+            out.added = vps.length === n0 + 1;
+            const nv = vps[vps.length - 1];
+            out.newVisible = !!nv.marker && nv.marker.getElement().style.opacity !== '0' && nv.marker.dragging.enabled();
+            // 線から離れた所をタップしても増えない
+            const far = leafMap.containerPointToLatLng(L.point(5, 5));
+            const n1 = vps.length; onMapClick({latlng: far, originalEvent:{clientX:0, clientY:0}});
+            out.farNoAdd = vps.length === n1 || _nearRoute(leafMap.latLngToContainerPoint(far));
+            // 点のタップで設定が開く（消せる）
+            onMapClick({latlng: L.latLng(nv.lat, nv.lng), originalEvent:{clientX:10, clientY:10}});
+            out.menu = getComputedStyle(document.getElementById('ctxMenu')).display !== 'none' && vps.length === n1;
+            ctxVpId = nv.id; ctxDoDeleteVp();
+            out.deleted = vps.indexOf(nv) < 0;
+            hideCtxMenu();
+            // スポットに戻すと隠れてつまめない
+            setMode('wp');
+            out.hiddenAfter = vps.every(v => v.guide || (v.marker && v.marker.getElement().style.opacity === '0' && !v.marker.dragging.enabled()));
+            vps.filter(v => keepArr.indexOf(v) < 0).forEach(v => { if (v.marker) { try { leafMap.removeLayer(v.marker); } catch(_) {} } });
+            vps.length = 0; keepArr.forEach(v => vps.push(v));
+            setMode(keepMode === 'draw' || keepMode === 'via' ? 'wp' : keepMode); undoStack.length = keepU; _dirty = keepD; viewMode = keepV;
+            clearCache(); redrawStraight(); scheduleRouting(); document.querySelectorAll('#toastBox .toast').forEach(e => e.remove());
+            return out;
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        chk('機能', '道を変更：変更点が見えてつまめる／線のタップで足す／離れた所では足さない／点のタップで設定→消す／スポットに戻すと隠れる',
+            isinstance(ve, dict) and all(ve.get(k) for k in ('visible', 'draggable', 'added', 'newVisible', 'farNoAdd', 'menu', 'deleted', 'hiddenAfter')), str(ve)[:280])
+
         # v177: 引っぱったあと：順番はつかんだ場所のまま／つかんだ所の古い手直しは外れる／案内付きは残る／取消で戻る
         sw = page.evaluate("""async ()=>{ try{
             const keepU = undoStack.length, keepD = _dirty, keepV = viewMode, keepArr = vps.slice(); viewMode = false;
@@ -2631,19 +2675,25 @@ def functional_checks(index_path):
             document.dispatchEvent(pe('pointermove', p.x + 60, p.y + 30));
             const movedPx = vp ? leafMap.latLngToContainerPoint([vp.lat, vp.lng]).distanceTo(p) : 0;
             document.dispatchEvent(pe('pointerup', p.x + 60, p.y + 30)); await wait(120);
-            out.moved = movedPx > 40 && !_hold && vps.length === n0 + 1 && lineDragging === false && !leafMap.dragging.enabled();
-            out.hidden = !!vp && !!vp.marker && !vp.guide && vp.marker.options.opacity === 0 && vp.marker.options.draggable === false;
+            out.moved = movedPx > 40 && !_hold && vps.indexOf(vp) >= 0 && lineDragging === false && !leafMap.dragging.enabled();   // v177：引っぱると近くの古い点は外れるので、数ではなくその点で見る
+            const nAfterDrag = vps.length;
+            out.hidden = !!vp && !!vp.marker && !vp.guide && vp.marker.getElement().style.opacity !== '0' && !!vp.marker.dragging && vp.marker.dragging.enabled();   // v178：道を変更の間は見えてつまめる
             // ちょんと触る＝何もしない
             const p2 = leafMap.latLngToContainerPoint(c[Math.floor(c.length / 3)]);
             el.dispatchEvent(pe('pointerdown', p2.x, p2.y)); document.dispatchEvent(pe('pointerup', p2.x, p2.y)); await wait(80);
-            out.tap = vps.length === n0 + 1 && !_hold;
+            out.tap = vps.length === nAfterDrag && !_hold;
             // 動かさず押さえて離す → 点ができて設定が開く
             el.dispatchEvent(pe('pointerdown', p2.x, p2.y)); await wait(LINE_HOLD_MS + 150); document.dispatchEvent(pe('pointerup', p2.x, p2.y)); await wait(120);
-            out.menu = getComputedStyle(document.getElementById('ctxMenu')).display !== 'none' && vps.length === n0 + 2; hideCtxMenu();
+            out.menu = getComputedStyle(document.getElementById('ctxMenu')).display !== 'none' && vps.length >= nAfterDrag + 1; hideCtxMenu();
+            const nAfterMenu = vps.length;
             setMode('wp'); out.unlocked = leafMap.dragging.enabled();
+            out.hiddenAfter = !!vp.marker && vp.marker.getElement().style.opacity === '0' && !vp.marker.dragging.enabled();   // v178：スポットに戻すと隠れる
+
             el.dispatchEvent(pe('pointerdown', p2.x, p2.y)); document.dispatchEvent(pe('pointermove', p2.x + 30, p2.y)); document.dispatchEvent(pe('pointerup', p2.x + 30, p2.y)); await wait(80);
-            out.wpMode = vps.length === n0 + 2 && !_hold;
-            setMode('via'); onMapClick({latlng: leafMap.containerPointToLatLng(L.point(p.x + 150, p.y + 150)), originalEvent:{clientX:0, clientY:0}}); out.noTapAdd = vps.length === n0 + 2;
+            out.wpMode = vps.length === nAfterMenu && !_hold;
+            setMode('via');
+            if (off) onMapClick({latlng: leafMap.containerPointToLatLng(off), originalEvent:{clientX:0, clientY:0}});   // 線から離れた所のタップでは増えない（v178）
+            out.noTapAdd = vps.length === nAfterMenu;
             undoLast(); undoLast(); out.undone = vps.length === n0;
             // 広域は実線・三角なし、拡大すると破線に戻る
             setMode('wp'); leafMap.setView(mid, 14, {animate:false}); await wait(400); out.solidWide = _routeDash() === null && routeDirs === null && !!routeLine;
@@ -2652,7 +2702,7 @@ def functional_checks(index_path):
             return out;
           }catch(e){ return 'ERR:'+e.message; } }""")
         chk('機能', '道を変更：地図は固定／線の外は何も起きない／線を引っぱると点ができて曲がる（見えず引きずれない）／触るだけは何もしない／押さえて離すと設定／スポットに戻すと地図が動く／タップでは置かない／取消で戻る／広域は実線',
-            isinstance(hd, dict) and all(hd.get(k) for k in ('locked', 'offLine', 'down', 'grabbed', 'moved', 'hidden', 'tap', 'menu', 'unlocked', 'wpMode', 'noTapAdd', 'undone', 'solidWide', 'dashNear')), str(hd)[:340])
+            isinstance(hd, dict) and all(hd.get(k) for k in ('locked', 'offLine', 'down', 'grabbed', 'moved', 'hidden', 'tap', 'menu', 'unlocked', 'hiddenAfter', 'wpMode', 'noTapAdd', 'undone', 'solidWide', 'dashNear')), str(hd)[:360])
 
         # v168: 帯の開閉：縦の指はフリック（開く）、横の指はなぞり（開閉しない）、ちょんと触ると場所を見る、ボタンで開閉
         bd = page.evaluate("""async ()=>{ try{

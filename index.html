@@ -283,6 +283,11 @@ html,body{touch-action:manipulation;min-height:calc(100% + var(--sat));font-fami
 #crFinishBar{display:none;position:fixed;top:calc(50px + var(--sat));left:50%;transform:translateX(-50%);background:#fff;border:1.5px solid #1565C0;border-radius:8px;padding:6px 14px;z-index:2000;gap:10px;align-items:center;box-shadow:0 2px 12px rgba(0,0,0,.2)}
 #crFinishBar.show{display:flex}
 .vp-hold{border-radius:50%;background:var(--brand);border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.45)}   /* 道を変更：つかんでいる点（v169） */
+/* 変更点（v178）：ふだんは小さな灰色、「道を変更」の間は大きな茶色＝つまんで動かせる印 */
+.vp-dot{border-radius:50%;background:#444;border:2px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.55);cursor:grab}
+.vp-dot.vp-edit{background:var(--brand);border-width:3px;box-shadow:0 2px 9px rgba(0,0,0,.45)}
+.leaflet-marker-draggable .vp-dot{cursor:grab}
+.leaflet-drag-target .vp-dot{cursor:grabbing}
 /* スポットを置く確認（v171） */
 /* 現在地（v172）：青い丸＋ゆっくり広がる輪 */
 .me-dot{position:absolute;left:50%;top:50%;width:16px;height:16px;margin:-8px 0 0 -8px;border-radius:50%;background:#3B82F6;border:3px solid #fff;box-sizing:content-box;box-shadow:0 1px 6px rgba(0,0,0,.4)}
@@ -1250,7 +1255,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
           <button class="rl-btn ed on" id="btnWp" onclick="setMode('wp')" title="クリックでスポットをコースに追加"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M9 11a3 3 0 1 0 6 0a3 3 0 0 0 -6 0" /> <path d="M17.657 16.657l-4.243 4.243a2 2 0 0 1 -2.827 0l-4.244 -4.243a8 8 0 1 1 11.314 0" /></svg><span>スポット</span></button>
           <button class="rl-btn ed" id="btnDraw" onclick="setMode('draw')" title="指でなぞって描く&#10;地図をドラッグしてなぞると、そのとおりにコースが引かれます"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 19a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" /> <path d="M19 7a2 2 0 1 0 0 -4a2 2 0 0 0 0 4" /> <path d="M11 19h5.5a3.5 3.5 0 0 0 0 -7h-8a3.5 3.5 0 0 1 0 -7h4.5" /></svg><span>なぞる</span></button>
           <button class="rl-btn ed" id="btnCustom" onclick="toggleCustomMode()" title="自分で描いた道&#10;地図に無い道をなぞって描く（終わりは完了ボタン）"><svg class="svgi" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4"/><path d="M13.5 6.5l4 4"/></svg><span>道を描く</span></button>
-          <button class="rl-btn ed" id="btnVia" onclick="setMode('via')" title="道を変更：赤い線を引っぱると道順が変わります（この間は地図が固定されます）"><svg class="svgi" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /> <path d="M4 6l8 0" /> <path d="M16 6l4 0" /> <path d="M6 12a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /> <path d="M4 12l2 0" /> <path d="M10 12l10 0" /> <path d="M15 18a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /> <path d="M4 18l11 0" /> <path d="M19 18l1 0" /></svg><span>道を変更</span></button>
+          <button class="rl-btn ed" id="btnVia" onclick="setMode('via')" title="道を変更：変更点をつまんで動かす／線をタップで点を足す（この間は地図が固定されます）"><svg class="svgi" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /> <path d="M4 6l8 0" /> <path d="M16 6l4 0" /> <path d="M6 12a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /> <path d="M4 12l2 0" /> <path d="M10 12l10 0" /> <path d="M15 18a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /> <path d="M4 18l11 0" /> <path d="M19 18l1 0" /></svg><span>道を変更</span></button>
           <button class="rl-btn ed on" id="btnMagnet" onclick="toggleManualMode();_syncPcPops()" title="道に吸い付く／吸い付かない&#10;地図に無い道（畦道・山道）を通したいときは OFF"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 13v-8a2 2 0 0 1 2 -2h1a2 2 0 0 1 2 2v8a2 2 0 0 0 6 0v-8a2 2 0 0 1 2 -2h1a2 2 0 0 1 2 2v8a8 8 0 0 1 -16 0"/><path d="M4 8h5"/><path d="M15 8h4"/></svg><span>吸い付く</span></button>
           <div class="rl-div ed"></div>
           <button class="rl-btn ed" id="btnUndo" onclick="undoLast()" title="取り消し (⌘Z)" disabled><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M9 14l-4 -4l4 -4" /> <path d="M5 10h11a4 4 0 1 1 0 8h-1" /></svg><span>取消</span></button>
@@ -1751,9 +1756,11 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
     <div class="help-section">
       <h3>↔ 道を変更（線を引っぱる）</h3>
       <ul>
-        <li>下の「道を変更」を選ぶと地図が固定されます。赤い線を指（マウス）で引っぱる → そこを通るように道順が変わります（見えない点ができます）</li>
-        <li>線の上でない所を触っても何も起きません。地図を動かしたいときは「スポット」に戻します</li>
-        <li>線を動かさず押さえて離すと、その点の設定が開きます：分岐（←↑→）や注意（車・滑る・圏外・獣）の案内を付ける／点を消す。案内を付けた点だけ印が出ます</li>
+        <li>下の「道を変更」を選ぶと、道順の**変更点（茶色いまるい点）が出て**、地図が固定されます</li>
+        <li>**動かす**：点をつまんで動かす → そこを通るように道順が変わります</li>
+        <li>**足す**：赤い線をタップ（クリック）→ その場所に点が増えます。線を引っぱっても足せます</li>
+        <li>**消す**：点をタップ → 「この点を消す」。分岐（←↑→）や注意（車・滑る・圏外・獣）の案内もここで付けられます</li>
+        <li>「スポット」に戻すと点は消えて地図が動かせます（案内を付けた点だけ残ります）</li>
         <li>もう一度直したいときは、同じ所を引っぱると点をつかめます。戻すには「取消」</li>
         <li>引っぱると、つかんだ所にあった**古い手直しは外れます**（引っぱった距離ぶん）。そのまま次のスポットまで道なりにつなぎ直します。分岐・注意の案内を付けた点は残ります</li>
         <li>直した道を元に戻すには、メニュー（PC：その他）の「**道順を直す**」→ その区間の「道なり」。「まっすぐ」を選ぶと2点を直線で結びます。下の「全部の道順を引き直す」で全部やり直せます</li>
@@ -1771,7 +1778,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
     <div class="help-section">
       <h3>💾 保存・配る</h3>
       <ul>
-        <li>保存は自動です。変えると1〜2秒後に保存され、上に「保存済み」と出ます（押せばすぐ保存）。この端末のブラウザに残ります</li>
+        <li>保存は「保存」ボタンで行います（勝手には保存しません）。保存していない変更があると、ボタンが「保存」（濃い色）のままになります。一覧に戻るときにも「保存して戻る／保存せずに戻る」を確認します。この端末のブラウザに残ります</li>
         <li>「配る」→ 画像・配布シート（A4）・リンク・GPX の4つの出口と、配る前の確認（歩いた・私有地・分岐・注意…）が1枚にまとまっています</li>
         <li>「見た目 › 地図の色」で線と印の色を選べます。歩く人の画面と配布シートも同じ色になります</li>
         <li>「その他」→ JSONで保存（バックアップ）。一覧画面の「ファイルから読み込む」で戻せます。歩く人から届いた「発見」のファイルも同じ所から取り込めます</li>
@@ -3001,7 +3008,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v177';
+const APP_VERSION = 'v178';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -3631,7 +3638,7 @@ function onMapClick(e) {
     if (_placeHintCount < 2) { _placeHintCount++; showToast('置きました。○を押すと種類と名前を変えられます'); }
     return;
   }
-  if (mode==='via' && !_viaTapHint) { _viaTapHint = true; showToast('道を変更：赤い線を引っぱると道順が曲がります（地図は固定。動かすには「スポット」へ）'); }   // v169：タップでは置かない
+  if (mode==='via') _viaTapAdd(e);   // v178：線をタップしたら、そこに変更点を足す
 }
 
 /* ============================================================
@@ -4090,9 +4097,11 @@ function addVp(lat, lng) {
 
 /* 通り道の点の印。案内（分岐・注意）が付いていれば、矢印か「!」の少し大きい印（v141） */
 function _vpIcon(vp) {
-  const sz = Math.max(8, Math.round((isMobile() ? 18 : 13) * _zoomK()));   // v168：広域では小さく
+  const edit = _vpEditing();
+  const sz = edit ? Math.max(16, Math.round((isMobile() ? 22 : 16) * Math.max(_zoomK(), 0.8)))   // v178：動かす間は大きめ＝つまみやすい
+                  : Math.max(8, Math.round((isMobile() ? 18 : 13) * _zoomK()));                  // v168：広域では小さく
   const g = vp.guide;
-  if (!g) return L.divIcon({className:'', html:`<div style="width:${sz}px;height:${sz}px;border-radius:50%;background:#444;border:2px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.55);cursor:grab"></div>`, iconSize:[sz,sz], iconAnchor:[sz/2,sz/2]});
+  if (!g) return L.divIcon({className:'', html:`<div class="vp-dot${edit ? ' vp-edit' : ''}" style="width:${sz}px;height:${sz}px"></div>`, iconSize:[sz,sz], iconAnchor:[sz/2,sz/2]});
   const big = Math.max(16, Math.round((isMobile() ? 26 : 22) * _zoomK()));
   const turn = g.kind !== 'caution';
   const glyph = turn ? ({left:'←', straight:'↑', right:'→'}[g.dir] || '↑') : '!';
@@ -4111,9 +4120,8 @@ function buildVpMarker(vp) {
   m.on('dragstart', () => { _vpDragged = true; _vpLastDragEnd = Date.now(); if (_vpPressTimer){clearTimeout(_vpPressTimer);_vpPressTimer=null;} saveSnapshot(); });
   m.on('drag',    () => { _vpLastDragEnd = Date.now(); vp.lat=m.getLatLng().lat; vp.lng=m.getLatLng().lng; redrawStraight(); });
   m.on('dragend', () => { _vpLastDragEnd = Date.now(); const _s=_snapCustom(m.getLatLng().lat, m.getLatLng().lng); vp.lat=_s[0]; vp.lng=_s[1]; m.setLatLng(_s);
-    // ドラッグ後も順序を実ルートに沿って取り直す（前後が入れ替わらないように）
-    try { const _wa=wps.find(w=>w.id===vp.segAfter); const _rw=routeWps(); const _ri=_rw.findIndex(w=>w.id===vp.segAfter); const _wb=(_ri>=0&&_rw[_ri+1])?_rw[_ri+1]:_wa; const _seg=vps.filter(v=>v.segAfter===vp.segAfter&&v.id!==vp.id); if(_wa) vp.order=calcVpOrder(vp.lat,vp.lng,_seg,_wa,_wb); } catch(_){}
-    clearCache(); scheduleRouting(); });
+    // v178：順番は作ったときのまま（動かした先で決め直すと前後が入れ替わり、道順が行ったり来たりする）
+        clearCache(); scheduleRouting(); });
 
   // PC: right-click → context menu (no immediate delete)
   m.on('contextmenu', e => {
@@ -5309,15 +5317,12 @@ function _holdGrab(cx, cy, create){   // 指の所の点をつかむ。無けれ
   const ll = leafMap.mouseEventToLatLng({clientX: cx, clientY: cy}), pt = leafMap.latLngToContainerPoint(ll);
   let vp = vps.find(v => leafMap.latLngToContainerPoint([v.lat, v.lng]).distanceTo(pt) <= LINE_GRAB_PX);
   if (!vp && !create) return;
-  saveSnapshot();
+  if (vp) saveSnapshot();                            // 既にある点をつかんだとき（新しく作るときは _makeVpOnRoute の中で）
   h.grab = vp ? {lat: vp.lat, lng: vp.lng} : null;   // つかんだ場所（v177：この位置で順番が決まる）
   if (!vp) {
-    const sr = _snapToRoute(ll.lat, ll.lng), sLat = sr ? sr[0] : ll.lat, sLng = sr ? sr[1] : ll.lng;
-    const segId = findNearestSegByCoordMap(L.latLng(sLat, sLng)) || nearestSegWpId(sLat, sLng);
-    const wpA = wps.find(w => w.id === segId), rw = routeWps(), ri = rw.findIndex(w => w.id === segId), wpB = rw[ri + 1] || wpA;
-    idV++;
-    vp = {id:'v'+idV, segAfter:segId, order:calcVpOrder(sLat, sLng, vps.filter(v => v.segAfter === segId), wpA, wpB), fitBefore: manualMode ? false : true, fitAfter: manualMode ? false : true, lat:sLat, lng:sLng, marker:null};
-    vps.push(vp); buildVpMarker(vp); h.created = true; h.grab = {lat: sLat, lng: sLng};
+    vp = _makeVpOnRoute(ll.lat, ll.lng, true);   // 順番はここ（つかんだ場所）で決まる（v177）
+    if (!vp) { _hold = null; return; }
+    h.created = true; h.grab = {lat: vp.lat, lng: vp.lng};
   }
   h.vp = vp;
   const sz = isMobile() ? 22 : 16;
@@ -5329,6 +5334,32 @@ function _holdGrab(cx, cy, create){   // 指の所の点をつかむ。無けれ
    線を引っぱると、つかんだ所にあった昔の通り道の点が残っていて、道順がそこへ戻ってしまう。
    つかんだ場所から「引っぱった距離ぶん」の中にある同じ区間の点は、役目を終えたものとして外す。
    分岐・注意の案内を付けた点（利用者が意味を持たせた点）は外さない。外したぶんは「取消」で戻る */
+/* 線をタップ＝そこに変更点を足す（v178）。線から離れた所をタップしても何も起きない（案内だけ出す） */
+function _viaTapAdd(e){
+  if (!leafMap || !e || !e.latlng) return;
+  const pt = leafMap.latLngToContainerPoint(e.latlng);
+  if (!_nearRoute(pt)) { const n = Date.now(); if (n - _tapHintAt > 4000) { _tapHintAt = n; showToast('赤い線の上をタップすると変更点が増えます（点はつまんで動かせます）'); } return; }
+  const near = vps.find(v => leafMap.latLngToContainerPoint([v.lat, v.lng]).distanceTo(pt) <= LINE_GRAB_PX);
+  if (near) { showViaCtxMenu(near.id, (e.originalEvent || {}).clientX || 0, (e.originalEvent || {}).clientY || 0); return; }   // 点の近く＝その点の設定
+  const vp = _makeVpOnRoute(e.latlng.lat, e.latlng.lng, true);
+  if (!vp) return;
+  clearCache(); redrawStraight(); scheduleRouting();
+  if (!_viaTapHint) { _viaTapHint = true; showToast('変更点を足しました。つまんで動かすと道順が変わります（押すと消せます）'); }
+}
+/* 道順の上に変更点を1つ作る（v178：線のタップと、線の引っぱりで共通） */
+function _makeVpOnRoute(lat, lng, snap){
+  const rw = routeWps(); if (rw.length < 2) { showToast('スポットが2つ以上あるときに使えます'); return null; }
+  if (snap) { const sr = _snapToRoute(lat, lng); if (sr) { lat = sr[0]; lng = sr[1]; } }
+  const segId = findNearestSegByCoordMap(L.latLng(lat, lng)) || nearestSegWpId(lat, lng);
+  const wpA = wps.find(w => w.id === segId), ri = rw.findIndex(w => w.id === segId), wpB = rw[ri + 1] || wpA;
+  if (!wpA) return null;
+  saveSnapshot();
+  idV++;
+  const vp = {id:'v'+idV, segAfter:segId, order:calcVpOrder(lat, lng, vps.filter(v => v.segAfter === segId), wpA, wpB),
+              fitBefore: manualMode ? false : true, fitAfter: manualMode ? false : true, lat, lng, marker:null};
+  vps.push(vp); buildVpMarker(vp);
+  return vp;
+}
 function _sweepOldVps(vp, grab){
   if (!grab) return 0;
   const dragM = haversine(grab.lat, grab.lng, vp.lat, vp.lng);
@@ -7173,6 +7204,7 @@ function setMode(m) {
   if (mode === 'draw' && m !== 'draw') exitDrawMode();
   mode = m;
   _syncMapDrag();                                                       // 道を変更の間は地図を固定（v169）
+  if (typeof _syncVpEdit === 'function') _syncVpEdit();                 // 変更点を出す／隠す（v178）
   document.getElementById('btnWp')?.classList.toggle('on',   m==='wp');
   document.getElementById('btnVia')?.classList.toggle('on',  m==='via');
   document.getElementById('btnRoad')?.classList.toggle('on', m==='road');
@@ -7184,14 +7216,14 @@ function setMode(m) {
   if (m === 'draw') { _customTraceMode=false; enterDrawMode(); }
   const msgs = {
     'wp':       'クリックでスポットを追加（スマホは長押し）',
-    'via':      '道を変更：赤い線を引っぱると道順が曲がる（地図は固定）',
+    'via':      '道を変更：茶色い点を動かす／赤い線をクリックで点を足す（地図は固定）',
     'draw':     '指でなぞって描く：地図をなぞるとコースになる',
     'road':     '道を描いています：クリックで点を追加',
     'road-edit':'道を編集中：点をドラッグで移動／右クリックで削除',
   };
   const long = {
     'wp':       'クリックでスポットを追加（スマホは長押しして確認）／道順を変えるときは「道を変更」',
-    'via':      '赤い線を引っぱると、そこを通るように道順が変わります。この間は地図が固定されます。線を動かさず押さえて離すと、その点の設定（分岐の案内・消す）が開きます',
+    'via':      '茶色い点（変更点）をつまんで動かすと道順が変わります。赤い線をクリックすると、その場所に点が増えます。点をクリックすると、消す・分岐の案内を付けるが選べます。この間は地図が固定されます',
     'draw':     '地図を指でなぞるとコースを描けます',
     'road':     'クリックで点を追加し、完了ボタンで確定します',
     'road-edit':'点をドラッグで移動／ライン上クリックで追加／点を右クリックで削除／他のモードに切り替えると終了',
@@ -7206,7 +7238,7 @@ function _syncModeHint(){
   let t = '';
   if (_customMode_) t = '道を描く：地図に無い道をなぞって描きます';
   else if (mode === 'draw') t = 'なぞる：なぞって道順を引く';
-  else if (mode === 'via') t = '道を変更：線を引っぱる';
+  else if (mode === 'via') t = '道を変更：点を動かす';
   el.hidden = !t;
   if (t) el.innerHTML = '<span class="mh-t">' + escHtml(t) + '</span>' + (_customMode_ ? '' : '<button type="button" class="mh-mag tap' + (manualMode ? '' : ' on') + '" onclick="toggleManualMode()">' + _magnetSvg() + (manualMode ? '吸い付かない' : '吸い付く') + '</button>');   // 磁石（v160・Footpath に倣う）
   document.getElementById('btnMagnet')?.classList.toggle('on', !manualMode);
@@ -7683,12 +7715,20 @@ function _declutter(){
   vps.forEach(vp => _applyVpVis(vp, z));
 }
 function _clusterStickers(){ _declutter(); }   // 旧名（呼び出し側は据え置き）
-function _vpVisibleAt(vp, z){ return !!(vp && vp.guide); }   // v169：通り道の点は見えない。分岐・注意の案内を付けた点だけ印が出る
+/* 変更点（通り道の点）の見え方（v178・オーナー指示「道を変更を押すと、間の変更点が表示されて動かせるように」）：
+   「道を変更」を選んでいる間だけ、まるい変更点が出て、指でつまんで動かせる。押すと「消す」などの設定。
+   ふだん（スポットなど）は見えない。分岐・注意の案内を付けた点だけは、いつでも印が出る */
+function _vpEditing(){ return mode === 'via' && !viewMode && !_drawActive && !_customMode_; }
+function _vpVisibleAt(vp, z){ return _vpEditing() || !!(vp && vp.guide); }
 function _applyVpVis(vp, z){
   if (!vp || !vp.marker) return;
   const on = _vpVisibleAt(vp, z == null ? leafMap.getZoom() : z);
   try { vp.marker.setOpacity(on ? 1 : 0); } catch(_) {}
   const el = vp.marker.getElement(); if (el) el.style.pointerEvents = on ? '' : 'none';
+  try { const d = vp.marker.dragging; if (d) { if (_vpEditing()) d.enable(); else d.disable(); } } catch(_) {}   // v178：「道を変更」の間だけつまめる
+}
+function _syncVpEdit(){   // 道具を変えたとき：変更点の見た目と、つまめるかどうかを合わせる（v178）
+  vps.forEach(v => { _syncVpIcon(v); _applyVpVis(v); });
 }
 /* ラベル（名札）の表示／非表示：束ねて隠した印と、置き場所が無くて隠した名札の両方を見る */
 function _labelAllowedAt(wp, z){ return z >= DECL_LABEL_ALL_Z; }   // 種類や番号で分けない（v168）
