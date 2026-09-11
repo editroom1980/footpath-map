@@ -284,6 +284,7 @@ html,body{touch-action:manipulation;min-height:calc(100% + env(safe-area-inset-t
 .vip-hdr{display:flex;align-items:center;gap:10px;margin-bottom:10px}
 .vip-dot{width:34px;height:34px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:bold;font-size:14px}
 .vip-cat{display:flex;align-items:center;gap:4px;font-size:11.5px;font-weight:500;color:var(--t-sub);margin-top:2px}
+.vip-dot2{width:26px;height:26px;margin-left:-4px}
 .vip-name{font-size:16px;font-weight:bold;color:#2C1B0E;flex:1;line-height:1.3}
 .vip-close{width:28px;height:28px;background:#EEE8DE;border:none;border-radius:50%;font-size:14px;cursor:pointer;flex-shrink:0}
 .vip-say{flex-shrink:0;min-height:36px;padding:0 12px;border:1.5px solid #E3DCD1;border-radius:18px;background:#fff;font-family:inherit;font-size:12.5px;font-weight:700;color:#2C2620;cursor:pointer}
@@ -394,7 +395,9 @@ body.embed #s2, body.embed #mapArea, body.embed #mapWrap{height:100%!important;m
 /* 印の中の絵（v155） */
 .wp-mk.svg,.wp-stk-badge.svg{display:flex;align-items:center;justify-content:center;line-height:1!important}
 .wp-mk svg,.wp-stk-badge svg,.wp-dot svg,.tc-dot svg,.vip-dot svg,.sh-lgm svg,.ro-badge svg,.nb-dot svg{display:block}
-.wp-cat{position:absolute;right:-7px;top:-7px;border-radius:50%;background:#fff;border:1.5px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;line-height:1}
+.wp-pair{display:flex;align-items:center;gap:2px}
+.wp-cat2{flex:none}
+.wp-dot.cat,.ro-badge.cat{width:18px;height:18px;margin-left:3px}   /* 一覧：番号の丸の横に種類の丸（v157） */
 .wp-mk.svg .wp-visited{line-height:14px}
 .wp-visited{position:absolute;right:-3px;top:-3px;width:14px;height:14px;border-radius:50%;background:var(--ok);
   color:#fff;font-size:9px;line-height:14px;text-align:center;border:1.5px solid #fff;font-weight:700}
@@ -902,6 +905,8 @@ body.viewing #modeHint,body.viewonly #modeHint{display:none!important}
 .sh-gl div{display:flex;align-items:center;gap:6px}
 .sh-gl b{color:var(--brand);font-size:13px}
 .sh-gl img{width:44px;height:33px;object-fit:cover;border-radius:4px;border:1px solid #E0D6C6}
+.sh-cat{display:inline-flex;align-items:center;margin:0 3px 0 -2px}
+.sh-cat svg{display:block}
 #reorderSheet .ro-row.ro-lift{background:var(--brand-soft);box-shadow:0 6px 16px rgba(0,0,0,.24);border-radius:10px;border-bottom:none;position:relative;z-index:5;transition:none}
 #reorderSheet .ro-badge{width:22px;height:22px;border-radius:50%;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0}
 #reorderSheet .ro-label{flex:1;font-size:13px;color:#4A2E0E;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -1720,10 +1725,14 @@ function _typeMarkHtml(type, px, color){   // 種類そのものの印（凡例�
   if (type === 'start') return 'S'; if (type === 'goal') return 'G'; if (type === 'spot' || type === 'course') return '1';
   return _typeSvg(type, px, color) || '●';
 }
-function _catBadge(wp, px){   // 番号つきで種類があるとき、右上に種類の絵（白丸に色の線）
-  if (!_isNumbered(wp) || !TYPE_ICON[wp.type]) return '';
+function _spotColor(){ return (WT.find(x => x.v === 'spot') || WT[0]).c; }   // 歩く順の番号の丸の色（種類に関係なく同じ）
+function _hasCatIcon(wp){ return !!TYPE_ICON[wp.type]; }
+/* 番号つきで種類もある地点：番号の丸（番号の色）と種類の丸（種類の色）を横に並べる（v157・オーナー指摘：別々に見せる） */
+function _pairHtml(wp, sz, stamp){
   const t = WT.find(x => x.v === wp.type) || WT[0];
-  return `<span class="wp-cat" style="width:${px}px;height:${px}px">${_typeSvg(wp.type, Math.round(px * 0.72), t.c)}</span>`;
+  const n = String(courseNum(wp) || '?'), c2 = Math.round(sz * 0.78);
+  return `<div class="wp-pair" style="width:${sz + 2 + c2}px;height:${sz}px"><div data-wtype="spot" class="wp-mk" style="position:relative;width:${sz}px;height:${sz}px;border-radius:50%;background:${_spotColor()};color:#fff;text-align:center;line-height:${sz-4}px;font-size:${_wpFont(sz, n)}px;font-weight:bold;border:2.5px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.45);cursor:pointer">${n}${stamp}</div>`
+       + `<div data-wtype="${wp.type}" class="wp-mk svg wp-cat2" style="width:${c2}px;height:${c2}px;border-radius:50%;background:${t.c};border:2.5px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.45);cursor:pointer">${_typeSvg(wp.type, Math.round(c2 * 0.62))}</div></div>`;
 }
 /* 歩く人の心得（v137・フットパス特化 F1）。日本フットパス協会の3か条（田畑や私有地には立ち入らない／ゴミは必ず持ち帰る／
    動植物や農作物を採らない）を土台に、英国 Countryside Code の3見出し（配慮する・守る・楽しむ）で並べる。地域の追記はコースごと（courseInfo.kokoroe） */
@@ -2801,7 +2810,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v156';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
+const APP_VERSION = 'v157';   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
 }catch(_){} });
@@ -3283,7 +3292,7 @@ function _renderReorder(){
     const t=WT.find(x=>x.v===wp.type)||WT[0];
     const lbl = wp.name || ('\uFF08'+t.l+'\uFF09');
     return '<div class="ro-row'+(wp.type==='node'?' ro-node':'')+'" data-id="'+escHtml(String(wp.id))+'" data-idx="'+idx+'">'
-      +'<div class="ro-badge" style="background:'+t.c+'">'+_wpMarkHtml(wp, 12)+'</div>'
+      +'<div class="ro-badge" style="background:'+(_isNumbered(wp) ? _spotColor() : t.c)+'">'+_wpMarkHtml(wp, 12)+'</div>'+((_isNumbered(wp) && _hasCatIcon(wp)) ? '<div class="ro-badge cat" style="background:'+t.c+'">'+_typeSvg(wp.type, 11)+'</div>' : '')
       +'<div class="ro-label">'+escHtml(lbl)+'</div>'
       +'<div class="ro-handle" aria-label="\u30C9\u30E9\u30C3\u30B0\u3057\u3066\u4E26\u3079\u66FF\u3048"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 8h16"/><path d="M4 12h16"/><path d="M4 16h16"/></svg></div>'
       +'</div>';
@@ -3623,9 +3632,12 @@ function wpIcon(wp, sz, anc) {
   }
   const t = WT.find(x=>x.v===wp.type)||WT[0];
   const m = _markInner(wp, Math.round(sz[0] * 0.6));          // S/G・歩く順の数字・種類の絵（v155）
-  const cat = _catBadge(wp, Math.round(sz[0] * 0.5));          // 番号つきに種類があれば右上に小さな絵
   // 閲覧モードで訪問済みなら、○の右上に小さなチェックを付ける（スタンプラリー）
   const stamp = (viewMode && _visits && _visits[wp.id]) ? '<span class="wp-visited">✓</span>' : '';
+  if (_isNumbered(wp) && _hasCatIcon(wp) && !(_stickerOn() && wp.photos && wp.photos[0])) {   // 番号＋種類：2つの丸を横に（v157）
+    const c2 = Math.round(sz[0] * 0.78);
+    return L.divIcon({className:'', html:_pairHtml(wp, sz[0], stamp), iconSize:[sz[0] + 2 + c2, sz[1]], iconAnchor:anc});
+  }
   if (_stickerOn() && wp.photos && wp.photos[0]) {                       // シール（v142）
     const stk = _stickerOf(wp.photos[0]);
     if (!stk) _ensureSticker(wp);                                        // できたら setIcon で置き換わる
@@ -3640,7 +3652,7 @@ function wpIcon(wp, sz, anc) {
   }
   return L.divIcon({
     className:'',
-    html:`<div data-wtype="${wp.type}" class="wp-mk${m.svg ? ' svg' : ''}" style="position:relative;width:${sz[0]}px;height:${sz[1]}px;border-radius:50%;background:${t.c};color:#fff;text-align:center;line-height:${sz[1]-4}px;font-size:${_wpFont(sz[0], m.txt || '●')}px;font-weight:bold;border:2.5px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.45);cursor:pointer">${m.html}${cat}${stamp}</div>`,
+    html:`<div data-wtype="${_isNumbered(wp) ? 'spot' : wp.type}" class="wp-mk${m.svg ? ' svg' : ''}" style="position:relative;width:${sz[0]}px;height:${sz[1]}px;border-radius:50%;background:${_isNumbered(wp) ? _spotColor() : t.c};color:#fff;text-align:center;line-height:${sz[1]-4}px;font-size:${_wpFont(sz[0], m.txt || '●')}px;font-weight:bold;border:2.5px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.45);cursor:pointer">${m.html}${stamp}</div>`,
     iconSize:sz, iconAnchor:anc
   });
 }
@@ -5909,12 +5921,14 @@ function redrawList() {
   wps.forEach(wp => {
     const t   = WT.find(x=>x.v===wp.type)||WT[0];
     const sym = _wpMarkHtml(wp, 13);   // v155：数字か種類の絵
+    const cat2 = (_isNumbered(wp) && _hasCatIcon(wp)) ? `<div class="wp-dot cat" style="background:${t.c}">${_typeSvg(wp.type, 12)}</div>` : '';   // v157
+    const dotColor = _isNumbered(wp) ? _spotColor() : t.c;
     const lbl = wp.name || `（${t.l}）`;
 
     const row = document.createElement('div');
     row.className = 'wp-row';
     row.draggable  = !viewMode;                       // 閲覧中は並べ替えない
-    row.innerHTML  = `<div class="wp-dot" style="background:${t.c}">${sym}</div><div class="wp-nm">${escHtml(lbl)}</div>${wp.photos && wp.photos.length ? '<span class="wp-ph" title="写真">📷' + wp.photos.length + '</span>' : ''}<div class="wp-ed">✏</div>`;
+    row.innerHTML  = `<div class="wp-dot" style="background:${dotColor}">${sym}</div>${cat2}<div class="wp-nm">${escHtml(lbl)}</div>${wp.photos && wp.photos.length ? '<span class="wp-ph" title="写真">📷' + wp.photos.length + '</span>' : ''}<div class="wp-ed">✏</div>`;
 
     row.addEventListener('click', ()=>flyEdit(wp.id));
     row.querySelector('.wp-ed').addEventListener('click', e=>{e.stopPropagation();openModal(wp.id);});
@@ -6236,7 +6250,6 @@ async function _captureMapCanvas() {
           '.leaflet-tooltip{box-shadow:none!important;border:none!important;opacity:1!important}',
           // WPアイコン: box-shadowを除去
           '.leaflet-marker-icon div{box-shadow:none!important}',
-          '.leaflet-marker-icon span.wp-cat{box-shadow:none!important}',
         ].join('');
         clonedDoc.head.appendChild(_fix);
         // ツールチップ背景色をインラインで確定（type別の色を適用）
@@ -6513,8 +6526,10 @@ function _sheetHtml(imgUrl, cssWidth) {
   const desc = ((document.getElementById('iDesc') || {}).value || '').trim();
   const spots = wps.filter(w => w.type !== 'node' && w.name && w.name.trim()).map(w => {
     const m = _markInner(w, 11);                       // 数字・S/G・種類の絵（v155）
-    const mark = m.svg ? _typeSvg(w.type, 11, (WT.find(x => x.v === w.type) || WT[0]).c) : escHtml(m.html);
-    return '<div class="sh-spot"><b>' + mark + '</b><span>' + escHtml(w.name.replace(/\n/g, ' ')) + '</span></div>';
+    const tc = (WT.find(x => x.v === w.type) || WT[0]).c;
+    const mark = m.svg ? _typeSvg(w.type, 11, tc) : escHtml(m.html);
+    const cat2 = (_isNumbered(w) && _hasCatIcon(w)) ? _typeSvg(w.type, 11, tc) : '';   // 番号の横に種類の絵（v157）
+    return '<div class="sh-spot"><b>' + mark + '</b>' + (cat2 ? '<i class="sh-cat">' + cat2 + '</i>' : '') + '<span>' + escHtml(w.name.replace(/\n/g, ' ')) + '</span></div>';
   }).join('');
   const attr = (BASEMAPS[_baseMapId] || {}).attribution || '';
   const link = _shareLinkOf(currentCourseId);      // 配布リンクを作ってあればQRを載せる
@@ -6983,7 +6998,7 @@ function showViewInfo(wpId) {
   const catLine = (wp.type !== 'spot' && wp.type !== 'start' && wp.type !== 'goal') ? `<div class="vip-cat">${_typeSvg(wp.type, 12, t.c)}<span>${escHtml(t.l)}</span></div>` : '';
 
   let html2 = `<div class="vip-handle"></div><div class="vip-hdr">
-    <div class="vip-dot" style="background:${t.c}">${_wpMarkHtml(wp, 18)}</div>
+    <div class="vip-dot" style="background:${_isNumbered(wp) ? _spotColor() : t.c}">${_wpMarkHtml(wp, 18)}</div>${(_isNumbered(wp) && _hasCatIcon(wp)) ? `<div class="vip-dot vip-dot2" style="background:${t.c}">${_typeSvg(wp.type, 16)}</div>` : ''}
     <div class="vip-name">${escHtml(wp.name || t.l)}${catLine}</div>
     ${_canSpeak() ? `<button class="vip-say tap" id="vipSay" onclick="speakSpot(${wp.id})" aria-label="読み上げ">🔊 読み上げ</button>` : ''}
     <button class="vip-close" onclick="closeViewInfo()">✕</button>

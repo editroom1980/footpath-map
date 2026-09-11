@@ -435,6 +435,9 @@ def static_checks(src):
     chk('静的', '選べる種類の出どころは _buildTypeOptions のまま（チップは select を読む）',
         "const cur = sel.value, opts = [...sel.options].map(o => o.value);" in src and 'function _buildTypeOptions' in src)
     chk('静的', '最初の案内が「種類と名前はあとから」を伝える', '種類と名前は、○を押してあとから決められます' in src)
+    # --- v157: 番号の丸と種類の丸を横に並べる（オーナー指摘：iPhone で片方しか見えない）---
+    chk('静的', '番号つきで種類がある地点は「番号の丸＋種類の丸」を横に並べて出す（地図・一覧・並べ替え・配布シート・カード）',
+        'class="wp-pair"' in src and 'class="wp-dot cat"' in src and 'class="ro-badge cat"' in src and 'class="sh-cat"' in src and 'class="vip-dot vip-dot2"' in src and '_catBadge' not in src)
     # --- v156: スマホにも「いまの道具の案内」---
     chk('静的', 'スマホでも、なぞる・通り道・道を描く を選んでいる間は上に一言の案内（ふだんは出さない・歩く人には出さない）',
         'id="modeHint"' in src and 'function _syncModeHint' in src and 'body.viewing #modeHint,body.viewonly #modeHint{display:none!important}' in src)
@@ -443,7 +446,7 @@ def static_checks(src):
         'const TYPE_ICON = {' in src and all(k + ':' in src.split('const TYPE_ICON = {')[1].split('};')[0] for k in ('view','shop','shrine','history','park','school','hall','toilet','parking','other'))
         and "const SYM = {" not in src and "LEGACY_TYPE = {course:'spot'}" in src and "type:      _normType(w.type)," in src)
     chk('静的', '番号は種類と別（_isNumbered＝道順に入っていれば付く）。印は数字＋種類の小さな絵、凡例は「歩く順の番号」＋種類', 
-        'function _isNumbered' in src and 'function _catBadge' in src and '歩く順の番号（道順の地点）' in src and 'const list = wps.filter(w => _isNumbered(w));' in src)
+        'function _isNumbered' in src and 'function _pairHtml' in src and '歩く順の番号（道順の地点）' in src and 'const list = wps.filter(w => _isNumbered(w));' in src)
     chk('静的', 'スポットの編集：番号のスイッチ（道順に入れる）を上に出す', 'class="m-switch"' in src and src.index('id="mOnRoute"') < src.index('id="mName"'))
     # --- v154: ノッチ／ステータスバーに重ならない（致命的・オーナー指摘）---
     chk('静的', 'ホーム画面のアプリでステータスバーが画面に重ならない（viewport-fit=cover 無し・status-bar は default）。配布シートは安全域ぶん空け、外側タップと Esc で閉じる',
@@ -1331,7 +1334,7 @@ def functional_checks(index_path):
             const wp = addWp(35.1521, 134.4452, 'parking'); wp.name = '色テスト'; updateTooltip(wp);
             const tt = wp.marker.getTooltip().getElement();
             const bg = getComputedStyle(tt).backgroundColor;
-            const icon = wp.marker.getElement().firstElementChild;
+            const icon = wp.marker.getElement().querySelector('.wp-cat2') || wp.marker.getElement().firstElementChild;   // v157: 番号つきなら種類の丸を見る
             const iconBg = getComputedStyle(icon).backgroundColor;
             const pairs = {};
             WT.forEach(t => { pairs[t.c] = (pairs[t.c] || 0) + 1; });
@@ -2118,9 +2121,9 @@ def functional_checks(index_path):
             const c = leafMap.getCenter();
             const w = addWp(c.lat + 0.001, c.lng + 0.001, 'shrine'); w.name = '検査の神社'; w.onRoute = true; refreshIcons(); updateTooltip(w);
             const el = w.marker.getElement();
-            const out = {numbered: _isNumbered(w) && /^\\d+$/.test((el.querySelector('.wp-mk') || {}).firstChild ? el.querySelector('.wp-mk').firstChild.textContent : ''), badge: !!el.querySelector('.wp-cat svg'), label: /^[①-⑳]/.test(_spotLabel(w))};
+            const out = {numbered: _isNumbered(w) && /^\\d+$/.test((el.querySelector('.wp-pair .wp-mk') || {}).firstChild ? el.querySelector('.wp-pair .wp-mk').firstChild.textContent : ''), badge: !!el.querySelector('.wp-pair .wp-cat2 svg') && el.querySelector('.wp-pair').getBoundingClientRect().width > el.querySelector('.wp-pair .wp-mk').getBoundingClientRect().width + 10, label: /^[①-⑳]/.test(_spotLabel(w))};
             w.onRoute = false; refreshIcons(); const el2 = w.marker.getElement();
-            out.iconOnly = !_isNumbered(w) && !!el2.querySelector('.wp-mk.svg svg') && !el2.querySelector('.wp-cat') && !/^[①-⑳]/.test(_spotLabel(w));
+            out.iconOnly = !_isNumbered(w) && !!el2.querySelector('.wp-mk.svg svg') && !el2.querySelector('.wp-pair') && !/^[①-⑳]/.test(_spotLabel(w));
             const lg = _sheetLegend(); out.legend = lg.indexOf('歩く順の番号') >= 0 && lg.indexOf('<svg') >= 0 && lg.indexOf('神社・寺院') >= 0;
             out.oldType = _normType('course') === 'spot' && _normType('view') === 'view';
             deleteWp(w.id); undoStack.length = keepU; _dirty = keepD; refreshIcons(); redrawList(); closeViewInfo();
@@ -2128,7 +2131,7 @@ def functional_checks(index_path):
             out.back = wps.length === n0;
             return out;
           }catch(e){ return 'ERR:'+e.message; } }""")
-        chk('機能', '番号と種類の分離：道順の神社は数字＋小さな鳥居、外すと鳥居だけ。帯は①、凡例に番号と種類、旧 course は spot',
+        chk('機能', '番号と種類の分離：道順の神社は「数字の丸」と「鳥居の丸」が横に並び、外すと鳥居だけ。帯は①、凡例に番号と種類、旧 course は spot',
             isinstance(nm, dict) and all(nm.get(k) for k in ('numbered', 'badge', 'label', 'iconOnly', 'legend', 'oldType', 'back')), str(nm)[:240])
 
         # v152: 作る人のメニューには「コースのことを書く」、歩く人には心得・情報の行
