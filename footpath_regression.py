@@ -447,6 +447,11 @@ def static_checks(src):
     # --- v157: 番号の丸と種類の丸を横に並べる（オーナー指摘：iPhone で片方しか見えない）---
     chk('静的', '番号つきで種類がある地点：地図は「種類の丸＋右上に番号の小丸」、一覧・並べ替え・配布シート・カードは番号と種類を並べて出す',
         'class="wp-num"' in src and 'class="wp-dot cat"' in src and 'class="ro-badge cat"' in src and 'class="sh-cat"' in src and 'class="vip-dot vip-dot2"' in src and '_catBadge' not in src and 'wp-pair' not in src)
+    # --- v177: 引っぱったあと道順が行ったり来たりしない（オーナー指摘）---
+    chk('静的', '線を引っぱったとき、順番はつかんだ場所で決めたまま（引っぱった先で決め直さない）。つかんだ所の古い手直しは引っぱった距離ぶん外す（案内付きは残す）',
+        'function _sweepOldVps' in src and 'const removed = _sweepOldVps(vp, h.grab);' in src and 'v.segAfter === vp.segAfter && v.id !== vp.id && !v.guide' in src
+        and 'const LINE_SWEEP_MIN_M = 30, LINE_SWEEP_MAX_M = 400;' in src and 'h.grab = {lat: sLat, lng: sLng};' in src
+        and 'if (wa) vp.order = calcVpOrder(vp.lat, vp.lng, vps.filter(v => v.segAfter === vp.segAfter && v.id !== vp.id), wa, wb); } catch(_) {}\n    clearCache()' not in src)
     # --- v176: 歩く人のカードの写真は「貼ってある」見た目に（オーナー指示）---
     chk('静的', 'カードの写真は白いふち＋テープ＋少し傾けて貼った見た目。写真が取り出せなければ枠も出さない',
         'class=\\"vip-ph\\"' in src.replace('\\', '') or 'class="vip-ph"' in src)
@@ -2463,6 +2468,41 @@ def functional_checks(index_path):
           }catch(e){ return 'ERR:'+e.message; } }""")
         chk('機能', '高低差のなぞり：距離→標高・勾配・位置、帯をなぞると見出し・地図の印・縦線、離してもしばらく残る、消える、勾配の面',
             isinstance(scr, dict) and all(scr.get(k) for k in ('point', 'ends', 'scrub', 'held', 'cleared', 'grade')), str(scr)[:240])
+
+        # v177: 引っぱったあと：順番はつかんだ場所のまま／つかんだ所の古い手直しは外れる／案内付きは残る／取消で戻る
+        sw = page.evaluate("""async ()=>{ try{
+            const keepU = undoStack.length, keepD = _dirty, keepV = viewMode, keepArr = vps.slice(); viewMode = false;
+            const rw = routeWps(); if (rw.length < 2) return 'few';
+            const a = rw[0], b = rw[1];
+            const mid = (k) => ({lat: a.lat + (b.lat - a.lat) * k, lng: a.lng + (b.lng - a.lng) * k});
+            // 同じ区間に古い手直しを3つ（うち1つは分岐の案内つき）
+            const made = [];
+            [0.30, 0.34, 0.38].forEach((k, i) => { idV++; const m = mid(k);
+              const v = {id:'v'+idV, segAfter:a.id, order:i+1, fitBefore:true, fitAfter:true, lat:m.lat, lng:m.lng, marker:null};
+              if (i === 1) v.guide = {kind:'turn', dir:'left'};
+              vps.push(v); made.push(v); });
+            const target = mid(0.33);
+            // つかんで、300m ほど離れた所へ引っぱる
+            const far = {lat: target.lat + 0.0025, lng: target.lng + 0.0025};
+            idV++; const nv = {id:'v'+idV, segAfter:a.id, order:1.5, fitBefore:true, fitAfter:true, lat:target.lat, lng:target.lng, marker:null};
+            vps.push(nv);
+            const ord0 = nv.order;
+            _hold = {vp:nv, grab:{lat:target.lat, lng:target.lng}, moved:true, active:true, created:true, tmp:null, timer:null, pid:1, x0:0, y0:0};
+            nv.lat = far.lat; nv.lng = far.lng;
+            _holdEnd(0, 0); await new Promise(r => setTimeout(r, 60));
+            const left = vps.filter(v => made.indexOf(v) >= 0);
+            const out = {order: nv.order === ord0,                                   // 順番は決め直されない
+                         swept: left.length === 1 && !!left[0].guide,                 // 案内なしの2つが外れ、案内つきは残る
+                         kept: vps.indexOf(nv) >= 0};
+            // 後片付け：検査で足した点を消し、元の通り道の点に戻す
+            vps.filter(v => keepArr.indexOf(v) < 0).forEach(v => { if (v.marker) { try { leafMap.removeLayer(v.marker); } catch(_) {} } });
+            vps.length = 0; keepArr.forEach(v => vps.push(v));
+            undoStack.length = keepU; _dirty = keepD; viewMode = keepV; clearCache(); redrawStraight(); scheduleRouting();
+            document.querySelectorAll('#toastBox .toast').forEach(e => e.remove());
+            return out;
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        chk('機能', '線を引っぱったあと：順番はつかんだ場所のまま／つかんだ所の古い手直しは外れる／分岐の案内つきは残る',
+            isinstance(sw, dict) and all(sw.get(k) for k in ('order', 'swept', 'kept')), str(sw)[:220])
 
         # v176: 歩く人のカード：写真が「貼ってある」見た目（1枚ずつ枠に入って傾いている）
         vp6 = page.evaluate("""async ()=>{ try{

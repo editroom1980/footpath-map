@@ -1755,6 +1755,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
         <li>線の上でない所を触っても何も起きません。地図を動かしたいときは「スポット」に戻します</li>
         <li>線を動かさず押さえて離すと、その点の設定が開きます：分岐（←↑→）や注意（車・滑る・圏外・獣）の案内を付ける／点を消す。案内を付けた点だけ印が出ます</li>
         <li>もう一度直したいときは、同じ所を引っぱると点をつかめます。戻すには「取消」</li>
+        <li>引っぱると、つかんだ所にあった**古い手直しは外れます**（引っぱった距離ぶん）。そのまま次のスポットまで道なりにつなぎ直します。分岐・注意の案内を付けた点は残ります</li>
         <li>直した道を元に戻すには、メニュー（PC：その他）の「**道順を直す**」→ その区間の「道なり」。「まっすぐ」を選ぶと2点を直線で結びます。下の「全部の道順を引き直す」で全部やり直せます</li>
         <li>農道・山道など地図に無い道は、点を細かく置くか、「詳細」の「描いた道を使う」で道を描いてください</li>
       </ul>
@@ -1904,7 +1905,8 @@ const GUIDE_AHEAD_M  = 120;   // 帯で知らせ始める距離
 const GUIDE_HERE_M   = 20;    // これ以内で「ここを左」
 const GUIDE_PASSED_M = 25;    // これだけ過ぎたら「この道で合っています」
 const WP_ADD_HOLD_MS = 450, WP_ADD_MOVE_PX = 10;   // スポットを置く（v171）：指で押さえる時間／動いたとみなす距離。うっかり置かないように
-const LINE_HOLD_MS = 450, LINE_HIT_PX = 16, LINE_GRAB_PX = 22, LINE_MOVE_PX = 6;   // 道を変更（v169）：動かさず押さえて設定が開くまでの時間／線とみなす幅／既にある点をつかむ距離／動いたとみなす距離
+const LINE_HOLD_MS = 450, LINE_HIT_PX = 16, LINE_GRAB_PX = 34, LINE_MOVE_PX = 6;   // v177：近くの点はつかみやすく（22→34px）
+const LINE_SWEEP_MIN_M = 30, LINE_SWEEP_MAX_M = 400;   // 引っぱったとき、つかんだ所の周りの古い手直しを外す範囲（引っぱった距離ぶん・この間に収める）   // 道を変更（v169）：動かさず押さえて設定が開くまでの時間／線とみなす幅／既にある点をつかむ距離／動いたとみなす距離
 const ROUTE_SOLID_Z = 15;     // これより広域では道順の線を実線・三角なしで描く（v169：破線が崩れて見えるため）
 /* 曲がり角の案内（v167・Footpath のキューシートに倣う）：経路サーバの steps から、曲がる所だけを拾う */
 const CUE_MODS = {uturn:['折り返す','↩'], 'sharp left':['鋭角に左へ','↙'], left:['左へ','←'], 'slight left':['ゆるく左へ','↖'], 'slight right':['ゆるく右へ','↗'], right:['右へ','→'], 'sharp right':['鋭角に右へ','↘']};
@@ -2999,7 +3001,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v176';
+const APP_VERSION = 'v177';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -5308,19 +5310,34 @@ function _holdGrab(cx, cy, create){   // 指の所の点をつかむ。無けれ
   let vp = vps.find(v => leafMap.latLngToContainerPoint([v.lat, v.lng]).distanceTo(pt) <= LINE_GRAB_PX);
   if (!vp && !create) return;
   saveSnapshot();
+  h.grab = vp ? {lat: vp.lat, lng: vp.lng} : null;   // つかんだ場所（v177：この位置で順番が決まる）
   if (!vp) {
     const sr = _snapToRoute(ll.lat, ll.lng), sLat = sr ? sr[0] : ll.lat, sLng = sr ? sr[1] : ll.lng;
     const segId = findNearestSegByCoordMap(L.latLng(sLat, sLng)) || nearestSegWpId(sLat, sLng);
     const wpA = wps.find(w => w.id === segId), rw = routeWps(), ri = rw.findIndex(w => w.id === segId), wpB = rw[ri + 1] || wpA;
     idV++;
     vp = {id:'v'+idV, segAfter:segId, order:calcVpOrder(sLat, sLng, vps.filter(v => v.segAfter === segId), wpA, wpB), fitBefore: manualMode ? false : true, fitAfter: manualMode ? false : true, lat:sLat, lng:sLng, marker:null};
-    vps.push(vp); buildVpMarker(vp); h.created = true;
+    vps.push(vp); buildVpMarker(vp); h.created = true; h.grab = {lat: sLat, lng: sLng};
   }
   h.vp = vp;
   const sz = isMobile() ? 22 : 16;
   h.tmp = L.marker([vp.lat, vp.lng], {icon: L.divIcon({className:'', html:`<div class="vp-hold" style="width:${sz}px;height:${sz}px"></div>`, iconSize:[sz,sz], iconAnchor:[sz/2,sz/2]}), interactive:false, zIndexOffset:2000}).addTo(leafMap);
   try { if (navigator.vibrate) navigator.vibrate(12); } catch(_) {}
   if (!_holdHintShown) { _holdHintShown = true; showToast('線を引っぱると道順が曲がります。動かさず押さえて離すと、その点の設定が開きます'); }
+}
+/* 引っぱった所の古い手直しを外す（v177・オーナー指摘「元のルートに戻る感じで引かれる」）。
+   線を引っぱると、つかんだ所にあった昔の通り道の点が残っていて、道順がそこへ戻ってしまう。
+   つかんだ場所から「引っぱった距離ぶん」の中にある同じ区間の点は、役目を終えたものとして外す。
+   分岐・注意の案内を付けた点（利用者が意味を持たせた点）は外さない。外したぶんは「取消」で戻る */
+function _sweepOldVps(vp, grab){
+  if (!grab) return 0;
+  const dragM = haversine(grab.lat, grab.lng, vp.lat, vp.lng);
+  if (dragM < LINE_SWEEP_MIN_M) return 0;                       // ほんの少し動かしただけなら何も外さない
+  const r = Math.max(LINE_SWEEP_MIN_M, Math.min(dragM, LINE_SWEEP_MAX_M));
+  const doomed = vps.filter(v => v.segAfter === vp.segAfter && v.id !== vp.id && !v.guide
+                              && haversine(v.lat, v.lng, grab.lat, grab.lng) <= r);
+  doomed.forEach(v => { if (v.marker) { try { leafMap.removeLayer(v.marker); } catch(_) {} } const i = vps.indexOf(v); if (i >= 0) vps.splice(i, 1); });
+  return doomed.length;
 }
 function _holdMove(cx, cy){
   const h = _hold; if (!h || !h.active || !h.vp) return;
@@ -5337,8 +5354,10 @@ function _holdEnd(cx, cy){
   if (!vp) { setTimeout(() => { lineDragging = false; }, 50); return; }   // ちょんと触っただけ＝何もしない
   if (h.moved) {
     const sc = _snapCustom(vp.lat, vp.lng); vp.lat = sc[0]; vp.lng = sc[1]; if (vp.marker) vp.marker.setLatLng(sc);
-    try { const wa = wps.find(w => w.id === vp.segAfter), rw = routeWps(), ri = rw.findIndex(w => w.id === vp.segAfter), wb = (ri >= 0 && rw[ri + 1]) ? rw[ri + 1] : wa; if (wa) vp.order = calcVpOrder(vp.lat, vp.lng, vps.filter(v => v.segAfter === vp.segAfter && v.id !== vp.id), wa, wb); } catch(_) {}
+    // v177：順番は「つかんだ場所」で決めたものをそのまま使う（引っぱった先で決め直すと、前後が入れ替わって道順が行ったり来たりする）
+    const removed = _sweepOldVps(vp, h.grab);
     clearCache(); scheduleRouting();
+    if (removed) showToast('引っぱった所の古い手直し ' + removed + ' か所を外して、道なりにつなぎ直します');
   } else {
     redrawStraight(); scheduleRouting();
     showViaCtxMenu(vp.id, cx, cy);   // 引っぱらずに離した＝この点の設定（案内を付ける／消す）

@@ -421,6 +421,8 @@ CONSTANTS(904) → STATE(968) → STORAGE(1015) → 版のお知らせ(1021) →
 - 通り道の点（`vps`）は**見えない・引きずれない**。案内（`vp.guide`）を付けた点だけ `_vpVisibleAt` が true。表示の反映は `_applyVpVis`。`viaVisible` は常に true のまま（描いた道の点＝node の表示に使う）。
 - 「道を変更」（`mode==='via'`）では `_syncMapDrag()` が地図のドラッグを止める。地図の容器の `pointerdown` を `_initLineHold` が受け、`_nearRoute`（線から `LINE_HIT_PX` 以内）なら `_hold` を作る → 動いたら `_holdGrab` で点を作り（既にある点は `LINE_GRAB_PX` でつかむ）`_holdMove` で動かし、`_holdEnd` で `_snapCustom`→順序の取り直し→`clearCache(); scheduleRouting()`。動かさず `LINE_HOLD_MS` 押さえて離すと `showViaCtxMenu`。
 - 当たり判定の線（`hitOverlays`）は `interactive:false`。旧 `onSegmentHitDown` は使っていない（残してある）。
+- **順番（`order`）はつかんだ場所で決めて、引っぱった先で決め直さない**（v177）。`_vpPosAlong` は「今の道順」への射影なので、遠くへ動かした点で計算すると前後が入れ替わり、道順が行ったり来たりする。
+- 引っぱり終わりに `_sweepOldVps(vp, grab)` が、つかんだ場所から引っぱった距離ぶん（`LINE_SWEEP_MIN_M`〜`LINE_SWEEP_MAX_M`）の中にある同じ区間の古い点を外す（案内付きは残す）。
 - 広域（`z < ROUTE_SOLID_Z`）は `_routeDash()` が null、`_drawRouteBody` が切れ端と三角を作らない＝実線。
 
 ## 保存のきまり（v170）
