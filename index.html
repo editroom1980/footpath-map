@@ -96,7 +96,8 @@ html,body{touch-action:manipulation;min-height:calc(100% + var(--sat));font-fami
 .cc-thumb svg{width:52px;height:52px;display:block}
 .cc-ph{width:100%;height:100%;object-fit:cover;display:block}   /* v181：写真は左のアイコンのところに入れる（背景には敷かない） */
 .cc-info{flex:1;min-width:0}
-.cc-name{font-family:'Plus Jakarta Sans','Hiragino Sans',sans-serif;font-size:15px;font-weight:800;color:#14110F;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cc-name{font-family:'Plus Jakarta Sans','Hiragino Sans',sans-serif;font-size:15px;font-weight:800;color:#14110F;line-height:1.3;
+  white-space:normal;overflow-wrap:anywhere;word-break:normal}   /* v182：コース名は省略しない（長ければ折り返す） */
 .cc-sub{flex:1;min-width:0;display:flex;align-items:center;gap:7px;white-space:nowrap;overflow:hidden}
 .cc-loc{display:flex;align-items:center;gap:3px;font-size:11px;color:#4A453F;min-width:0}
 .cc-loc .svgi{font-size:12px;flex-shrink:0;color:#8A8077}
@@ -132,7 +133,8 @@ html,body{touch-action:manipulation;min-height:calc(100% + var(--sat));font-fami
 #s2{height:100vh;display:none;flex-direction:column}
 /* 上バー（v126・図4）：左＝一覧・コース名、右＝歩く人の見え方・その他・保存・配る */
 #hdr{position:relative;background:#fff;color:#231C14;padding:0 12px;height:52px;display:flex;align-items:center;gap:8px;flex-shrink:0;border-bottom:1px solid #E3DCD1;z-index:1200}
-#cnDisp{font-size:16px;font-weight:800;color:#231C14;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+#cnDisp{font-size:15.5px;font-weight:800;color:#231C14;flex:1;min-width:0;line-height:1.25;white-space:normal;overflow-wrap:anywhere;
+  display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}   /* v182：2行まで出す（1行で切らない） */
 .hbtn{height:36px;padding:0 13px;border-radius:9px;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;white-space:nowrap;background:#fff;color:#2C2620;border:1.5px solid #E3DCD1;display:inline-flex;align-items:center;gap:6px}
 .hbtn svg{flex-shrink:0}
 .hbtn:hover{background:var(--brand-soft);border-color:var(--brand)}
@@ -652,6 +654,7 @@ body.viewonly #firstTip,body.embed #firstTip{display:none!important}
 #kokoroeSheet .ds-btn.ghost{flex:0 0 96px;background:#F2EEE7;color:var(--t-sub)}
 #kokoroeSheet .ds-btn.ghost:only-child{flex:1}
 @media (min-width:769px){#kokoroeSheet{left:50%;right:auto;bottom:auto;top:50%;transform:translate(-50%,-50%);width:480px;max-width:calc(100vw - 32px);border-radius:16px;padding:18px 20px 20px}#kokoroeSheet .ds-dh{display:none}}
+#infoSheet .ci-auto{width:100%;margin-top:4px;min-height:var(--tap);border:1.5px solid #D4C4A8;border-radius:11px;background:#FAF6EE;color:#4A2E0E;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer}
 /* コース名を変えるシート（v180）。心得と同じ見た目 */
 #renameScrim{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:3400;display:none}
 #renameSheet{position:fixed;left:0;right:0;bottom:0;z-index:3401;display:none;background:#fff;border-radius:20px 20px 0 0;
@@ -939,7 +942,8 @@ body.viewonly .mob-share, body.embed .mob-share{display:none!important}
 #mobileTopBar{position:absolute;top:0;left:0;right:0;z-index:1000;padding:8px 12px;align-items:center;gap:10px;background:rgba(255,255,255,0.92)}
 .mob-back{width:40px;height:40px;border-radius:50%;background:#F5F4F2;border:0.5px solid rgba(0,0,0,0.1);display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer}
 .mob-back i{font-size:15px;color:#1C1917}
-#mobileCourseTitle{flex:1;font-size:14px;font-weight:700;color:#1C1917;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#mobileCourseTitle{flex:1;font-size:13px;font-weight:700;color:#1C1917;text-align:center;line-height:1.25;white-space:normal;overflow-wrap:anywhere;
+  display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}   /* v182：2行まで */
 .mob-save{background:var(--brand);color:#fff;font-size:12px;font-weight:700;min-height:40px;padding:0 16px;display:inline-flex;align-items:center;border-radius:20px;border:none;cursor:pointer;flex-shrink:0}
 #mobileRbtns{position:absolute;right:10px;top:60px;z-index:1000;flex-direction:column;gap:8px}
 #modeHint{display:none;position:absolute;left:12px;right:64px;top:calc(60px + var(--sat));z-index:1000;background:rgba(74,46,14,.92);color:#fff;font-size:12.5px;line-height:1.45;padding:8px 12px;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.2)}
@@ -1422,6 +1426,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
             <div class="pp-seg ci-seg" id="ciDiff"><button type="button" data-d="auto" onclick="_ciPickDiff('auto')">自動</button><button type="button" data-d="1" onclick="_ciPickDiff('1')">★</button><button type="button" data-d="2" onclick="_ciPickDiff('2')">★★</button><button type="button" data-d="3" onclick="_ciPickDiff('3')">★★★</button></div>
             <div class="ci-h" id="ciDiffHint"></div></div>
           <div id="ciFields"></div>
+          <button type="button" class="ci-auto tap" id="ciAuto" onclick="ciAutoFill()">スポットから自動で書き込む（空いている項目だけ）</button>
         </div>
         <div class="ds-row">
           <button class="ds-btn ghost" onclick="closeInfoSheet()">閉じる</button>
@@ -3042,7 +3047,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v181';
+const APP_VERSION = 'v182';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -8213,7 +8218,27 @@ function addNearbySelected(){
   const n = _addSpotsBulk(items);
   _nb.cands = _nb.cands.filter(c => !_nb.sel.has(c.id)); _nb.sel = new Set();
   closeNearbySheet();
-  showToast(n + ' 件をスポットにしました（道順には入れていません。○を押すと種類や説明を直せます・「取消」で戻せます）');
+  const f = _autoInfoFromSpots();   // v182：トイレ・駐車場・バス停・お店を「コースの情報」に自動で書き込む
+  showToast(n + ' 件をスポットにしました（道順には入れていません。○を押すと種類や説明を直せます・「取消」で戻せます）'
+            + (f ? '／コースの情報に ' + f + ' 項目を自動で書きました' : ''));
+}
+/* 取り込んだスポットから「コースの情報」を自動で書く（v182・オーナー指示）。
+   ・空いている項目だけ書く（利用者が書いたものは上書きしない）
+   ・トイレ→トイレ、駐車場→車・駐車場、バス停/駅→アクセス、お店・飲食→休憩・おもてなし
+   ・「取消」では戻らない（文字だけなので、コースの情報の画面で直せる） */
+function _autoInfoFromSpots(){
+  if (viewMode) return 0;
+  const info = courseInfo.info || (courseInfo.info = {});
+  const names = t => wps.filter(w => w && w.type === t && (w.name || '').trim()).map(w => (w.name || '').split('\n')[0].trim());
+  const join = a => { const u = [...new Set(a)]; return u.slice(0, 4).join('・') + (u.length > 4 ? ' ほか' + (u.length - 4) + 'か所' : ''); };
+  const put = (k, arr, pre) => { if (String(info[k] || '').trim() || !arr.length) return 0; info[k] = (pre || '') + join(arr); return 1; };
+  let n = 0;
+  n += put('toilet', names('toilet'));
+  n += put('car',    names('parking'));
+  n += put('access', names('bus'), '最寄り：');
+  n += put('rest',   names('shop'));
+  if (n) { _markDirty(); if (typeof _syncMmValues === 'function') _syncMmValues(); if (typeof renderShareInfo === 'function') renderShareInfo(); }
+  return n;
 }
 
 /* ===== 発見（v143）：歩く人が見つけたものを、写真とひとことで地図に貼る =====
@@ -8555,6 +8580,12 @@ function openInfoSheet(mode) {
     vw.innerHTML = '<div class="ci-v">' + rows.join('') + '</div>';
   }
   sc.style.display = 'block'; sh.style.display = 'block';
+}
+function ciAutoFill(){   // v182：いま画面に出ている入力欄も一緒に書き換える
+  const before = {}; COURSE_INFO_FIELDS.forEach(f => { const el = document.getElementById('ci_' + f.k); if (el) { before[f.k] = el.value.trim(); courseInfo.info = courseInfo.info || {}; if (el.value.trim()) courseInfo.info[f.k] = el.value.trim(); } });
+  const n = _autoInfoFromSpots();
+  COURSE_INFO_FIELDS.forEach(f => { const el = document.getElementById('ci_' + f.k); if (el) el.value = (courseInfo.info || {})[f.k] || ''; });
+  showToast(n ? n + ' 項目を自動で書きました（直してから「この内容にする」を押してください）' : '自動で書ける項目がありませんでした（トイレ・駐車場・バス停・お店のスポットがあると書けます）');
 }
 function closeInfoSheet() {
   const sh = document.getElementById('infoSheet'), sc = document.getElementById('infoScrim');

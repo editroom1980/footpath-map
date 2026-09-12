@@ -447,6 +447,11 @@ def static_checks(src):
     # --- v157: 番号の丸と種類の丸を横に並べる（オーナー指摘：iPhone で片方しか見えない）---
     chk('静的', '番号つきで種類がある地点：地図は「種類の丸＋右上に番号の小丸」、一覧・並べ替え・配布シート・カードは番号と種類を並べて出す',
         'class="wp-num"' in src and 'class="wp-dot cat"' in src and 'class="ro-badge cat"' in src and 'class="sh-cat"' in src and 'class="vip-dot vip-dot2"' in src and '_catBadge' not in src and 'wp-pair' not in src)
+    # --- v182: コース名は省略しない／取り込んだスポットからコースの情報を自動で書く ---
+    chk('静的', 'コース名は省略せず折り返す（一覧・上の題名）。周辺の情報を取り込むと、空いている「コースの情報」に自動で書き込む',
+        '.cc-name{' in src and 'white-space:normal;overflow-wrap:anywhere;word-break:normal}' in src and '-webkit-line-clamp:2' in src
+        and 'function _autoInfoFromSpots' in src and 'const f = _autoInfoFromSpots();' in src and 'function ciAutoFill' in src and 'id="ciAuto"' in src
+        and "put('toilet', names('toilet'))" in src and "put('access', names('bus'), '最寄り：')" in src)
     # --- v180: コース名を変えられる（一覧のカード・メニュー・PC のその他）---
     chk('静的', 'コース名を変えるシートがあり、入口は一覧のカードの「名前」ボタン、スマホのメニュー、PC の「その他」の3つ',
         'id="renameSheet"' in src and 'id="rnName"' in src and 'id="rnArea"' in src and 'function openRenameSheet' in src and 'function saveRenameSheet' in src
@@ -2483,6 +2488,30 @@ def functional_checks(index_path):
           }catch(e){ return 'ERR:'+e.message; } }""")
         chk('機能', '高低差のなぞり：距離→標高・勾配・位置、帯をなぞると見出し・地図の印・縦線、離してもしばらく残る、消える、勾配の面',
             isinstance(scr, dict) and all(scr.get(k) for k in ('point', 'ends', 'scrub', 'held', 'cleared', 'grade')), str(scr)[:240])
+
+        # v182: 取り込んだスポットから「コースの情報」を自動で書く（空いている項目だけ・書いてあるものは残す）
+        ai = page.evaluate("""async ()=>{ try{
+            const keepInfo = JSON.parse(JSON.stringify(courseInfo.info || {})), keepD = _dirty, keepV = viewMode, n0 = wps.length; viewMode = false;
+            courseInfo.info = {toilet: '公民館のトイレを使ってください'};   // 書いてあるものは残す
+            const c = leafMap.getCenter();
+            const made = [];
+            [['toilet','川辺のトイレ'], ['parking','道の駅の駐車場'], ['bus','飯見バス停'], ['shop','縁側カフェ']].forEach((t, i) => {
+              idW++; const w = {id:idW, type:t[0], name:t[1], desc:'', tel:'', dwell:0, fitBefore:true, fitAfter:true, onRoute:false, lat:c.lat + 0.001 * (i + 1), lng:c.lng + 0.001 * (i + 1), photos:[], labelDir:'auto', marker:null};
+              wps.push(w); made.push(w); });
+            const n = _autoInfoFromSpots();
+            const info = courseInfo.info || {};
+            const out = {filled: n === 3,                                   // トイレは書いてあるので残り3項目
+                         keep: info.toilet === '公民館のトイレを使ってください',
+                         car: (info.car || '').indexOf('道の駅の駐車場') >= 0, access: (info.access || '').indexOf('飯見バス停') >= 0, rest: (info.rest || '').indexOf('縁側カフェ') >= 0,
+                         dirty: _dirty === true};
+            const again = _autoInfoFromSpots(); out.twice = again === 0;     // 2回目は何も書かない
+            made.forEach(w => { const i = wps.indexOf(w); if (i >= 0) wps.splice(i, 1); });
+            courseInfo.info = keepInfo; _dirty = keepD; viewMode = keepV; out.back = wps.length === n0;
+            document.querySelectorAll('#toastBox .toast').forEach(e => e.remove());
+            return out;
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        chk('機能', 'コースの情報を自動で書く：トイレ・駐車場・バス停・お店から空いている項目だけ書き、書いてあるものは残す',
+            isinstance(ai, dict) and all(ai.get(k) for k in ('filled', 'keep', 'car', 'access', 'rest', 'dirty', 'twice', 'back')), str(ai)[:240])
 
         # v180: コース名を変える：一覧のカードから（その場で保存）／地図の画面から（保存はまだ・未保存の印が付く）／空の名前は断る
         rn = page.evaluate("""async ()=>{ try{
