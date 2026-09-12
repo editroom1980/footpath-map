@@ -447,6 +447,13 @@ def static_checks(src):
     # --- v157: 番号の丸と種類の丸を横に並べる（オーナー指摘：iPhone で片方しか見えない）---
     chk('静的', '番号つきで種類がある地点：地図は「種類の丸＋右上に番号の小丸」、一覧・並べ替え・配布シート・カードは番号と種類を並べて出す',
         'class="wp-num"' in src and 'class="wp-dot cat"' in src and 'class="ro-badge cat"' in src and 'class="sh-cat"' in src and 'class="vip-dot vip-dot2"' in src and '_catBadge' not in src and 'wp-pair' not in src)
+    # --- v207: 写真が届かない原因を見えるようにする／iPhone の拡大鏡を止める ---
+    chk('静的', '出す前に「写真◯枚も一緒に出します」を見せ、届かなければ小さくしてやり直し、結果も知らせる。地図では文字選択と長押しメニューを切る（拡大鏡が出ない）',
+        'function _pubPreparePhotos' in src and 'id="pubPh"' in src and '📷 写真 ' in src
+        and '写真はこの端末に実物がないため入りません' in src and 'const BOX_PH_TIMEOUT = 60000;' in src
+        and "_sharePhotos(_pubCourse, {px: 420, per: 1, cap: 220000})" in src and '_boxPhSent' in src
+        and '出しました（写真' in src and '#map,#map *{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}' in src
+        and '.leaflet-overlay-pane, button' not in src)   # v207：canvas を弾かない（実機で始められなかった原因）
     # --- v206: 片手で拡大縮小（ダブルタップして押したまま上下） ---
     chk('静的', '片手の拡大縮小：ダブルタップの2回目を押したまま、下で拡大・上で縮小。押した所を軸にする。印やボタンの上では始めない',
         'function _initOneHandZoom' in src and 'const ONE_ZOOM_GAP_MS = 320;' in src and 'const ONE_ZOOM_STEP_PX = 70;' in src
@@ -2218,7 +2225,9 @@ def functional_checks(index_path):
         oz = page.evaluate("""()=>{ try{
             const c = leafMap.getContainer(), r = c.getBoundingClientRect();
             const x = Math.round(r.left + r.width / 2), y = Math.round(r.top + r.height / 2);
-            const ev = (type, opt) => c.dispatchEvent(new PointerEvent(type, Object.assign(
+            // v207：本物の指が触るのは、地図の絵を描く canvas（overlay-pane の中）。ここから始められないと実機で効かない
+            const surface = c.querySelector('.leaflet-overlay-pane canvas') || c.querySelector('.leaflet-tile-pane') || c;
+            const ev = (type, opt) => surface.dispatchEvent(new PointerEvent(type, Object.assign(
               {pointerId: 7, pointerType: 'touch', isPrimary: true, bubbles: true, cancelable: true, clientX: x, clientY: y}, opt || {})));
             const z0 = leafMap.getZoom(), out = {};
             ev('pointerdown'); ev('pointerup');                       // 1回目のタップだけでは何も起きない
@@ -2234,12 +2243,13 @@ def functional_checks(index_path):
             out.ended = !_oz && !document.body.classList.contains('onezoom');
             ev('pointermove', {clientY: y + 300});                    // 指を離したあとは効かない
             out.after = leafMap.getZoom() === zOut;
+            out.surface = surface !== c;                              // 実機と同じ場所（canvas）から始められている
             leafMap.setZoom(z0, {animate: false});
             document.querySelectorAll('#toastBox .toast').forEach(e => e.remove());
             return out;
           }catch(e){ return 'ERR:'+e.message; } }""")
         chk('機能', '片手の拡大縮小：1回タップでは変わらず、ダブルタップして押したまま下で拡大・上で縮小、離すと止まる',
-            isinstance(oz, dict) and all(oz.get(k) for k in ('single', 'zoomIn', 'zoomOut', 'ended', 'after')), str(oz)[:200])
+            isinstance(oz, dict) and all(oz.get(k) for k in ('single', 'zoomIn', 'zoomOut', 'ended', 'after', 'surface')), str(oz)[:200])
 
         # v203: 作者の端末なら、アプリを開いたときに箱→置き場所へ写す（GitHub の定期実行が遅れても届く）
         mr = page.evaluate("""async ()=>{ try{

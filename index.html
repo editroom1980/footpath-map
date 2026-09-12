@@ -317,6 +317,9 @@ html,body{touch-action:manipulation;min-height:calc(100% + var(--sat));font-fami
 #addWpDlg .aw-no{width:100%;margin-top:8px;min-height:var(--tap);border:none;border-radius:11px;background:transparent;color:#9b948c;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer}
 body.viewing #addWpDlg,body.viewonly #addWpDlg{display:none!important}
 body.onezoom #map{touch-action:none}   /* 片手で拡大縮小している間だけ、指の動きを地図に渡さない（v206） */
+/* iPhone はダブルタップして押したままにすると「拡大鏡（文字を選ぶ虫めがね）」が出てしまう。
+   地図の上では文字選択と長押しメニューを切る（v207・オーナー報告） */
+#map,#map *{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 /* 場所を動かす（v164） */
 #moveBar{display:none;position:fixed;top:calc(60px + var(--sat));left:50%;transform:translateX(-50%);width:min(560px,calc(100% - 24px));z-index:1400;background:#fff;border:2px solid var(--brand);border-radius:14px;padding:10px 12px;box-shadow:0 6px 24px rgba(0,0,0,.25);gap:10px;align-items:center;flex-wrap:wrap}
 #moveBar.show{display:flex}
@@ -3204,7 +3207,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v206';
+const APP_VERSION = 'v207';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -5464,8 +5467,10 @@ const ONE_ZOOM_NEAR_PX = 40;    // 1回目と2回目の近さ
 const ONE_ZOOM_STEP_PX = 70;    // これだけ指を動かすと1段
 const ONE_ZOOM_GO_PX = 12;      // 2回目を押したまま縦にこれだけ動かしたら拡大縮小に切り替える
 let _oz = null, _ozArm = null, _ozLastTap = 0, _ozLastXY = null;
+/* 始めてはいけない場所（v207：地図の絵を描く canvas は overlay-pane の中にあり、
+   ここを弾くと**地図のほぼ全面で始められなかった**。印・ボタン・線だけを弾く） */
 function _ozSkipTarget(t){
-  return !!(t && t.closest && t.closest('.leaflet-marker-icon, .leaflet-control, .leaflet-popup, .leaflet-overlay-pane, button, a, input, textarea, select, label'));
+  return !!(t && t.closest && t.closest('.leaflet-marker-icon, .leaflet-control, .leaflet-popup, .leaflet-tooltip, path.leaflet-interactive, button, a, input, textarea, select, label'));
 }
 function _initOneHandZoom(){
   const c = leafMap && leafMap.getContainer(); if (!c || c._ozInit) return;
@@ -10248,9 +10253,9 @@ function _boxUrl(cfg, what, id){
   if (what === 'idx') return b;
   return b + '-' + id + (what === 'ph' ? '-ph' : '');
 }
-async function _boxFetch(url, opt){
+async function _boxFetch(url, opt, ms){
   const ctl = (typeof AbortController === 'function') ? new AbortController() : null;
-  const t = setTimeout(() => { try { ctl && ctl.abort(); } catch(_) {} }, BOX_TIMEOUT);
+  const t = setTimeout(() => { try { ctl && ctl.abort(); } catch(_) {} }, ms || BOX_TIMEOUT);
   try { return await fetch(url, Object.assign({cache: 'no-store'}, opt || {}, ctl ? {signal: ctl.signal} : {})); }
   finally { clearTimeout(t); }
 }
@@ -10269,7 +10274,7 @@ async function _boxWrite(cfg, what, id, obj){
     const opt = (cfg.kind === 'firebase')
       ? {method: 'PUT', headers: {'Content-Type': 'application/json'}, body: body}
       : {method: 'POST', headers: {'Content-Type': 'text/plain'}, body: body};   // text/plain＝ブラウザの事前問い合わせが起きない
-    const r = await _boxFetch(_boxUrl(cfg, what, id), opt);
+    const r = await _boxFetch(_boxUrl(cfg, what, id), opt, what === 'ph' ? BOX_PH_TIMEOUT : BOX_TIMEOUT);   // v207：写真は大きいので長く待つ
     return !!(r && r.ok);
   } catch(_) { return false; }
 }
@@ -10325,28 +10330,39 @@ async function _shrinkDataUrl(src, px, q){
     } catch(_) { res(''); }
   });
 }
-async function _sharePhotos(course){
-  const out = {}; let total = 0, n = 0;
+async function _sharePhotos(course, opt){
+  const px = (opt && opt.px) || SHARE_PH_PX, per = (opt && opt.per) || SHARE_PH_PER_SPOT;
+  const cap = (opt && opt.cap) || SHARE_PH_TOTAL;
+  const out = {}; let total = 0, n = 0, missing = 0;
   for (const w of ((course && course.wps) || [])) {
     if (!w || !Array.isArray(w.photos) || !w.photos.length) continue;
     const arr = [];
-    for (const p of w.photos.slice(0, SHARE_PH_PER_SPOT)) {
-      const src = await _photoSrc(p); if (!src) continue;
-      const small = await _shrinkDataUrl(src, SHARE_PH_PX, SHARE_PH_Q); if (!small) continue;
-      if (total + small.length > SHARE_PH_TOTAL) break;
+    for (const p of w.photos.slice(0, per)) {
+      const src = await _photoSrc(p);
+      if (!src) { missing++; continue; }                     // v207：参照はあるのに実物がこの端末に無い
+      const small = await _shrinkDataUrl(src, px, SHARE_PH_Q); if (!small) { missing++; continue; }
+      if (total + small.length > cap) break;
       arr.push(small); total += small.length; n++;
     }
     if (arr.length) out[String(w.id)] = arr;
-    if (total >= SHARE_PH_TOTAL) break;
+    if (total >= cap) break;
   }
-  return {photos: out, count: n, bytes: total};
+  return {photos: out, count: n, bytes: total, missing: missing};
 }
+let _boxPhSent = false;   // v207：直前の「出す」で写真が届いたか（知らせに使う）
 async function _boxPublish(entry, data, photos){
+  _boxPhSent = false;
   const cfg = await _boxCfg(); if (!cfg) return {ok: false, why: 'off'};
   if (!data) return {ok: false, why: 'empty'};
   if (data.length > BOX_MAX) return {ok: false, why: 'big'};
   if (photos && Object.keys(photos).length) {                                 // v202：写真は別置き＝開くのが遅くならない
-    if (await _boxWrite(cfg, 'ph', entry.id, {p: photos})) entry.ph = 1;
+    let ok = await _boxWrite(cfg, 'ph', entry.id, {p: photos});
+    if (!ok) {                                                                // v207：届かなかったら、もっと小さくしてもう一度
+      const small = await _sharePhotos(_pubCourse, {px: 420, per: 1, cap: 220000});
+      if (small.count) ok = await _boxWrite(cfg, 'ph', entry.id, {p: small.photos});
+    }
+    entry.ph = ok ? 1 : undefined;
+    _boxPhSent = ok;
   }
   if (!(await _boxWrite(cfg, 'c', entry.id, {d: data}))) return {ok: false, why: 'write'};   // 先に中身。一覧に載る＝必ず開ける
   let ok;
@@ -10423,7 +10439,10 @@ function _sharePhTake(){ try { const v = sessionStorage.getItem(SHARE_PH_KEY); s
 async function _applySharePhotos(){
   const url = _sharePhTake(); if (!url) return;
   try {
-    const r = await fetch(url + (url.indexOf('?') < 0 ? '?t=' : '&t=') + Date.now(), {cache: 'no-store'});
+    const http = /^https?:/i.test(url) || url.charAt(0) !== 'd';   // data: 以外は読み直しよけを付ける（v207）
+    const u = http ? url + (url.indexOf('?') < 0 ? '?t=' : '&t=') + Date.now() : url;
+    let r = await fetch(u, {cache: 'no-store'});
+    if (!r.ok) { r = await fetch(u, {cache: 'no-store'}); }        // v207：1回だけやり直す
     if (!r.ok) return;
     const j = await r.json(); const p = j && j.p;
     if (!p || typeof p !== 'object') return;
@@ -10471,6 +10490,7 @@ function openPublishSheet(course){
       + '<div class="pb-l">見た人にできること</div>'
       + '<button type="button" class="pb-opt tap" data-edit="1"><b>見るだけ</b><small>歩く画面で見てもらう（自分のコースとして直すのは断る）</small></button>'
       + '<button type="button" class="pb-opt tap" data-edit="2"><b>直してもよい</b><small>気に入った人が自分のコースに取り込んで、作り変えてよい</small></button>'
+      + '<div class="pb-n" id="pubPh" hidden></div>'
       + '<div class="pb-n" id="pubNote"></div>'
       + '<button type="button" class="pb-go tap" id="pubGo">出す</button>'
       + '<button type="button" class="pb-go tap" id="pubSend" hidden>作者に送って載せてもらう</button>'
@@ -10527,6 +10547,7 @@ function openPublishSheet(course){
   const by = sh.querySelector('#pubBy'); if (by && !by.value) { try { by.value = localStorage.getItem(LS.pubBy) || ''; } catch(_) {} }
   _pubPickEdit(!(c.noEdit === true));
   _pubPrepare();   // v192：中身を先に作っておく
+  _pubPreparePhotos(c);   // v207：写真も先に用意して、何枚つくかを画面に出す
   _boxCfg().then(cfg => { _boxOn = !!cfg; _pubSyncButtons(); });   // v199：箱が使えるかを確かめてからボタンを決める
   const rn = sh.querySelector('#pubRepoName'); const rp = _ghRepo(); if (rn && rp) rn.textContent = rp.repo;
   _pubSyncButtons();
@@ -10560,8 +10581,23 @@ function _pubSyncButtons(){
   ownerToggle.hidden = false; owner.hidden = true;
   setup.hidden = !repo; forget.hidden = true; file.hidden = false;
 }
+/* 出す前に写真を用意して、「何枚つくか」をその場で見せる（v207・オーナー報告「写真が表示されない」）。
+   0枚なら理由まで出す＝押す前に分かる。 */
+let _boxOn = false, _pubPh = null;
+async function _pubPreparePhotos(course){
+  _pubPh = null;
+  const el = document.getElementById('pubPh'); if (el) { el.textContent = '写真を調べています…'; el.hidden = false; }
+  let sp = null;
+  try { sp = await _sharePhotos(course); } catch(_) {}
+  if (_pubCourse !== course) return;                 // 別のコースに切り替わっていたら捨てる
+  _pubPh = sp;
+  if (!el) return;
+  const has = (course.wps || []).some(w => w && Array.isArray(w.photos) && w.photos.length);
+  if (sp && sp.count) el.textContent = '📷 写真 ' + sp.count + ' 枚も一緒に出します';
+  else if (has) el.textContent = '📷 写真はこの端末に実物がないため入りません（写真を撮った端末から出してください）';
+  else el.textContent = '📷 このコースには写真がありません';
+}
 /* 箱に出す（v199）。押すのは1回。作者の端末（合言葉あり）なら、置き場所にも同時に残す＝消えない。 */
-let _boxOn = false;
 async function _pubOut(){
   const r = _pubReady(); if (!r) return;
   const go = document.getElementById('pubGo'); if (go) { go.disabled = true; go.textContent = '出しています…'; }
@@ -10569,14 +10605,20 @@ async function _pubOut(){
   const entry = {id: _boxNewId(), name: r.c.name || '(名称未設定)', area: r.c.area || '', by: by,
                  at: new Date().toISOString().slice(0, 10), allowEdit: _pubAllowEdit, box: true,
                  cid: String(r.c.id || ''), ts: new Date().toISOString()};   // v204：出し直したら古いほうは並べない
-  if (go) go.textContent = '写真を用意しています…';
-  let ph = null;
-  try { ph = (await _sharePhotos(r.c)).photos; } catch(_) {}   // v202：写真も一緒に出す（小さく作り直して別置き）
-  if (go) go.textContent = '出しています…';
-  const res = await _boxPublish(entry, _pubData, ph);
+  let sp = _pubPh;                                             // v207：出す画面を開いたときに用意済みなら、それを使う
+  if (!sp) { if (go) go.textContent = '写真を用意しています…'; try { sp = await _sharePhotos(r.c); } catch(_) { sp = null; } }
+  if (go) go.textContent = (sp && sp.count) ? ('写真' + sp.count + '枚を送っています…') : '出しています…';
+  const res = await _boxPublish(entry, _pubData, sp ? sp.photos : null);
   if (res.ok && _ghToken() && _ghRepo()) { try { await _ghPutFile(r.file, r.body, 'みんなのコース: ' + (r.c.name || '')); } catch(_) {} }   // 作者の端末なら置き場所にも残す
   if (go) { go.disabled = false; go.textContent = '出す'; }
-  if (res.ok) { closePublishSheet(); showToast('出しました。「みんなのコースを見る」にもう並んでいます'); return; }
+  if (res.ok) {
+    closePublishSheet();
+    const n = sp ? sp.count : 0;
+    showToast(n && _boxPhSent ? ('出しました（写真' + n + '枚つき）。「みんなのコースを見る」にもう並んでいます')
+             : (n ? '出しました。ただし写真は送れませんでした（電波の良い所でもう一度お試しください）'
+                  : '出しました（写真は入っていません）。「みんなのコースを見る」にもう並んでいます'));
+    return;
+  }
   if (res.why === 'big') { showToast('コースが大きすぎて出せませんでした'); return; }
   showToast('出せませんでした（つながりませんでした）。電波の良いところでもう一度お試しください');
 }
@@ -10689,6 +10731,7 @@ const SHARE_PH_PER_SPOT = 2, SHARE_PH_TOTAL = 600000;   // 1スポット2枚ま�
 const SHARE_PH_KEY = 'fp_share_ph';          // 開くときに写真の在りかを渡す（このタブだけ・読み込み直しをまたぐ）
 const BOX_MAX_ROWS = 300;   // 一覧に載せる上限
 const BOX_TIMEOUT = 12000;  // 箱とのやりとりの待ち時間
+const BOX_PH_TIMEOUT = 60000;   // 写真の送り書きだけは長く待つ（電波が細くても届くように・v207）
 const LIB_CACHE_MS = 60000; // みんなのコース一覧を覚えておく時間（v202：2回目の表示を待たせない）
 const LIB_SKIP = ['box.json', 'library.json', 'manifest.json', 'package.json', 'package-lock.json', 'sample.json', 'version.json'];   // v197：一番上を見るとき、コースではないファイルは飛ばす
 const LIBRARY_URL = 'library.json';   // みんなのコース（v185）。アプリと同じ場所に置く1つのファイル。中身は {courses:[{name, area, by, at, d}]}
