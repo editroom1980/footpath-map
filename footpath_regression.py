@@ -447,6 +447,68 @@ def static_checks(src):
     # --- v157: 番号の丸と種類の丸を横に並べる（オーナー指摘：iPhone で片方しか見えない）---
     chk('静的', '番号つきで種類がある地点：地図は「種類の丸＋右上に番号の小丸」、一覧・並べ替え・配布シート・カードは番号と種類を並べて出す',
         'class="wp-num"' in src and 'class="wp-dot cat"' in src and 'class="ro-badge cat"' in src and 'class="sh-cat"' in src and 'class="vip-dot vip-dot2"' in src and '_catBadge' not in src and 'wp-pair' not in src)
+    # --- v200: 箱に出たコースを自動で GitHub へ写し、以降は置き場所のぶんを読む ---
+    _mir_py = os.path.join(os.path.dirname(os.path.abspath(INDEX)), 'tools', 'box_mirror.py')
+    _mir_yml = os.path.join(os.path.dirname(os.path.abspath(INDEX)), '.github', 'workflows', 'box_mirror.yml')
+    _mir = open(_mir_py, encoding='utf-8').read() if os.path.exists(_mir_py) else ''
+    _yml = open(_mir_yml, encoding='utf-8').read() if os.path.exists(_mir_yml) else ''
+    chk('静的', '箱→置き場所の写し取り：定期実行の手順と写し取りの道具がある（library/box-<ID>.json へ・荒らし対策の上限つき）',
+        bool(_mir) and bool(_yml) and "cron: '*/10 * * * *'" in _yml and 'contents: write' in _yml
+        and 'python3 tools/box_mirror.py' in _yml and '[skip ci]' in _yml
+        and "'box-' + cid + '.json'" in _mir and 'MAX_PER_RUN' in _mir and 'MAX_BYTES' in _mir
+        and '_read_json(_url(cfg, \'idx\'))' in _mir)
+    # 写し取りの道具を、にせの箱（通信を差し替え）で実際に動かす
+    _mv = {}
+    if _mir:
+        try:
+            import importlib.util as _ilu
+            _spec = _ilu.spec_from_file_location('box_mirror', _mir_py); _mod = _ilu.module_from_spec(_spec); _spec.loader.exec_module(_mod)
+            _tmp = tempfile.mkdtemp(prefix='boxmirror')
+            _mod.LIB_DIR = os.path.join(_tmp, 'library')
+            _mod.BOX_FILE = os.path.join(_tmp, 'box.json')
+            _base = 'https://例.test/api/data/'
+            open(_mod.BOX_FILE, 'w', encoding='utf-8').write(json.dumps({'kind': 'textdb', 'base': _base, 'key': 'k1'}))
+            _store = {_base + 'k1': json.dumps({'courses': [
+                        {'id': '20260912-aaaa', 'name': '写しテスト', 'area': '兵庫県', 'by': '検査', 'at': '2026-09-12', 'allowEdit': False},
+                        {'id': '20260912-bbbb', 'name': '大きすぎ', 'at': '2026-09-12'},
+                        {'id': '../ずる', 'name': 'だめなID', 'at': '2026-09-12'}]}),
+                      _base + 'k1-20260912-aaaa': json.dumps({'d': 'PAYLOAD-AAAA'}),
+                      _base + 'k1-20260912-bbbb': json.dumps({'d': 'x' * (_mod.MAX_BYTES + 1)})}
+            def _fake(url, data=None, ctype='text/plain'):
+                key = url.split('?')[0]
+                if data is None:
+                    if key not in _store: raise IOError('404')
+                    return _store[key]
+                _store[key] = data
+                return 'ok'
+            _mod._http = _fake
+            _mod.main()
+            _f = os.path.join(_mod.LIB_DIR, 'box-20260912-aaaa.json')
+            _mv['wrote'] = os.path.exists(_f)
+            _one = json.load(open(_f, encoding='utf-8')) if _mv['wrote'] else {}
+            _mv['body'] = _one.get('d') == 'PAYLOAD-AAAA' and _one.get('name') == '写しテスト' and _one.get('allowEdit') is False and _one.get('from') == 'box'
+            _left = json.loads(_store[_base + 'k1']).get('courses', [])
+            _mv['gone'] = all(r.get('id') != '20260912-aaaa' for r in _left)              # 写したものは箱から外す
+            _mv['kept'] = any(r.get('id') == '20260912-bbbb' for r in _left)              # 大きすぎるものは残す（勝手に消さない）
+            _mv['badid'] = all(r.get('id') != '../ずる' for r in _left) and not os.path.exists(os.path.join(_mod.LIB_DIR, '..', 'ずる.json'))
+            _mv['blank'] = _store.get(_base + 'k1-20260912-aaaa') == ''                   # 写した中身は空にする
+            _mod.main()                                                                    # 2回目は何もしない
+            _mv['again'] = len(os.listdir(_mod.LIB_DIR)) == 1
+        except Exception as _e:
+            _mv = {'err': str(_e)[:120]}
+    chk('機能', '写し取りの道具：箱のコースを library/box-<ID>.json に書き、箱から外し、中身を空にする。大きすぎるものは残し、不正なIDは書かない。2回目は増えない',
+        all(_mv.get(k) for k in ('wrote', 'body', 'gone', 'kept', 'badid', 'blank', 'again')), str(_mv)[:200])
+    chk('静的', 'アプリ側：写し終わったコースは置き場所のぶんだけ出す（二重に並べない／端末の控えも外す）',
+        'function _boxIdFromFile' in src and 'function _boxForget' in src and 'if (e && e.boxId) moved[e.boxId] = 1;' in src
+        and 'boxRows.forEach(e => { if (!moved[e.id]) out.push(e); });' in src and '_boxForget(Object.keys(moved));' in src
+        and 'あとで自動的に置き場所へ保存され、ずっと残ります' in src)
+    # --- v199: みんなの箱（合言葉なしで誰でも出せる・すぐ反映）---
+    chk('静的', 'みんなの箱：box.json で差し替えられ、中身と一覧を分けて置く。出すボタンは1つ。一覧は箱と置き場所の両方を並べる',
+        "const BOX_DEFAULT = {kind: 'textdb'" in src and "const BOX_FILE = 'box.json';" in src and 'async function _boxPublish' in src
+        and 'async function _boxList' in src and 'async function _boxOpen' in src and 'function _boxNorm' in src
+        and "if (entry.box) { _libOpenBox(entry); return; }" in src and 'boxRows = await _boxList();' in src
+        and '_boxOn ? _pubOut() : _pubGo(false)' in src and "'Content-Type': 'text/plain'" in src
+        and '登録も合言葉もいりません' in src and 'LS.boxMine' in src)
     # --- v197: どこに上げても一覧に並ぶ（library フォルダと一番上の両方を見る）／日本語のファイル名も開ける ---
     chk('静的', '置き場所は library フォルダと一番上の両方を読む。コースでない .json は飛ばす。日本語のファイル名も配布リンクで開ける',
         'async function _libScanDir' in src and "await _libScanDir(gh, 'library', out); await _libScanDir(gh, '', out);" in src
@@ -946,6 +1008,7 @@ def functional_checks(index_path):
         page.on('dialog', lambda d: d.accept())
         page.goto('file://' + tpath, wait_until='domcontentloaded'); page.wait_for_timeout(400)
         page.evaluate("() => { window.__noAutoSave = true; }")   # v148: 検査中は自動保存を止める（状態が勝手に保存されないように）
+        page.evaluate("() => { _boxCfgCache = null; }")          # v199: 検査中は「みんなの箱」につながない（本物の箱に書き込まないため）
         page.click('.s1-fab'); page.wait_for_timeout(120)
         # 地名の検索はネット任せで、応答が遅れると『あとから』地図を動かしてしまう。
         # 検査は毎回同じ場所を見たいので、固定の座標を返すように差し替える。
@@ -2033,6 +2096,62 @@ def functional_checks(index_path):
           }catch(e){ return 'ERR:'+e.message; } }""")
         chk('機能', 'みんなのコースに出す：名前と「見た人にできること」を選んで1回で出せる。見るだけ＝取り込みを断る印が入る。一覧は library フォルダと一番上の両方を読む',
             isinstance(pb, dict) and all(pb.get(k) for k in ('shown', 'name', 'opts', 'picked', 'body', 'locked', 'free', 'picker', 'goShown', 'put', 'setup', 'folder', 'top')), str(pb)[:300])
+
+        # v199: みんなの箱＝合言葉なしで誰でも出せる／出したらすぐ一覧に並ぶ／押すと中身が取り出せる
+        bx = page.evaluate("""async ()=>{ try{
+            const keepFetch = window.fetch, keepC = getCourses(), keepId = currentCourseId, keepCfg = _boxCfgCache;
+            const keepMine = localStorage.getItem(LS.boxMine); localStorage.removeItem(LS.boxMine);
+            const base = 'https://example.invalid/api/data/', idxKey = base + 'k1', store = {};
+            _boxCfgCache = {kind:'textdb', base: base, key:'k1'};
+            window.fetch = async (u, o) => { const s = String(u).split('?')[0];
+              if (s.indexOf(base) !== 0) return keepFetch(u, o);
+              if (o && o.method === 'POST') { store[s] = o.body; return new Response('ok', {status:200}); }
+              return new Response(store[s] || '', {status: (store[s] === undefined ? 404 : 200)}); };
+            setCourses([{id: 993001, name:'箱の検査コース', area:'兵庫県', savedAt:new Date().toISOString(),
+                         wps:[{id:1, type:'spot', name:'あ', lat:35.1, lng:134.4}]}]);
+            currentCourseId = null;
+            const out = {};
+            openPublishSheet(getCourses()[0]); await new Promise(r => setTimeout(r, 800));
+            out.oneBtn = document.getElementById('pubGo').hidden === false && document.getElementById('pubSend').hidden === true
+                         && document.getElementById('pubSetup').hidden === true;          // 合言葉が無くても「出す」1つ
+            document.getElementById('pubBy').value = 'テスト会';
+            await _pubOut(); await new Promise(r => setTimeout(r, 300));
+            out.wrote = Object.keys(store).length === 2;                                   // 中身と一覧の2つを書く
+            const idx = JSON.parse(store[idxKey] || '{}');
+            out.idx = Array.isArray(idx.courses) && idx.courses.length === 1 && idx.courses[0].name === '箱の検査コース'
+                      && idx.courses[0].by === 'テスト会' && idx.courses[0].box === true;
+            const id = idx.courses[0].id;
+            out.body = typeof JSON.parse(store[idxKey + '-' + id] || '{}').d === 'string';
+            const list = await _boxList();
+            out.list = list.length === 1 && list[0].id === id && list[0].box === true;
+            out.open = (await _boxOpen(list[0])) === JSON.parse(store[idxKey + '-' + id]).d;   // 押したら中身が取れる
+            out.mine = (JSON.parse(localStorage.getItem(LS.boxMine) || '[]')[0] || {}).id === id;
+            store[idxKey] = '{"courses":[]}';
+            out.heal = (await _boxList()).length === 1;                                    // 一覧を消されても自分のぶんは戻る
+            out.big = (await _boxPublish({id:'x', name:'大', at:'2026-09-12'}, 'a'.repeat(BOX_MAX + 1))).why === 'big';
+            // v200: 置き場所へ写し終わったら、箱のぶんは出さず置き場所のぶんだけを出す（端末の控えも外れる）
+            const keepRepo3 = window._ghRepo; window._ghRepo = () => ({user:'u', repo:'r'});
+            window.fetch = async (u, o) => { const s = String(u).split('?')[0];
+              if (s.indexOf('api.github.com') >= 0)
+                return new Response(JSON.stringify(s.indexOf('/contents/library') >= 0 ? [{type:'file', name:'box-' + id + '.json'}] : []), {status:200});
+              if (s.indexOf('library/box-' + id + '.json') >= 0)
+                return new Response(JSON.stringify({name:'箱の検査コース', area:'兵庫県', by:'テスト会', at:'2026-09-12', allowEdit:true, from:'box', d:'ZZZ'}), {status:200});
+              if (s.indexOf('library.json') >= 0) return new Response('{"courses":[]}', {status:200});
+              if (s.indexOf(base) === 0) { if (o && o.method === 'POST') { store[s] = o.body; return new Response('ok', {status:200}); }
+                                           return new Response(store[s] || '', {status: (store[s] === undefined ? 404 : 200)}); }
+              return keepFetch(u, o); };
+            const list2 = await _libLoad();
+            out.moved = list2.length === 1 && list2[0].boxId === id && list2[0].box !== true && list2[0].d === 'ZZZ'
+                        && JSON.parse(localStorage.getItem(LS.boxMine) || '[]').length === 0;
+            window._ghRepo = keepRepo3;
+            window.fetch = keepFetch; _boxCfgCache = keepCfg; _boxOn = false; setCourses(keepC); currentCourseId = keepId;
+            if (keepMine === null) localStorage.removeItem(LS.boxMine); else localStorage.setItem(LS.boxMine, keepMine);
+            closePublishSheet();
+            document.querySelectorAll('#toastBox .toast').forEach(e => e.remove());
+            return out;
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        chk('機能', 'みんなの箱：合言葉なしで「出す」1つ。中身と一覧の両方を書き、すぐ並び、押すと中身が取れる。一覧が消えても自分のぶんは戻る。写し終わったら置き場所のぶんだけ出す',
+            isinstance(bx, dict) and all(bx.get(k) for k in ('oneBtn', 'wrote', 'idx', 'body', 'list', 'open', 'mine', 'heal', 'big', 'moved')), str(bx)[:300])
 
         # v190: 一覧に出す絵：写真から選ぶ→保存される／地図の絵に戻す→消える／一覧のアイコンに出る
         ic = page.evaluate("""async ()=>{ try{
@@ -3975,6 +4094,7 @@ def visual_checks(index_path):
         page = ctx.new_page()
         page.goto('file://' + tpath, wait_until='domcontentloaded'); page.wait_for_timeout(400)
         page.evaluate("() => { window.__noAutoSave = true; }")   # v148: 検査中は自動保存を止める（状態が勝手に保存されないように）
+        page.evaluate("() => { _boxCfgCache = null; }")          # v199: 検査中は「みんなの箱」につながない（本物の箱に書き込まないため）
         page.click('.s1-fab'); page.wait_for_timeout(120)
         # 地名の検索はネット任せで、応答が遅れると『あとから』地図を動かしてしまう。
         # 検査は毎回同じ場所を見たいので、固定の座標を返すように差し替える。

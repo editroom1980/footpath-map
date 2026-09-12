@@ -447,6 +447,15 @@ CONSTANTS(904) → STATE(968) → STORAGE(1015) → 版のお知らせ(1021) →
 - 開くときは `location.href = _shareBaseUrl() + '#d=' + d`＝配るリンクと同じ入口を通す（読み込みの道を1本にする）。
 - 出すときは `_libHowTo()` が1行を組み立ててクリップボードへ入れ、`_ghEditUrl(LIBRARY_URL)`（GitHub の編集画面）を開く。人手で貼り付けて保存する運用。
 
+## みんなの箱（v199→v200）＝ 誰でも・ボタンひとつ・すぐ反映
+- **箱**＝合言葉のいらない共同の置き場。設定は `box.json`（`kind:'textdb'` 既定／`'firebase'`／`'off'`）。無ければ `BOX_DEFAULT`。
+- 置き方は**中身と一覧を分ける**：中身＝`<箱の名前>-<ID>`（`{d:"配るリンクの中身"}`）、一覧＝`<箱の名前>`（`{courses:[{id,name,area,by,at,allowEdit}]}`）。一覧が小さいままなので毎回読める。
+- 出す＝`_pubOut()` → `_boxPublish()`：**先に中身、あとで一覧**（一覧に載っている＝必ず開ける）。textdb は「読んで足して書き戻す」、firebase は行ごとに `PUT`（追記のみのルールが書ける）。
+- 書き込みは `Content-Type: text/plain`（ブラウザの事前問い合わせを起こさない）。読み書きとも 12 秒で打ち切り。
+- **箱は誰でも上書きできる**前提で作る：`_boxNorm()` が名前・長さ・重複を必ず通し、`LS.boxMine` に自分の投稿を控えて一覧から消えていたら戻す（自己修復）。
+- **永久保存**：`.github/workflows/box_mirror.yml`（10分ごと）が `tools/box_mirror.py` を回し、箱→`library/box-<ID>.json` に写して箱から外す。写したあとはアプリが `boxId` で気づき、**置き場所のぶんだけ**を出す（`_libLoad` の `moved`）。
+- 不変条件：箱に出すのは**写真を外した配るリンクの中身**だけ（`_courseForLink`）。箱が落ちても `library/` に写ったぶんは残る。
+
 ## みんなのコース（v185→v197）
 - 一覧：`_libLoad()` が ① 置き場所が GitHub Pages なら `_libScanDir()` で **`library/` と一番上の両方**を GitHub の一覧 API で読み、中身は同じ場所（`library/<名>.json` / `<名>.json`）から取る ② だめなら `library.json`（`{courses:[…]}`）。
   - 1 件の形は 2 通り：アプリが作った `{name, area, by, at, allowEdit, d}`（`d`＝配るリンクの中身）と、**「書き出す」で作ったコースのファイルそのもの**（`{name, wps:[…]}`。`file:'<置き場所での道>'` を持ち、`?course=<道>` で開く＝写真も出る）。

@@ -2250,6 +2250,7 @@ const LS = {
   ovAlpha:     'fp_ovalpha',      // 航空写真に重ねる地図の濃さ（OVERLAY_ALPHAS の添字・v188）
   pubBy:       'fp_pub_by',       // みんなのコースに出すときの名前（前回の入力を覚える・v191）
   ghToken:     'fp_gh_token',     // 置き場所（GitHub）の合言葉。この端末にだけ残す（v193）
+  boxMine:     'fp_box_mine',     // みんなの箱に自分が出したコース（一覧が消えても戻せるように・v199）
   walkSpeed:   'fp_walkspeed',    // 歩く速さの段階（WALK_SPEEDS の添字）
   shareLinks:  'fp_sharelinks',   // コースIDごとの配布リンク（配布シートのQRに使う）
   visits:      'fp_visits',       // スタンプ（コースIDごと・訪れたスポットと時刻）
@@ -3203,7 +3204,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v198';
+const APP_VERSION = 'v200';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -10125,12 +10126,20 @@ async function openLibrarySheet(){
    ＝どこに上げてもコースは一覧に並ぶ。だめなら今までどおり library.json 1つを読む。 */
 async function _libLoad(){
   const out = [];
+  let boxRows = [];
+  try { boxRows = await _boxList(); } catch(_) {}   // v199：みんなの箱（合言葉なし・すぐ反映）
   const gh = _ghRepo();
   if (gh) { await _libScanDir(gh, 'library', out); await _libScanDir(gh, '', out); }   // v197：上げる場所を間違えても出るように
   try {
     const j = await (await fetch(LIBRARY_URL + '?t=' + Date.now(), {cache:'no-store'})).json();
     (j && Array.isArray(j.courses) ? j.courses : []).forEach(c => { if (c && c.d && c.name) out.push(c); });
   } catch(_) {}
+  /* v200：箱から置き場所へ写し終わったコースは、置き場所のぶんだけを出す（二重に並べない）。
+     写し終わったものは端末の控えからも外す＝箱が空でも一覧はそのまま。 */
+  const moved = {};
+  out.forEach(e => { if (e && e.boxId) moved[e.boxId] = 1; });
+  _boxForget(Object.keys(moved));
+  boxRows.forEach(e => { if (!moved[e.id]) out.push(e); });
   out.sort((a, b) => String(b.at || '').localeCompare(String(a.at || '')));
   return out;
 }
@@ -10148,13 +10157,110 @@ async function _libScanDir(gh, dir, out){
       try {
         const c = await (await fetch(path.split('/').map(encodeURIComponent).join('/') + '?t=' + Date.now(), {cache:'no-store'})).json();
         if (!c || !c.name) continue;
-        if (c.d) { out.push(c); continue; }                       // アプリが作った形（リンクの中身つき）
+        if (c.d) { const bid = _boxIdFromFile(f.name); if (bid) c.boxId = bid; out.push(c); continue; }   // アプリが作った形（リンクの中身つき）／v200：箱から写したものは元のIDを覚える
         if (Array.isArray(c.wps)) out.push({name: c.name, area: c.area || '', by: c.by || '',   // v196：書き出したコースのファイルをそのまま置いた場合
           at: String(c.savedAt || '').slice(0, 10), allowEdit: c.noEdit !== true, file: path});
       } catch(_) {}
     }
   } catch(_) {}
 }
+/* ===== みんなの箱（v199） =====
+   ・出す：中身を「箱の名前-ID」に置いてから、一覧に1行足す（合言葉なし・すぐ反映）
+   ・見る：一覧を読むだけ。押したら中身を取りに行き、配るリンクと同じ入口（#d=）で開く
+   ・箱は誰でも書けるので、自分が出したぶんは端末にも覚えておき、一覧から消えていても出す（自己修復） */
+let _boxCfgCache;   // undefined＝未確認 ／ null＝箱を使わない ／ それ以外＝箱の設定
+async function _boxCfg(){
+  if (_boxCfgCache !== undefined) return _boxCfgCache;
+  let cfg = BOX_DEFAULT;
+  try {
+    const r = await fetch(BOX_FILE + '?t=' + Date.now(), {cache: 'no-store'});
+    if (r.ok) { const j = await r.json(); if (j && j.kind) cfg = j; }
+  } catch(_) {}
+  _boxCfgCache = (cfg && cfg.kind && cfg.kind !== 'off') ? cfg : null;
+  return _boxCfgCache;
+}
+function _boxUrl(cfg, what, id){
+  if (cfg.kind === 'firebase') {   // 自分で用意した無料の箱（Firebase Realtime Database）
+    const u = String(cfg.url || '').replace(/\/+$/, '');
+    return what === 'idx' ? u + '/idx.json' : (what === 'row' ? u + '/idx/' + id + '.json' : u + '/c/' + id + '.json');
+  }
+  return String(cfg.base || BOX_DEFAULT.base) + String(cfg.key || BOX_DEFAULT.key) + (what === 'idx' ? '' : '-' + id);
+}
+async function _boxFetch(url, opt){
+  const ctl = (typeof AbortController === 'function') ? new AbortController() : null;
+  const t = setTimeout(() => { try { ctl && ctl.abort(); } catch(_) {} }, BOX_TIMEOUT);
+  try { return await fetch(url, Object.assign({cache: 'no-store'}, opt || {}, ctl ? {signal: ctl.signal} : {})); }
+  finally { clearTimeout(t); }
+}
+async function _boxRead(cfg, what, id){
+  try {
+    const r = await _boxFetch(_boxUrl(cfg, what, id) + '?t=' + Date.now());
+    if (!r.ok) return null;
+    const t = (await r.text()).trim();
+    if (!t || t === 'null') return null;
+    return JSON.parse(t);
+  } catch(_) { return null; }
+}
+async function _boxWrite(cfg, what, id, obj){
+  try {
+    const body = JSON.stringify(obj);
+    const opt = (cfg.kind === 'firebase')
+      ? {method: 'PUT', headers: {'Content-Type': 'application/json'}, body: body}
+      : {method: 'POST', headers: {'Content-Type': 'text/plain'}, body: body};   // text/plain＝ブラウザの事前問い合わせが起きない
+    const r = await _boxFetch(_boxUrl(cfg, what, id), opt);
+    return !!(r && r.ok);
+  } catch(_) { return false; }
+}
+function _boxNorm(arr){   // 並べ替え・重複外し・長すぎる項目の切り詰め（他人も書ける箱なので必ず通す）
+  const seen = {}, out = [];
+  (arr || []).forEach(e => {
+    if (!e || !e.id || !e.name || seen[e.id]) return;
+    seen[e.id] = 1;
+    out.push({id: String(e.id).slice(0, 40), name: String(e.name).slice(0, 80), area: String(e.area || '').slice(0, 40),
+              by: String(e.by || '').slice(0, 24), at: String(e.at || '').slice(0, 10), allowEdit: e.allowEdit !== false, box: true});
+  });
+  out.sort((a, b) => String(b.at).localeCompare(String(a.at)) || String(b.id).localeCompare(String(a.id)));
+  return out.slice(0, BOX_MAX_ROWS);
+}
+function _boxIdFromFile(name){ const m = /^box-([A-Za-z0-9-]{4,40})\.json$/i.exec(String(name || '')); return m ? m[1] : ''; }   // v200：箱から写したファイル
+function _boxMine(){ try { return JSON.parse(localStorage.getItem(LS.boxMine) || '[]') || []; } catch(_) { return []; } }
+function _boxForget(ids){   // v200：置き場所へ写し終わったぶんは、端末の控えから外す
+  if (!ids || !ids.length) return;
+  try {
+    const a = _boxMine().filter(e => e && ids.indexOf(e.id) < 0);
+    if (a.length !== _boxMine().length) localStorage.setItem(LS.boxMine, JSON.stringify(a));
+  } catch(_) {}
+}
+function _boxRemember(entry){
+  try { const a = _boxMine().filter(e => e && e.id !== entry.id); a.unshift(entry); localStorage.setItem(LS.boxMine, JSON.stringify(a.slice(0, 40))); } catch(_) {}
+}
+async function _boxList(){
+  const cfg = await _boxCfg(); if (!cfg) return [];
+  const raw = await _boxRead(cfg, 'idx');
+  let arr = [];
+  if (Array.isArray(raw)) arr = raw;
+  else if (raw && Array.isArray(raw.courses)) arr = raw.courses;
+  else if (raw && typeof raw === 'object') arr = Object.keys(raw).map(k => Object.assign({id: k}, raw[k]));
+  return _boxNorm(arr.concat(_boxMine()));
+}
+async function _boxPublish(entry, data){
+  const cfg = await _boxCfg(); if (!cfg) return {ok: false, why: 'off'};
+  if (!data) return {ok: false, why: 'empty'};
+  if (data.length > BOX_MAX) return {ok: false, why: 'big'};
+  if (!(await _boxWrite(cfg, 'c', entry.id, {d: data}))) return {ok: false, why: 'write'};   // 先に中身。一覧に載る＝必ず開ける
+  let ok;
+  if (cfg.kind === 'firebase') ok = await _boxWrite(cfg, 'row', entry.id, entry);
+  else { const cur = await _boxList(); ok = await _boxWrite(cfg, 'idx', null, {courses: _boxNorm([entry].concat(cur))}); }
+  if (!ok) return {ok: false, why: 'idx'};
+  _boxRemember(entry);
+  return {ok: true};
+}
+async function _boxOpen(entry){
+  const cfg = await _boxCfg(); if (!cfg) return null;
+  const j = await _boxRead(cfg, 'c', entry.id);
+  return (j && typeof j.d === 'string') ? j.d : null;
+}
+function _boxNewId(){ return new Date().toISOString().slice(0, 10).replace(/-/g, '') + '-' + Math.random().toString(36).slice(2, 8); }
 function _ghRepo(){
   const m = /^([a-z0-9-]+)\.github\.io$/i.exec(location.hostname || ''); if (!m) return null;
   const seg = String(location.pathname || '').split('/').filter(Boolean);
@@ -10164,7 +10270,7 @@ function _ghRepo(){
 function _libRender(list){
   const box = document.getElementById('libList'), note = document.getElementById('libNote'); if (!box) return;
   if (list === null) { note.textContent = '読み込んでいます…'; box.innerHTML = ''; return; }
-  if (!list.length) { note.innerHTML = 'まだ1件も出ていません。<br>下の「ここに自分のコースを出す」→「出す」→ 開いた画面で緑の <b>Commit changes</b> を押すと、1〜2分でここに並びます（押し忘れると出ません）。'; box.innerHTML = ''; return; }
+  if (!list.length) { note.innerHTML = 'まだ1件も出ていません。<br>下の「ここに自分のコースを出す」→「出す」を押すだけで、<b>すぐにここへ並びます</b>（登録も合言葉もいりません）。'; box.innerHTML = ''; return; }
   note.textContent = 'みんなが出したコースです。押すと、その場で歩く人の画面が開きます（写真は入っていません）。';
   box.innerHTML = list.map((c, i) => '<button type="button" class="lb-row tap" data-i="' + i + '">'
     + '<span class="lb-name">' + escHtml(c.name || '(名称未設定)') + '</span>'
@@ -10172,8 +10278,15 @@ function _libRender(list){
     + '<span class="lb-tag' + (c.allowEdit === false ? ' ro' : '') + '">' + (c.allowEdit === false ? '見るだけ' : '直してもよい') + '</span></button>').join('');
   box.querySelectorAll('.lb-row').forEach(b => b.addEventListener('click', () => _libOpen(list[Number(b.getAttribute('data-i'))])));
 }
+async function _libOpenBox(entry){   // v199：箱のコースは、中身を取りに行ってから開く
+  showToast('開いています…');
+  const d = await _boxOpen(entry);
+  if (!d) { showToast('このコースは開けませんでした（もう一度お試しください）'); return; }
+  location.href = _shareBaseUrl() + '#d=' + d;
+}
 function _libOpen(entry){
   if (!entry) return;
+  if (entry.box) { _libOpenBox(entry); return; }   // v199：みんなの箱
   if (entry.file) { location.href = _shareBaseUrl() + '?course=' + encodeURIComponent(entry.file); return; }   // v196：置いたファイルをそのまま開く（写真も出る）
   if (!entry.d) { showToast('このコースは開けませんでした'); return; }
   location.href = _shareBaseUrl() + '#d=' + entry.d;   // 配るリンクと同じ入口で開く
@@ -10227,7 +10340,7 @@ function openPublishSheet(course){
     sh.addEventListener('click', e => { if (e.target === sh) closePublishSheet(); });
     sh.querySelector('.pb-x').addEventListener('click', closePublishSheet);
     sh.querySelectorAll('.pb-opt').forEach(b => b.addEventListener('click', () => _pubPickEdit(b.getAttribute('data-edit') === '2')));
-    sh.querySelector('#pubGo').addEventListener('click', () => _pubGo(false));
+    sh.querySelector('#pubGo').addEventListener('click', () => (_boxOn ? _pubOut() : _pubGo(false)));   // v199：箱があれば誰でも出せる
     sh.querySelector('#pubSwitch').addEventListener('click', () => _pubShowPicker());
     sh.querySelector('#pubFile').addEventListener('click', () => _pubByFile());
     sh.querySelector('#pubSend').addEventListener('click', () => _pubSend());
@@ -10254,6 +10367,7 @@ function openPublishSheet(course){
   const by = sh.querySelector('#pubBy'); if (by && !by.value) { try { by.value = localStorage.getItem(LS.pubBy) || ''; } catch(_) {} }
   _pubPickEdit(!(c.noEdit === true));
   _pubPrepare();   // v192：中身を先に作っておく
+  _boxCfg().then(cfg => { _boxOn = !!cfg; _pubSyncButtons(); });   // v199：箱が使えるかを確かめてからボタンを決める
   const rn = sh.querySelector('#pubRepoName'); const rp = _ghRepo(); if (rn && rp) rn.textContent = rp.repo;
   _pubSyncButtons();
   sh.classList.add('show');
@@ -10268,6 +10382,12 @@ function _pubSyncButtons(){
   const note = sh.querySelector('#pubNote'), go = sh.querySelector('#pubGo'), send = sh.querySelector('#pubSend');
   const setup = sh.querySelector('#pubSetup'), forget = sh.querySelector('#pubForget'), file = sh.querySelector('#pubFile');
   const ownerToggle = sh.querySelector('#pubOwnerToggle'), owner = sh.querySelector('#pubOwner');
+  if (_boxOn) {   // v199：みんなの箱＝誰でも・ボタンひとつ・すぐ反映
+    note.textContent = '「出す」を押すと、すぐに「みんなのコースを見る」に並びます。登録も合言葉もいりません（写真は入りません）。あとで自動的に置き場所へ保存され、ずっと残ります。';
+    go.hidden = false; go.textContent = '出す'; send.hidden = true;
+    ownerToggle.hidden = !repo; owner.hidden = true; setup.hidden = true; forget.hidden = !tok; file.hidden = false;
+    return;
+  }
   if (tok && repo) {   // 置き場所を持っている人
     note.textContent = '「出す」を押すと、その場でみんなの一覧に並びます（1〜2分）。合言葉はこの端末の中だけに入っています。';
     go.hidden = false; go.textContent = '出す'; send.hidden = true;
@@ -10279,6 +10399,21 @@ function _pubSyncButtons(){
   go.hidden = true; send.hidden = false;
   ownerToggle.hidden = false; owner.hidden = true;
   setup.hidden = !repo; forget.hidden = true; file.hidden = false;
+}
+/* 箱に出す（v199）。押すのは1回。作者の端末（合言葉あり）なら、置き場所にも同時に残す＝消えない。 */
+let _boxOn = false;
+async function _pubOut(){
+  const r = _pubReady(); if (!r) return;
+  const go = document.getElementById('pubGo'); if (go) { go.disabled = true; go.textContent = '出しています…'; }
+  const by = ((document.getElementById('pubBy') || {}).value || '').trim();
+  const entry = {id: _boxNewId(), name: r.c.name || '(名称未設定)', area: r.c.area || '', by: by,
+                 at: new Date().toISOString().slice(0, 10), allowEdit: _pubAllowEdit, box: true};
+  const res = await _boxPublish(entry, _pubData);
+  if (res.ok && _ghToken() && _ghRepo()) { try { await _ghPutFile(r.file, r.body, 'みんなのコース: ' + (r.c.name || '')); } catch(_) {} }   // 作者の端末なら置き場所にも残す
+  if (go) { go.disabled = false; go.textContent = '出す'; }
+  if (res.ok) { closePublishSheet(); showToast('出しました。「みんなのコースを見る」にもう並んでいます'); return; }
+  if (res.why === 'big') { showToast('コースが大きすぎて出せませんでした'); return; }
+  showToast('出せませんでした（つながりませんでした）。電波の良いところでもう一度お試しください');
 }
 async function _pubSend(){   // 作者に送る（LINE・メールなど）。中身はリンク1本
   const r = _pubReady(); if (!r) return;
@@ -10378,7 +10513,15 @@ function _libHowTo(){ openPublishSheet(); }   // 旧名（呼び出し側は据�
    コースの中身を縮めてリンクの「#」の後ろに入れてしまえば、置き場所の用意なしで、その場で配れる。
    ・写真は入らない（大きすぎる）。写真も配るときは今までどおりファイルを置く
    ・「#」の後ろはサーバに送られないので、置き場所（GitHub Pages）の設定は何も要らない */
-const LIB_SKIP = ['library.json', 'manifest.json', 'package.json', 'package-lock.json', 'sample.json', 'version.json'];   // v197：一番上を見るとき、コースではないファイルは飛ばす
+/* みんなの箱（v199）＝ 合言葉のいらない共同の置き場。誰でも・ボタンひとつ・すぐ反映。
+   置き場所（GitHub）は合言葉を持つ人しか書けないので、書き込み自由の箱を1つ用意して両方を一覧に並べる。
+   箱の種類は box.json で差し替えられる（kind:'textdb' 既定 ／ 'firebase'（自分で用意した無料の箱）／ 'off'）。 */
+const BOX_FILE = 'box.json';
+const BOX_DEFAULT = {kind: 'textdb', base: 'https://textdb.dev/api/data/', key: 'footpath-map-minna-2026a'};
+const BOX_MAX = 300000;     // 1コースの中身の上限（文字数）
+const BOX_MAX_ROWS = 300;   // 一覧に載せる上限
+const BOX_TIMEOUT = 12000;  // 箱とのやりとりの待ち時間
+const LIB_SKIP = ['box.json', 'library.json', 'manifest.json', 'package.json', 'package-lock.json', 'sample.json', 'version.json'];   // v197：一番上を見るとき、コースではないファイルは飛ばす
 const LIBRARY_URL = 'library.json';   // みんなのコース（v185）。アプリと同じ場所に置く1つのファイル。中身は {courses:[{name, area, by, at, d}]}
 const LINK_DATA_MAX = 60000;   // これを超えるリンクは長すぎるので勧めない（文字数）
 function _b64url(bytes){
