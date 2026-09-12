@@ -3207,7 +3207,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v208';
+const APP_VERSION = 'v209';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -10194,12 +10194,18 @@ async function _libLoad(){
    アプリが作った形（{name, d}）と、「書き出す」で作ったコースのファイル（{name, wps}）の両方を受ける。 */
 /* 同じコースを出し直したときは、新しいほう（ts が後）だけ残す（v204）。
    印（cid＝作った人の端末でのコース番号）が無い古いものは、そのまま全部残す。 */
+function _libKey(e){   // v209：印が無い古いものは「名前＋エリア」で同じコースとみなす
+  if (!e) return '';
+  if (e.cid) return 'c:' + e.cid;
+  const n = String(e.name || '').trim();
+  return n ? 'n:' + n + '|' + String(e.area || '').trim() : '';
+}
 function _libPickNewest(rows){
   const newest = {};
-  (rows || []).forEach(e => { const k = e && e.cid; if (!k) return;
+  (rows || []).forEach(e => { const k = _libKey(e); if (!k) return;
     const p = newest[k];
     if (!p || String(e.ts || e.at || '') > String(p.ts || p.at || '')) newest[k] = e; });
-  return (rows || []).filter(e => !e || !e.cid || newest[e.cid] === e);
+  return (rows || []).filter(e => { const k = _libKey(e); return !k || newest[k] === e; });
 }
 async function _libScanDir(gh, dir, out){
   try {
