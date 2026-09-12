@@ -447,6 +447,11 @@ def static_checks(src):
     # --- v157: 番号の丸と種類の丸を横に並べる（オーナー指摘：iPhone で片方しか見えない）---
     chk('静的', '番号つきで種類がある地点：地図は「種類の丸＋右上に番号の小丸」、一覧・並べ替え・配布シート・カードは番号と種類を並べて出す',
         'class="wp-num"' in src and 'class="wp-dot cat"' in src and 'class="ro-badge cat"' in src and 'class="sh-cat"' in src and 'class="vip-dot vip-dot2"' in src and '_catBadge' not in src and 'wp-pair' not in src)
+    # --- v187: 現在地の印がスポットを隠さない／現在地から置くのは長押しだけ（オーナー指摘）---
+    chk('静的', '広がる輪は指を受けない（pointer-events:none）。現在地の印はスポットより下（zIndexOffset:300）。開くのは長押し（GPS_HOLD_MS）だけでタップでは開かない',
+        'pointer-events:none;animation:mePulse' in src and 'zIndexOffset:300' in src and 'const GPS_HOLD_MS = 550;' in src
+        and 'function _gpsTapHint' in src and "t = setTimeout(openPicker, GPS_HOLD_MS);" in src
+        and "m.on('click', function(ev){" not in src)
     # --- v186: 航空写真＋地名（写真の上に文字だけの透明タイルを重ねる）---
     chk('静的', '背景地図に「航空写真＋地名」がある（写真＝地理院・文字＝CARTOの透明タイル）。地名を消すときは重ねた層も外す',
         'gsi_photo_label:' in src and 'voyager_only_labels' in src and 'function _applyBaseOverlay' in src and 'let _labelTileLayer' in src
@@ -1912,6 +1917,36 @@ def functional_checks(index_path):
             and pl.get('bigs') == ['ビュースポット', '史跡・記念碑', '飲食店・ショップ', '神社・寺院'] and pl.get('restHidden')
             and pl.get('restN', 0) >= 5 and pl.get('selVal') == 'parking' and pl.get('onChip') == '駐車場' and pl.get('savedType') == 'parking',
             str(pl)[:260])
+
+        # v187: 現在地の印：輪は指を受けない／スポットより下／長押しで「現在地に置く」が開き、タップでは開かない
+        gp = page.evaluate("""async ()=>{ try{
+            const keepV = viewMode; viewMode = false; hideWpPicker();
+            const c = leafMap.getCenter(); _resetBounds(); _setAnchor(c.lat, c.lng, true);
+            _showGpsHere(c.lat, c.lng, 12); await new Promise(r => setTimeout(r, 150));
+            const el = _gpsMarker.getElement(); const r = el.getBoundingClientRect();
+            const out = {below: _gpsMarker.options.zIndexOffset === 300,
+                         pulse: getComputedStyle(el.querySelector('.me-pulse')).pointerEvents === 'none',
+                         small: r.width <= 26 && r.height <= 26};
+            const pe = (type, dx, dy) => new PointerEvent(type, {clientX: r.left + r.width/2 + (dx||0), clientY: r.top + r.height/2 + (dy||0), pointerId: 11, pointerType:'touch', isPrimary:true, bubbles:true, cancelable:true});
+            // ① タップ（すぐ離す）→ 開かない
+            el.dispatchEvent(pe('pointerdown')); el.dispatchEvent(pe('pointerup'));
+            await new Promise(r2 => setTimeout(r2, GPS_HOLD_MS + 150));
+            out.tapNoOpen = getComputedStyle(document.getElementById('wpTypePicker')).display === 'none';
+            // ② 長押し → 開く
+            el.dispatchEvent(pe('pointerdown'));
+            await new Promise(r2 => setTimeout(r2, GPS_HOLD_MS + 150));
+            out.holdOpens = getComputedStyle(document.getElementById('wpTypePicker')).display !== 'none';
+            el.dispatchEvent(pe('pointerup')); hideWpPicker();
+            // ③ スポットの印のほうが手前（重なっても押せる）
+            const w = wps.find(x => x.marker && x.type !== 'node');
+            out.spotAbove = !!w && (w.marker.options.zIndexOffset || 0) > (_gpsMarker.options.zIndexOffset || 0);
+            if (_gpsMarker) { try { leafMap.removeLayer(_gpsMarker); } catch(_) {} _gpsMarker = null; }
+            if (_gpsCircle) { try { leafMap.removeLayer(_gpsCircle); } catch(_) {} _gpsCircle = null; }
+            viewMode = keepV; document.querySelectorAll('#toastBox .toast').forEach(e => e.remove());
+            return out;
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        chk('機能', '現在地の印：輪は指を受けない／印は小さいまま／タップでは開かず長押しで開く／スポットのほうが手前',
+            isinstance(gp, dict) and all(gp.get(k) for k in ('below', 'pulse', 'small', 'tapNoOpen', 'holdOpens', 'spotAbove')), str(gp)[:220])
 
         # v186: 航空写真＋地名：重ねた層が出る／地名を消すと外れる／別の地図に変えると外れる
         ov = page.evaluate("""async ()=>{ try{

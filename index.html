@@ -297,7 +297,8 @@ html,body{touch-action:manipulation;min-height:calc(100% + var(--sat));font-fami
 /* スポットを置く確認（v171） */
 /* 現在地（v172）：青い丸＋ゆっくり広がる輪 */
 .me-dot{position:absolute;left:50%;top:50%;width:16px;height:16px;margin:-8px 0 0 -8px;border-radius:50%;background:#3B82F6;border:3px solid #fff;box-sizing:content-box;box-shadow:0 1px 6px rgba(0,0,0,.4)}
-.me-pulse{position:absolute;left:50%;top:50%;width:22px;height:22px;margin:-11px 0 0 -11px;border-radius:50%;background:rgba(59,130,246,.45);animation:mePulse 2.4s cubic-bezier(.25,.6,.35,1) infinite}
+.me-pulse{position:absolute;left:50%;top:50%;width:22px;height:22px;margin:-11px 0 0 -11px;border-radius:50%;background:rgba(59,130,246,.45);
+  pointer-events:none;animation:mePulse 2.4s cubic-bezier(.25,.6,.35,1) infinite}   /* v187：輪は飾り。指を受けない（広がった輪がスポットを隠していた） */
 @keyframes mePulse{0%{transform:scale(.55);opacity:.75}70%{transform:scale(2.6);opacity:0}100%{transform:scale(2.6);opacity:0}}
 @media (prefers-reduced-motion:reduce){.me-pulse{animation:none;opacity:.35}}
 .wp-ghost{border-radius:50%;background:var(--brand);opacity:.55;border:3px dashed #fff;box-shadow:0 2px 10px rgba(0,0,0,.4);animation:wpGhost 1.2s ease-in-out infinite}
@@ -1818,6 +1819,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
       <ul>
         <li>スマホ：置きたい場所を**長押し** → 「ここにスポットを追加しますか？」→「コースに入れる」（番号が付く）か「立ち寄り先にする」（道順に入らない）を選びます</li>
         <li>PC：地図をクリック → その場に置かれます（番号は自動・道順も自動）</li>
+        <li>いまいる場所に置くときは、青い<b>現在地の印を長押し</b>（タップでは開きません）。印に重なったスポットも、スポットのほうが手前なので押せます</li>
         <li>○をクリック／タップ → 種類・名前・写真・説明を直します（電話・滞在時間などは「くわしい設定」。削除もここ）</li>
         <li>左の一覧（PC）や「スポットの並べ替え」（スマホ）で順番を変えると、道順も付いてきます</li>
         <li>「周辺の情報を取り込む」（PC：その他／スマホ：メニュー）で、お店・史跡・学校などを地図から探して置けます</li>
@@ -1984,6 +1986,7 @@ const GUIDE_CAUTIONS = {car:'車が多い', slip:'滑りやすい', nosignal:'�
 const GUIDE_AHEAD_M  = 120;   // 帯で知らせ始める距離
 const GUIDE_HERE_M   = 20;    // これ以内で「ここを左」
 const GUIDE_PASSED_M = 25;    // これだけ過ぎたら「この道で合っています」
+const GPS_HOLD_MS = 550;   // 現在地の印を押さえてから「現在地に置く」が開くまで（v187：タップでは開かない）
 const WP_ADD_HOLD_MS = 450, WP_ADD_MOVE_PX = 10;   // スポットを置く（v171）：指で押さえる時間／動いたとみなす距離。うっかり置かないように
 const LINE_HOLD_MS = 450, LINE_HIT_PX = 16, LINE_GRAB_PX = 34, LINE_MOVE_PX = 6;   // v177：近くの点はつかみやすく（22→34px）
 const LINE_SWEEP_MIN_M = 30, LINE_SWEEP_MAX_M = 400;   // 引っぱったとき、つかんだ所の周りの古い手直しを外す範囲（引っぱった距離ぶん・この間に収める）   // 道を変更（v169）：動かさず押さえて設定が開くまでの時間／線とみなす幅／既にある点をつかむ距離／動いたとみなす距離
@@ -3100,7 +3103,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v186';
+const APP_VERSION = 'v187';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -4875,16 +4878,32 @@ function _distM(a, b){
 /* 現在地の印（v172・ルートプランナーに倣う）：青い丸が、ゆっくり広がる輪（パルス）といっしょに出る。
    歩いている間もずっと出るので、点滅ではなく「静かに広がって消える」動きにして目に障らないようにした */
 function _makeGpsMarker(ll){
+  // v187：スポットより下に置く（重なったときはスポットが押せる）。開くのは長押しのときだけ
   const m = L.marker(ll, {icon: L.divIcon({className:'', html:'<span class="me-pulse"></span><span class="me-dot"></span>', iconSize:[22,22], iconAnchor:[11,11]}),
-                          interactive:true, keyboard:false, zIndexOffset:1500}).addTo(leafMap);
-  m.on('click', function(ev){
-    L.DomEvent.stopPropagation(ev);
-    if (viewMode) return;
-    if (typeof _drawActive !== 'undefined' && _drawActive) return;
-    const g = m.getLatLng();
-    showWpTypePicker(g.lat, g.lng, ev);
-  });
+                          interactive:true, keyboard:false, zIndexOffset:300}).addTo(leafMap);
+  const el = m.getElement();
+  if (el) {
+    let t = null, x0 = 0, y0 = 0, pid = null;
+    const cancel = () => { if (t) { clearTimeout(t); t = null; } pid = null; };
+    const openPicker = () => { t = null; if (viewMode || (typeof _drawActive !== 'undefined' && _drawActive)) return;
+      const g = m.getLatLng(); showWpTypePicker(g.lat, g.lng, {originalEvent:{clientX:x0, clientY:y0}}); };
+    el.addEventListener('pointerdown', e => {
+      if (viewMode || (typeof _drawActive !== 'undefined' && _drawActive)) return;
+      cancel(); x0 = e.clientX; y0 = e.clientY; pid = e.pointerId;
+      t = setTimeout(openPicker, GPS_HOLD_MS);
+    });
+    el.addEventListener('pointermove', e => { if (pid !== null && Math.hypot(e.clientX - x0, e.clientY - y0) > 10) cancel(); });
+    const up = () => { if (t) { cancel(); _gpsTapHint(); } else cancel(); };
+    el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);
+    el.addEventListener('click', ev => { ev.stopPropagation(); });   // 地図のタップにはしない
+  }
   return m;
+}
+let _gpsHintAt = 0;
+function _gpsTapHint(){
+  if (viewMode) return;
+  const n = Date.now(); if (n - _gpsHintAt < 4000) return; _gpsHintAt = n;
+  showToast('現在地の印を長押しすると、いまの場所にスポットを置けます');
 }
 // 現在地の印と精度の円を今の位置に合わせる（印が無ければ作る）
 function _showGpsHere(lat, lng, accuracy){
