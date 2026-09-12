@@ -89,23 +89,23 @@ html,body{touch-action:manipulation;min-height:calc(100% + var(--sat));font-fami
 .s1-fab .svgi{font-size:20px}
 /* コースカード */
 /* コースの一覧（v179）：1件を小さくまとめて、たくさん並ぶようにした。写真があれば薄く敷いて、文字は濃く */
-.cc{position:relative;overflow:hidden;background:#fff;border-radius:14px;padding:9px 11px;margin-bottom:8px;display:flex;align-items:center;gap:10px;border:0.5px solid #F0EBE2;box-shadow:0 1px 3px rgba(0,0,0,0.03);cursor:pointer}
-.cc-thumb{width:44px;height:44px;border-radius:11px;flex-shrink:0;overflow:hidden;background:#EDE9DD}
-.cc-thumb svg{width:44px;height:44px;display:block}
-.cc-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.8;z-index:0}   /* 写真は薄く敷く */
-.cc.has-photo::before{content:'';position:absolute;inset:0;z-index:1;
-  background:linear-gradient(90deg,rgba(255,255,255,.93) 0%,rgba(255,255,255,.86) 42%,rgba(255,255,255,.40) 100%)}   /* 文字が乗る側ほど白くして読みやすく */
-.cc-info{position:relative;z-index:2;flex:1;min-width:0}
+.cc{position:relative;background:#fff;border-radius:14px;padding:9px 11px;margin-bottom:8px;display:flex;align-items:center;gap:10px;border:0.5px solid #F0EBE2;box-shadow:0 1px 3px rgba(0,0,0,0.03);cursor:pointer}
+.cc-row{display:flex;align-items:center;gap:8px;margin-top:4px}   /* v181：名前は1行まるごと使い、下の行に情報とボタン */
+@media (max-width:430px){.cc-sub .cc-when{display:none}}   /* 狭い画面では日付を省いて、エリアの文字を出す（.cc-st より強い指定にする） */
+.cc-thumb{width:52px;height:52px;border-radius:12px;flex-shrink:0;overflow:hidden;background:#EDE9DD}
+.cc-thumb svg{width:52px;height:52px;display:block}
+.cc-ph{width:100%;height:100%;object-fit:cover;display:block}   /* v181：写真は左のアイコンのところに入れる（背景には敷かない） */
+.cc-info{flex:1;min-width:0}
 .cc-name{font-family:'Plus Jakarta Sans','Hiragino Sans',sans-serif;font-size:15px;font-weight:800;color:#14110F;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.cc-sub{display:flex;align-items:center;gap:9px;margin-top:2px;white-space:nowrap;overflow:hidden}
+.cc-sub{flex:1;min-width:0;display:flex;align-items:center;gap:7px;white-space:nowrap;overflow:hidden}
 .cc-loc{display:flex;align-items:center;gap:3px;font-size:11px;color:#4A453F;min-width:0}
 .cc-loc .svgi{font-size:12px;flex-shrink:0;color:#8A8077}
 .cc-loc span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .cc-st{display:flex;align-items:center;gap:4px;font-size:11px;color:#4A453F;flex-shrink:0}
 .cc-st .svgi{font-size:12px;color:#B09877}
 .cc-st b{font-family:'Plus Jakarta Sans','Hiragino Sans',sans-serif;font-weight:800;color:#2C2620}
-.cc-acts{position:relative;z-index:2;display:flex;flex-direction:row;gap:4px;flex-shrink:0}
-.cc-act{width:38px;height:42px;border-radius:9px;border:0.5px solid #EDE7DC;background:rgba(250,248,244,.92);display:flex;flex-direction:column;gap:1px;align-items:center;justify-content:center;color:#8A8077;font-size:13px;cursor:pointer;font-family:inherit}
+.cc-acts{display:flex;flex-direction:row;gap:4px;flex-shrink:0}
+.cc-act{width:35px;height:38px;border-radius:9px;border:0.5px solid #EDE7DC;background:rgba(250,248,244,.92);display:flex;flex-direction:column;gap:1px;align-items:center;justify-content:center;color:#8A8077;font-size:13px;cursor:pointer;font-family:inherit}
 .cc-act-l{font-size:8px;line-height:1;font-weight:700}   /* v149：アイコンだけでは分からないので文字を添える */
 .cc-act.rd{color:#DC2626}
 .cc-act .svgi{font-size:14px}
@@ -1410,22 +1410,6 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
         </div>
       </div>
 
-      <!-- コース名を変える（v180・オーナー指示「最初の画面や設定画面で名前を変更できるように」） -->
-      <div id="renameScrim" onclick="closeRenameSheet()"></div>
-      <div id="renameSheet" role="dialog" aria-label="コース名を変える">
-        <div class="ds-dh"></div>
-        <div class="ds-t">コースの名前</div>
-        <div class="ds-n">配布シートと配布リンクにも、この名前が出ます。</div>
-        <label class="rn-l" for="rnName">コース名</label>
-        <input class="s1-input" id="rnName" placeholder="例：飯見の棚田おにぎりウォーク" maxlength="60">
-        <label class="rn-l" for="rnArea">エリア（任意）</label>
-        <input class="s1-input" id="rnArea" placeholder="例：宍粟市波賀町飯見" maxlength="60">
-        <div class="ds-row">
-          <button class="ds-btn ghost" onclick="closeRenameSheet()">やめる</button>
-          <button class="ds-btn" onclick="saveRenameSheet()">この名前にする</button>
-        </div>
-      </div>
-
       <!-- コースの情報（v139）：協会式の項目。歩く人は読む、作る人は書く -->
       <div id="infoScrim" onclick="closeInfoSheet()"></div>
       <div id="infoSheet" role="dialog" aria-label="コースの情報">
@@ -1760,6 +1744,21 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
 <div id="moveBar" role="status"><span class="mv-t">置きたい場所をタップ。または地図をずらして、真ん中の印を合わせる</span><span class="mv-acts"><button type="button" class="mv-b" onclick="_moveCancel()">やめる</button><button type="button" class="mv-b go" onclick="_moveHere()">ここに置く</button></span></div>
 <div id="movePin" aria-hidden="true"></div>
 <!-- スポットを置く確認（v171）：長押しした場所に薄い○を出して「ここに置く」か聞く -->
+  <!-- コース名を変える（v180・オーナー指示「最初の画面や設定画面で名前を変更できるように」） -->
+  <div id="renameScrim" onclick="closeRenameSheet()"></div>
+  <div id="renameSheet" role="dialog" aria-label="コース名を変える">
+    <div class="ds-dh"></div>
+    <div class="ds-t">コースの名前</div>
+    <div class="ds-n">配布シートと配布リンクにも、この名前が出ます。</div>
+    <label class="rn-l" for="rnName">コース名</label>
+    <input class="s1-input" id="rnName" placeholder="例：飯見の棚田おにぎりウォーク" maxlength="60">
+    <label class="rn-l" for="rnArea">エリア（任意）</label>
+    <input class="s1-input" id="rnArea" placeholder="例：宍粟市波賀町飯見" maxlength="60">
+    <div class="ds-row">
+      <button class="ds-btn ghost" onclick="closeRenameSheet()">やめる</button>
+      <button class="ds-btn" onclick="saveRenameSheet()">この名前にする</button>
+    </div>
+  </div>
 <div id="addWpDlg" role="dialog" aria-label="スポットを置く">
   <div class="aw-t">ここにスポットを追加しますか？</div>
   <div class="aw-d">どちらにするか選んでください（あとで「取消」で戻せます・○を押せば変えられます）</div>
@@ -3043,7 +3042,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v180';
+const APP_VERSION = 'v181';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -9372,22 +9371,24 @@ function renderCourseList() {
     const photo = _pw ? _pw.photos[0] : null;
     const when  = _fmtDate(c.savedAt);
     const card = document.createElement('div');
-    card.className = 'cc' + (photo ? ' has-photo' : '');
+    card.className = 'cc';
     card.innerHTML = `
-      ${photo ? `<img class="cc-bg" ${_photoAttr(photo)} alt="" loading="lazy">` : `<div class="cc-thumb">${_thumb}</div>`}
+      <div class="cc-thumb">${photo ? `<img class="cc-ph" ${_photoAttr(photo)} alt="" loading="lazy">` : _thumb}</div>
       <div class="cc-info">
         <div class="cc-name">${escHtml(c.name)}</div>
+        <div class="cc-row">
         <div class="cc-sub">
           ${c.area ? `<span class="cc-loc"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"/><path d="M17.657 16.657l-4.243 4.243a2 2 0 0 1 -2.827 0l-4.244 -4.243a8 8 0 1 1 11.314 0"/></svg><span>${escHtml(c.area)}</span></span>` : ``}
-          <span class="cc-st"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.828 9.828a4 4 0 1 0 -5.656 0l2.828 2.829l2.828 -2.829"/><path d="M8 7l0 .01"/><path d="M18.828 17.828a4 4 0 1 0 -5.656 0l2.828 2.829l2.828 -2.829"/><path d="M16 15l0 .01"/></svg><b>${wpCount}</b>地点</span>
-          ${when ? `<span class="cc-st">${when}</span>` : ``}
+          <span class="cc-st" title="スポットの数"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.828 9.828a4 4 0 1 0 -5.656 0l2.828 2.829l2.828 -2.829"/><path d="M8 7l0 .01"/><path d="M18.828 17.828a4 4 0 1 0 -5.656 0l2.828 2.829l2.828 -2.829"/><path d="M16 15l0 .01"/></svg><b>${wpCount}</b></span>
+          ${when ? `<span class="cc-st cc-when">${when}</span>` : ``}
         </div>
-      </div>
-      <div class="cc-acts">
+        <div class="cc-acts">
         <button class="cc-act nm tap" title="コース名を変える" aria-label="コース名を変える"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l10.5-10.5a2.828 2.828 0 1 0-4-4L4 16v4"/><path d="M13.5 6.5l4 4"/></svg><span class="cc-act-l">名前</span></button>
         <button class="cc-act tap" title="ファイルに書き出す（JSON）" aria-label="ファイルに書き出す"><svg class=\"svgi\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d="M14 3v4a1 1 0 0 0 1 1h4" /> <path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2" /> <path d="M12 17v-6" /> <path d="M9.5 14.5l2.5 2.5l2.5 -2.5" /></svg><span class="cc-act-l">書き出す</span></button>
         <button class="cc-act tap" title="配布用リンクを作る" aria-label="配布用リンクを作る"><svg class=\"svgi\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d="M9 15l6 -6" /> <path d="M11 6l.463 -.536a5 5 0 0 1 7.071 7.072l-.534 .464" /> <path d="M13 18l-.397 .534a5.068 5.068 0 0 1 -7.127 0a4.972 4.972 0 0 1 0 -7.071l.524 -.463" /></svg><span class="cc-act-l">リンク</span></button>
         <button class="cc-act rd tap" title="削除" aria-label="削除"><svg class=\"svgi\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d="M4 7l16 0" /> <path d="M10 11l0 6" /> <path d="M14 11l0 6" /> <path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12" /> <path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3" /></svg><span class="cc-act-l">削除</span></button>
+        </div>
+        </div>
       </div>`;
     const [nameBtn,expBtn,shareBtn,delBtn] = card.querySelectorAll('.cc-act');
     nameBtn.addEventListener('click', e=>{e.stopPropagation();openRenameSheet(c.id);});

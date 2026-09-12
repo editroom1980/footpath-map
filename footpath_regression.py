@@ -451,11 +451,12 @@ def static_checks(src):
     chk('静的', 'コース名を変えるシートがあり、入口は一覧のカードの「名前」ボタン、スマホのメニュー、PC の「その他」の3つ',
         'id="renameSheet"' in src and 'id="rnName"' in src and 'id="rnArea"' in src and 'function openRenameSheet' in src and 'function saveRenameSheet' in src
         and 'class="cc-act nm tap" title="コース名を変える"' in src and 'closeMobileMenu();openRenameSheet()' in src and 'closePcPops();openRenameSheet()' in src
+        and src.index('id="renameSheet"') < src.index('id="addWpDlg"') and src.index('id="renameSheet"') > src.index('id="s2"')   # v181：画面の外（body直下）に置く＝一覧からも開ける
         and src.count('class="cc-act-l"') == 4)
     # --- v179: コースの一覧をコンパクトに＋写真を背景に（オーナー指示）---
-    chk('静的', '一覧の1件は小さくまとめ（1行の情報・ボタンは横並び）、写真があれば薄く敷いて文字を濃くする',
-        'class="cc-bg"' in src and '.cc.has-photo::before{' in src and '.cc-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.8' in src
-        and 'class="cc-sub"' in src and ".cc-acts{position:relative;z-index:2;display:flex;flex-direction:row" in src and src.count('class="cc-act-l"') == 4)
+    chk('静的', '一覧の1件は小さくまとめ（1行の情報・ボタンは横並び）、写真は左のアイコンのところに入れる（背景には敷かない・v181）',
+        'class="cc-ph"' in src and '.cc-ph{width:100%;height:100%;object-fit:cover' in src and 'cc-bg' not in src and 'has-photo' not in src
+        and 'class="cc-sub"' in src and 'class="cc-row"' in src and ".cc-acts{display:flex;flex-direction:row" in src and src.count('class="cc-act-l"') == 4)
     # --- v178: 「道を変更」で変更点を出し、足す・動かす・消す（オーナー指示）---
     chk('静的', '道を変更の間だけ変更点が出てつまめる（大きめの茶色い点）。線をタップで足す、点をタップで消す・案内。道具を変えると隠れる',
         'function _vpEditing' in src and 'function _syncVpEdit' in src and 'function _viaTapAdd' in src and 'function _makeVpOnRoute' in src
@@ -2490,8 +2491,11 @@ def functional_checks(index_path):
             // ① 一覧のコースの名前を変える → その場で保存される
             setCourses([{id: 977001, name:'むかしの名前', area:'むかしのエリア', savedAt:new Date().toISOString(), wps:[{id:1, type:'spot'}]}]);
             currentCourseId = null; renderCourseList();
+            const _s1 = document.getElementById('s1'), _s2 = document.getElementById('s2'), _d1 = _s1.style.display, _d2 = _s2.style.display;
+            _s2.style.display = 'none'; _s1.style.display = 'flex';   // 一覧の画面から開く
             openRenameSheet(977001);
-            out.opened = getComputedStyle(document.getElementById('renameSheet')).display !== 'none' && document.getElementById('rnName').value === 'むかしの名前' && document.getElementById('rnArea').value === 'むかしのエリア';
+            const _rs = document.getElementById('renameSheet');
+            out.opened = getComputedStyle(_rs).display !== 'none' && _rs.getBoundingClientRect().height > 0 && document.getElementById('rnName').value === 'むかしの名前' && document.getElementById('rnArea').value === 'むかしのエリア';
             document.getElementById('rnName').value = ''; saveRenameSheet();
             out.needsName = getComputedStyle(document.getElementById('renameSheet')).display !== 'none';   // 空では閉じない
             document.getElementById('rnName').value = 'あたらしい名前'; document.getElementById('rnArea').value = 'あたらしいエリア'; saveRenameSheet();
@@ -2507,6 +2511,7 @@ def functional_checks(index_path):
             out.appliedOpen = courseInfo.name === 'この場で変えた名前' && document.getElementById('cnDisp').textContent === 'この場で変えた名前' && _dirty === true && JSON.stringify(getCourses()) === before;
             courseInfo.name = keepName; courseInfo.area = keepArea; _applyCourseName(keepName || '', keepArea || '');
             _dirty = keepD; _setSaveState(keepD ? 'dirty' : 'saved'); viewMode = keepV; renderCourseList();
+            _s1.style.display = _d1; _s2.style.display = _d2;
             document.querySelectorAll('#toastBox .toast').forEach(e => e.remove());
             return out;
           }catch(e){ return 'ERR:'+e.message; } }""")
@@ -2525,11 +2530,11 @@ def functional_checks(index_path):
             const cards = [...document.querySelectorAll('#courseList .cc')];
             const h = cards.map(el => Math.round(el.getBoundingClientRect().height));
             const out = {two: cards.length === 2, compact: h.every(x => x > 0 && x <= 92),
-                         photo: cards[0].classList.contains('has-photo') && !!cards[0].querySelector('img.cc-bg'),
-                         noPhoto: !cards[1].classList.contains('has-photo') && !!cards[1].querySelector('.cc-thumb'),
-                         opacity: parseFloat(getComputedStyle(cards[0].querySelector('img.cc-bg')).opacity) <= 0.85,
+                         photo: !!cards[0].querySelector('.cc-thumb img.cc-ph'),
+                         noPhoto: !cards[1].querySelector('img.cc-ph') && !!cards[1].querySelector('.cc-thumb svg'),
+                         cover: getComputedStyle(cards[0].querySelector('img.cc-ph')).objectFit === 'cover',
                          acts: cards[0].querySelectorAll('.cc-act').length === 4 && cards[0].querySelectorAll('.cc-act-l').length === 4,
-                         sub: !!cards[0].querySelector('.cc-sub') && cards[0].querySelector('.cc-sub').textContent.indexOf('地点') >= 0};
+                         sub: !!cards[0].querySelector('.cc-sub') && !!cards[0].querySelector('.cc-sub .cc-st b') && cards[0].querySelector('.cc-sub .cc-st b').textContent === '2'};
             let opened = 0; const keepLoad = window.loadCourseData; window.loadCourseData = () => { opened++; };
             cards[0].querySelector('.cc-name').click(); out.openByName = opened === 1;
             cards[0].querySelector('.cc-act').click(); out.actNoOpen = opened === 1;   // 1つめは「名前」ボタン（v180）
@@ -2539,8 +2544,8 @@ def functional_checks(index_path):
             s1.style.display = d1; s2.style.display = d2;
             return out;
           }catch(e){ return 'ERR:'+e.message; } }""")
-        chk('機能', '一覧：1件が小さい（92px以内）／写真のあるコースは背景に薄く写真／無ければ地図の絵／どこを押しても開く／ボタンでは開かない',
-            isinstance(cl, dict) and all(cl.get(k) for k in ('two', 'compact', 'photo', 'noPhoto', 'opacity', 'acts', 'sub', 'openByName', 'actNoOpen')), str(cl)[:280])
+        chk('機能', '一覧：1件が小さい（92px以内）／写真のあるコースは左のアイコンが写真／無ければ地図の絵／どこを押しても開く／ボタンでは開かない',
+            isinstance(cl, dict) and all(cl.get(k) for k in ('two', 'compact', 'photo', 'noPhoto', 'cover', 'acts', 'sub', 'openByName', 'actNoOpen')), str(cl)[:280])
 
         # v178: 道を変更：線のタップで点が増える／点をつまんで動かせる／点のタップで設定（消す）／道具を変えると隠れる
         ve = page.evaluate("""async ()=>{ try{
