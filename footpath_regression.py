@@ -453,8 +453,10 @@ def static_checks(src):
         and 'function _gpsTapHint' in src and "t = setTimeout(openPicker, GPS_HOLD_MS);" in src
         and "m.on('click', function(ev){" not in src)
     # --- v186: 航空写真＋地名（写真の上に文字だけの透明タイルを重ねる）---
-    chk('静的', '背景地図に「航空写真＋地名」がある（写真＝地理院・文字＝CARTOの透明タイル）。地名を消すときは重ねた層も外す',
-        'gsi_photo_label:' in src and 'voyager_only_labels' in src and 'function _applyBaseOverlay' in src and 'let _labelTileLayer' in src
+    chk('静的', '背景地図に「航空写真＋地図（道）」がある（写真＝地理院・重ねるのは OSM の地図＝道が見える）。濃さは3段階。地名を消すときは重ねた層も外す',
+        'gsi_photo_label:' in src and "overlay:'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'" in src and 'const OVERLAY_ALPHAS = [0.3, 0.55, 0.85];' in src
+        and 'function setOverlayAlpha' in src and 'data-ova="1"' in src and '航空写真＋地図（道）' in src and 'voyager_only_labels' not in src
+        and 'function _applyBaseOverlay' in src and 'let _labelTileLayer' in src
         and "_applyBaseOverlay(_baseMapId, false);" in src and "_applyBaseOverlay(_baseMapId, true);" in src
         and "_baseMapId !== 'gsi_photo' && _baseMapId !== 'gsi_photo_label'" in src
         and 'data-bm="gsi_photo_label"' in src and src.count('data-bm="gsi_photo_label"') == 2)
@@ -1769,7 +1771,7 @@ def functional_checks(index_path):
             // 背景地図 → 2階層目 → 航空写真 → 戻る
             openMmSub('map');
             out.subMap = vis(document.getElementById('mmSub')) && !vis(document.getElementById('mmMain'))
-                         && [...sh.querySelectorAll('.mm-subpane.show .mm-map[data-bm]')].filter(vis).length === 6;   // v186：航空写真＋地名を足した
+                         && [...sh.querySelectorAll('.mm-subpane.show .mm-map[data-bm]')].filter(vis).length === 6;   // v186：航空写真＋地図を足した
             sh.querySelector('.mm-map[data-bm="gsi_photo"]').click();
             closeMmSub();
             out.valMap1 = document.getElementById('mmValMap').textContent;
@@ -1953,8 +1955,11 @@ def functional_checks(index_path):
             const keepId = _baseMapId, keepLbl = _showMapLabels;
             const count = () => { let n = 0; leafMap.eachLayer(l => { if (l instanceof L.TileLayer) n++; }); return n; };
             setBaseMap('gsi_photo_label'); await new Promise(r => setTimeout(r, 250));
-            const out = {two: count() === 2, url: !!_labelTileLayer && _labelTileLayer._url.indexOf('voyager_only_labels') >= 0,
-                         attr: (BASEMAPS.gsi_photo_label.attribution || '').indexOf('CARTO') >= 0};
+            const out = {two: count() === 2, url: !!_labelTileLayer && _labelTileLayer._url.indexOf('tile.openstreetmap.org') >= 0,
+                         attr: (BASEMAPS.gsi_photo_label.attribution || '').indexOf('OpenStreetMap') >= 0,
+                         alpha: Math.abs(_labelTileLayer.options.opacity - OVERLAY_ALPHAS[_overlayAlphaIdx]) < 0.001};
+            setOverlayAlpha(2); out.thick = Math.abs(_labelTileLayer.options.opacity - 0.85) < 0.001;
+            setOverlayAlpha(0); out.thin  = Math.abs(_labelTileLayer.options.opacity - 0.3) < 0.001; setOverlayAlpha(1);
             _showMapLabels = false; _applyMapLabelState(false); await new Promise(r => setTimeout(r, 150));
             out.offLabels = !_labelTileLayer && count() === 1;
             _showMapLabels = true; _applyMapLabelState(true); await new Promise(r => setTimeout(r, 150));
@@ -1965,8 +1970,8 @@ def functional_checks(index_path):
             document.querySelectorAll('#toastBox .toast').forEach(e => e.remove());
             return out;
           }catch(e){ return 'ERR:'+e.message; } }""")
-        chk('機能', '航空写真＋地名：2枚重なる／地名を消すと文字の層だけ外れる／別の地図に変えると外れる',
-            isinstance(ov, dict) and all(ov.get(k) for k in ('two', 'url', 'attr', 'offLabels', 'onLabels', 'gone')), str(ov)[:220])
+        chk('機能', '航空写真＋地図：2枚重なる（重ねるのは OSM）／濃さ3段階が効く／地名を消すと重ねた層だけ外れる／別の地図に変えると外れる',
+            isinstance(ov, dict) and all(ov.get(k) for k in ('two', 'url', 'attr', 'alpha', 'thick', 'thin', 'offLabels', 'onLabels', 'gone')), str(ov)[:240])
 
         # v185: みんなのコース：library.json を読んで並べる／押すと #d= のリンクで開く／空でも壊れない
         lb = page.evaluate("""async ()=>{ try{

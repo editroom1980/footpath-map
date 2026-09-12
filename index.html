@@ -657,6 +657,10 @@ body.viewonly #firstTip,body.embed #firstTip{display:none!important}
 @media (min-width:769px){#kokoroeSheet{left:50%;right:auto;bottom:auto;top:50%;transform:translate(-50%,-50%);width:480px;max-width:calc(100vw - 32px);border-radius:16px;padding:18px 20px 20px}#kokoroeSheet .ds-dh{display:none}}
 #infoSheet .ci-auto{width:100%;margin-top:4px;min-height:var(--tap);border:1.5px solid #D4C4A8;border-radius:11px;background:#FAF6EE;color:#4A2E0E;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer}
 /* コース名を変えるシート（v180）。心得と同じ見た目 */
+.ova-seg{display:flex;align-items:center;gap:6px;padding:6px 10px 8px}
+.ova-seg .ova-l{font-size:11px;color:var(--t-sub);font-weight:700}
+.ova-seg button{flex:1;min-height:34px;border:1px solid #D4C4A8;border-radius:8px;background:#FAF6EE;color:#4A2E0E;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer}
+.ova-seg button.on{background:var(--brand);color:#fff;border-color:var(--brand)}
 /* みんなのコース（v185） */
 .s1-lib{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;min-height:var(--tap);margin:0 0 10px;border:1.5px solid #D4C4A8;border-radius:12px;background:#FAF6EE;color:#4A2E0E;font-family:inherit;font-size:13.5px;font-weight:700;cursor:pointer}
 .s1-lib .svgi{width:18px;height:18px;color:var(--brand)}
@@ -1322,7 +1326,8 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
       <div class="pp-sec">背景地図</div>
       <button class="pp-row pick" data-bm="osm" onclick="setBaseMap('osm');_syncPcPops()">標準地図（OSM）<span class="pp-ck">✓</span></button>
       <button class="pp-row pick" data-bm="gsi_photo" onclick="setBaseMap('gsi_photo');_syncPcPops()">航空写真<span class="pp-ck">✓</span></button>
-      <button class="pp-row pick" data-bm="gsi_photo_label" onclick="setBaseMap('gsi_photo_label');_syncPcPops()">航空写真＋地名<span class="pp-ck">✓</span></button>
+      <button class="pp-row pick" data-bm="gsi_photo_label" onclick="setBaseMap('gsi_photo_label');_syncPcPops()">航空写真＋地図（道）<span class="pp-ck">✓</span></button>
+      <div class="pp-seg ova-seg mm-ova" hidden><span class="ova-l">重ねる濃さ</span><button type="button" data-ova="0" onclick="setOverlayAlpha(0);_syncPcPops()">うすい</button><button type="button" data-ova="1" onclick="setOverlayAlpha(1);_syncPcPops()">ふつう</button><button type="button" data-ova="2" onclick="setOverlayAlpha(2);_syncPcPops()">濃い</button></div>
       <button class="pp-row pick" data-bm="opentopo" onclick="setBaseMap('opentopo');_syncPcPops()">地形図（OpenTopoMap）<span class="pp-ck">✓</span></button>
       <button class="pp-row pick" data-bm="carto" onclick="setBaseMap('carto');_syncPcPops()">淡色カラー地図<span class="pp-ck">✓</span></button>
       <button class="pp-row pick" data-bm="osm_hot" onclick="setBaseMap('osm_hot');_syncPcPops()">色違いOSM（HOT）<span class="pp-ck">✓</span></button>
@@ -1662,10 +1667,15 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
         <div class="mm-maplist">
           <div class="mm-map" data-bm="osm" onclick="setBaseMap('osm')"><span class="mm-map-l">標準地図（OSM）</span><span class="mm-map-ck">✓</span></div>
           <div class="mm-map" data-bm="gsi_photo" onclick="setBaseMap('gsi_photo')"><span class="mm-map-l">航空写真</span><span class="mm-map-ck">✓</span></div>
-          <div class="mm-map" data-bm="gsi_photo_label" onclick="setBaseMap('gsi_photo_label')"><span class="mm-map-l">航空写真＋地名</span><span class="mm-map-ck">✓</span></div>
+          <div class="mm-map" data-bm="gsi_photo_label" onclick="setBaseMap('gsi_photo_label')"><span class="mm-map-l">航空写真＋地図（道）</span><span class="mm-map-ck">✓</span></div>
           <div class="mm-map" data-bm="opentopo" onclick="setBaseMap('opentopo')"><span class="mm-map-l">地形図（OpenTopoMap）</span><span class="mm-map-ck">✓</span></div>
           <div class="mm-map" data-bm="carto" onclick="setBaseMap('carto')"><span class="mm-map-l">淡色カラー地図</span><span class="mm-map-ck">✓</span></div>
           <div class="mm-map" data-bm="osm_hot" onclick="setBaseMap('osm_hot')"><span class="mm-map-l">色違いOSM（HOT）</span><span class="mm-map-ck">✓</span></div>
+        </div>
+        <div class="mm-maplist mm-ova" hidden>
+          <div class="mm-map" data-ova="0" onclick="setOverlayAlpha(0);_syncBaseMapMenu()"><span class="mm-map-l">重ねる地図：うすい</span><span class="mm-map-ck">✓</span></div>
+          <div class="mm-map" data-ova="1" onclick="setOverlayAlpha(1);_syncBaseMapMenu()"><span class="mm-map-l">重ねる地図：ふつう</span><span class="mm-map-ck">✓</span></div>
+          <div class="mm-map" data-ova="2" onclick="setOverlayAlpha(2);_syncBaseMapMenu()"><span class="mm-map-l">重ねる地図：濃い</span><span class="mm-map-ck">✓</span></div>
         </div>
           </div>
           <div class="mm-subpane" data-sub="size">
@@ -1855,7 +1865,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
         <li>保存は「保存」ボタンで行います（勝手には保存しません）。保存していない変更があると、ボタンが「保存」（濃い色）のままになります。一覧に戻るときにも「保存して戻る／保存せずに戻る」を確認します。この端末のブラウザに残ります</li>
         <li>「配る」→ 画像・配布シート（A4）・リンク・GPX の4つの出口と、配る前の確認（歩いた・私有地・分岐・注意…）が1枚にまとまっています</li>
         <li>「見た目 › 地図の色」で線と印の色を選べます。歩く人の画面と配布シートも同じ色になります</li>
-        <li>背景地図の<b>「航空写真＋地名」</b>：航空写真の上に地名と道路名だけを重ねます（写真は地理院、文字は OpenStreetMap／CARTO）</li>
+        <li>背景地図の<b>「航空写真＋地図（道）」</b>：航空写真の上に OpenStreetMap の地図（道・地名）を重ねます。実際の地形と道の位置を見比べられます。重ねる濃さは「うすい／ふつう／濃い」から選べます</li>
         <li>「その他」→ JSONで保存（バックアップ）。一覧画面の「ファイルから読み込む」で戻せます。歩く人から届いた「発見」のファイルも同じ所から取り込めます</li>
       </ul>
     </div>
@@ -2163,6 +2173,7 @@ const LS = {
   sampleDone:  'fp_sample_done',  // サンプルコースを取り込み済み(または削除済み)かの記録
   labelSize:   'fp_labelsize',    // 名称ラベルの文字サイズ段階（LABEL_SIZES の添字）
   wpSize:      'fp_wpsize',       // スポット○の大きさ段階（WP_SIZES の添字）
+  ovAlpha:     'fp_ovalpha',      // 航空写真に重ねる地図の濃さ（OVERLAY_ALPHAS の添字・v188）
   walkSpeed:   'fp_walkspeed',    // 歩く速さの段階（WALK_SPEEDS の添字）
   shareLinks:  'fp_sharelinks',   // コースIDごとの配布リンク（配布シートのQRに使う）
   visits:      'fp_visits',       // スタンプ（コースIDごと・訪れたスポットと時刻）
@@ -2896,14 +2907,17 @@ const GSI_ATTR = '出典: <a href="https://maps.gsi.go.jp/development/ichiran.ht
 const BASEMAPS = {
   osm:      { label:'標準地図(OSM)', url:'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',                 attribution:'© OpenStreetMap contributors', maxNativeZoom:19, maxZoom:21, subdomains:'abc' },
   gsi_photo:{ label:'航空写真',      url:'https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg', attribution:GSI_ATTR, maxNativeZoom:18, maxZoom:21 },
-  gsi_photo_label:{ label:'航空写真＋地名', url:'https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg',
-                    overlay:'https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}.png',   // v186：背景が透明で文字だけのタイル（CARTO）
-                    overlaySub:'abcd', overlayMaxNative:20,
-                    attribution: GSI_ATTR + ' | 地名 © OpenStreetMap contributors © CARTO', maxNativeZoom:18, maxZoom:21 },
+  gsi_photo_label:{ label:'航空写真＋地図（道）', url:'https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg',
+                    overlay:'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',   // v188：道が見えるように OSM の地図を重ねる（濃さは OVERLAY_ALPHAS）
+                    overlaySub:'abc', overlayMaxNative:19,
+                    attribution: GSI_ATTR + ' | 重ねた地図 © OpenStreetMap contributors', maxNativeZoom:18, maxZoom:21 },
   opentopo: { label:'地形図(OpenTopoMap)', url:'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',              attribution:'地図データ © OpenStreetMap contributors, SRTM | 表示 © OpenTopoMap (CC-BY-SA)', maxNativeZoom:17, maxZoom:21, subdomains:'abc' },
   carto:    { label:'淡色カラー地図',  url:'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png', attribution:'© OpenStreetMap contributors © CARTO', maxNativeZoom:20, maxZoom:21, subdomains:'abcd' },
   osm_hot:  { label:'色違いOSM(HOT)', url:'https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png',               attribution:'© OpenStreetMap contributors, Tiles © HOT', maxNativeZoom:19, maxZoom:21, subdomains:'abc' },
 };
+const OVERLAY_ALPHAS = [0.3, 0.55, 0.85];        // 航空写真に重ねる地図の濃さ（v188）
+const OVERLAY_ALPHA_LABELS = ['うすい', 'ふつう', '濃い'];
+let _overlayAlphaIdx = 1;
 const BASEMAP_DEFAULT = 'osm';
 let _baseMapId = BASEMAP_DEFAULT;
 
@@ -2928,6 +2942,8 @@ function _syncBaseMapMenu(){
   document.querySelectorAll('.mm-map[data-bm]').forEach(el => {
     el.classList.toggle('on', el.getAttribute('data-bm') === _baseMapId);
   });
+  document.querySelectorAll('[data-ova]').forEach(el => el.classList.toggle('on', Number(el.getAttribute('data-ova')) === _overlayAlphaIdx));   // v188
+  document.querySelectorAll('.mm-ova').forEach(el => { el.hidden = !(BASEMAPS[_baseMapId] || {}).overlay; });
   _syncMmValues();
   _syncPcPops();
 }
@@ -2940,8 +2956,16 @@ function _applyBaseOverlay(id, show){
   const c = BASEMAPS[id]; if (!c || !c.overlay) return;
   if (show === false || (show === undefined && _showMapLabels === false)) return;
   _labelTileLayer = L.tileLayer(c.overlay, {attribution:'', maxNativeZoom:c.overlayMaxNative || 20, maxZoom:c.maxZoom,
-    subdomains:c.overlaySub || 'abcd', crossOrigin:'anonymous', updateWhenZooming:false, keepBuffer:3}).addTo(leafMap);
+    subdomains:c.overlaySub || 'abcd', crossOrigin:'anonymous', updateWhenZooming:false, keepBuffer:3,
+    opacity: OVERLAY_ALPHAS[_overlayAlphaIdx] || OVERLAY_ALPHAS[1], className:'fp-overlay'}).addTo(leafMap);   // v188：濃さを変えられる
   try { if (_baseTileLayer) _baseTileLayer.bringToBack(); } catch(_) {}
+}
+function setOverlayAlpha(i){   // 航空写真に重ねる地図の濃さ（v188）
+  if (!(i >= 0 && i < OVERLAY_ALPHAS.length)) return;
+  _overlayAlphaIdx = i; _saveIdxPref(LS.ovAlpha, i);
+  if (_labelTileLayer) { try { _labelTileLayer.setOpacity(OVERLAY_ALPHAS[i]); } catch(_) {} }
+  document.querySelectorAll('[data-ova]').forEach(el => el.classList.toggle('on', Number(el.getAttribute('data-ova')) === i));
+  showToast('重ねた地図の濃さ：' + OVERLAY_ALPHA_LABELS[i]);
 }
 function setBaseMap(id){
   if (!BASEMAPS[id]) return;
@@ -3103,7 +3127,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v187';
+const APP_VERSION = 'v188';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -10118,6 +10142,7 @@ function _saveIdxPref(key, i){
 }
 // 起動時に保存済みの大きさ設定を復元（PCボタンの表示とスマホメニューのチェックも合わせる）
 function restoreSizePrefs(){
+  _overlayAlphaIdx = _loadIdxPref(LS.ovAlpha, OVERLAY_ALPHAS.length, 1);   // v188
   _labelSizeIdx = _loadIdxPref(LS.labelSize, LABEL_SIZES.length);
   _wpSizeIdx    = _loadIdxPref(LS.wpSize,    WP_SIZES.length);
   _walkSpeedIdx = _loadIdxPref(LS.walkSpeed, WALK_SPEEDS.length, WALK_SPEED_DEFAULT);
