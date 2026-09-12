@@ -447,6 +447,11 @@ def static_checks(src):
     # --- v157: 番号の丸と種類の丸を横に並べる（オーナー指摘：iPhone で片方しか見えない）---
     chk('静的', '番号つきで種類がある地点：地図は「種類の丸＋右上に番号の小丸」、一覧・並べ替え・配布シート・カードは番号と種類を並べて出す',
         'class="wp-num"' in src and 'class="wp-dot cat"' in src and 'class="ro-badge cat"' in src and 'class="sh-cat"' in src and 'class="vip-dot vip-dot2"' in src and '_catBadge' not in src and 'wp-pair' not in src)
+    # --- v192: 「配る」から出せる／iPhone でも窓が開く／出すコースを選べる ---
+    chk('静的', '配るの画面に「みんなのコースに出す」がある。出すは押したその場で窓を開く（setTimeout では開かない）。出すコースを選べる',
+        'data-share="pub"' in src and 'closeShareSheet();openPublishSheet()' in src and 'function _pubPrepare' in src and 'let _pubCourse = null, _pubData' in src
+        and "const w = window.open(gh, '_blank');" in src and 'setTimeout(() => window.open(gh' not in src
+        and 'id="pubSwitch"' in src and 'function _pubShowPicker' in src)
     # --- v191: みんなのコースに「ボタンひとつ」で出す＋見た人にできること ---
     chk('静的', '出す画面（名前・見た人にできること・出す）。押すと中身まで入れた置き場所の画面を開く。一覧は library フォルダも読む',
         'function openPublishSheet' in src and 'function _pubGo' in src and 'function _ghNewFileUrl' in src and 'function _libLoad' in src and 'function _ghRepo' in src
@@ -1717,7 +1722,7 @@ def functional_checks(index_path):
             return r;
           }catch(e){ return 'ERR:'+e.message; } })(); }""")
         _shOk = (isinstance(sh, dict) and sh.get('entryVisible') and sh.get('opens') and sh.get('box', {}).get('inside')
-                 and sh.get('cards') == 4 and sh.get('cardTap') and 'km' in sh.get('name', '')
+                 and sh.get('cards') == 5 and sh.get('cardTap')   # v192：みんなのコースに出す を足した and 'km' in sh.get('name', '')
                  and sh.get('warnEmpty') and sh.get('okWritten')
                  and sh.get('photo', {}).get('text0') == sh.get('photo', {}).get('expect0')
                  and (not sh.get('photo', {}).get('hasTarget') or sh['photo'].get('text1') == sh['photo'].get('expect1'))
@@ -1943,7 +1948,7 @@ def functional_checks(index_path):
             setCourses([c]);
             let opened = '';
             window.open = (u) => { opened = String(u || ''); return null; };
-            openPublishSheet(c); await new Promise(r => setTimeout(r, 200));
+            openPublishSheet(c); await new Promise(r => setTimeout(r, 700));   // 出す中身の用意を待つ
             const sh = document.getElementById('pubSheet');
             const out = {shown: sh.classList.contains('show'), name: sh.querySelector('#pubName').textContent === c.name,
                          opts: sh.querySelectorAll('.pb-opt').length === 2};
@@ -1952,17 +1957,18 @@ def functional_checks(index_path):
             sh.querySelector('.pb-opt[data-edit=\"1\"]').click(); out.picked = _pubAllowEdit === false;
             let copied = ''; const keepCb = navigator.clipboard;
             Object.defineProperty(navigator, 'clipboard', {configurable:true, value:{writeText: t => { copied = t; return Promise.resolve(); }}});
-            await _pubGo(true); await new Promise(r => setTimeout(r, 150));
+            await new Promise(r => setTimeout(r, 500)); _pubGo(true); await new Promise(r => setTimeout(r, 150));
             const j = JSON.parse(copied);
             out.body = j.name === c.name && j.by === 'たろう' && j.allowEdit === false && typeof j.d === 'string' && j.d.length > 100;
             const back = await _courseFromHash('#d=' + j.d);
             out.locked = !!back && back.noEdit === true && back.shared === true && _isLockedShare(back) === true;
             // ②「直してもよい」なら直せる
-            openPublishSheet(c); sh.querySelector('.pb-opt[data-edit=\"2\"]').click();
-            await _pubGo(true); const j2 = JSON.parse(copied);
+            openPublishSheet(c); await new Promise(r => setTimeout(r, 500)); sh.querySelector('.pb-opt[data-edit=\"2\"]').click();
+            await new Promise(r => setTimeout(r, 500)); _pubGo(true); await new Promise(r => setTimeout(r, 150)); const j2 = JSON.parse(copied);
             const back2 = await _courseFromHash('#d=' + j2.d);
             out.free = j2.allowEdit === true && !!back2 && !back2.noEdit && _isLockedShare(back2) === false;
             // ③ 置き場所の画面の URL（GitHub Pages のときだけ）
+            out.picker = !!document.getElementById('pubSwitch') && !!document.getElementById('pubPick');
             out.ghUrl = (_ghNewFileUrl('library/a.json', '{}') || '').indexOf('/new/main?filename=library%2Fa.json&value=') > 0
                         || _ghNewFileUrl('library/a.json', '{}') === null;   // ローカル検証では null でよい
             Object.defineProperty(navigator, 'clipboard', {configurable:true, value: keepCb});
@@ -1982,7 +1988,7 @@ def functional_checks(index_path):
             return out;
           }catch(e){ return 'ERR:'+e.message; } }""")
         chk('機能', 'みんなのコースに出す：名前と「見た人にできること」を選んで1回で出せる。見るだけ＝取り込みを断る印が入る。一覧は library フォルダも読む',
-            isinstance(pb, dict) and all(pb.get(k) for k in ('shown', 'name', 'opts', 'picked', 'body', 'locked', 'free', 'ghUrl', 'folder')), str(pb)[:260])
+            isinstance(pb, dict) and all(pb.get(k) for k in ('shown', 'name', 'opts', 'picked', 'body', 'locked', 'free', 'picker', 'ghUrl', 'folder')), str(pb)[:280])
 
         # v190: 一覧に出す絵：写真から選ぶ→保存される／地図の絵に戻す→消える／一覧のアイコンに出る
         ic = page.evaluate("""async ()=>{ try{

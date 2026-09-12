@@ -674,6 +674,13 @@ body.viewonly #firstTip,body.embed #firstTip{display:none!important}
 #pubSheet .pb-meta{min-width:0}
 #pubSheet .pb-meta b{display:block;font-size:14.5px;font-weight:800;color:#231C14;overflow-wrap:anywhere}
 #pubSheet .pb-meta small{font-size:11.5px;color:var(--t-sub)}
+#pubSheet .pb-sw{flex:none;margin-left:auto;min-height:36px;padding:0 10px;border:1.5px solid #D4C4A8;border-radius:9px;background:#FAF6EE;color:#4A2E0E;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer}
+#pubSheet .pb-pick{max-height:34vh;overflow-y:auto;margin:-6px 0 12px}
+#pubSheet .pb-pick-row{display:block;width:100%;text-align:left;border:0.5px solid #EDE7DC;border-radius:10px;background:#fff;padding:9px 12px;margin-bottom:6px;font-family:inherit;cursor:pointer}
+#pubSheet .pb-pick-row.on{border-color:var(--brand);background:#FFF9F2}
+#pubSheet .pb-pick-n{display:block;font-size:14px;font-weight:800;color:#231C14;overflow-wrap:anywhere}
+#pubSheet .pb-pick-s{display:block;font-size:11px;color:var(--t-sub);margin-top:1px}
+#pubSheet .pb-go[disabled]{opacity:.5}
 #pubSheet .pb-l{display:block;font-size:11px;font-weight:700;color:var(--t-sub);margin:10px 0 5px 2px}
 #pubSheet .s1-input{margin-bottom:4px}
 #pubSheet .pb-opt{display:block;width:100%;text-align:left;border:1.5px solid #E3DCD1;border-radius:12px;background:#fff;padding:10px 12px;margin-bottom:8px;font-family:inherit;cursor:pointer;min-height:var(--tap)}
@@ -816,7 +823,8 @@ body.viewonly #viewBadge{display:none!important}   /* 歩く人には「歩く�
 #shareSheet .ss-x{margin-left:auto;width:var(--tap);height:var(--tap);border-radius:50%;border:none;background:#F2EEE7;color:var(--t-sub);
   font-size:18px;cursor:pointer;font-family:inherit}
 #shareSheet .ss-n{font-size:12px;color:var(--t-sub);font-weight:600;margin-bottom:12px}
-#shareSheet .ss-cards{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+#shareSheet .ss-card.wide{grid-column:1 / -1}   /* v192：みんなのコースに出す */
+.ss-cards{display:grid;grid-template-columns:1fr 1fr;gap:9px}
 #shareSheet .ss-card{min-height:var(--tap);text-align:left;border:1px solid #E3DCD1;border-radius:12px;padding:11px 12px;background:#fff;
   cursor:pointer;font-family:inherit;color:#231C14}
 #shareSheet .ss-card:hover{border-color:var(--brand);background:var(--brand-soft)}
@@ -1644,6 +1652,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
           <button class="ss-card" data-share="sheet" onclick="shareExit('sheet')"><div class="t">🖨 配布シート</div><div class="d">A4で印刷・PDF<br>凡例・縮尺・方位つき</div></button>
           <button class="ss-card" data-share="link" onclick="shareExit('link')"><div class="t">🔗 リンクを作る</div><div class="d">スマホで見てもらう<br>写真・解説つき</div></button>
           <button class="ss-card" data-share="gpx" onclick="shareExit('gpx')"><div class="t">📍 GPXで書き出す</div><div class="d">YAMAP・ヤマレコ<br>Garmin などで開く</div></button>
+          <button class="ss-card wide" data-share="pub" onclick="closeShareSheet();openPublishSheet()"><div class="t">📖 みんなのコースに出す</div><div class="d">アプリの「みんなのコース」に並べて、誰でも見られるようにする</div></button>
         </div>
         <div class="ss-sec">この地図に載る情報</div>
         <div class="ss-list">
@@ -3183,7 +3192,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v191';
+const APP_VERSION = 'v192';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -10113,7 +10122,7 @@ function _ghRepo(){
 function _libRender(list){
   const box = document.getElementById('libList'), note = document.getElementById('libNote'); if (!box) return;
   if (list === null) { note.textContent = '読み込んでいます…'; box.innerHTML = ''; return; }
-  if (!list.length) { note.textContent = 'まだ1件も出ていません。下の「ここに自分のコースを出す」から出せます（作った人が出すと、ここに並びます）。'; box.innerHTML = ''; return; }
+  if (!list.length) { note.innerHTML = 'まだ1件も出ていません。<br>下の「ここに自分のコースを出す」→「出す」→ 開いた画面で緑の <b>Commit changes</b> を押すと、1〜2分でここに並びます（押し忘れると出ません）。'; box.innerHTML = ''; return; }
   note.textContent = 'みんなが出したコースです。押すと、その場で歩く人の画面が開きます（写真は入っていません）。';
   box.innerHTML = list.map((c, i) => '<button type="button" class="lb-row tap" data-i="' + i + '">'
     + '<span class="lb-name">' + escHtml(c.name || '(名称未設定)') + '</span>'
@@ -10128,7 +10137,7 @@ function _libOpen(entry){
 /* みんなのコースに出す（v191・オーナー指示「ボタンひとつで選んで投稿できるように」）。
    サーバは使わないので、置き場所（GitHub）の「新しいファイル」の画面を**中身まで入れた状態で**開く。
    利用者がすることは、緑の「Commit changes」を押すだけ。見た人が直してよいかもここで選ぶ */
-let _pubCourse = null;
+let _pubCourse = null, _pubData = '';   // _pubData＝リンクに入れる中身（出す画面を開いた時点で用意しておく・v192）
 function openPublishSheet(course){
   const list = getCourses();
   const c = course || (currentCourseId != null && list.find(x => x.id === currentCourseId)) || list[0];
@@ -10138,7 +10147,9 @@ function openPublishSheet(course){
   if (!sh) {
     sh = document.createElement('div'); sh.id = 'pubSheet';
     sh.innerHTML = '<div class="pb-box"><div class="pb-hd"><div class="pb-t">みんなのコースに出す</div><button type="button" class="pb-x tap" aria-label="閉じる">✕</button></div>'
-      + '<div class="pb-course"><div class="pb-ic" id="pubIcon"></div><div class="pb-meta"><b id="pubName"></b><small id="pubArea"></small></div></div>'
+      + '<div class="pb-course"><div class="pb-ic" id="pubIcon"></div><div class="pb-meta"><b id="pubName"></b><small id="pubArea"></small></div>'
+      +   '<button type="button" class="pb-sw tap" id="pubSwitch">ほかのコース</button></div>'
+      + '<div class="pb-pick" id="pubPick" hidden></div>'
       + '<label class="pb-l" for="pubBy">出す人の名前（任意）</label><input class="s1-input" id="pubBy" placeholder="例：波賀町の会" maxlength="24">'
       + '<div class="pb-l">見た人にできること</div>'
       + '<button type="button" class="pb-opt tap" data-edit="1"><b>見るだけ</b><small>歩く画面で見てもらう（自分のコースとして直すのは断る）</small></button>'
@@ -10151,8 +10162,11 @@ function openPublishSheet(course){
     sh.querySelector('.pb-x').addEventListener('click', closePublishSheet);
     sh.querySelectorAll('.pb-opt').forEach(b => b.addEventListener('click', () => _pubPickEdit(b.getAttribute('data-edit') === '2')));
     sh.querySelector('#pubGo').addEventListener('click', () => _pubGo(false));
+    sh.querySelector('#pubSwitch').addEventListener('click', () => _pubShowPicker());
     sh.querySelector('#pubCopy').addEventListener('click', () => _pubGo(true));
   }
+  const pick = sh.querySelector('#pubPick'); if (pick) { pick.hidden = true; }
+  sh.querySelector('#pubSwitch').hidden = getCourses().length < 2;
   sh.querySelector('#pubName').textContent = c.name || '(名称未設定)';
   sh.querySelector('#pubArea').textContent = [c.area || '', (Array.isArray(c.wps) ? c.wps.filter(w => w && w.type !== 'node').length : 0) + ' か所'].filter(Boolean).join('・');
   const ic = sh.querySelector('#pubIcon');
@@ -10160,37 +10174,68 @@ function openPublishSheet(course){
   ic.innerHTML = ph ? '<img ' + _photoAttr(ph) + ' alt="">' : _courseThumbSvg(); _fillPhotoImgs(ic);
   const by = sh.querySelector('#pubBy'); if (by && !by.value) { try { by.value = localStorage.getItem(LS.pubBy) || ''; } catch(_) {} }
   _pubPickEdit(!(c.noEdit === true));
+  _pubPrepare();   // v192：中身を先に作っておく
   const gh = _ghNewFileUrl('x.json', '');
   sh.querySelector('#pubNote').textContent = gh ? '「出す」を押すと置き場所の画面が開きます。中身は入った状態なので、緑の「Commit changes」を押すだけです（1〜2分でみんなの一覧に並びます）。'
                                                : 'この置き場所では自動で開けません。「出す内容をコピーする」を押して、library フォルダに新しいファイルとして貼り付けてください。';
   sh.querySelector('#pubGo').hidden = !gh;
   sh.classList.add('show');
 }
-function closePublishSheet(){ const sh = document.getElementById('pubSheet'); if (sh) sh.classList.remove('show'); _pubCourse = null; }
+function closePublishSheet(){ const sh = document.getElementById('pubSheet'); if (sh) sh.classList.remove('show'); _pubCourse = null; _pubData = ''; }
+function _pubShowPicker(){   // v192：作ったコースの中から選ぶ
+  const box = document.getElementById('pubPick'); if (!box) return;
+  const list = getCourses();
+  if (list.length < 2) { showToast('保存されているコースは1つだけです'); return; }
+  box.hidden = !box.hidden;
+  if (box.hidden) return;
+  box.innerHTML = list.map(c => {
+    const n = Array.isArray(c.wps) ? c.wps.filter(w => w && w.type !== 'node').length : 0;
+    return '<button type="button" class="pb-pick-row tap' + (_pubCourse && c.id === _pubCourse.id ? ' on' : '') + '" data-id="' + escHtml(String(c.id)) + '">'
+      + '<span class="pb-pick-n">' + escHtml(c.name || '(名称未設定)') + '</span><span class="pb-pick-s">' + escHtml([c.area || '', n + ' か所'].filter(Boolean).join('・')) + '</span></button>';
+  }).join('');
+  box.querySelectorAll('.pb-pick-row').forEach(b => b.addEventListener('click', () => {
+    const c = getCourses().find(x => String(x.id) === b.getAttribute('data-id'));
+    if (c) { box.hidden = true; openPublishSheet(c); }
+  }));
+}
 let _pubAllowEdit = true;
 function _pubPickEdit(allow){
   _pubAllowEdit = !!allow;
   document.querySelectorAll('#pubSheet .pb-opt').forEach(b => b.classList.toggle('on', (b.getAttribute('data-edit') === '2') === _pubAllowEdit));
+  _pubPrepare();
+}
+async function _pubPrepare(){   // v192：出す中身を先に作っておく（押した瞬間に窓を開けるようにするため）
+  const c = _pubCourse; if (!c) { _pubData = ''; return; }
+  const go = document.getElementById('pubGo'); if (go) { go.disabled = true; go.textContent = '準備中…'; }
+  try {
+    const url = await _makeDataLink(c, {allowEdit: _pubAllowEdit});
+    _pubData = url.slice(url.indexOf('#') + 3);
+  } catch(_) { _pubData = ''; }
+  if (go) { go.disabled = !_pubData; go.textContent = '出す'; }
 }
 function _pubSlug(name){
   const s = String(name || '').replace(/[^A-Za-z0-9ぁ-んァ-ヶ一-龠ー]+/g, '-').replace(/^-|-$/g, '');
   return (s || 'course').slice(0, 20);
 }
-async function _pubGo(copyOnly){
+function _pubBody(c, by){
+  return JSON.stringify({name: c.name || '', area: c.area || '', by: by, at: new Date().toISOString().slice(0, 10),
+                         allowEdit: _pubAllowEdit, d: _pubData || ''}, null, 1);
+}
+function _pubGo(copyOnly){
   const c = _pubCourse; if (!c) return;
   const by = ((document.getElementById('pubBy') || {}).value || '').trim();
   try { localStorage.setItem(LS.pubBy, by); } catch(_) {}
-  const url = await _makeDataLink(c, {allowEdit: _pubAllowEdit});
-  const d = url.slice(url.indexOf('#') + 3);
-  const body = JSON.stringify({name: c.name || '', area: c.area || '', by: by, at: new Date().toISOString().slice(0, 10),
-                               allowEdit: _pubAllowEdit, d: d}, null, 1);
+  if (!_pubData) { showToast('準備中です。数秒おいてもう一度押してください'); return; }
+  const body = _pubBody(c, by);
   const file = 'library/' + new Date().toISOString().slice(0, 10).replace(/-/g, '') + '-' + _pubSlug(c.name) + '-' + Math.random().toString(36).slice(2, 6) + '.json';
-  if (navigator.clipboard) { try { await navigator.clipboard.writeText(body); } catch(_) {} }
+  if (navigator.clipboard) { try { navigator.clipboard.writeText(body); } catch(_) {} }
   const gh = _ghNewFileUrl(file, body);
   if (copyOnly || !gh) { closePublishSheet(); showToast('出す内容をコピーしました。library フォルダに新しいファイルとして貼り付けてください'); return; }
+  // iPhone は「押した流れ」から外れると新しい窓を開けない。押したその場で開く（だめなら同じ画面で開く）
+  const w = window.open(gh, '_blank');
   closePublishSheet();
-  showToast('置き場所の画面を開きます。緑の「Commit changes」を押すと、みんなの一覧に並びます');
-  setTimeout(() => window.open(gh, '_blank'), 300);
+  if (!w) { showToast('置き場所の画面へ移ります（緑の Commit changes を押してください）'); location.href = gh; return; }
+  showToast('置き場所の画面を開きました。緑の「Commit changes」を押すと、みんなの一覧に並びます');
 }
 function _libHowTo(){ openPublishSheet(); }   // 旧名（呼び出し側は据え置き）
 /* ===== リンクにコースを丸ごと入れる（v184・オーナー指摘「リンクを配るをコピーしても開けない」）=====
