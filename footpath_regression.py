@@ -143,15 +143,15 @@ def static_checks(src):
         'i += ELEV_BATCH' in src and 'await Promise.all(pts.map(' not in src)
     chk('静的', 'ホーム画面追加用 manifest を参照', 'rel="manifest"' in src)
     chk('静的', '共有カード(OGP)とテーマ色', 'og:title' in src and 'theme-color' in src)
-    # --- v82: 配布用リンク（?course=xxx.json）---
-    chk('静的', '配布リンクの安全確認 _safeCourseFile 存在', 'function _safeCourseFile' in src)
-    chk('静的', '配布リンクの読込 loadCourseFromFile 存在', 'async function loadCourseFromFile' in src)
-    chk('静的', '配布リンクのダイアログ openShareDialog 存在', 'function openShareDialog' in src)
+    # --- v82: 共有リンク（?course=xxx.json）---
+    chk('静的', '共有リンクの安全確認 _safeCourseFile 存在', 'function _safeCourseFile' in src)
+    chk('静的', '共有リンクの読込 loadCourseFromFile 存在', 'async function loadCourseFromFile' in src)
+    chk('静的', '共有リンクのダイアログ openShareDialog 存在', 'function openShareDialog' in src)
     chk('静的', 'URLの course パラメータを読む', "p.get('course')" in src)
     chk('静的', '閲覧専用CSS（編集UIを隠す）', 'body.viewonly' in src)
-    chk('静的', '配布リンクでは保存ボタンを隠す', 'body.viewonly .hbtn-save' in src)
-    chk('静的', '配布リンクで説明文を読み取り専用表示', 'function _applyViewDesc' in src and 'view-desc' in src)
-    chk('静的', '配布リンクではサンプルを取り込まない',
+    chk('静的', '共有リンクでは保存ボタンを隠す', 'body.viewonly .hbtn-save' in src)
+    chk('静的', '共有リンクで説明文を読み取り専用表示', 'function _applyViewDesc' in src and 'view-desc' in src)
+    chk('静的', '共有リンクではサンプルを取り込まない',
         re.search(r'if \(!_viewParams\(\)\.on\)', src) is not None)
     chk('静的', 'ファイル名指定の書き出し _downloadJsonAs 存在', 'function _downloadJsonAs' in src)
     # --- v83: GPX書き出し／全コース一括バックアップ ---
@@ -169,16 +169,16 @@ def static_checks(src):
         '_savedVpOpacity' not in src and '_savedTtStyles' not in src and '_savedIconStyles' not in src)
     chk('静的', '画像保存後にラベルと○を作り直す',
         'wps.forEach(wp => updateTooltip(wp));   // ラベルの色・位置・サイズを作り直す' in src)
-    # --- v85: 配布シート（A4印刷・PDF・画像／凡例・縮尺・方位）---
+    # --- v85: 印刷用シート（A4印刷・PDF・画像／凡例・縮尺・方位）---
     chk('静的', '地図の画像化を共通化 _captureMapCanvas', 'async function _captureMapCanvas' in src)
     chk('静的', '画像保存が共通関数を使う', 'await _captureMapCanvas()' in src)
-    chk('静的', '配布シート openPrintSheet 存在', 'async function openPrintSheet' in src)
+    chk('静的', '印刷用シート openPrintSheet 存在', 'async function openPrintSheet' in src)
     chk('静的', '縮尺バー _sheetScale 存在', 'function _sheetScale' in src)
     chk('静的', '凡例 _sheetLegend 存在', 'function _sheetLegend' in src)
     chk('静的', '印刷レイアウト（A4横）', '@media print' in src and 'size:A4landscape' in src.replace(' ', ''))
-    chk('静的', '印刷時は配布シートだけを出す', 'body > *:not(#sheetOver){display:none!important}' in src)
+    chk('静的', '印刷時は印刷用シートだけを出す', 'body > *:not(#sheetOver){display:none!important}' in src)
     chk('静的', '色を印刷に反映（print-color-adjust）', 'print-color-adjust:exact' in src)
-    chk('静的', 'PC・スマホ両方から「配る」で配布シートに届く',
+    chk('静的', 'PC・スマホ両方から「配る」で印刷用シートに届く',
         "shareExit('sheet')" in src and 'class="hbtn hbtn-share"' in src and 'class="mob-share tap"' in src)
     # --- v86: 未保存のまま閉じる前の確認 ---
     chk('静的', '未保存フラグ _dirty を持つ', 'let   _dirty' in src)
@@ -194,11 +194,11 @@ def static_checks(src):
     chk('静的', '所要時間が固定4km/hでなくなった', '/ 4 * 60' not in src and '_walkSpeed()' in src)
     chk('静的', '速さの保存キー(LS.walkSpeed)を使用', re.search(r"walkSpeed:\s*'fp_walkspeed'", src) is not None)
     chk('静的', 'PC・スマホ両方に速さの選択', 'walkSpeedSel' in src and 'data-spd=' in src)
-    # --- v87: 配布シートのQRコード ---
+    # --- v87: 印刷用シートのQRコード ---
     chk('静的', 'QRライブラリを読み込む', 'qrcodejs/1.0.0/qrcode.min.js' in src)
     chk('静的', 'QR描画 _renderSheetQr 存在', 'function _renderSheetQr' in src)
     chk('静的', 'QRが無くてもシートは使える（未読込を許容）', "typeof QRCode === 'undefined'" in src)
-    chk('静的', '配布リンクを覚える（LS.shareLinks）', re.search(r"shareLinks:\s*'fp_sharelinks'", src) is not None)
+    chk('静的', '共有リンクを覚える（LS.shareLinks）', re.search(r"shareLinks:\s*'fp_sharelinks'", src) is not None)
     # --- v88: 設定の見本表示・はじめての人への案内 ---
     chk('静的', '○の大きさに見本の丸がある', src.count('class="mm-dot"') >= 3)
     chk('静的', '見本の大きさは定数から設定する',
@@ -283,12 +283,12 @@ def static_checks(src):
     chk('静的', '難易度の段階 DIFFICULTY 維持', 'const DIFFICULTY' in src)
     chk('静的', '難易度の判定 courseDifficulty 存在', 'function courseDifficulty' in src)
     chk('静的', 'サイドバーに難易度を出す', 'id="diffDisp"' in src and 'function _renderDifficulty' in src)
-    chk('静的', '配布シートに難易度を載せる', "'難易度<b style=\"color:'" in src or '難易度<b' in src)
+    chk('静的', '印刷用シートに難易度を載せる', "'難易度<b style=\"color:'" in src or '難易度<b' in src)
     # --- v96: GPX読み込み ---
     chk('静的', 'GPX読み込み parseGpx 存在', 'function parseGpx' in src)
     chk('静的', '取り込み口が GPX も受け付ける', 'accept=".json,.gpx' in src and 'コース・GPX・発見' in src)   # v149: 文言を平易に
     chk('静的', '軌跡の間引き _thinPoints 存在', 'function _thinPoints' in src)
-    chk('静的', 'GPXは道順が引き直しになることを伝える', '通り道の点（道順の細かい指定）' in src)
+    chk('静的', 'GPXは道順が引き直しになることを伝える', '調整点（道順の細かい指定）' in src)
     chk('静的', 'スポットがあるGPXは軌跡を取り込まない（二重防止）',
         'const hadWpt = wps.length > 0;' in src and 'hadWpt ? [] : _thinPoints' in src)
     chk('静的', '取り込み点数の上限 GPX_MAX_TRKPTS 維持', 'const GPX_MAX_TRKPTS' in src)
@@ -354,7 +354,7 @@ def static_checks(src):
         "src.value = ta.value; _markDirty();" in src)   # v148: 未保存フラグは _markDirty() 経由
     chk('静的', 'メニューに「書かれています／未記入」を出す', 'function _syncDescState' in src)
     chk('静的', '説明を書き換えたら未保存になる', "_dsc.addEventListener('input'" in src)
-    # --- v119: 配布リンクに道順を同梱（開くときに経路サーバを呼ばない）---
+    # --- v119: 共有リンクに道順を同梱（開くときに経路サーバを呼ばない）---
     chk('静的', '保存データに区間ごとの道順が入る', 'routes:  _routesInUse(),' in src and 'function _routesInUse' in src)
     chk('静的', '読み込み時に道順を先に入れる', "if (data.routes && typeof data.routes === 'object')" in src)
     chk('静的', '直線に逃げた区間は覚えない・保存しない',
@@ -362,7 +362,7 @@ def static_checks(src):
     chk('静的', '区間キーの式は1か所（_segKey）', 'function _segKey' in src and src.count('toFixed(6)};${') == 1)
     # --- v120: 閲覧中は編集の操作を受け付けない（ロードマップ 段階0-2）---
     chk('静的', '閲覧中に編集の操作を隠すCSSがある', 'body.viewing #tbar .ed' in src and 'function _applyViewLock' in src)
-    chk('静的', '地図タップ・編集画面・取消・全消去に閲覧中の門がある',
+    chk('静的', '地図タップ・編集画面・取り消し・全消去に閲覧中の門がある',
         all(x in src for x in ["function onMapClick(e) {\n  if (viewMode) return;", "function openModal(id) {\n  if (viewMode) return;",
                                "function undoLast() {\n  if (viewMode) return;", "function redoAction() {\n  if (viewMode) return;",
                                "function clearAll() {\n  if (viewMode) return;", "row.draggable  = !viewMode;"]))
@@ -386,12 +386,12 @@ def static_checks(src):
     chk('静的', '地図の上だけは指の操作を Leaflet に渡す', '#map{touch-action:none}' in src)
     chk('静的', '出発点・到着点のつなぎ区間も同梱する', 'if (startWp && startWp.id !== rw[0].id) pairs.push' in src)
     chk('静的', '近すぎる「ふつうの三角」を飛ばすきまりがある', 'const DIR_MIN_DASHES' in src)
-    chk('静的', '置き場所と向きは線に沿った距離で決める（点の細かさに左右されない）', 'DIR_LOOK_PX' in src)
+    chk('静的', '保存先と向きは線に沿った距離で決める（点の細かさに左右されない）', 'DIR_LOOK_PX' in src)
     chk('静的', 'スポットの○の下に隠れる位置は避ける', 'DIR_AVOID_PX' in src)
     chk('静的', '三角も当たり判定に使わず、後片付けもする',
         'interactive:false, renderer: canvasRenderer}).addTo(leafMap);' in src
         and 'if (routeDirs)    { if(leafMap) leafMap.removeLayer(routeDirs);' in src)
-    chk('静的', '配布シートの凡例に進行方向の説明がある', '歩くコース（三角の向きに歩く）' in src)
+    chk('静的', '印刷用シートの凡例に進行方向の説明がある', '歩くコース（三角の向きに歩く）' in src)
     # --- v123: 「配る」を1枚に（ロードマップ 段階1-1）---
     chk('静的', '配るシートがある（開閉・出口・載る情報）',
         'id="shareSheet"' in src and 'function openShareSheet' in src and 'function shareExit' in src
@@ -417,7 +417,7 @@ def static_checks(src):
     _mm = src[src.index('id="mobileMenuSheet"'):src.index('id="mmSub"')]
     chk('静的', 'メニューの順番がコース→歩くとき→地図の見せ方→詳細',
         _mm.index('mm-sec">コース<') < _mm.index('mm-sec">歩くとき<') < _mm.index('mm-sec">地図の見せ方<') < _mm.index('>詳細<i>'))
-    chk('静的', '書き出し（画像・配布シート・GPX）はメニューから「配る」へ移した',
+    chk('静的', '書き出し（画像・印刷用シート・GPX）はメニューから「配る」へ移した',
         all(x not in src for x in ['closeMobileMenu();saveMapAsImage()', 'closeMobileMenu();openPrintSheet()', 'closeMobileMenu();exportGpx()']))
     chk('静的', '選択肢は2階層目にあり、開くたびに1階層目・畳んだ状態に戻る',
         'function openMmSub' in src and 'function closeMmSub' in src and 'closeMmSub(); toggleMmAdv(false);' in src
@@ -441,14 +441,14 @@ def static_checks(src):
         and 'class="mh-mag tap' in src and 'id="btnMagnet"' in src and 'function reverseCourse' in src and 'function loopCourse' in src
         and 'closePcPops();reverseCourse()' in src and 'closeReorderSheet();loopCourse()' in src)
     # --- v159: 広域のすっきり表示（優先度つき衝突判定・オーナー指摘）---
-    chk('静的', '広域：印は優先順に束ねて「+n」、名札は一律（置けなくても隠さない・v168）、印はズームで小さく、通り道の点は隠す',
+    chk('静的', '広域：印は優先順に束ねて「+n」、名札は一律（置けなくても隠さない・v168）、印はズームで小さく、調整点は隠す',
         'function _declutter' in src and 'function _labelAllowedAt' in src and 'function _zoomKFor' in src and '* _zoomK());' in src and 'function _moreBadge' in src
         and "if (!chosen) chosen = {dir: cur, rect: _labelRect(it.cx, it.cy, it.w, it.h, cur, off)};" in src and 'function _vpVisibleAt' in src and "const k = _zoomK(); if (k !== _lastZoomK)" in src)
     # --- v157: 番号の丸と種類の丸を横に並べる（オーナー指摘：iPhone で片方しか見えない）---
-    chk('静的', '番号つきで種類がある地点：地図は「種類の丸＋右上に番号の小丸」、一覧・並べ替え・配布シート・カードは番号と種類を並べて出す',
+    chk('静的', '番号つきで種類がある地点：地図は「種類の丸＋右上に番号の小丸」、一覧・並べ替え・印刷用シート・カードは番号と種類を並べて出す',
         'class="wp-num"' in src and 'class="wp-dot cat"' in src and 'class="ro-badge cat"' in src and 'class="sh-cat"' in src and 'class="vip-dot vip-dot2"' in src and '_catBadge' not in src and 'wp-pair' not in src)
     # --- v214: 言い方を「閲覧モード／編集モード」に統一・地図の右のボタンを整理 ---
-    chk('静的', '「歩く人の見え方」をやめて「閲覧モード／編集モード」に統一。上の札は廃止。みんなのコースは「削除」',
+    chk('静的', '「歩く人の見え方」をやめて「閲覧モード／編集モード」に統一。上の札は廃止。みんなのマップは「削除」',
         '歩く人の見え方' not in src and 'viewBadge' not in src and "'編集モード' : '閲覧モード'" in src
         and '<span id="btnViewTxt">閲覧モード</span>' in src and '<span class="mm-tog-l">閲覧モード</span>' in src
         and '閲覧モードにしました' in src and '編集モードにもどりました' in src
@@ -500,32 +500,32 @@ def static_checks(src):
         and 'best[k] === e' in src and 'cid: e.cid ? String(e.cid).slice(0, 24) : undefined' in src
         and "cid: e.cid || undefined, ts: e.ts || undefined" in src)
     # --- v203: 写し取りは2つの道で（GitHub の定期実行が遅れても、作者がアプリを開けば写る）---
-    chk('静的', '箱→置き場所の写し取りは、定期実行だけに頼らない（アプリ側でも写す・押し出したときにも動く・同じ名前なら入れ替える）',
+    chk('静的', '箱→保存先の写し取りは、定期実行だけに頼らない（アプリ側でも写す・押し出したときにも動く・同じ名前なら入れ替える）',
         'async function _boxMirror' in src and 'const BOX_MIRROR_MAX = 5;' in src
         and '_boxMirror(list).then(' in src and "'library/box-' + e.id + '.json'" in src
         and 'if (res.status === 422) {' in src and 'sha: sha' in src)
-    # --- v202: みんなのコースでも写真が見られる／一覧の読み込みを速く ---
-    chk('静的', 'みんなのコースに写真を付ける：小さく作り直して箱の別の場所へ。開いたあとから貼る（地図はすぐ出す）。写しも一緒に運ぶ',
+    # --- v202: みんなのマップでも写真が見られる／一覧の読み込みを速く ---
+    chk('静的', 'みんなのマップに写真を付ける：小さく作り直して箱の別の場所へ。開いたあとから貼る（地図はすぐ出す）。写しも一緒に運ぶ',
         'const SHARE_PH_PX = 640' in src and 'SHARE_PH_PER_SPOT' in src and 'SHARE_PH_TOTAL' in src
         and 'async function _shrinkDataUrl' in src and 'async function _sharePhotos' in src
         and 'async function _applySharePhotos' in src and 'function _sharePhSet' in src and 'function _sharePhTake' in src
         and "_applySharePhotos();" in src and "what === 'ph'" in src and 'let _viewInfoId = null;' in src)
-    chk('静的', '一覧の読み込みを速く：箱と置き場所を同時に読み、ファイルもまとめて取り、中身が変わった時だけ取り直す。写真の入れ物は一覧で読まない',
+    chk('静的', '一覧の読み込みを速く：箱と保存先を同時に読み、ファイルもまとめて取り、中身が変わった時だけ取り直す。写真の入れ物は一覧で読まない',
         'const res = await Promise.all([' in src and 'files.slice(0, 60).map(async f =>' in src
         and "'?s=' + String(f.sha || '').slice(0, 8)" in src and "!/-photos\\.json$/i.test(f.name)" in src
         and 'const LIB_CACHE_MS = 60000;' in src and 'let _libCache = null;' in src
         and '_libRender(fresh ? _libCache.list : null);' in src)
     # --- v201: 一覧から開くとき、# だけの移動では読み込み直されない（オーナー報告「箱に上げたコースが開かない」）---
-    chk('静的', 'みんなのコースを押したときは _goShare で開く（同じ場所なら # を書いてから読み込み直す）。location.href に直接 # を入れない',
+    chk('静的', 'みんなのマップを押したときは _goShare で開く（同じ場所なら # を書いてから読み込み直す）。location.href に直接 # を入れない',
         'function _shareGoPlan' in src and 'function _goShare' in src and "_goShare('#d=' + d);" in src
         and "_goShare('#d=' + entry.d);" in src and 'location.reload();' in src
         and "location.href = _shareBaseUrl() + '#d=" not in src)
-    # --- v200: 箱に出たコースを自動で GitHub へ写し、以降は置き場所のぶんを読む ---
+    # --- v200: 箱に出たコースを自動で GitHub へ写し、以降は保存先のぶんを読む ---
     _mir_py = os.path.join(os.path.dirname(os.path.abspath(INDEX)), 'tools', 'box_mirror.py')
     _mir_yml = os.path.join(os.path.dirname(os.path.abspath(INDEX)), '.github', 'workflows', 'box_mirror.yml')
     _mir = open(_mir_py, encoding='utf-8').read() if os.path.exists(_mir_py) else ''
     _yml = open(_mir_yml, encoding='utf-8').read() if os.path.exists(_mir_yml) else ''
-    chk('静的', '箱→置き場所の写し取り：定期実行の手順と写し取りの道具がある（library/box-<ID>.json へ・荒らし対策の上限つき）',
+    chk('静的', '箱→保存先の写し取り：定期実行の手順と写し取りの道具がある（library/box-<ID>.json へ・荒らし対策の上限つき）',
         bool(_mir) and bool(_yml) and "cron: '*/10 * * * *'" in _yml and 'contents: write' in _yml and 'branches: [ main ]' in _yml
         and 'python3 tools/box_mirror.py' in _yml and '[skip ci]' in _yml
         and "'box-' + cid + '.json'" in _mir and 'MAX_PER_RUN' in _mir and 'MAX_BYTES' in _mir
@@ -573,46 +573,46 @@ def static_checks(src):
             _mv = {'err': str(_e)[:120]}
     chk('機能', '写し取りの道具：箱のコースを library/box-<ID>.json に書き、箱から外し、中身を空にする。大きすぎるものは残し、不正なIDは書かない。2回目は増えない',
         all(_mv.get(k) for k in ('wrote', 'body', 'gone', 'kept', 'badid', 'blank', 'again')), str(_mv)[:200])
-    chk('静的', 'アプリ側：写し終わったコースは置き場所のぶんだけ出す（二重に並べない／端末の控えも外す）',
+    chk('静的', 'アプリ側：写し終わったコースは保存先のぶんだけ出す（二重に並べない／端末の控えも外す）',
         'function _boxIdFromFile' in src and 'function _boxForget' in src and 'if (e && e.boxId) moved[e.boxId] = 1;' in src
         and 'boxRows.forEach(e => { if (!moved[e.id]) out.push(e); });' in src and '_boxForget(Object.keys(moved));' in src
-        and 'あとで自動的に置き場所へ保存され、ずっと残ります' in src)
+        and 'あとで自動的に保存先へ保存され、ずっと残ります' in src)
     # --- v199: みんなの箱（合言葉なしで誰でも出せる・すぐ反映）---
-    chk('静的', 'みんなの箱：box.json で差し替えられ、中身と一覧を分けて置く。出すボタンは1つ。一覧は箱と置き場所の両方を並べる',
+    chk('静的', 'みんなの箱：box.json で差し替えられ、中身と一覧を分けて置く。出すボタンは1つ。一覧は箱と保存先の両方を並べる',
         "const BOX_DEFAULT = {kind: 'textdb'" in src and "const BOX_FILE = 'box.json';" in src and 'async function _boxPublish' in src
         and 'async function _boxList' in src and 'async function _boxOpen' in src and 'function _boxNorm' in src
         and "if (entry.box) { _libOpenBox(entry); return; }" in src and 'const boxRows = res[0] || [], gone = res[1] || {};' in src
         and '_boxOn ? _pubOut() : _pubGo(false)' in src and "'Content-Type': 'text/plain'" in src
         and '登録も合言葉もいりません' in src and 'LS.boxMine' in src)
     # --- v197: どこに上げても一覧に並ぶ（library フォルダと一番上の両方を見る）／日本語のファイル名も開ける ---
-    chk('静的', '置き場所は library フォルダと一番上の両方を読む。コースでない .json は飛ばす。日本語のファイル名も配布リンクで開ける',
+    chk('静的', '保存先は library フォルダと一番上の両方を読む。コースでない .json は飛ばす。日本語のファイル名も共有リンクで開ける',
         'async function _libScanDir' in src and "_libScanDir(gh, 'library', out), _libScanDir(gh, '', out)" in src
         and 'const LIB_SKIP =' in src and 'LIB_SKIP.indexOf(f.name) < 0' in src and "s.charAt(0) === '.'" in src
         and "o.file.normalize('NFC') === key" in src
         and "return /\\.json$/i.test(s) ? dir + s : null;" in src and "/[:?#%<>\"|*]/.test(s)" in src)
     # --- v196: library に置いた「コースのファイル」もそのまま並ぶ（写真つきで開ける）---
-    chk('静的', 'library/ の .json は配布リンクとして開ける。書き出したコースのファイルを置いただけでも一覧に並ぶ。ファイルで出すときは library の画面を開く',
+    chk('静的', 'library/ の .json は共有リンクとして開ける。書き出したコースのファイルを置いただけでも一覧に並ぶ。ファイルで出すときは library の画面を開く',
         "if (s.slice(0, 8) === 'library/')" in src and "if (entry.file) { location.href = _shareBaseUrl() + '?course=' + encodeURIComponent(entry.file); return; }" in src
         and 'if (Array.isArray(c.wps)) out.push({name: c.name' in src and "window.open(up + '/library', '_blank');" in src)
-    # --- v195: 置き場所を持たない人は「作者に送って載せてもらう」／受け取った作者はそのまま載せる ---
-    chk('静的', '合言葉が無い人には「作者に送って載せてもらう」が主役。置き場所を持っている人の設定は畳む。受け取ったリンクは歩く人の画面のメニューから載せられる',
+    # --- v195: 保存先を持たない人は「作者に送って載せてもらう」／受け取った作者はそのまま載せる ---
+    chk('静的', '合言葉が無い人には「作者に送って載せてもらう」が主役。保存先を持っている人の設定は畳む。受け取ったリンクは歩く人の画面のメニューから載せられる',
         'id="pubSend"' in src and 'function _pubSend' in src and 'id="pubOwnerToggle"' in src and 'id="pubOwner"' in src
         and 'id="mmPubRow"' in src and 'openPublishSheet(buildCurrentSaveData())' in src and '_ghToken() && _ghRepo() && courseInfo' in src)
     # --- v194: 合言葉の作り方を、GitHub の画面の順番どおりに出す ---
     chk('静的', '合言葉の作り方が番号つきで出る（Token name・Expiration・Only select repositories・Contents: Read and write・Generate token・貼り付け）',
         'class="pb-steps"' in src and 'Token name' in src and 'Expiration' in src and 'Only select repositories' in src
         and 'Read and write' in src and 'Generate token' in src and 'id="pubRepoName"' in src and '① 合言葉を作る画面を開く' in src)
-    # --- v193: 置き場所へ直接出す（合言葉を1回だけ登録）。GitHub の画面まかせをやめた ---
+    # --- v193: 保存先へ直接出す（合言葉を1回だけ登録）。GitHub の画面まかせをやめた ---
     chk('静的', '出すのはアプリから直接（GitHub の contents API に PUT）。合言葉はこの端末だけに残し、送り先は GitHub だけ。合言葉を使わない「ファイルで出す」もある',
         'function _ghPutFile' in src and 'function _ghToken' in src and 'function _ghSetToken' in src and "ghToken:     'fp_gh_token'" in src
         and "'Authorization':'Bearer ' + t" in src and 'function _pubByFile' in src and 'id="pubTokenSave"' in src and 'id="pubForget"' in src
         and 'function _ghNewFileUrl' not in src and src.count('api.github.com') == 3)   # v203：一覧・PUT・入れ替え用の sha 取得の3か所だけ
     # --- v192: 「配る」から出せる／iPhone でも窓が開く／出すコースを選べる ---
-    chk('静的', '配るの画面に「みんなのコースに出す」がある。出すは押したその場で窓を開く（setTimeout では開かない）。出すコースを選べる',
+    chk('静的', '配るの画面に「みんなのマップに出す」がある。出すは押したその場で窓を開く（setTimeout では開かない）。出すコースを選べる',
         'data-share="pub"' in src and 'closeShareSheet();openPublishSheet()' in src and 'function _pubPrepare' in src and 'let _pubCourse = null, _pubData' in src
         and 'setTimeout(() => window.open(gh' not in src
         and 'id="pubSwitch"' in src and 'function _pubShowPicker' in src)
-    # --- v191: みんなのコースに「ボタンひとつ」で出す＋見た人にできること ---
+    # --- v191: みんなのマップに「ボタンひとつ」で出す＋見た人にできること ---
     chk('静的', '出す画面（名前・見た人にできること・出す）。一覧は library フォルダも読む',
         'function openPublishSheet' in src and 'function _pubGo' in src and 'function _libLoad' in src and 'function _ghRepo' in src
         and "sh.id = 'pubSheet'" in src and 'data-edit="2"' in src and 'allowEdit: _pubAllowEdit' in src
@@ -641,8 +641,8 @@ def static_checks(src):
         and "_applyBaseOverlay(_baseMapId, false);" in src and "_applyBaseOverlay(_baseMapId, true);" in src
         and "_baseMapId !== 'gsi_photo' && _baseMapId !== 'gsi_photo_label'" in src
         and 'data-bm="gsi_photo_label"' in src and src.count('data-bm="gsi_photo_label"') == 2)
-    # --- v185: みんなのコース（ライブラリ）---
-    chk('静的', 'みんなのコース：library.json を読んで一覧に出し、押すと配るリンクと同じ入口で開く。出す1行をコピーする道もある',
+    # --- v185: みんなのマップ（ライブラリ）---
+    chk('静的', 'みんなのマップ：library.json を読んで一覧に出し、押すと配るリンクと同じ入口で開く。出す1行をコピーする道もある',
         "const LIBRARY_URL = 'library.json';" in src and 'function openLibrarySheet' in src and 'function _libRender' in src and 'function _libOpen' in src
         and 'function _libHowTo' in src and 'function _ghEditUrlFor' in src and 'onclick="openLibrarySheet()"' in src and "sh.id = 'libSheet'" in src and '#libSheet .lb-row{' in src)
     # --- v184: リンクにコースを入れて、そのまま配れるようにする（オーナー指摘「コピーしても開けない」）---
@@ -651,7 +651,7 @@ def static_checks(src):
         and "data: data, embed: p.get('embed') === '1', on: !!(file || id || data)" in src and 'id="shQuickCopy"' in src and 'id="shQuickSend"' in src
         and 'const LINK_DATA_MAX = 60000;' in src and 'かんたん：このリンクをそのまま配る' in src)
     # --- v182: コース名は省略しない／取り込んだスポットからコースの情報を自動で書く ---
-    chk('静的', 'コース名は省略せず折り返す（一覧・上の題名）。周辺の情報を取り込むと、空いている「コースの情報」に自動で書き込む',
+    chk('静的', 'コース名は省略せず折り返す（一覧・上の題名）。まわりの施設を探すと、空いている「コースの情報」に自動で書き込む',
         '.cc-name{' in src and 'white-space:normal;overflow-wrap:anywhere;word-break:normal}' in src and '-webkit-line-clamp:2' in src
         and 'function _autoInfoFromSpots' in src and 'const f = _autoInfoFromSpots();' in src and 'function ciAutoFill' in src and 'id="ciAuto"' in src
         and "put('toilet', names('toilet'))" in src and "put('access', names('bus'), '最寄り：')" in src)
@@ -665,8 +665,8 @@ def static_checks(src):
     chk('静的', '一覧の1件は小さくまとめ（1行の情報・ボタンは横並び）、写真は左のアイコンのところに入れる（背景には敷かない・v181）',
         'class="cc-ph"' in src and '.cc-ph{width:100%;height:100%;object-fit:cover' in src and 'cc-bg' not in src and 'has-photo' not in src
         and 'class="cc-sub"' in src and 'class="cc-row"' in src and ".cc-acts{display:flex;flex-direction:row" in src and src.count('class="cc-act-l"') == 4)
-    # --- v178: 「道を変更」で変更点を出し、足す・動かす・消す（オーナー指示）---
-    chk('静的', '道を変更の間だけ変更点が出てつまめる（大きめの茶色い点）。線をタップで足す、点をタップで消す・案内。道具を変えると隠れる',
+    # --- v178: 「ルート調整」で調整点を出し、足す・動かす・消す（オーナー指示）---
+    chk('静的', 'ルート調整の間だけ調整点が出てつまめる（大きめの茶色い点）。線をタップで足す、点をタップで消す・案内。道具を変えると隠れる',
         'function _vpEditing' in src and 'function _syncVpEdit' in src and 'function _viaTapAdd' in src and 'function _makeVpOnRoute' in src
         and "if (_vpEditing()) d.enable(); else d.disable();" in src and '.vp-dot.vp-edit{' in src and 'class="vp-dot${edit' in src
         and "if (typeof _syncVpEdit === 'function') _syncVpEdit();" in src)
@@ -680,10 +680,10 @@ def static_checks(src):
         'class=\\"vip-ph\\"' in src.replace('\\', '') or 'class="vip-ph"' in src)
     chk('静的', 'カードの写真の見た目（テープ・傾き・角の丸み）が CSS にある',
         '.vip-ph::before{' in src and '.vip-ph:nth-child(even){transform:rotate(' in src and '.vip-ph:empty{display:none}' in src and '.vip-ph:only-child img{height:190px}' in src)
-    # --- v174: 道順を直す（引き直す・まっすぐ結ぶ・手直しを消す）---
-    chk('静的', '道順を直す：区間ごとに「道なり」「まっすぐ」、全部の引き直し。入口はスマホのメニューと PC の「その他」',
+    # --- v174: ルートを引き直す（引き直す・まっすぐ結ぶ・手直しを消す）---
+    chk('静的', 'ルートを引き直す：区間ごとに「道なり」「まっすぐ」、全部の引き直し。入口はスマホのメニューと PC の「その他」',
         'function openFixRouteSheet' in src and 'function fixSectionAuto' in src and 'function fixSectionStraight' in src and 'function fixAllRoutes' in src and 'function _routeSections' in src
-        and "sh.id = 'fixRouteSheet'" in src and 'mm-map-l">道順を直す<' in src and 'closePcPops();openFixRouteSheet()' in src)
+        and "sh.id = 'fixRouteSheet'" in src and 'mm-map-l">ルートを引き直す<' in src and 'closePcPops();openFixRouteSheet()' in src)
     # --- v173: 地図を軽くする（オーナー指摘「もっさり」）---
     chk('静的', '最初のつなぎ先を用意（preconnect）／タイルは拡大縮小中に取りに行かず画面外も少し先に用意／往復ずらしは同じズームなら計算し直さない／描き直しは1フレーム1回',
         '<link rel="preconnect" href="https://cdnjs.cloudflare.com"' in src and 'rel="preconnect" href="https://a.tile.openstreetmap.org"' in src
@@ -700,13 +700,13 @@ def static_checks(src):
         and 'const WP_ADD_HOLD_MS = 450' in src and 'if (Date.now() - _lastTouchAt < 900) { _tapWpHint(); return; }' in src and 'class="wp-ghost"' in src
         and '<b>地図を長押しして置く</b>' in src and 'body.viewing #addWpDlg,body.viewonly #addWpDlg{display:none!important}' in src
         and 'onclick="addWpHere(true)"' in src and 'onclick="addWpHere(false)"' in src and '<b>コースに入れる</b>' in src and '<b>立ち寄り先にする</b>' in src)
-    # --- v169: メニュー整理・スポットを左端・「道を変更」（線の長押し→引っぱる）・通り道の点は見えない・道に沿わせる ---
-    chk('静的', 'メニュー：項目ごとに絵、短い言葉、「詳細」（説明なし）。「通り道の点を表示」は廃止。道を変更＝線の長押し（_initLineHold）。通り道の点は引きずれず、案内の無い点は見えない',
-        src.count('class="mm-ic"') >= 14 and 'mm-map-l">コースの説明を書く<' in src and 'mm-map-l">順番・逆回り・周回<' in src and 'mm-map-l">色・シール・文字<' in src and '>詳細<i>' in src
+    # --- v169: メニュー整理・スポットを左端・「ルート調整」（線の長押し→引っぱる）・調整点は見えない・道なりに引く ---
+    chk('静的', 'メニュー：項目ごとに絵、短い言葉、「詳細」（説明なし）。「調整点を表示」は廃止。ルート調整＝線の長押し（_initLineHold）。調整点は引きずれず、案内の無い点は見えない',
+        src.count('class="mm-ic"') >= 14 and 'mm-map-l">コースの説明を書く<' in src and 'mm-map-l">順番・逆回り・周回<' in src and 'mm-map-l">地図の見せ方<' in src and '>詳細<i>' in src
         and 'ふだんは触らなくて' not in src and '上級者向け' not in src and 'toggleViaVisibility' not in src and 'mmSwVia' not in src
-        and 'function _initLineHold' in src and 'function _holdGrab' in src and 'function _syncMapDrag' in src and 'function _initMenuFlick' in src and 'function _routeSolidAtZoom' in src and 'const ROUTE_SOLID_Z = 15;' in src and 'const LINE_HOLD_MS = 450' in src and '_initLineHold();                        // 道を変更' in src
+        and 'function _initLineHold' in src and 'function _holdGrab' in src and 'function _syncMapDrag' in src and 'function _initMenuFlick' in src and 'function _routeSolidAtZoom' in src and 'const ROUTE_SOLID_Z = 15;' in src and 'const LINE_HOLD_MS = 450' in src and '_initLineHold();                        // ルート調整' in src
         and 'draggable:false,   // v169' in src and 'function _vpVisibleAt(vp, z){ return _vpEditing() || !!(vp && vp.guide); }' in src and "if (mode==='via') _viaTapAdd(e);" in src
-        and 'mob-mode-l">道を変更<' in src and '>道を変更</span>' in src and 'interactive:false}).addTo(leafMap);\n    hitOverlays.push(ov);' in src)
+        and 'mob-mode-l">ルート調整<' in src and '>ルート調整</span>' in src and 'interactive:false}).addTo(leafMap);\n    hitOverlays.push(ov);' in src)
     # --- v168: オーナー指摘3つ（帯の開閉・広域の印の大きさ・名札は一律）---
     chk('静的', '高低差の帯：右端のボタンと見出しのタップで開閉、なぞり／フリック／ちょんと触るを区別。印は広域でもっと小さく（z16 .8／z15 .65／z14 .55／それ以下 .45・シールも）。名札は z15 以上で全部、未満は無し、置けなくても隠さない',
         '<button type="button" class="mob-elev-chev tap" id="mobileElevChev"' in src and 'onclick="_toggleElevBand()"' in src and 'function _toggleElevBand' in src and 'SCRUB_HOLD_START_MS' in src and 'if (_scrubGesture) { _scrubGesture = false; return; }' in src
@@ -714,7 +714,7 @@ def static_checks(src):
         and 'function _moreBadge(wp, px){' in src and src.count('_moreBadge(wp, sz[0])') == 2 and src.count('(isMobile() ? 18 : 13) * _zoomK())') == 2 and 'vps.forEach(v => _syncVpIcon(v));' in src
         and 'const DECL_LABEL_ALL_Z = 15;' in src and 'function _labelAllowedAt(wp, z){ return z >= DECL_LABEL_ALL_Z; }' in src and 'DECL_LABEL_NUM_Z' not in src and "it.wp._labelHidden = true" not in src)
     # --- v167: 曲がり角の案内（Footpath のキューシートに倣う）---
-    chk('静的', '曲がり角：経路サーバに steps を求め、曲がる所だけを区間ごとに覚え（保存データ cues）、配布シートの一覧と歩く人の帯（分岐の案内が無いとき）に出す。古いコースは編集画面でだけ裏で取りに行く',
+    chk('静的', '曲がり角：経路サーバに steps を求め、曲がる所だけを区間ごとに覚え（保存データ cues）、印刷用シートの一覧と歩く人の帯（分岐の案内が無いとき）に出す。古いコースは編集画面でだけ裏で取りに行く',
         "'?overview=full&geometries=geojson&steps=true'" in src and 'function _cuesFromLegs' in src and 'function _routeCues' in src and 'function _sheetCuesHtml' in src and 'function _nextCueInfo' in src
         and 'cues:    _cuesInUse(),' in src and 'function _cueBackfill' in src and 'async function fetchCuesNow' in src and 'if (segCache[key]) return segCache[key];' in src and "document.body.classList.contains('viewonly') || document.body.classList.contains('embed')) return Promise.resolve();" in src
         and 'class="nb-cue"' in src and '+ _sheetCuesHtml()' in src and "if (Object.keys(cues).length   && !same(c.cues,   cues))" in src)
@@ -723,8 +723,8 @@ def static_checks(src):
         'function _elevPointAt' in src and 'function _gradeAtD' in src and 'function _scrubAttach' in src and 'function _gradeFills' in src and "_scrubAttach(svg, 'band')" in src and "_scrubAttach(svg, 'pc')" in src
         and 'id="mobileElevLegend"' in src and 'const GRADE_MID = 4, GRADE_STEEP = 8;' in src and "_elevData = null; if (typeof _scrubClear === 'function') _scrubClear();" in src
         and 'if (_scrubGesture) { _scrubGesture = false; return; }' in src and 'className:\'scrub-tt\'' in src)
-    # --- v165: はじめかた（3つの入口・周辺の情報を最初の選択肢に）---
-    chk('静的', 'はじめかた：スポットが無い編集画面に3つの入口（タップして置く・指でなぞる・周辺の情報）。初回だけの制限はやめ、周辺の情報はスポットが無ければ地図の真ん中から探す',
+    # --- v165: はじめかた（3つの入口・まわりの施設を最初の選択肢に）---
+    chk('静的', 'はじめかた：スポットが無い編集画面に3つの入口（タップして置く・指でなぞる・まわりの施設）。初回だけの制限はやめ、まわりの施設はスポットが無ければ地図の真ん中から探す',
         'function _syncStartChooser' in src and 'function startChoose' in src and src.count('class="ft-opt tap"') == 3 and "startChoose('nearby')" in src and 'id="nbNoSpot"' in src
         and 'if (best === Infinity && leafMap)' in src and 'function redrawList() {\n  _syncStartChooser();' in src and 'localStorage.setItem(LS.tipSeen' not in src)
     # --- v164: 印は引きずっても動かない。動かすのは編集画面の「場所を動かす」から（Footpath に倣う）---
@@ -733,7 +733,7 @@ def static_checks(src):
         and 'if (_moveWp) { _moveCommit(e.latlng); return; }' in src and "if (e.key === 'Escape' && _moveWp) { _moveCancel(); return; }" in src and 'body.moving #modeHint{display:none!important}' in src
         and src.count('if (_moveWp) _moveCancel();') >= 3)
     # --- v163: 取り込んだものは対応する種類で（バス停・駅／病院・医院／施設・会社・宿／地名・集落）---
-    chk('静的', '種類にバス停・駅／病院・医院／施設・会社・宿／地名・集落があり（絵つき・テーマ4つ全部に色）、周辺の情報の種類は全部それぞれの種類へ（その他に落とさない）',
+    chk('静的', '種類にバス停・駅／病院・医院／施設・会社・宿／地名・集落があり（絵つき・テーマ4つ全部に色）、まわりの施設の種類は全部それぞれの種類へ（その他に落とさない）',
         all("v:'" + k in src for k in ('bus', 'hospital', 'facility', 'place')) and all(k + ':' in src.split('const TYPE_ICON = {')[1].split('};')[0] for k in ('bus', 'hospital', 'facility', 'place'))
         and "t:'other'}" not in src.split('const NEARBY_KINDS = [')[1].split('];')[0] and "P04:'hospital'" in src and "['bus',     ['駅','バス停','停留所']]" in src
         and all(src.count(k + ":'#") >= 4 for k in ('bus', 'hospital', 'facility', 'place')) and src.index("['hospital',[") < src.index("['shrine',  ["))
@@ -748,7 +748,7 @@ def static_checks(src):
         'function _isNumbered' in src and 'function _numBadge' in src and '歩く順の番号（道順の地点）' in src and 'const list = wps.filter(w => _isNumbered(w));' in src)
     chk('静的', 'スポットの編集：番号のスイッチ（道順に入れる）を上に出す', 'class="m-switch"' in src and src.index('id="mOnRoute"') < src.index('id="mName"'))
     # --- v154: ノッチ／ステータスバーに重ならない（致命的・オーナー指摘）---
-    chk('静的', '地図はノッチの下まで広げ（viewport-fit=cover・透明ステータスバー）、押す部品は全部 --sat で下げる。配布シートは外側タップと Esc で閉じる',
+    chk('静的', '地図はノッチの下まで広げ（viewport-fit=cover・透明ステータスバー）、押す部品は全部 --sat で下げる。印刷用シートは外側タップと Esc で閉じる',
         'viewport-fit=cover' in src and 'content="black-translucent"' in src and ':root{--sat:env(safe-area-inset-top,0px);--sab:env(safe-area-inset-bottom,0px)}' in src
         and all(re.search(r'#' + i + r'\{[^}]*var\(--sat\)', src) for i in ('modeHint', 'offlineBadge', 'crFinishBar', 'helpModal', 'sheetOver', 'nextBar', 'updBar'))
         and re.search(r'#mobileTopBar\{[^}]*var\(--sat\)', src) and 'padding:var(--sat) 0 var(--sab)' in src
@@ -769,25 +769,25 @@ def static_checks(src):
     _mo = src[src.index('<div id="mOver" class="m-over">'):src.index('<!-- Via point context menu (singleton) -->')]
     chk('静的', 'スポットの編集画面（#mOver）の div の開きと閉じが釣り合っている（後ろの要素を巻き込まない）',
         len(re.findall(r'<div\b', _mo)) == _mo.count('</div>'), f"{len(re.findall(r'<div\\b', _mo))} vs {_mo.count('</div>')}")
-    # --- v150: 手数を減らす③（配布用リンクの画面を3手順に・置き場所へ1回で・操作ガイドを今の画面に）---
-    chk('静的', '配布用リンクの画面は 書き出す→置く→配る の3手順。埋め込みは畳む。GitHub Pages なら置き場所（アップロード画面）を開くボタン',
+    # --- v150: 手数を減らす③（共有リンクの画面を3手順に・保存先へ1回で・操作ガイドを今の画面に）---
+    chk('静的', '共有リンクの画面は 書き出す→置く→配る の3手順。埋め込みは畳む。GitHub Pages なら保存先（アップロード画面）を開くボタン',
         'id="shGh"' in src and 'function _ghUploadUrlFor' in src and "<details class=\"sd-more\">" in src and src.index('class="sd-more"') < src.index('id="shEmbed"'))
     chk('静的', '操作ガイドが今の画面に合っている（線を引っぱる・自動保存・歩く人の画面）',
-        '道順の**変更点（茶色いまるい点）が出て**' in src and '保存は「保存」ボタンで行います（勝手には保存しません）' in src and '<h3>🚶 歩く人の画面でできること（配布リンク）</h3>' in src and '「通り道」を選んで地図をクリック' not in src)
+        '道順の**調整点（茶色いまるい点）が出て**' in src and '保存は「保存」ボタンで行います（勝手には保存しません）' in src and '<h3>🚶 歩く人の画面でできること（共有リンク）</h3>' in src and '「通り道」を選んで地図をクリック' not in src)
     # --- v149: 手数を減らす②（新しいコースは名前だけ・道具とカードに文字・案内に線の引っぱり）---
     chk('静的', '新しいコースはコース名だけ必須。エリアが空なら現在地、取れなければ今の地図の場所。スタート・ゴール地点の欄は無い',
         "if (!name) { alert('コース名を入れてください。');" in src and 'function _herePos' in src and 'const c = area ? await geocode(area) : await _herePos();' in src
         and 'id="s1Start"' not in src and 'id="s1Goal"' not in src)
     chk('静的', 'スマホの下の道具と一覧のカードのボタンに文字が付いている（アイコンだけにしない）',
         src.count('class="mob-mode-l"') == 4 and src.count('class="cc-act-l"') == 4 and 'ファイルから読み込む（コース・GPX・発見）' in src)
-    chk('静的', '最初の案内に「赤い線を引っぱると道順が変わる」がある', '道順を変えたいときは「道を変更」で赤い線を引っぱります。' in src)
+    chk('静的', '最初の案内に「赤い線を引っぱると道順が変わる」がある', '道順を変えたいときは「ルート調整」で赤い線を引っぱります。' in src)
     # --- v148: 手数を減らす（自動保存・道具の整理・スポット編集の畳み込み）---
     chk('静的', '未保存フラグは _markDirty() だけが立て、勝手には保存しない（v170：自動保存なし・直接 _dirty = true は無い）',
         src.count('_dirty = true') == 1 and "function _markDirty(){ _dirty = true; _setSaveState('dirty'); }" in src and 'AUTOSAVE_MS' not in src and 'function scheduleAutoSave' not in src and "saveCourse({quiet:true})" in src)
     chk('静的', '保存ボタンは状態表示（保存済み／保存中…／保存できず）。一覧に戻るときは必ず確認（v170）',
         "st === 'saved' ? '保存済み' : st === 'saving' ? '保存中…'" in src and '_askSaveBack();                               // v170' in src and '.hbtn-save.is-saved{' in src
         and 'id="sbSave"' in src and 'id="sbNoSave"' in src and 'id="sbCancel"' in src)
-    chk('静的', 'スマホの下の道具は スポット・なぞる・道を変更・道を描く の4つ（文字つき・この順・v169）。詳細に重複させない（v154・オーナー指摘）',
+    chk('静的', 'スマホの下の道具は スポット・なぞる・ルート調整・道を描く の4つ（文字つき・この順・v169）。詳細に重複させない（v154・オーナー指摘）',
         src.index('id="mobileWpBtn"') < src.index('id="mobileDrawBtn"') < src.index('id="mobileViaBtn"') < src.index('id="mobileCustomBtn"') and src.count('class="mob-mode ') == 4 and src.count('class="mob-mode-l"') == 4 and 'id="mobileViaBtn" class="mob-mode tap" onclick="setMode(\'via\')"' in src
         and 'id="mobileCustomBtn" class="mob-mode tap" onclick="toggleCustomMode()"' in src and src.count('id="mobileViaBtn"') == 1)
     chk('静的', 'スポットの編集は 種別→名前→写真→説明 の順で、2行目・電話・滞在・道順・名札の位置は「くわしい設定」に畳む',
@@ -808,8 +808,8 @@ def static_checks(src):
         and "applyTheme(courseInfo.theme, {quiet:true});" in src and 'if (_themeSolid() || _routeSolidAtZoom()) return null;' in src and '* _themeK()' in src)
     chk('静的', '凡例の線も同じ色。標準に戻すと WT_BASE の色へ。入口は PC・スマホの「地図の見せ方」（編集のときだけ）',
         "stroke=\"' + LINE_STYLE.color + '\"" in src and 'const WT_BASE = {};' in src and 'id="btnTheme"' in src and 'onclick="closeMobileMenu();openThemeSheet()" data-edit="1"' in src)
-    # --- v144: 周辺の情報を取り込む（OSM・Wikipedia。Google は使わない）---
-    chk('静的', '周辺の情報は OpenStreetMap（Overpass 2系統・名前のあるもの全部）と国土数値情報と Wikipedia から。Google の情報は使わない',
+    # --- v144: まわりの施設を探す（OSM・Wikipedia。Google は使わない）---
+    chk('静的', 'まわりの施設は OpenStreetMap（Overpass 2系統・名前のあるもの全部）と国土数値情報と Wikipedia から。Google の情報は使わない',
         "NEARBY_OVERPASS   = ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter']" in src and "NEARBY_WIKI       = 'https://ja.wikipedia.org/w/api.php'" in src
         and 'maps.googleapis.com' not in src and 'places.googleapis.com' not in src
         and 'nwr["name"]["highway"!~"."]' in src and 'function _nbFetchKsj' in src and "KSJ_INDEX = 'data/ksj/index.json'" in src and 'function _nbFetchNominatim' in src and 'id="nbKw"' in src
@@ -839,32 +839,32 @@ def static_checks(src):
         'stickers: courseInfo.stickers ? true : undefined' in src and 'stickers: data.stickers === true' in src and 'id="btnStickers"' in src and 'id="mmSwStickers"' in src)
     chk('静的', 'シールの鍵（s:）は片づけで消さない・一覧に写真の枚数', "used.add('s:' + id)" in src and 'class="wp-ph"' in src)
     # --- v141: 分岐・注意の案内（フットパス特化 F4/F11）---
-    chk('静的', '通り道の点に分岐（←↑→）と注意（車・滑る・圏外・獣）の案内を付けられ、保存・スナップショット・写真の同梱に入る',
+    chk('静的', '調整点に分岐（←↑→）と注意（車・滑る・圏外・獣）の案内を付けられ、保存・スナップショット・写真の同梱に入る',
         'const GUIDE_DIRS' in src and 'const GUIDE_CAUTIONS' in src and 'guide:v.guide||undefined' in src and 'guide:v.guide?JSON.parse' in src
         and 'for (const v of vps) if (v.guide) moved += await _stashPhotoArray(v.guide.photos);' in src and '分岐の写真も実体に' in src)
-    chk('静的', '案内の入口は通り道の点のメニュー、閲覧中はメニューを開かず案内を見る',
+    chk('静的', '案内の入口は調整点のメニュー、閲覧中はメニューを開かず案内を見る',
         "openGuideSheet(vpId), cls: 'ctx-guide'" in src and "if (viewMode) { const g = vps.find(v => v.id === vpId); if (g && g.guide) showGuideInfo(vpId); return; }" in src)
     chk('静的', '歩く人の帯は手前120mから知らせ、20m以内で「ここを左」、過ぎたら「この道で合っています」',
         'const GUIDE_AHEAD_M  = 120;' in src and 'const GUIDE_HERE_M   = 20;' in src and "showToast('✓ この道で合っています')" in src and 'function _nextGuideInfo' in src)
-    chk('静的', '配布シートに「分岐・注意の案内（歩く順）」が載り、地図画像にも矢印の印が残る', 'function _sheetGuidesHtml' in src and '<div class="sh-guides">' in src and 'vps.forEach(vp => { if (vp.guide) return;' in src)
+    chk('静的', '印刷用シートに「分岐・注意の案内（歩く順）」が載り、地図画像にも矢印の印が残る', 'function _sheetGuidesHtml' in src and '<div class="sh-guides">' in src and 'vps.forEach(vp => { if (vp.guide) return;' in src)
     # --- v140: スポット削除の元に戻す（B1）・写真の無いスポットへ（B3）・並べ替えの件数（B4）・種別の並び（B7）・通知の集約（C3）---
     chk('静的', 'スポットの削除は確認ダイアログではなく10秒の「元に戻す」', "confirm('このスポットを削除しますか？')" not in src and 'function undoDeleteWp' in src
         and "if (undoStack.length !== u.len)" in src)
     chk('静的', '「配る」の写真つきスポットから、写真の無いスポットへ飛べる', 'function shareInfoPhoto' in src and 'onclick="shareInfoPhoto()"' in src)
-    chk('静的', '並べ替えの件数は「描いた道の点」を数えず、点の行は控えめ', "v('mmReorderN', _stampTargets().length + ' か所');" in src and "' ro-node'" in src)
+    chk('静的', '並べ替えの件数は「手描きの道の点」を数えず、点の行は控えめ', "v('mmReorderN', _stampTargets().length + ' か所');" in src and "' ro-node'" in src)
     chk('静的', '種別チップの畳んだ側はこのコースで使った順', "(used[b] || 0) - (used[a] || 0)" in src)
     chk('静的', '通知は1つの箱に積む（重ならない・3つまで）', "box.id = 'toastBox'" in src and "while (box.children.length > 3)" in src)
     # --- v139: 協会式のコース情報（F2）---
     chk('静的', 'コースの情報の項目は協会式の7つ（アクセス・車・トイレ・休憩・季節・注意・問い合わせ）',
         "const COURSE_INFO_FIELDS = [" in src and all(f"k:'{k}'" in src for k in ('access', 'car', 'toilet', 'rest', 'season', 'notes', 'contact')))
-    chk('静的', 'コースの情報は保存・復元され、配布シート・メニュー・PC・配るに出る',
+    chk('静的', 'コースの情報は保存・復元され、印刷用シート・メニュー・PC・配るに出る',
         "info:    _courseInfoClean()," in src and "info:(data.info && typeof data.info === 'object')" in src and 'function _sheetInfoHtml' in src
         and 'id="infoSheet"' in src and 'id="mmInfo"' in src and 'id="infoBtn"' in src and 'id="ssInfo"' in src)
     chk('静的', '難易度は★3段階（自動＋手直し）', 'function _starText' in src and "_ciPickDiff('auto')" in src)
     # --- v138: ゆっくり基準・区間所要時間（F3）＋帯の仕上げ（A1〜A4）---
-    chk('静的', '歩く速さの既定は3km/h（フットパスマップの実測に合わせた）', 'const WALK_SPEED_DEFAULT = 0;' in src and '3.0 km/h（フットパス・立ち止まる前提）' in src
+    chk('静的', '歩く速さの既定は3km/h（フットパスマップの実測に合わせた）', 'const WALK_SPEED_DEFAULT = 0;' in src and 'ゆっくり 3.0km/h' in src
         and '既定3km/h＝立ち止まる前提' in src)
-    chk('静的', '配布シートに区間の目安（S→①の分数）が載る', 'function _segmentMinutes' in src and '<div class="sh-segs">' in src)
+    chk('静的', '印刷用シートに区間の目安（S→①の分数）が載る', 'function _segmentMinutes' in src and '<div class="sh-segs">' in src)
     chk('静的', '帯は押すとカード・到着・約・aria-live', 'onclick="nextBarTap()"' in src and 'aria-live="polite"' in src and 'function _arrivedSpot' in src
         and "const ARRIVE_M = 25;" in src and "const NEXT_ACC_ABOUT_M = 40;" in src)
     # --- v137: 歩く人の心得（フットパス特化 F1）＋PCの歩く人に「一覧」を出さない（A5）---
@@ -872,17 +872,17 @@ def static_checks(src):
         "const KOKOROE = [" in src and all(w in src for w in ['田畑や私有地には立ち入らない', 'ゴミは必ず持ち帰る', '動植物や農作物を採らない'])
         and all(f"{{h:'{h}'" in src for h in ('配慮する', '守る', '楽しむ')))
     chk('静的', '地域の追記はコースごとに保存・復元される', "kokoroe: courseInfo.kokoroe || ''," in src and "kokoroe:data.kokoroe||''" in src)
-    chk('静的', '心得は配布シート・歩く人の最初の案内・メニュー・PCの帯・配るの「載る情報」に出る',
+    chk('静的', '心得は印刷用シート・歩く人の最初の案内・メニュー・PCの帯・配るの「載る情報」に出る',
         '<div class="sh-kokoroe">' in src and "openKokoroeSheet('view')\">心得を読む</button>" in src and '<span class="mm-map-l">歩く人の心得</span>' in src
         and 'id="btnKokoroe"' in src and 'id="ssKokoroe"' in src)
-    chk('静的', 'PCで配布リンクを開いた人に「一覧」を見せない', 'body.viewonly .hbtn-back{display:none!important}' in src)
+    chk('静的', 'PCで共有リンクを開いた人に「一覧」を見せない', 'body.viewonly .hbtn-back{display:none!important}' in src)
     # --- v136: 見直しで見つけた3件（通知の折り返し／削除タイマー／圏外の縮尺10）---
     chk('静的', '通知は折り返す（375px幅で両側にはみ出していた）', 'white-space:normal;text-align:center' in src and '#toastBox .toast{' in src)
     chk('静的', '削除の「元に戻す」は前のトーストのタイマーを止めてから出す', "if (old) { clearTimeout(old._timer); old.remove(); }" in src
         and "if (t) { clearTimeout(t._timer); t.remove(); }" in src)
     chk('静的', '圏外の自動保存は縮尺10でも保存する', "z >= 10 && !urls.length; z--" in src)
-    # --- v135: 圏外でも配布リンクが開く（ロードマップ 段階2-3）---
-    chk('静的', '配布リンクを開くと、道順が落ち着いてから地図を自動で持ち歩く',
+    # --- v135: 圏外でも共有リンクが開く（ロードマップ 段階2-3）---
+    chk('静的', '共有リンクを開くと、道順が落ち着いてから地図を自動で持ち歩く',
         'function _autoOfflineForLink' in src and "setTimeout(() => _autoOfflineForLink(v.file), OFFLINE_AUTO_DELAY_MS)" in src and "offAuto:     'fp_offauto'" in src)
     chk('静的', 'モバイル回線・節約モード・埋め込みでは見送り、Wi-Fi なら上限1,200枚',
         "if (nc && (nc.saveData || nc.type === 'cellular')) return 0;" in src and 'const OFFLINE_AUTO_WIFI_TILES = 1200;' in src
@@ -912,27 +912,27 @@ def static_checks(src):
         i = src.index(a); j = src.index(b, i); return src[i:j]
     _pc  = _region('<div id="hdr">', '<div id="mapWrap">') + _region('<div id="tbar">', '<!-- モバイル: 地図上フロートUI -->')
     _mob = _region('<div id="mobileTopBar">', '<!-- コースの説明（スマホ用） -->') + _region('<div id="mobileMenuSheet">', 'id="reorderSheet"' if 'id="reorderSheet"' in src[src.index('<div id="mobileMenuSheet">'):] else '</body>')
-    _feats = {"なぞり描き": "setMode('draw')", "自分で描いた道": 'toggleCustomMode()', "現在地": 'gotoCurrentLocation()', "並べ替え画面": 'openReorderSheet()',
-              "自分で描いた道を使う": 'toggleCustomFeature()', "描いた道に吸い付く": 'toggleCustomSnap()', "道に沿わせる": 'toggleManualMode()',
+    _feats = {"なぞり描き": "setMode('draw')", "手描きの道": 'toggleCustomMode()', "現在地": 'gotoCurrentLocation()', "並べ替え画面": 'openReorderSheet()',
+              "手描きの道を使う": 'toggleCustomFeature()', "手描きの道に合わせる": 'toggleCustomSnap()', "道なりに引く": 'toggleManualMode()',
               "地名とスポット": 'toggleMapLabels()', "文字の大きさ": 'setLabelSize(', "印の大きさ": 'setWpSize(',
-              "道順を直す": 'openFixRouteSheet()', "背景地図": "setBaseMap(", "閲覧モード": 'toggleViewMode()', "配る": 'openShareSheet()', "保存": 'saveCourse()', "取消": 'undoLast()',
-              "やり直し": 'redoAction()', "すべて消去": 'clearAll()', "操作ガイド": 'openHelp()', "JSONで保存": 'exportCourse()', "座標": 'exportRouteCoords()',
+              "ルートを引き直す": 'openFixRouteSheet()', "背景地図": "setBaseMap(", "閲覧モード": 'toggleViewMode()', "配る": 'openShareSheet()', "保存": 'saveCourse()', "取り消し": 'undoLast()',
+              "やり直し": 'redoAction()', "すべて削除": 'clearAll()', "操作ガイド": 'openHelp()', "JSONで保存": 'exportCourse()', "座標": 'exportRouteCoords()',
               "文字なし保存": 'saveMapNoText()'}
     _missing = [f"{k}(PC)" for k, v in _feats.items() if v not in _pc] + [f"{k}(スマホ)" for k, v in _feats.items() if v not in _mob]
-    chk('静的', '機種だけで使えない機能が0（地図を持ち歩く・現在地追従はスマホ専用でよい）', not _missing, str(_missing)[:200])
+    chk('静的', '機種だけで使えない機能が0（圏外用に保存・現在地追従はスマホ専用でよい）', not _missing, str(_missing)[:200])
     chk('静的', 'PCの左の道具に「なぞる」「道を描く」、下に「現在地」、左の欄に「並べ替え」がある',
         'id="btnDraw" onclick="setMode(\'draw\')"' in src and 'id="btnCustom" onclick="toggleCustomMode()"' in src
         and 'id="btnGps" onclick="gotoCurrentLocation()"' in src and 'class="wp-ro-btn drag-hint" onclick="openReorderSheet()"' in src)
     chk('静的', '高低差の詳細は最初の1回で開く（実際の表示で判定）', "var isOpen = getComputedStyle(panel).display !== 'none';" in src)
     # --- v130: 言葉の言い換え（ロードマップ 段階1-5）と、コース削除の「元に戻す」---
-    _old_words = ['aria-label="調整点"', 'aria-label="WP"', 'aria-label="なぞり"', 'aria-label="細道 作成・編集"', "'スナップ ON'", '👁 閲覧モード',
-                  'ウェイポイント編集', '手動モード ON', '経路調整点', 'なぞり点（調整点）', '細道機能', 'このウェイポイントを削除', '細い道 作成・編集']
+    _old_words = ['aria-label="調整点"', 'aria-label="WP"', 'aria-label="なぞり"', 'aria-label="手描きの道 作成・編集"', "'スナップ ON'", '👁 閲覧モード',
+                  'ウェイポイント編集', '手動モード ON', '経路調整点', 'なぞり点（調整点）', '手描きの道機能', 'このウェイポイントを削除', '細い道 作成・編集']
     _left = [w for w in _old_words if w in src]
-    chk('静的', '画面に出る旧語（調整点・細道・なぞり・手動・スナップ・閲覧モード・ウェイポイント）が残っていない', not _left, str(_left)[:160])
-    chk('静的', '新しい語が入っている（道を変更・自分で描いた道・指でなぞって描く・道に沿わせる・描いた道に吸い付く・スポット）',
-        all(w in src for w in ['aria-label="道を変更"', 'aria-label="指でなぞって描く"', 'aria-label="自分で描いた道"', '<span class="mm-tog-l">道に沿わせる</span>',
-                               '<span class="mm-tog-l">描いた道に吸い付く</span>', '<span>スポットの編集</span>', "l:'描いた道の点'"]))
-    chk('静的', '操作ガイドが今の画面の語で書かれている', '<h3>📍 スポットを置く・直す</h3>' in src and '<h3>↔ 道を変更（線を引っぱる）</h3>' in src
+    chk('静的', '画面に出る旧語（調整点・手描きの道・なぞり・手動・スナップ・閲覧モード・ウェイポイント）が残っていない', not _left, str(_left)[:160])
+    chk('静的', '新しい語が入っている（ルート調整・手描きの道・指でなぞって描く・道なりに引く・手描きの道に合わせる・スポット）',
+        all(w in src for w in ['aria-label="ルート調整"', 'aria-label="指でなぞって描く"', 'aria-label="手描きの道"', '<span class="mm-tog-l">道なりに引く</span>',
+                               '<span class="mm-tog-l">手描きの道に合わせる</span>', '<span>スポットの編集</span>', "l:'手描きの道の点'"]))
+    chk('静的', '操作ガイドが今の画面の語で書かれている', '<h3>📍 スポットを置く・直す</h3>' in src and '<h3>↔ ルート調整（線を引っぱる）</h3>' in src
         and '<h3>💾 保存・配る</h3>' in src and 'ウェイポイントの追加・編集' not in src)
     chk('静的', 'コースの削除は「確認してから」＋そのあと10秒の「元に戻す」（v183・二重の網）',
         'function askDeleteCourse' in src and "askDeleteCourse(c.id);" in src and "ov.id = 'delCourseDlg'" in src and '#delCourseDlg .dc-yes{' in src
@@ -965,18 +965,18 @@ def static_checks(src):
     chk('静的', '上バー＝一覧・コース名・閲覧モード・その他・保存・配る（文字つき）',
         'class="hbtn hbtn-back" onclick="backToS1()"' in src and 'id="btnView"' in src and '<span id="btnViewTxt">閲覧モード</span>' in src
         and 'id="btnMore"' in src and '<span>保存</span></button>' in src and 'class="hbtn" onclick="exportGpx()"' not in src)
-    chk('静的', '地図の左＝置く・通り道・取消（#tbar を地図の上に、id は据え置き）',
+    chk('静的', '地図の左＝置く・通り道・取り消し（#tbar を地図の上に、id は据え置き）',
         src.index('<div id="map"></div>') < src.index('<div id="tbar">') and all(f'id="{i}"' in src for i in ('btnWp','btnVia','btnUndo','btnRedo'))
         and 'class="rl-btn ed on" id="btnWp"' in src)
     chk('静的', '右上＝背景地図（5種＋地図の見せ方）と凡例、下＝高低差',
         'id="btnBaseMap"' in src and 'id="btnLegend"' in src and 'id="pcLegendBody"' in src and src.count('#popMap [data-bm]') >= 1
         and '<div id="pcBl"><button class="pc-pill" id="btnGps"' in src and 'id="btnElev" onclick="toggleElevPanel()"' in src)
-    chk('静的', 'その他＝JSON・座標・文字なし・操作ガイド・詳細（道に沿わせる）・すべて消去。通り道の点を表示は無い（v169）',
+    chk('静的', 'その他＝JSON・座標・文字なし・操作ガイド・詳細（道なりに引く）・すべて削除。調整点を表示は無い（v169）',
         all(x in src for x in ['closePcPops();exportCourse()', 'closePcPops();exportRouteCoords()', 'closePcPops();saveMapNoText()',
                                 'closePcPops();openHelp()', 'closePcPops();clearAll()', 'id="btnManual"']) and 'id="btnToggleVia"' not in src)
     chk('静的', '16個一列のツールバーは無い（cycleBaseMap／cycleLabelSize のボタンが無い）',
         'onclick="cycleBaseMap()"' not in src and 'onclick="cycleLabelSize()"' not in src and 'class="btn ed' not in src)
-    chk('静的', '閲覧中・配布リンク・埋め込み・スマホでPCの道具を隠す',
+    chk('静的', '閲覧中・共有リンク・埋め込み・スマホでPCの道具を隠す',
         'body.viewing #tbar, body.viewing #pcHint' in src and 'body.viewonly #tbar, body.viewonly #pcHint, body.viewonly #btnView' in src
         and 'body.embed #tbar, body.embed #pcHint, body.embed #pcTr, body.embed #pcBl' in src
         and src.count('#tbar,#pcHint,#pcTr,#pcBl{display:none!important}') == 2
@@ -1000,8 +1000,8 @@ def static_checks(src):
         "(w.labelDir && w.labelDir !== 'top') ? w.labelDir : 'auto'" in src)
     # --- v105: ツールバーの分かりにくさ（UI点検 01・14の一部）---
     rail_labels = re.findall(r'class="rl-btn[^"]*" id="btn(?:Wp|Via)"[^>]*>[\s\S]*?<span>([^<]*)</span>', src)
-    chk('静的', 'PC の左の道具は「スポット」「道を変更」。「通り道の点を表示」は無い（v169）',
-        rail_labels == ['スポット', '道を変更'] and 'toggleViaVisibility' not in src and '>道に沿わせる<span class="pp-sw">' in src, str(rail_labels))
+    chk('静的', 'PC の左の道具は「スポット」「ルート調整」。「調整点を表示」は無い（v169）',
+        rail_labels == ['スポット', 'ルート調整'] and 'toggleViaVisibility' not in src and '>道なりに引く<span class="pp-sw">' in src, str(rail_labels))
     chk('静的', '案内文にマウスを乗せると全文が出る', "el.title = long[m] || ''" in src)
     chk('静的', '画面を開いた直後の案内も短い文にそろえている',
         '<span id="tbar-st" title=' in src and 'クリックでウェイポイント追加' not in src)
@@ -1013,7 +1013,7 @@ def static_checks(src):
     chk('静的', '案内は保存画像に写らない場所に置いている',
         src.index('id="firstTip"') > src.index('<!-- モバイル: 高低差バンド')
         or 'id="firstTip"' in src.split('<div id="mapWrap">')[0] or True)
-    chk('静的', '配布リンクでは案内を出さない', 'body.viewonly #firstTip' in src)
+    chk('静的', '共有リンクでは案内を出さない', 'body.viewonly #firstTip' in src)
     chk('静的', '最初の1つを置いたら案内を消す', 'dismissFirstTip();                      // 最初の1つ' in src)
     chk('静的', '自動の向きは保存データに入れない（_autoDir）',
         '_autoDir' in src and 'labelDir:w.labelDir' in src.replace(' ', ''))
@@ -1272,7 +1272,7 @@ def functional_checks(index_path):
             isinstance(eb, dict) and eb.get('peak') <= eb.get('batch', 0) and eb.get('calls') == 25
             and eb.get('n') == 25, str(eb))
 
-        # INV-P: 配布リンクは「同じ場所の.json」だけ受け付ける（外部URLや上位フォルダを弾く）
+        # INV-P: 共有リンクは「同じ場所の.json」だけ受け付ける（外部URLや上位フォルダを弾く）
         sf = page.evaluate("""()=>{ try{
             const ok  = ['course-1.json','a_b-c.json','x.JSON','library/a-1.json','footpath_波賀町の町並み.json'].map(v=>_safeCourseFile(v));
             const bad = ['../secret.json','https://evil.example/x.json','/etc/passwd.json','sub/dir.json',
@@ -1287,7 +1287,7 @@ def functional_checks(index_path):
                  and all(v is None for v in sf['bad'])
                  and sf['name1'] == 'Course-01.json' and sf['name2'] == 'a.json' and sf['name3'] == 'course.json'
                  and sf['base'] is True)
-        chk('機能', '配布リンクは同じ場所の.jsonだけ受け付ける', ok_sf, str(sf)[:190])
+        chk('機能', '共有リンクは同じ場所の.jsonだけ受け付ける', ok_sf, str(sf)[:190])
 
         # v201: いま開いている場所と配り先が同じなら、# を足すだけでは読み込み直されない → 読み込み直す道を選ぶ
         gp = page.evaluate("""()=>{ try{
@@ -1388,7 +1388,7 @@ def functional_checks(index_path):
                  and rs.get('tips', 0) >= 1 and rs.get('left') == 0)
         chk('機能', '画像保存の後片付けが実行される（撮影用の見た目が残らない）', ok_rs, str(rs)[:170])
 
-        # INV-U: 配布シートが作られ、凡例・縮尺・方位が入る
+        # INV-U: 印刷用シートが作られ、凡例・縮尺・方位が入る
         sh = page.evaluate("""()=>{ return (async()=>{ try{
             const orig = window.html2canvas;
             window.html2canvas = () => Promise.resolve({ toDataURL: () => 'data:image/png;base64,AA' });
@@ -1406,15 +1406,15 @@ def functional_checks(index_path):
         ok_sh = (isinstance(sh, dict) and sh.get('shown') == 'block' and sh.get('img') and sh.get('north')
                  and sh.get('legend') == sh.get('used', 0) + 1          # 種別ぶん＋「歩くコース（三角の向きに歩く）」
                  and sh.get('meters', 0) > 0 and 0 < sh.get('ratio', 0) <= 0.6)
-        chk('機能', '配布シートに凡例・縮尺・方位が入る', ok_sh, str(sh)[:180])
+        chk('機能', '印刷用シートに凡例・縮尺・方位が入る', ok_sh, str(sh)[:180])
 
-        # INV-V: 印刷では配布シートだけが出る（操作ボタン・アプリ画面は出ない）
+        # INV-V: 印刷では印刷用シートだけが出る（操作ボタン・アプリ画面は出ない）
         page.emulate_media(media='print')
         pr = page.evaluate("""()=>{ const g=id=>{const e=document.getElementById(id); return e?getComputedStyle(e).display:'なし';};
             return { sheet:g('sheetOver'), hdr:g('hdr'), s1:g('s1'),
                      actions:getComputedStyle(document.querySelector('#sheetOver .sheet-actions')).display }; }""")
         page.emulate_media(media='screen')
-        chk('機能', '印刷時は配布シートだけが出る',
+        chk('機能', '印刷時は印刷用シートだけが出る',
             isinstance(pr, dict) and pr.get('sheet') == 'block' and pr.get('hdr') == 'none'
             and pr.get('s1') == 'none' and pr.get('actions') == 'none', str(pr))
 
@@ -1450,7 +1450,7 @@ def functional_checks(index_path):
                  and '4km/h' in wk.get('n4', '') and '登り込み' in wk.get('nUp', ''))
         chk('機能', '歩く速さと登りが所要時間に反映される', ok_wk, str(wk)[:190])
 
-        # INV-Y: 配布リンクを作るとシートにQRが載り、リンクが無ければ出ない
+        # INV-Y: 共有リンクを作るとシートにQRが載り、リンクが無ければ出ない
         qr = page.evaluate("""()=>{ return (async()=>{ try{
             const orig = window.html2canvas;
             window.html2canvas = () => Promise.resolve({ toDataURL: () => 'data:image/png;base64,AA' });
@@ -1465,7 +1465,7 @@ def functional_checks(index_path):
             window.html2canvas = orig;
             return {withLink:withLink, noLink:noLink, stored:stored};
           }catch(e){ return 'ERR:'+e.message; } })(); }""")
-        chk('機能', '配布リンクがあるときだけシートにQR欄が出る',
+        chk('機能', '共有リンクがあるときだけシートにQR欄が出る',
             isinstance(qr, dict) and qr.get('withLink') is True and qr.get('noLink') is False
             and 'abc.json' in str(qr.get('stored')), str(qr)[:170])
 
@@ -1720,7 +1720,7 @@ def functional_checks(index_path):
               });
             return out; }""")
 
-        # v165: はじめかた（v107 の使い方案内を置き換え）：スポットが無いと3つの入口。周辺の情報は地図の真ん中から。1つ置くと消える
+        # v165: はじめかた（v107 の使い方案内を置き換え）：スポットが無いと3つの入口。まわりの施設は地図の真ん中から。1つ置くと消える
         tip = page.evaluate("""()=>{ try{
             const keepW = wps.slice(); wps.length = 0; _scDismissed = false;
             const el = document.getElementById('firstTip');
@@ -1742,7 +1742,7 @@ def functional_checks(index_path):
             document.querySelectorAll('#toastBox .toast').forEach(e => e.remove());
             return {shownEmpty, nearby, noSpot, fromCenter, shownAgain, draw, hidAfterAdd, hiddenNow: getComputedStyle(el).display === 'none'};
           }catch(e){ return 'ERR:'+e.message; } }""")
-        chk('機能', 'はじめかた：スポットが無いと3つの入口が出る → 周辺の情報（スポットが無ければ地図の真ん中から）／指でなぞる／1つ置くと消える',
+        chk('機能', 'はじめかた：スポットが無いと3つの入口が出る → まわりの施設（スポットが無ければ地図の真ん中から）／指でなぞる／1つ置くと消える',
             isinstance(tip, dict) and all(tip.get(k) for k in ('shownEmpty', 'nearby', 'noSpot', 'fromCenter', 'shownAgain', 'draw', 'hidAfterAdd', 'hiddenNow')), str(tip)[:220])
 
         bad_tap = [t for t in taps if not t['ok']]
@@ -1892,7 +1892,7 @@ def functional_checks(index_path):
             return r;
           }catch(e){ return 'ERR:'+e.message; } })(); }""")
         _shOk = (isinstance(sh, dict) and sh.get('entryVisible') and sh.get('opens') and sh.get('box', {}).get('inside')
-                 and sh.get('cards') == 5 and sh.get('cardTap')   # v192：みんなのコースに出す を足した and 'km' in sh.get('name', '')
+                 and sh.get('cards') == 5 and sh.get('cardTap')   # v192：みんなのマップに出す を足した and 'km' in sh.get('name', '')
                  and sh.get('warnEmpty') and sh.get('okWritten')
                  and sh.get('photo', {}).get('text0') == sh.get('photo', {}).get('expect0')
                  and (not sh.get('photo', {}).get('hasTarget') or sh['photo'].get('text1') == sh['photo'].get('expect1'))
@@ -2036,7 +2036,7 @@ def functional_checks(index_path):
             and pc3.get('hdrH', 99) <= 60 and pc3.get('railIn') and pc3.get('hint') == 'クリックでスポットを追加（スマホは長押し）'
             and pc3.get('popMapOpen') and pc3.get('bm') == 'gsi_photo' and pc3.get('pill') == '航空写真'
             and pc3.get('legendOpen') and pc3.get('legendRows', 0) >= 2 and pc3.get('moreOpen') and pc3.get('moreRows') == 13
-            and pc3.get('manualFlip') and pc3.get('hintVia') == '道を変更：茶色い点を動かす／赤い線をクリックで点を足す（地図は固定）'
+            and pc3.get('manualFlip') and pc3.get('hintVia') == 'ルート調整：茶色い点を動かす／赤い線をクリックで点を足す（地図は固定）'
             and pc3.get('viewHidden') and pc3.get('viewBack') and pc3.get('closedAll'), str(pc3)[:300])
 
         # v127: 標高は同じ点を二度取りに行かない。elevs を読み込むと0回。静かな書き足しは routes/elevs だけ・未保存中は書かない
@@ -2137,9 +2137,9 @@ def functional_checks(index_path):
             await new Promise(r => setTimeout(r, 500)); _pubGo(true); await new Promise(r => setTimeout(r, 150)); const j2 = JSON.parse(copied);
             const back2 = await _courseFromHash('#d=' + j2.d);
             out.free = j2.allowEdit === true && !!back2 && !back2.noEdit && _isLockedShare(back2) === false;
-            // ③ 置き場所の画面の URL（GitHub Pages のときだけ）
+            // ③ 保存先の画面の URL（GitHub Pages のときだけ）
             out.picker = !!document.getElementById('pubSwitch') && !!document.getElementById('pubPick');
-            // 合言葉を登録して「出す」→ 置き場所へ PUT される（通信は差し替えて確かめる）
+            // 合言葉を登録して「出す」→ 保存先へ PUT される（通信は差し替えて確かめる）
             const keepTok = _ghToken(); _ghSetToken('test-token');
             const keepRepo2 = window._ghRepo; window._ghRepo = () => ({user:'editroom1980', repo:'footpath-map'});
             let put = null;
@@ -2177,7 +2177,7 @@ def functional_checks(index_path):
             document.querySelectorAll('#toastBox .toast').forEach(e => e.remove());
             return out;
           }catch(e){ return 'ERR:'+e.message; } }""")
-        chk('機能', 'みんなのコースに出す：名前と「見た人にできること」を選んで1回で出せる。見るだけ＝取り込みを断る印が入る。一覧は library フォルダと一番上の両方を読む',
+        chk('機能', 'みんなのマップに出す：名前と「見た人にできること」を選んで1回で出せる。見るだけ＝取り込みを断る印が入る。一覧は library フォルダと一番上の両方を読む',
             isinstance(pb, dict) and all(pb.get(k) for k in ('shown', 'name', 'opts', 'picked', 'body', 'locked', 'free', 'picker', 'goShown', 'put', 'setup', 'folder', 'top')), str(pb)[:300])
 
         # v199: みんなの箱＝合言葉なしで誰でも出せる／出したらすぐ一覧に並ぶ／押すと中身が取り出せる
@@ -2232,8 +2232,8 @@ def functional_checks(index_path):
             out.deleted = delOk && (idxAfter.courses || []).length === 0 && (idxAfter.del || [])[0] === id
                           && (await _boxList()).length === 0 && !_boxIsMine({id: id});
             out.delMark = (await _boxDelSet())[id] === 1;
-            // 消したあとも置き場所にファイルが残っていたら、一覧には出さない
-            // v200: 置き場所へ写し終わったら、箱のぶんは出さず置き場所のぶんだけを出す（端末の控えも外れる）
+            // 消したあとも保存先にファイルが残っていたら、一覧には出さない
+            // v200: 保存先へ写し終わったら、箱のぶんは出さず保存先のぶんだけを出す（端末の控えも外れる）
             const keepRepo3 = window._ghRepo; window._ghRepo = () => ({user:'u', repo:'r'});
             window.fetch = async (u, o) => { const s = String(u).split('?')[0];
               if (s.indexOf('api.github.com') >= 0)
@@ -2269,7 +2269,7 @@ def functional_checks(index_path):
             document.querySelectorAll('#toastBox .toast').forEach(e => e.remove());
             return out;
           }catch(e){ return 'ERR:'+e.message; } }""")
-        chk('機能', 'みんなの箱：合言葉なしで「出す」1つ。中身と一覧の両方を書き、すぐ並び、押すと中身が取れる。一覧が消えても自分のぶんは戻る。写し終わったら置き場所のぶんだけ出す',
+        chk('機能', 'みんなの箱：合言葉なしで「出す」1つ。中身と一覧の両方を書き、すぐ並び、押すと中身が取れる。一覧が消えても自分のぶんは戻る。写し終わったら保存先のぶんだけ出す',
             isinstance(bx, dict) and all(bx.get(k) for k in ('oneBtn', 'idx', 'body', 'list', 'open', 'mine', 'heal', 'big', 'moved',
                                                             'phPut', 'phFlag', 'phGot', 'phSticker', 'dup', 'dup2', 'dup3',
                                                             'mineFlag', 'deleted', 'delMark', 'moved2')), str(bx)[:420])
@@ -2304,7 +2304,7 @@ def functional_checks(index_path):
         chk('機能', '片手の拡大縮小：1回タップでは変わらず、ダブルタップして押したまま下で拡大・上で縮小、離すと止まる',
             isinstance(oz, dict) and all(oz.get(k) for k in ('single', 'zoomIn', 'zoomOut', 'ended', 'after', 'surface')), str(oz)[:200])
 
-        # v203: 作者の端末なら、アプリを開いたときに箱→置き場所へ写す（GitHub の定期実行が遅れても届く）
+        # v203: 作者の端末なら、アプリを開いたときに箱→保存先へ写す（GitHub の定期実行が遅れても届く）
         mr = page.evaluate("""async ()=>{ try{
             const keepFetch = window.fetch, keepCfg = _boxCfgCache, keepRepo = window._ghRepo, keepTok = _ghToken();
             const keepMine = localStorage.getItem(LS.boxMine); localStorage.removeItem(LS.boxMine);
@@ -2336,7 +2336,7 @@ def functional_checks(index_path):
             document.querySelectorAll('#toastBox .toast').forEach(e => e.remove());
             return out;
           }catch(e){ return 'ERR:'+e.message; } }""")
-        chk('機能', '作者の端末では、箱のコースを置き場所（library/box-<ID>.json）へ写真ごと写し、写したぶんを箱から外す',
+        chk('機能', '作者の端末では、箱のコースを保存先（library/box-<ID>.json）へ写真ごと写し、写したぶんを箱から外す',
             isinstance(mr, dict) and all(mr.get(k) for k in ('n', 'course', 'photo', 'gone')), str(mr)[:240])
 
         # v190: 一覧に出す絵：写真から選ぶ→保存される／地図の絵に戻す→消える／一覧のアイコンに出る
@@ -2454,7 +2454,7 @@ def functional_checks(index_path):
         chk('機能', '航空写真＋地図：2枚重なる（重ねるのは OSM）／濃さ3段階が効く／地名を消すと重ねた層だけ外れる／別の地図に変えると外れる',
             isinstance(ov, dict) and all(ov.get(k) for k in ('two', 'url', 'attr', 'alpha', 'thick', 'thin', 'offLabels', 'onLabels', 'gone')), str(ov)[:240])
 
-        # v185: みんなのコース：library.json を読んで並べる／押すと #d= のリンクで開く／空でも壊れない
+        # v185: みんなのマップ：library.json を読んで並べる／押すと #d= のリンクで開く／空でも壊れない
         lb = page.evaluate("""async ()=>{ try{
             const keepFetch = window.fetch, keepHref = location.href;
             const c = buildCurrentSaveData(); const u = await _makeDataLink(c); const d = u.slice(u.indexOf('#') + 3);
@@ -2480,7 +2480,7 @@ def functional_checks(index_path):
             document.querySelectorAll('#toastBox .toast').forEach(e => e.remove());
             return out;
           }catch(e){ return 'ERR:'+e.message; } }""")
-        chk('機能', 'みんなのコース：library.json を読んで並べ、押すと配るリンクで開く。読めないときも案内を出して壊れない',
+        chk('機能', 'みんなのマップ：library.json を読んで並べ、押すと配るリンクで開く。読めないときも案内を出して壊れない',
             isinstance(lb, dict) and all(lb.get(k) for k in ('shown', 'one', 'name', 'sub', 'opens', 'empty')), str(lb)[:240])
 
         # v184: リンクにコースを入れて配る：作る→読み戻す（写真は入らない）／壊れたリンクは断る
@@ -2493,7 +2493,7 @@ def functional_checks(index_path):
                         && (back.wps || []).every(w => !w.photos || w.photos.length === 0)
                         && JSON.stringify(Object.keys(back.routes || {}).sort()) === JSON.stringify(Object.keys(c.routes || {}).sort());
             out.broken = (await _courseFromHash('#d=zzzz')) === null && (await _courseFromHash('#nope')) === null;
-            // 配布リンクとして開いたときの入口（_viewParams）がリンクの中身を見る
+            // 共有リンクとして開いたときの入口（_viewParams）がリンクの中身を見る
             const keepHash = location.hash;
             history.replaceState(null, '', url.slice(url.indexOf('#')));
             const vp = _viewParams(); out.params = vp.on === true && !!vp.data;
@@ -2513,7 +2513,7 @@ def functional_checks(index_path):
             const dlg = document.getElementById('delCourseDlg');
             const out = {asks: !!dlg && dlg.classList.contains('show') && getCourses().length === 1,
                          name: dlg.querySelector('.dc-t').textContent.indexOf('消す検査コース') >= 0,
-                         count: dlg.querySelector('.dc-d').textContent.indexOf('1 か所') >= 0};   // 描いた道の点は数えない
+                         count: dlg.querySelector('.dc-d').textContent.indexOf('1 か所') >= 0};   // 手描きの道の点は数えない
             dlg.querySelector('.dc-no').click();
             out.cancel = !dlg.classList.contains('show') && getCourses().length === 1;
             del.click(); dlg.querySelector('.dc-yes').click();
@@ -2588,7 +2588,7 @@ def functional_checks(index_path):
           }catch(e){ return 'ERR:'+e.message; } }""")
         chk('機能', 'PC：なぞる・道を描く・現在地・並べ替え画面が動き、高低差は1回で開く',
             isinstance(pa, dict) and pa.get('draw') and pa.get('drawOff') and pa.get('custom') and pa.get('customOff') and pa.get('gps')
-            and pa.get('reorder') and pa.get('elevOnce') and '自分で描いた道を使う' in pa.get('moreRows', []) and '描いた道に吸い付く' in pa.get('moreRows', []),
+            and pa.get('reorder') and pa.get('elevOnce') and '手描きの道を使う' in pa.get('moreRows', []) and '手描きの道に合わせる' in pa.get('moreRows', []),
             str(pa)[:260])
         chk('機能', 'スマホ：高低差の帯を開くと詳細（最高・最低・上り・下り）が出る',
             isinstance(pb, dict) and pb.get('n') == 4 and pb.get('ok') and pb.get('svgH', 0) >= 100, str(pb)[:160])
@@ -2719,7 +2719,7 @@ def functional_checks(index_path):
         chk('機能', '長い通知が375px幅に収まり、続けて2回削除しても新しい「元に戻す」が残って戻せる',
             isinstance(rv, dict) and rv.get('toastIn') and rv.get('newToastKept') and rv.get('pendingKept') and rv.get('restored'), str(rv)[:200])
 
-        # v137: 心得：追記が保存データに入り、配布シートに標準＋追記が載り、読む画面と書く画面が動く（読み上げは v205 で廃止）
+        # v137: 心得：追記が保存データに入り、印刷用シートに標準＋追記が載り、読む画面と書く画面が動く（読み上げは v205 で廃止）
         kk = page.evaluate("""()=>{ try{
             const keepK = courseInfo.kokoroe, keepD = _dirty, keepV = viewMode;
             courseInfo.kokoroe = '5月は農道を譲ってください';
@@ -2740,7 +2740,7 @@ def functional_checks(index_path):
             courseInfo.kokoroe = keepK; _dirty = keepD; viewMode = keepV;
             return out;
           }catch(e){ return 'ERR:'+e.message; } }""")
-        chk('機能', '心得：追記が保存され、配布シートに標準＋追記、読む／書く画面が動く（読み上げは無い）',
+        chk('機能', '心得：追記が保存され、印刷用シートに標準＋追記、読む／書く画面が動く（読み上げは無い）',
             isinstance(kk, dict) and all(kk.get(k) for k in ('saved', 'sheet', 'viewShown', 'noSay', 'editShown', 'savedEdit', 'shareRow')), str(kk)[:220])
 
         # v138: 既定の速さ／区間の目安／帯：タップでカード・到着・約
@@ -2765,7 +2765,7 @@ def functional_checks(index_path):
         chk('機能', '既定3km/h・区間の目安・帯のタップでカード・到着・精度が悪いと「約」',
             isinstance(f3, dict) and f3.get('def') == 3 and f3.get('segOk') and f3.get('sheet') and f3.get('about') and f3.get('arrive') and f3.get('card'), str(f3)[:220])
 
-        # v139: コースの情報：書く→保存データ→配布シートと読む画面に出る。難易度の★
+        # v139: コースの情報：書く→保存データ→印刷用シートと読む画面に出る。難易度の★
         ci = page.evaluate("""()=>{ try{
             const keepI = JSON.stringify(courseInfo.info || {}), keepD = _dirty, keepV = viewMode;
             courseInfo.info = {};
@@ -2782,7 +2782,7 @@ def functional_checks(index_path):
             closeInfoSheet(); viewMode = keepV; courseInfo.info = JSON.parse(keepI); _dirty = keepD; renderShareInfo(); _syncMmValues();
             return out;
           }catch(e){ return 'ERR:'+e.message; } }""")
-        chk('機能', 'コースの情報：書く→保存→配布シートと読む画面、難易度の★', isinstance(ci, dict) and all(ci.get(k) for k in ('editShown', 'saved', 'count', 'sheet', 'view')), str(ci)[:220])
+        chk('機能', 'コースの情報：書く→保存→印刷用シートと読む画面、難易度の★', isinstance(ci, dict) and all(ci.get(k) for k in ('editShown', 'saved', 'count', 'sheet', 'view')), str(ci)[:220])
 
         # v140: スポット削除→「元に戻す」で戻る／通知が2つ重ならない／畳んだ種別がこのコースで使った順
         b1 = page.evaluate("""()=>{ try{
@@ -2794,7 +2794,7 @@ def functional_checks(index_path):
             const out = {gone: !wps.some(x => x.id === id), toast: !!t && t.textContent.indexOf('削除検査') >= 0};
             t.querySelector('button').click();
             out.back = wps.some(x => x.id === id) && wps.length === n0;
-            // 別の操作をした後は戻せない案内（取消で戻せる）
+            // 別の操作をした後は戻せない案内（取り消しで戻せる）
             openModal(id); deleteEditing(); addWp(35.1526, 134.4456, 'course'); const before = wps.length;
             document.getElementById('undoToast').querySelector('button').click();
             out.guarded = wps.length === before && !wps.some(x => x.id === id);
@@ -2817,7 +2817,7 @@ def functional_checks(index_path):
         chk('機能', 'スポット削除の「元に戻す」が戻し、別の操作の後は案内し、通知は重ならず、種別はこのコースで使った順',
             isinstance(b1, dict) and all(b1.get(k) for k in ('gone', 'toast', 'back', 'guarded', 'stacked', 'order')), str(b1)[:220])
 
-        # v160: 名前→種類の判定／逆回りでスポットの順と S・G が入れ替わり取消で戻る／周回で出発点にゴールが付く
+        # v160: 名前→種類の判定／逆回りでスポットの順と S・G が入れ替わり取り消しで戻る／周回で出発点にゴールが付く
         fp = page.evaluate("""()=>{ try{
             const out = {guess: _guessType('加茂神明神社') === 'shrine' && _guessType('市立戸原小学校') === 'school' && _guessType('宇原公民館') === 'hall' && _guessType('待避所') === null && _guessType('飯見の棚田') === 'park' && _guessType('縁側カフェ') === 'shop' && _guessType('宇原城跡') === 'history' && _guessType('公衆トイレ') === 'toilet' && _guessType('') === null};
             const keepU = undoStack.length, keepD = _dirty; const ids0 = wps.map(w => w.id), types0 = wps.map(w => w.type), nv = vps.length;
@@ -2837,9 +2837,9 @@ def functional_checks(index_path):
             undoStack.length = keepU; _dirty = keepD; document.querySelectorAll('#toastBox .toast').forEach(e => e.remove());
             return out;
           }catch(e){ return 'ERR:'+e.message; } }""")
-        chk('機能', '名前から種類／逆回り（順と S・G が入れ替わり取消で戻る）／出発点に戻る周回', isinstance(fp, dict) and all(fp.get(k) for k in ('guess', 'reversed', 'undone', 'looped', 'undone2')), str(fp)[:220])
+        chk('機能', '名前から種類／逆回り（順と S・G が入れ替わり取り消しで戻る）／出発点に戻る周回', isinstance(fp, dict) and all(fp.get(k) for k in ('guess', 'reversed', 'undone', 'looped', 'undone2')), str(fp)[:220])
 
-        # v159: 重なる印は上位に束ねて「+n」、離せば戻る。名札は置き場所が無ければ隠す。広域のルールと印の大きさ
+        # v159: 重なる印は上位に束ねて「+n」、離せば戻る。名札は保存先が無ければ隠す。広域のルールと印の大きさ
         dc = page.evaluate("""async ()=>{ try{
             const keepU = undoStack.length, keepD = _dirty, n0 = wps.length, c = leafMap.getCenter();
             const px = (dx, dy) => leafMap.layerPointToLatLng(leafMap.latLngToLayerPoint(c).add([dx, dy]));
@@ -2870,13 +2870,13 @@ def functional_checks(index_path):
         mh = page.evaluate("""()=>{ try{
             const keepM = mode; const el = document.getElementById('modeHint');
             setMode('wp'); const out = {none: el.hidden === true};
-            setMode('via'); out.via = el.hidden === false && /道を変更/.test(el.textContent);
-            setMode('draw'); out.draw = el.hidden === false && /なぞる/.test(el.textContent);
+            setMode('via'); out.via = el.hidden === false && /ルート調整/.test(el.textContent);
+            setMode('draw'); out.draw = el.hidden === false && /手描き/.test(el.textContent);
             setMode('wp'); out.back = el.hidden === true;
             setMode(keepM === 'draw' || keepM === 'via' ? keepM : 'wp');
             return out;
           }catch(e){ return 'ERR:'+e.message; } }""")
-        chk('機能', '道具の案内：スポットでは無し／道を変更・なぞるで出る／戻すと消える', isinstance(mh, dict) and all(mh.get(k) for k in ('none', 'via', 'draw', 'back')), str(mh)[:160])
+        chk('機能', '道具の案内：スポットでは無し／ルート調整・手描きで出る／戻すと消える', isinstance(mh, dict) and all(mh.get(k) for k in ('none', 'via', 'draw', 'back')), str(mh)[:160])
 
         # v155: 道順に入った神社は番号＋鳥居の小さな絵、外すと鳥居だけ。帯の文字は①。凡例に番号の行と種類の行
         nm = page.evaluate("""()=>{ try{
@@ -2928,9 +2928,9 @@ def functional_checks(index_path):
         chk('機能', '歩く人のカード・操作ガイドなどが編集画面の中に巻き込まれておらず、実際に画面に出る',
             isinstance(dom, dict) and dom.get('inside') == [] and dom.get('cardVisible') and dom.get('helpVisible'), str(dom)[:200])
 
-        # v150: 置き場所の URL は GitHub Pages のときだけ組み立てる
+        # v150: 保存先の URL は GitHub Pages のときだけ組み立てる
         gh = page.evaluate("""()=>[_ghUploadUrlFor('editroom1980.github.io','/footpath-map/index.html'), _ghUploadUrlFor('editroom1980.github.io','/footpath-map/'), _ghUploadUrlFor('user.github.io','/index.html'), _ghUploadUrlFor('example.com','/a/index.html')]""")
-        chk('機能', '置き場所（GitHub のアップロード画面）の URL：<user>.github.io/<repo>/ のときだけ',
+        chk('機能', '保存先（GitHub のアップロード画面）の URL：<user>.github.io/<repo>/ のときだけ',
             gh == ['https://github.com/editroom1980/footpath-map/upload/main', 'https://github.com/editroom1980/footpath-map/upload/main', None, None], str(gh)[:200])
 
         # v170: 勝手に保存しない：変更しても待っても保存されない／「保存」で保存される／一覧に戻るときは確認（保存せずに戻る・キャンセル）／くわしい設定は中身があるときだけ開く
@@ -3013,7 +3013,7 @@ def functional_checks(index_path):
         chk('機能', 'テーマ：印・線・凡例の色、実線・太さ、線の色だけ変える、保存に theme、標準に戻る',
             isinstance(th, dict) and all(th.get(k) for k in ('color', 'solid', 'thick', 'legend', 'icon', 'name', 'custom', 'saved', 'omit', 'back')), str(th)[:240])
 
-        # v144: 周辺の情報：通信は差し替えて、候補→重複除外→選んで追加→1回で取り消し
+        # v144: まわりの施設：通信は差し替えて、候補→重複除外→選んで追加→1回で取り消し
         nb = page.evaluate("""async ()=>{ try{
             const keepFetch = window.fetch, keepV = viewMode, n0 = wps.length, keepU = undoStack.length, keepD = _dirty;
             const c = L.latLngBounds(wps.filter(w => w.type !== 'node').map(w => [w.lat, w.lng])).getCenter(); const w0 = wps.find(w => w.type !== 'node');
@@ -3064,7 +3064,7 @@ def functional_checks(index_path):
             window.fetch = keepFetch; viewMode = keepV; _nb.cands = []; _nb.sel = new Set(); _ksjIndex = null; for (const k in _ksjSets) delete _ksjSets[k]; undoStack.length = keepU; _dirty = keepD; document.querySelectorAll('#toastBox .toast').forEach(e => e.remove());
             return out;
           }catch(e){ return 'ERR:'+e.message; } }""")
-        chk('機能', '周辺の情報：候補（距離・重複を除外）→地図の薄い○→選んで追加（種別・説明・出典）→1回で取り消し',
+        chk('機能', 'まわりの施設：候補（距離・重複を除外）→地図の薄い○→選んで追加（種別・説明・出典）→1回で取り消し',
             isinstance(nb, dict) and all(nb.get(k) for k in ('found', 'v162', 'v163', 'dup', 'layer', 'listed', 'btn', 'added', 'bus', 'closed', 'keyword', 'undone')), str(nb)[:600])
 
         # v166: 高低差グラフのなぞり：距離→標高・勾配・位置、帯をなぞると見出し・地図の印・縦線、離すと消える、勾配の面
@@ -3182,7 +3182,7 @@ def functional_checks(index_path):
         chk('機能', '一覧：1件が小さい（92px以内）／写真のあるコースは左のアイコンが写真／無ければ地図の絵／どこを押しても開く／ボタンでは開かない',
             isinstance(cl, dict) and all(cl.get(k) for k in ('two', 'compact', 'photo', 'noPhoto', 'cover', 'acts', 'sub', 'openByName', 'actNoOpen')), str(cl)[:280])
 
-        # v178: 道を変更：線のタップで点が増える／点をつまんで動かせる／点のタップで設定（消す）／道具を変えると隠れる
+        # v178: ルート調整：線のタップで点が増える／点をつまんで動かせる／点のタップで設定（消す）／道具を変えると隠れる
         ve = page.evaluate("""async ()=>{ try{
             const keepMode = mode, keepU = undoStack.length, keepD = _dirty, keepV = viewMode, keepArr = vps.slice(); viewMode = false;
             setMode('via'); hideCtxMenu();
@@ -3218,10 +3218,10 @@ def functional_checks(index_path):
             clearCache(); redrawStraight(); scheduleRouting(); document.querySelectorAll('#toastBox .toast').forEach(e => e.remove());
             return out;
           }catch(e){ return 'ERR:'+e.message; } }""")
-        chk('機能', '道を変更：変更点が見えてつまめる／線のタップで足す／離れた所では足さない／点のタップで設定→消す／スポットに戻すと隠れる',
+        chk('機能', 'ルート調整：調整点が見えてつまめる／線のタップで足す／離れた所では足さない／点のタップで設定→消す／スポットに戻すと隠れる',
             isinstance(ve, dict) and all(ve.get(k) for k in ('visible', 'draggable', 'added', 'newVisible', 'farNoAdd', 'menu', 'deleted', 'hiddenAfter')), str(ve)[:280])
 
-        # v177: 引っぱったあと：順番はつかんだ場所のまま／つかんだ所の古い手直しは外れる／案内付きは残る／取消で戻る
+        # v177: 引っぱったあと：順番はつかんだ場所のまま／つかんだ所の古い手直しは外れる／案内付きは残る／取り消しで戻る
         sw = page.evaluate("""async ()=>{ try{
             const keepU = undoStack.length, keepD = _dirty, keepV = viewMode, keepArr = vps.slice(); viewMode = false;
             const rw = routeWps(); if (rw.length < 2) return 'few';
@@ -3246,7 +3246,7 @@ def functional_checks(index_path):
             const out = {order: nv.order === ord0,                                   // 順番は決め直されない
                          swept: left.length === 1 && !!left[0].guide,                 // 案内なしの2つが外れ、案内つきは残る
                          kept: vps.indexOf(nv) >= 0};
-            // 後片付け：検査で足した点を消し、元の通り道の点に戻す
+            // 後片付け：検査で足した点を消し、元の調整点に戻す
             vps.filter(v => keepArr.indexOf(v) < 0).forEach(v => { if (v.marker) { try { leafMap.removeLayer(v.marker); } catch(_) {} } });
             vps.length = 0; keepArr.forEach(v => vps.push(v));
             undoStack.length = keepU; _dirty = keepD; viewMode = keepV; clearCache(); redrawStraight(); scheduleRouting();
@@ -3273,7 +3273,7 @@ def functional_checks(index_path):
         chk('機能', '歩く人のカード：写真は1枚ずつ白い枠に入り、少し傾いて貼ってあるように出る',
             isinstance(vp6, dict) and all(vp6.get(k) for k in ('shown', 'frames', 'tilted', 'white', 'img')), str(vp6)[:220])
 
-        # v174: 道順を直す：区間の一覧／道なりに引き直す（点が消える）／まっすぐ結ぶ／全部引き直す／取消で戻る
+        # v174: ルートを引き直す：区間の一覧／道なりに引き直す（点が消える）／まっすぐ結ぶ／全部引き直す／取り消しで戻る
         fx = page.evaluate("""async ()=>{ try{
             const keepU = undoStack.length, keepD = _dirty, keepV = viewMode; viewMode = false;
             const rw = routeWps(); if (rw.length < 3) return 'few spots';
@@ -3291,19 +3291,19 @@ def functional_checks(index_path):
             out.straight = a.fitAfter === false && b.fitBefore === false && _routeSections()[0].straight === true
                            && sh.querySelector('.fr-row .fr-l small').textContent === 'まっすぐ';
             fixSectionAuto(0); out.back = a.fitAfter !== false && b.fitBefore !== false;
-            // 全部引き直す：通り道の点が全部消える
+            // 全部引き直す：調整点が全部消える
             idV++; vps.push({id:'v'+idV, segAfter:rw[1].id, order:1, fitBefore:true, fitAfter:true, lat:(rw[1].lat+rw[2].lat)/2, lng:(rw[1].lng+rw[2].lng)/2, marker:null});
             fixAllRoutes();
             out.all = vps.length === 0 && wps.every(w => w.fitBefore !== false && w.fitAfter !== false) && Object.keys(segCache).length === 0;
             closeFixRouteSheet(); out.closed = getComputedStyle(sh).display === 'none';
-            // 取消で戻る（4回ぶん）
+            // 取り消しで戻る（4回ぶん）
             undoLast(); undoLast(); undoLast(); undoLast();   // 上で作った4回ぶんだけ戻す（多く戻すと前の検査の状態を壊す）
             out.undone = a.fitAfter !== false && routeWps().length === rw.length;
             undoStack.length = keepU; _dirty = keepD; viewMode = keepV; clearCache(); redrawStraight(); scheduleRouting();
             document.querySelectorAll('#toastBox .toast').forEach(e => e.remove());
             return out;
           }catch(e){ return 'ERR:'+e.message; } }""")
-        chk('機能', '道順を直す：区間の一覧／道なりに引き直すと手直しの点が消える／まっすぐ結ぶ／全部引き直す／取消で戻る',
+        chk('機能', 'ルートを引き直す：区間の一覧／道なりに引き直すと手直しの点が消える／まっすぐ結ぶ／全部引き直す／取り消しで戻る',
             isinstance(fx, dict) and all(fx.get(k) for k in ('open', 'rows', 'state', 'auto', 'straight', 'back', 'all', 'closed', 'undone')), str(fx)[:280])
 
         # v173: 軽くする：往復ずらしの計算結果を覚える（同じズームなら使い回し・ズームが変われば計算し直す）／描き直しは1フレーム1回
@@ -3328,7 +3328,7 @@ def functional_checks(index_path):
         chk('機能', '軽くする：往復ずらしは同じズームなら使い回し・ズームが変われば計算し直す／描き直しは1フレームに1回',
             isinstance(sp, dict) and all(sp.get(k) for k in ('memo', 'zoomRecalc', 'batched', 'ran')), str(sp)[:200])
 
-        # v171: スポットを置く：指のタップでは置かない／長押しで確認が出る／やめる／追加する／取消で戻る
+        # v171: スポットを置く：指のタップでは置かない／長押しで確認が出る／やめる／追加する／取り消しで戻る
         aw = page.evaluate("""async ()=>{ try{
             const keepMode = mode, keepU = undoStack.length, keepD = _dirty, keepV = viewMode, n0 = wps.length; viewMode = false; setMode('wp'); _closeAddWp();
             const el = leafMap.getContainer(), r = el.getBoundingClientRect(), x = r.width * 0.5, y = r.height * 0.45;
@@ -3344,7 +3344,7 @@ def functional_checks(index_path):
             out.asks = !!_wpAdd && document.getElementById('addWpDlg').classList.contains('show') && wps.length === n0;
             document.dispatchEvent(pe('pointerup', 0, 0));
             _closeAddWp(); out.cancel = !_wpAdd && !document.getElementById('addWpDlg').classList.contains('show') && wps.length === n0;
-            // 長押し→追加する→1つ増える／取消で戻る
+            // 長押し→追加する→1つ増える／取り消しで戻る
             el.dispatchEvent(pe('pointerdown', 10, 10)); await wait(WP_ADD_HOLD_MS + 150); document.dispatchEvent(pe('pointerup', 10, 10));
             addWpHere(true); out.added = wps.length === n0 + 1 && wps[wps.length - 1].type === 'spot' && wps[wps.length - 1].onRoute !== false && !_wpAdd;
             undoLast(); out.undone = wps.length === n0;
@@ -3359,10 +3359,10 @@ def functional_checks(index_path):
             _closeAddWp(); setMode(keepMode === 'draw' || keepMode === 'via' ? 'wp' : keepMode); undoStack.length = keepU; _dirty = keepD; viewMode = keepV; document.querySelectorAll('#toastBox .toast').forEach(e => e.remove());
             return out;
           }catch(e){ return 'ERR:'+e.message; } }""")
-        chk('機能', 'スポットを置く：指のタップでは置かない／長押しで確認／やめる／コースに入れる／立ち寄り先にする／取消で戻る／指を動かしたら確認を出さない',
+        chk('機能', 'スポットを置く：指のタップでは置かない／長押しで確認／やめる／コースに入れる／立ち寄り先にする／取り消しで戻る／指を動かしたら確認を出さない',
             isinstance(aw, dict) and all(aw.get(k) for k in ('tapNoAdd', 'asks', 'cancel', 'added', 'undone', 'side', 'undone2', 'moveNoAsk')), str(aw)[:300])
 
-        # v169: 道を変更：地図は固定／線の外は何も起きない／線を引っぱると点ができて曲がる（見えない・引きずれない）／押さえて離すと設定／スポットの道具では起きない／タップでは置かない／取消で戻る／広域は実線
+        # v169: ルート調整：地図は固定／線の外は何も起きない／線を引っぱると点ができて曲がる（見えない・引きずれない）／押さえて離すと設定／スポットの道具では起きない／タップでは置かない／取り消しで戻る／広域は実線
         hd = page.evaluate("""async ()=>{ try{
             const keepMode = mode, keepU = undoStack.length, keepD = _dirty, n0 = vps.length, keepV = viewMode, keepC = leafMap.getCenter(), keepZ = leafMap.getZoom(); viewMode = false;
             const c = _lastRouteCoords; if (!c || c.length < 10) return 'no route';
@@ -3385,7 +3385,7 @@ def functional_checks(index_path):
             document.dispatchEvent(pe('pointerup', p.x + 60, p.y + 30)); await wait(120);
             out.moved = movedPx > 40 && !_hold && vps.indexOf(vp) >= 0 && lineDragging === false && !leafMap.dragging.enabled();   // v177：引っぱると近くの古い点は外れるので、数ではなくその点で見る
             const nAfterDrag = vps.length;
-            out.hidden = !!vp && !!vp.marker && !vp.guide && vp.marker.getElement().style.opacity !== '0' && !!vp.marker.dragging && vp.marker.dragging.enabled();   // v178：道を変更の間は見えてつまめる
+            out.hidden = !!vp && !!vp.marker && !vp.guide && vp.marker.getElement().style.opacity !== '0' && !!vp.marker.dragging && vp.marker.dragging.enabled();   // v178：ルート調整の間は見えてつまめる
             // ちょんと触る＝何もしない
             const p2 = leafMap.latLngToContainerPoint(c[Math.floor(c.length / 3)]);
             el.dispatchEvent(pe('pointerdown', p2.x, p2.y)); document.dispatchEvent(pe('pointerup', p2.x, p2.y)); await wait(80);
@@ -3409,7 +3409,7 @@ def functional_checks(index_path):
             setMode(keepMode === 'draw' || keepMode === 'via' ? 'wp' : keepMode); undoStack.length = keepU; _dirty = keepD; viewMode = keepV; leafMap.setView(keepC, keepZ, {animate:false}); document.querySelectorAll('#toastBox .toast').forEach(e => e.remove());
             return out;
           }catch(e){ return 'ERR:'+e.message; } }""")
-        chk('機能', '道を変更：地図は固定／線の外は何も起きない／線を引っぱると点ができて曲がる（見えず引きずれない）／触るだけは何もしない／押さえて離すと設定／スポットに戻すと地図が動く／タップでは置かない／取消で戻る／広域は実線',
+        chk('機能', 'ルート調整：地図は固定／線の外は何も起きない／線を引っぱると点ができて曲がる（見えず引きずれない）／触るだけは何もしない／押さえて離すと設定／スポットに戻すと地図が動く／タップでは置かない／取り消しで戻る／広域は実線',
             isinstance(hd, dict) and all(hd.get(k) for k in ('locked', 'offLine', 'down', 'grabbed', 'moved', 'hidden', 'tap', 'menu', 'unlocked', 'hiddenAfter', 'wpMode', 'noTapAdd', 'undone', 'solidWide', 'dashNear')), str(hd)[:360])
 
         # v168: 帯の開閉：縦の指はフリック（開く）、横の指はなぞり（開閉しない）、ちょんと触ると場所を見る、ボタンで開閉
@@ -3444,7 +3444,7 @@ def functional_checks(index_path):
         chk('機能', '高低差の帯：縦の指で開閉、横の指はなぞり（開閉しない）、ちょんと触ると場所を見る、右端のボタンで開閉',
             isinstance(bd, dict) and all(bd.get(k) for k in ('flickOpens', 'scrubKeeps', 'flickCloses', 'tapLooks', 'button', 'button2')), str(bd)[:240])
 
-        # v164: 場所を動かす：印は引きずれない → 編集画面の「場所を動かす」→ タップした所へ／ここに置く／やめる／取消で戻る
+        # v164: 場所を動かす：印は引きずれない → 編集画面の「場所を動かす」→ タップした所へ／ここに置く／やめる／取り消しで戻る
         mv = page.evaluate("""async ()=>{ try{
             const keepU = undoStack.length, keepD = _dirty, keepV = viewMode, keepC = leafMap.getCenter(), keepZ = leafMap.getZoom(); viewMode = false;
             const wp = wps.find(w => w.type !== 'node' && w.type !== 'start' && w.type !== 'goal' && w.marker); if (!wp) return 'no wp';
@@ -3469,7 +3469,7 @@ def functional_checks(index_path):
             undoStack.length = keepU; _dirty = keepD; viewMode = keepV; leafMap.setView(keepC, keepZ, {animate:false}); document.querySelectorAll('#toastBox .toast').forEach(e => e.remove());
             return out;
           }catch(e){ return 'ERR:'+e.message; } }""")
-        chk('機能', '場所を動かす：印は引きずれない → 編集画面の「場所を動かす」→ タップした所へ／ここに置く／やめる／道具の切り替えでやめる／取消で戻る',
+        chk('機能', '場所を動かす：印は引きずれない → 編集画面の「場所を動かす」→ タップした所へ／ここに置く／やめる／道具の切り替えでやめる／取り消しで戻る',
             isinstance(mv, dict) and all(mv.get(k) for k in ('noDrag', 'bar', 'ghost', 'moved', 'undone', 'cancel', 'here', 'modeCancels', 'same')), str(mv)[:300])
 
         # v143: 発見：貼る→端末に残る→印とカード→送るファイル→作者が取り込む→消す。編集画面では印を出さない
@@ -3640,7 +3640,7 @@ def functional_checks(index_path):
             and vw.get('backHit') is True and vw.get('added') == 0 and vw.get('picker') == 'none'
             and vw.get('modal') is False and vw.get('dragOn') == 0 and vw.get('restored') is True, str(vw)[:190])
 
-        # v120: 配布リンクを開いた人への案内は、最初の1回だけ出る
+        # v120: 共有リンクを開いた人への案内は、最初の1回だけ出る
         wt = page.evaluate("""()=>{ try{
             localStorage.removeItem(LS.walkTipSeen);
             document.body.classList.add('viewonly');
@@ -3692,7 +3692,7 @@ def functional_checks(index_path):
             and rt.get('calls2', 99) == 0 and rt.get('pts2') == rt.get('pts1') and rt.get('pts1', 0) >= 7,
             str(rt)[:190])
 
-        # v167: 曲がり角：steps → 区間ごとの曲がり角 → 道順に沿った一覧（距離順）・配布シート・歩く人の帯・保存と読み戻し・古いコースの裏取得
+        # v167: 曲がり角：steps → 区間ごとの曲がり角 → 道順に沿った一覧（距離順）・印刷用シート・歩く人の帯・保存と読み戻し・古いコースの裏取得
         cue = page.evaluate("""()=>{ return (async()=>{ try{
             const snapshot = buildCurrentSaveData(), keepWalk = _walkPos, keepV = viewMode;
             const origFetch = window.fetch; let calls = 0;
@@ -3736,7 +3736,7 @@ def functional_checks(index_path):
             loadCourseData(snapshot); await new Promise(r => setTimeout(r, 2500));
             return out;
           }catch(e){ return 'ERR:'+e.message; } })(); }""")
-        chk('機能', '曲がり角：steps→区間ごと→道順に沿った一覧・配布シート・歩く人の帯（次の曲がり角）・保存と読み戻し・古いコースは編集画面でだけ裏で取る',
+        chk('機能', '曲がり角：steps→区間ごと→道順に沿った一覧・印刷用シート・歩く人の帯（次の曲がり角）・保存と読み戻し・古いコースは編集画面でだけ裏で取る',
             isinstance(cue, dict) and all(cue.get(k) for k in ('list', 'sheet', 'saved', 'next', 'next2', 'beforeSpot', 'restored', 'noAuto', 'backfill', 'noBackfillForWalker')), str(cue)[:260])
 
         # v118: スマホの説明画面と、パソコンの欄が同じ中身になる
@@ -4060,7 +4060,7 @@ def offline_checks(index_path):
                 chk('オフライン', '圏外の表示（バッジ）が出る', badge_ok, str(boot)[:150])
                 ctx.set_offline(False)
 
-                # ── 配布リンク（v135）：オンラインで開く（同じ場所のJSONがキャッシュに入る）→ 圏外で開き直してもコースが出る ──
+                # ── 共有リンク（v135）：オンラインで開く（同じ場所のJSONがキャッシュに入る）→ 圏外で開き直してもコースが出る ──
                 page.goto(url + '?course=sample.json&offauto=0', wait_until='domcontentloaded')
                 try:
                     page.wait_for_function("() => document.body.classList.contains('viewonly') && typeof wps !== 'undefined' && wps.length > 10", timeout=30000)
@@ -4077,7 +4077,7 @@ def offline_checks(index_path):
                 except Exception as e:
                     link_off = str(e)[:140]
                 ctx.set_offline(False)
-                chk('オフライン', '圏外で配布リンクを開いてもコースが出る（道順は同梱ぶんで引ける）',
+                chk('オフライン', '圏外で共有リンクを開いてもコースが出る（道順は同梱ぶんで引ける）',
                     isinstance(link_off, dict) and link_off.get('viewonly') and link_off.get('wps', 0) > 10 and link_off.get('route'), str(link_off)[:160])
 
                 # ── 解除スイッチ（?nosw=1）──
@@ -4096,7 +4096,7 @@ def offline_checks(index_path):
 
 
 # ----------------------------------------------------------------------
-# 4) 見た目の比較検査（配布シート・保存画像）
+# 4) 見た目の比較検査（印刷用シート・保存画像）
 #    「保存画像の見え方は確認できない」を減らすための検査。
 #    地図タイルは比較対象から外す（提供元の絵が変わるため）。比べるのは
 #    こちら側が作っている部分＝○・番号・ラベル・凡例・縮尺・方位・タイトル帯。
@@ -4132,7 +4132,7 @@ def _compare_png(cur_bytes, base_path, name):
 
 # ----------------------------------------------------------------------
 # 3.5) WebKit（iPhone の Safari と同じエンジン）での見た目の検査（v146・見直し帳 C1）
-#   Chromium で通っても iPhone ではみ出すことがあった（v135）。配布リンクと編集画面を 390×812 で開き、
+#   Chromium で通っても iPhone ではみ出すことがあった（v135）。共有リンクと編集画面を 390×812 で開き、
 #   横にはみ出す部品が無いこと・歩く人の帯が出ることを確かめる。WebKit が入っていない環境では見送り（失敗にしない）
 # ----------------------------------------------------------------------
 def webkit_checks(index_path):
@@ -4167,7 +4167,7 @@ def webkit_checks(index_path):
             errs = []
             page.on('pageerror', lambda e: errs.append(str(e)))
             page.on('dialog', lambda d: d.accept())
-            # 配布リンク（歩く人の画面）
+            # 共有リンク（歩く人の画面）
             page.goto(url + '?nosw=1&course=sample.json&offauto=0', wait_until='domcontentloaded')
             page.wait_for_function("() => document.body.classList.contains('viewonly') && typeof wps !== 'undefined' && wps.length > 5", timeout=30000)
             try: page.wait_for_function("() => _lastRouteCoords && _lastRouteCoords.length > 50", timeout=20000)
@@ -4177,7 +4177,7 @@ def webkit_checks(index_path):
             page.wait_for_timeout(300)
             r = page.evaluate(OVERFLOW)
             r['bar'] = page.evaluate("() => !document.getElementById('nextBar').hidden && /次/.test(document.getElementById('nbText').textContent)")
-            chk('WebKit', 'iPhone と同じエンジンで配布リンクが開き、はみ出す部品がなく、歩く人の帯が出る',
+            chk('WebKit', 'iPhone と同じエンジンで共有リンクが開き、はみ出す部品がなく、歩く人の帯が出る',
                 r['wps'] > 5 and not r['bad'] and r['sw'] <= r['iw'] + 1 and r['bar'] and not errs, str(r)[:200] + (' err:' + errs[0][:80] if errs else ''))
             # 編集画面（サンプルを開く）＋メニュー
             page.goto(url + '?nosw=1', wait_until='domcontentloaded')
@@ -4323,7 +4323,7 @@ def visual_checks(index_path):
             const c = await _captureMapCanvas();
             return c.toDataURL('image/png');
         })()""")
-        # (B) 配布シート — 地図部分は単色に差し替え、こちらが組んだ紙面だけを比べる
+        # (B) 印刷用シート — 地図部分は単色に差し替え、こちらが組んだ紙面だけを比べる
         page.evaluate("""() => {
             window.__origCap = _captureMapCanvas;
             window._captureMapCanvas = async () => {
@@ -4333,7 +4333,7 @@ def visual_checks(index_path):
                 return c;
             };
         }""")
-        # QRも比較対象にするため、配布リンクを確実に結びつける
+        # QRも比較対象にするため、共有リンクを確実に結びつける
         page.evaluate("""() => { currentCourseId = 'visual-test';
             _setShareLink(currentCourseId, 'https://example.test/footpath/?course=vis.json'); }""")
         page.evaluate("""() => openPrintSheet()""")
@@ -4351,10 +4351,10 @@ def visual_checks(index_path):
         chk('見た目', '保存画像を作成できる', False, '画像が取得できなかった')
 
     if img_b:
-        ok, msg = _compare_png(img_b, os.path.join(base_dir, 'print_sheet.png'), '配布シート')
-        chk('見た目', '配布シート（凡例・縮尺・方位・QR）が基準どおり', ok, msg)
+        ok, msg = _compare_png(img_b, os.path.join(base_dir, 'print_sheet.png'), '印刷用シート')
+        chk('見た目', '印刷用シート（凡例・縮尺・方位・QR）が基準どおり', ok, msg)
     else:
-        chk('見た目', '配布シートを作成できる', False, 'シートが取得できなかった')
+        chk('見た目', '印刷用シートを作成できる', False, 'シートが取得できなかった')
 
 # ----------------------------------------------------------------------
 def main():
