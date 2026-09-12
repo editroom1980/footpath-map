@@ -3204,7 +3204,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v200';
+const APP_VERSION = 'v201';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -10278,18 +10278,27 @@ function _libRender(list){
     + '<span class="lb-tag' + (c.allowEdit === false ? ' ro' : '') + '">' + (c.allowEdit === false ? '見るだけ' : '直してもよい') + '</span></button>').join('');
   box.querySelectorAll('.lb-row').forEach(b => b.addEventListener('click', () => _libOpen(list[Number(b.getAttribute('data-i'))])));
 }
+/* コースを開くときの移動（v201・オーナー報告「箱に上げたコースが開かない」）。
+   同じアドレスで # だけ変えてもブラウザは読み込み直さない＝何も起きなかった。
+   いま開いているのが配り先と同じ場所なら、# を書いてから読み込み直す。 */
+function _shareGoPlan(base, here){ return String(base) === String(here).split('#')[0] ? 'reload' : 'href'; }
+function _goShare(hash){
+  const base = _shareBaseUrl(), h = (String(hash).charAt(0) === '#') ? String(hash) : '#' + hash;
+  if (_shareGoPlan(base, location.href) === 'reload') { location.hash = h; location.reload(); return; }
+  location.href = base + h;
+}
 async function _libOpenBox(entry){   // v199：箱のコースは、中身を取りに行ってから開く
   showToast('開いています…');
   const d = await _boxOpen(entry);
   if (!d) { showToast('このコースは開けませんでした（もう一度お試しください）'); return; }
-  location.href = _shareBaseUrl() + '#d=' + d;
+  _goShare('#d=' + d);
 }
 function _libOpen(entry){
   if (!entry) return;
   if (entry.box) { _libOpenBox(entry); return; }   // v199：みんなの箱
   if (entry.file) { location.href = _shareBaseUrl() + '?course=' + encodeURIComponent(entry.file); return; }   // v196：置いたファイルをそのまま開く（写真も出る）
   if (!entry.d) { showToast('このコースは開けませんでした'); return; }
-  location.href = _shareBaseUrl() + '#d=' + entry.d;   // 配るリンクと同じ入口で開く
+  _goShare('#d=' + entry.d);   // 配るリンクと同じ入口で開く（v201：# だけの移動でも必ず開き直す）
 }
 /* みんなのコースに出す（v191・オーナー指示「ボタンひとつで選んで投稿できるように」）。
    サーバは使わないので、置き場所（GitHub）の「新しいファイル」の画面を**中身まで入れた状態で**開く。

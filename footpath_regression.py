@@ -447,6 +447,11 @@ def static_checks(src):
     # --- v157: 番号の丸と種類の丸を横に並べる（オーナー指摘：iPhone で片方しか見えない）---
     chk('静的', '番号つきで種類がある地点：地図は「種類の丸＋右上に番号の小丸」、一覧・並べ替え・配布シート・カードは番号と種類を並べて出す',
         'class="wp-num"' in src and 'class="wp-dot cat"' in src and 'class="ro-badge cat"' in src and 'class="sh-cat"' in src and 'class="vip-dot vip-dot2"' in src and '_catBadge' not in src and 'wp-pair' not in src)
+    # --- v201: 一覧から開くとき、# だけの移動では読み込み直されない（オーナー報告「箱に上げたコースが開かない」）---
+    chk('静的', 'みんなのコースを押したときは _goShare で開く（同じ場所なら # を書いてから読み込み直す）。location.href に直接 # を入れない',
+        'function _shareGoPlan' in src and 'function _goShare' in src and "_goShare('#d=' + d);" in src
+        and "_goShare('#d=' + entry.d);" in src and 'location.reload();' in src
+        and "location.href = _shareBaseUrl() + '#d=" not in src)
     # --- v200: 箱に出たコースを自動で GitHub へ写し、以降は置き場所のぶんを読む ---
     _mir_py = os.path.join(os.path.dirname(os.path.abspath(INDEX)), 'tools', 'box_mirror.py')
     _mir_yml = os.path.join(os.path.dirname(os.path.abspath(INDEX)), '.github', 'workflows', 'box_mirror.yml')
@@ -1215,6 +1220,16 @@ def functional_checks(index_path):
                  and sf['name1'] == 'Course-01.json' and sf['name2'] == 'a.json' and sf['name3'] == 'course.json'
                  and sf['base'] is True)
         chk('機能', '配布リンクは同じ場所の.jsonだけ受け付ける', ok_sf, str(sf)[:190])
+
+        # v201: いま開いている場所と配り先が同じなら、# を足すだけでは読み込み直されない → 読み込み直す道を選ぶ
+        gp = page.evaluate("""()=>{ try{
+            const b = 'https://e.example/app/';
+            return {same: _shareGoPlan(b, b), hash: _shareGoPlan(b, b + '#d=xxx'),
+                    query: _shareGoPlan(b, b + '?v=200'), other: _shareGoPlan(b, 'https://e.example/app/index.html')};
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        chk('機能', '一覧から開くとき、同じ場所なら読み込み直す（#だけの移動で何も起きない不具合を防ぐ）',
+            isinstance(gp, dict) and gp.get('same') == 'reload' and gp.get('hash') == 'reload'
+            and gp.get('query') == 'href' and gp.get('other') == 'href', str(gp)[:160])
 
         # INV-Q: 配布用JSONを読み込むと表示される／壊れた内容や404は読み込まない
         lf = page.evaluate("""()=>{ return (async()=>{ try{
