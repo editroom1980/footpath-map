@@ -447,6 +447,12 @@ def static_checks(src):
     # --- v157: 番号の丸と種類の丸を横に並べる（オーナー指摘：iPhone で片方しか見えない）---
     chk('静的', '番号つきで種類がある地点：地図は「種類の丸＋右上に番号の小丸」、一覧・並べ替え・印刷用シート・カードは番号と種類を並べて出す',
         'class="wp-num"' in src and 'class="wp-dot cat"' in src and 'class="ro-badge cat"' in src and 'class="sh-cat"' in src and 'class="vip-dot vip-dot2"' in src and '_catBadge' not in src and 'wp-pair' not in src)
+    # --- v221: みんなのマップから開いたコースには、一覧の情報から作者の印を付ける ---
+    chk('静的', 'v220 より前に出されたコース（中身に印が無いもの）でも、一覧の作者を印にして再投稿を止める',
+        'function _shareOrgSet' in src and 'function _applyShareOrigin' in src and 'function _libOrigin' in src
+        and "'lib:' + key" in src and '_shareOrgSet(_libOrigin(entry));' in src
+        and '_applyShareOrigin(); maybeShowWalkTip();' in src
+        and 'if (!data.origin && courseInfo && courseInfo.origin) data.origin = courseInfo.origin;' in src)
     # --- v220: 他人が公開したコースを、自分名義で出し直せないようにする ---
     chk('静的', '作者の印（origin）を配る中身に入れ、取り込んでも消さない。自分の端末の印でなければ出す道を全部閉じる',
         'function _devId' in src and 'function _originFor' in src and 'function _pubDeny' in src
@@ -2310,6 +2316,12 @@ def functional_checks(index_path):
             const deny = _pubDeny(mine);
             out.denied = !!deny && deny.by === '山内';
             out.notMine = _isMineOrigin({oid: 'dXXXX:123'}) === false && _isMineOrigin({oid: _devId() + ':9'}) === true;
+            // v221: 一覧から開いたコース（中身に印が無い）にも、一覧の作者で印が付く
+            courseInfo.origin = undefined;
+            _shareOrgSet(_libOrigin({name:'よそのコース', by:'山内', at:'2026-09-13', cid:'777'}));
+            _applyShareOrigin();
+            out.fromLib = !!courseInfo.origin && courseInfo.origin.oid === 'lib:777' && _pubDeny(mine) !== null;
+            courseInfo.origin = {oid: 'dXXXX:123', by: '山内', at: '2026-09-13'};
             // ④ 出す画面は理由を出してボタンを閉じる
             _pubCourse = mine; _boxOn = true;
             openPublishSheet(mine);
@@ -2322,7 +2334,7 @@ def functional_checks(index_path):
             return out;
           }catch(e){ return 'ERR:'+e.message; } }""")
         chk('機能', '他人が公開したコースは、取り込んでも自分名義で出せない（作者の印が残り、出す画面が理由を出して閉じる）',
-            isinstance(og, dict) and all(og.get(k) for k in ('mineOk', 'oid', 'inLink', 'denied', 'notMine', 'sheet')), str(og)[:220])
+            isinstance(og, dict) and all(og.get(k) for k in ('mineOk', 'oid', 'inLink', 'denied', 'notMine', 'fromLib', 'sheet')), str(og)[:220])
 
         # v217: 取り込んだスポットの整理：近い順に並び、選んだものだけ消え、取り消しで戻る
         gs = page.evaluate("""async ()=>{ try{

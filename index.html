@@ -3235,7 +3235,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 手描きの道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した手描きの道id（直前取り消し用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v220';
+const APP_VERSION = 'v221';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -7899,13 +7899,13 @@ function initViewMode() {
     if (v.data) {                                   // ⓪ リンクの中にコースが入っている（v184：保存先が要らない）
       const data = await _courseFromHash(v.data);
       if (!data) _showViewError('リンクからコースを読み取れませんでした。\nリンクが途中で切れていないか、最後までコピーされているかご確認ください。');
-      else { loadCourseData(data); maybeShowWalkTip(); _applySharePhotos(); }   // v202：写真はあとから貼る（地図はすぐ出す）
+      else { loadCourseData(data); _applyShareOrigin(); maybeShowWalkTip(); _applySharePhotos(); }   // v202：写真はあとから／v221：作者の印
       return;
     }
     if (v.file) {                                   // ① 共有リンク：同じ場所のJSONを読む（誰の端末でも開ける）
       const ok = await loadCourseFromFile(v.file);
       if (!ok) _showViewError('コースのファイルを読み込めませんでした。\nリンクが正しいか、ファイルが公開されているかご確認ください。');
-      else { maybeShowWalkTip();                    // 歩く人への最初の1回の案内
+      else { _applyShareOrigin(); maybeShowWalkTip();                    // 歩く人への最初の1回の案内
              if (!v.embed) setTimeout(() => _autoOfflineForLink(v.file), OFFLINE_AUTO_DELAY_MS); }   // 圏外に備えて圏外用に保存（v135）
       return;
     }
@@ -10634,6 +10634,7 @@ async function importOpenedCourse(){
   data.savedAt = new Date().toISOString();
   data.shared = undefined; data.noEdit = undefined;      // 配布の印は外す（自分の端末で直せるように）
   /* v220：作者の印（origin）は**残す**。他人が作ったコースを、取り込んだ人が自分名義で出せないようにするため */
+  if (!data.origin && courseInfo && courseInfo.origin) data.origin = courseInfo.origin;   // v221：一覧から付けた印も引き継ぐ
   try { await _stashPhotos([data]); } catch(_) {}        // 写真は IndexedDB へ
   const courses = getCourses(); courses.push(data);
   if (!setCourses(courses)) { showToast('保存できませんでした（保存容量がいっぱいです）'); return; }
@@ -10665,6 +10666,21 @@ function _goShare(hash){
 }
 /* 写真の在りかを、開き直したあとの画面へ渡す（v202）。このタブの中だけに一時的に置く。 */
 function _sharePhSet(url){ try { if (url) sessionStorage.setItem(SHARE_PH_KEY, url); else sessionStorage.removeItem(SHARE_PH_KEY); } catch(_) {} }
+/* みんなのマップから開いたコースには、一覧の情報から作者の印を付ける（v221）。
+   v220 より前に出されたコース（中身に印が無いもの）でも、取り込んだ人が自分名義で出せないようにするため。 */
+function _shareOrgSet(o){ try { if (o) sessionStorage.setItem(SHARE_ORG_KEY, JSON.stringify(o)); else sessionStorage.removeItem(SHARE_ORG_KEY); } catch(_) {} }
+function _shareOrgTake(){ try { const v = sessionStorage.getItem(SHARE_ORG_KEY); sessionStorage.removeItem(SHARE_ORG_KEY); return v ? JSON.parse(v) : null; } catch(_) { return null; } }
+function _applyShareOrigin(){
+  const o = _shareOrgTake();
+  if (!o || !o.oid || !courseInfo) return;
+  if (!courseInfo.origin || !courseInfo.origin.oid) courseInfo.origin = o;   // 中身に印があればそちらを優先
+}
+function _libOrigin(c){   // 一覧の1件から作者の印を作る
+  if (!c) return null;
+  if (c.oid) return {oid: String(c.oid), by: c.by || '', at: c.at || ''};
+  const key = String(c.cid || c.id || c.file || c.name || '');
+  return key ? {oid: 'lib:' + key, by: c.by || '', at: c.at || ''} : null;
+}
 function _sharePhTake(){ try { const v = sessionStorage.getItem(SHARE_PH_KEY); sessionStorage.removeItem(SHARE_PH_KEY); return v || ''; } catch(_) { return ''; } }
 /* 開いたあと、写真だけあとから貼る（地図はすぐ出る＝待たされない） */
 async function _applySharePhotos(){
@@ -10690,6 +10706,7 @@ async function _applySharePhotos(){
 }
 async function _libOpenBox(entry){   // v199：箱のコースは、中身を取りに行ってから開く
   showToast('開いています…');
+  _shareOrgSet(_libOrigin(entry));   // v221：作者の印
   const cfg = await _boxCfg();
   const got = await _boxOpen(entry);
   if (!got) { showToast('このコースは開けませんでした（もう一度お試しください）'); return; }
@@ -10699,6 +10716,7 @@ async function _libOpenBox(entry){   // v199：箱のコースは、中身を取
 function _libOpen(entry){
   if (!entry) return;
   if (entry.box) { _libOpenBox(entry); return; }   // v199：みんなの箱
+  _shareOrgSet(_libOrigin(entry));   // v221：作者の印（v220 より前に出されたコースにも付ける）
   if (entry.ph && typeof entry.ph === 'string') _sharePhSet(entry.ph);   // v202：保存先に写したコースの写真
   if (entry.d && entry.k === 'j') { _goShare('#j=' + entry.d); return; }   // v220：縮めていない形
   if (entry.file) { location.href = _shareBaseUrl() + '?course=' + encodeURIComponent(entry.file); return; }   // v196：置いたファイルをそのまま開く（写真も出る）
@@ -11002,7 +11020,8 @@ const BOX_DEFAULT = {kind: 'textdb', base: 'https://textdb.dev/api/data/', key: 
 const BOX_MAX = 300000;     // 1コースの中身の上限（文字数）
 const SHARE_PH_PX = 640, SHARE_PH_Q = 0.6;   // みんなのマップに付ける写真（v202）。小さく作り直してから送る
 const SHARE_PH_PER_SPOT = 2, SHARE_PH_TOTAL = 600000;   // 1スポット2枚まで・全部で約600KBまで
-const SHARE_PH_KEY = 'fp_share_ph';          // 開くときに写真の在りかを渡す（このタブだけ・読み込み直しをまたぐ）
+const SHARE_PH_KEY = 'fp_share_ph';
+const SHARE_ORG_KEY = 'fp_share_org';   // v221：みんなのマップから開いたコースの作者（開き直しをまたいで渡す）          // 開くときに写真の在りかを渡す（このタブだけ・読み込み直しをまたぐ）
 const BOX_MAX_ROWS = 300;   // 一覧に載せる上限
 const BOX_TIMEOUT = 12000;  // 箱とのやりとりの待ち時間
 const BOX_PH_TIMEOUT = 60000;   // 写真の送り書きだけは長く待つ（電波が細くても届くように・v207）
