@@ -456,7 +456,7 @@ def static_checks(src):
         'id="viewBadge" onclick="toggleViewMode()"' in src and '押すと編集にもどる' in src)
     chk('静的', '配られたコースを自分のコース一覧に取り込める（見るだけのものは断る・写真も一緒）',
         'async function importOpenedCourse' in src and 'id="mmGetRow"' in src and 'このコースを自分のコースに追加' in src
-        and '_isLockedShare(data)' in src and '_stashPhotos([data])' in src and 'currentCourseId == null && !courseInfo.noEdit' in src)
+        and '_isLockedShare(data)' in src and '_stashPhotos([data])' in src and "String(c.id) === String(currentCourseId)" in src)
     # --- v209: 同じコースが何度も出されても、一覧には1つだけ ---
     chk('静的', '同じコースは1つにまとめる（印でまとめてから、もう一度「名前＋エリア」でまとめる）',
         'function _libKey' in src and "'n:' + n + '|'" in src and 'function _libPick(' in src

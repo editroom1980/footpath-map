@@ -3213,7 +3213,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v212';
+const APP_VERSION = 'v213';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -8627,7 +8627,12 @@ function _syncFindUi(){
   const ir = document.getElementById('mmInfoRow'); if (ir) ir.hidden = !on;
   const pr = document.getElementById('mmPubRow'); if (pr) pr.hidden = !(on && _ghToken() && _ghRepo() && courseInfo && courseInfo.name);   // v195：受け取ったリンクを、そのまま一覧に載せる（置き場所を持っている人だけ）
   const gr2 = document.getElementById('mmGetRow');   // v212：配られたコースを自分の一覧に取り込む（自分の端末に無いものだけ）
-  if (gr2) gr2.hidden = !(on && courseInfo && courseInfo.name && currentCourseId == null && !courseInfo.noEdit);
+  /* v213：配られたコースは作った人の番号を持ったまま開くので、番号の有無では判定できない。
+     「この端末の一覧に無い」ことで見分ける。 */
+  if (gr2) {
+    const mine = getCourses().some(c => c && String(c.id) === String(currentCourseId));
+    gr2.hidden = !(on && courseInfo && courseInfo.name && !mine && !courseInfo.noEdit);
+  }
   const gb = document.getElementById('btnGoal'); if (gb) gb.hidden = !on;
 }
 /* 貼る（シート） */
