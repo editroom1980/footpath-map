@@ -448,7 +448,9 @@ def static_checks(src):
     chk('静的', '番号つきで種類がある地点：地図は「種類の丸＋右上に番号の小丸」、一覧・並べ替え・配布シート・カードは番号と種類を並べて出す',
         'class="wp-num"' in src and 'class="wp-dot cat"' in src and 'class="ro-badge cat"' in src and 'class="sh-cat"' in src and 'class="vip-dot vip-dot2"' in src and '_catBadge' not in src and 'wp-pair' not in src)
     # --- v209: 同じコースが何度も出されても、一覧には1つだけ ---
-    chk('静的', '同じコースは1つにまとめる（出し直しの印がなければ「名前＋エリア」で見分ける）', 'function _libKey' in src and "'n:' + n + '|'" in src)
+    chk('静的', '同じコースは1つにまとめる（印でまとめてから、もう一度「名前＋エリア」でまとめる）',
+        'function _libKey' in src and "'n:' + n + '|'" in src and 'function _libPick(' in src
+        and '_libPick(_libPick(rows || []' in src)
     # --- v208: 配られたコースは、写真が届いたら地図にも出す（押さなくても見える） ---
     chk('静的', '歩く人の画面では、写真が届いた時点でシールを出す（作った人が切っていても）',
         'if (viewMode && courseInfo && !courseInfo.stickers) courseInfo.stickers = true;' in src)
@@ -472,7 +474,7 @@ def static_checks(src):
     # --- v204: 同じコースを出し直したら、新しいほうだけ並べる ---
     chk('静的', '出し直したコースは新しいほうだけ一覧に出す（元のコースの印 cid と出した時刻 ts で見分ける・写しにも運ぶ）',
         "cid: String(r.c.id || ''), ts: new Date().toISOString()" in src and 'function _libPickNewest' in src
-        and 'newest[k] === e' in src and 'cid: e.cid ? String(e.cid).slice(0, 24) : undefined' in src
+        and 'best[k] === e' in src and 'cid: e.cid ? String(e.cid).slice(0, 24) : undefined' in src
         and "cid: e.cid || undefined, ts: e.ts || undefined" in src)
     # --- v203: 写し取りは2つの道で（GitHub の定期実行が遅れても、作者がアプリを開けば写る）---
     chk('静的', '箱→置き場所の写し取りは、定期実行だけに頼らない（アプリ側でも写す・押し出したときにも動く・同じ名前なら入れ替える）',
@@ -2222,6 +2224,9 @@ def functional_checks(index_path):
             out.dup2 = _libPickNewest([{name:'同じ名前', area:'波賀町', at:'2026-09-01'},
                                        {name:'同じ名前', area:'波賀町', at:'2026-09-12'},
                                        {name:'同じ名前', area:'千種町', at:'2026-09-05'}]).map(e => e.at).join(',') === '2026-09-12,2026-09-05';
+            // v210: 印のあるものと無いものが混ざっていても、名前＋エリアが同じなら1つ
+            out.dup3 = _libPickNewest([{name:'混ざり', area:'波賀町', at:'2026-09-12'},
+                                       {name:'混ざり', area:'波賀町', cid:'c9', ts:'2026-09-12T13:00:00Z'}]).length === 1;
             window._ghRepo = keepRepo3;
             window.fetch = keepFetch; _boxCfgCache = keepCfg; _boxOn = false; setCourses(keepC); currentCourseId = keepId;
             if (keepMine === null) localStorage.removeItem(LS.boxMine); else localStorage.setItem(LS.boxMine, keepMine);
@@ -2231,7 +2236,7 @@ def functional_checks(index_path):
           }catch(e){ return 'ERR:'+e.message; } }""")
         chk('機能', 'みんなの箱：合言葉なしで「出す」1つ。中身と一覧の両方を書き、すぐ並び、押すと中身が取れる。一覧が消えても自分のぶんは戻る。写し終わったら置き場所のぶんだけ出す',
             isinstance(bx, dict) and all(bx.get(k) for k in ('oneBtn', 'idx', 'body', 'list', 'open', 'mine', 'heal', 'big', 'moved',
-                                                            'phPut', 'phFlag', 'phGot', 'phSticker', 'dup', 'dup2')), str(bx)[:380])
+                                                            'phPut', 'phFlag', 'phGot', 'phSticker', 'dup', 'dup2', 'dup3')), str(bx)[:400])
 
         # v206: 片手の拡大縮小：ダブルタップして押したまま下＝拡大／上＝縮小。1回タップだけでは変わらない
         oz = page.evaluate("""()=>{ try{
