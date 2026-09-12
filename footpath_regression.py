@@ -447,6 +447,11 @@ def static_checks(src):
     # --- v157: 番号の丸と種類の丸を横に並べる（オーナー指摘：iPhone で片方しか見えない）---
     chk('静的', '番号つきで種類がある地点：地図は「種類の丸＋右上に番号の小丸」、一覧・並べ替え・配布シート・カードは番号と種類を並べて出す',
         'class="wp-num"' in src and 'class="wp-dot cat"' in src and 'class="ro-badge cat"' in src and 'class="sh-cat"' in src and 'class="vip-dot vip-dot2"' in src and '_catBadge' not in src and 'wp-pair' not in src)
+    # --- v197: どこに上げても一覧に並ぶ（library フォルダと一番上の両方を見る）／日本語のファイル名も開ける ---
+    chk('静的', '置き場所は library フォルダと一番上の両方を読む。コースでない .json は飛ばす。日本語のファイル名も配布リンクで開ける',
+        'async function _libScanDir' in src and "await _libScanDir(gh, 'library', out); await _libScanDir(gh, '', out);" in src
+        and 'const LIB_SKIP =' in src and 'LIB_SKIP.indexOf(f.name) < 0' in src and "s.charAt(0) === '.'" in src
+        and "return /\\.json$/i.test(s) ? dir + s : null;" in src and "/[:?#%<>\"|*]/.test(s)" in src)
     # --- v196: library に置いた「コースのファイル」もそのまま並ぶ（写真つきで開ける）---
     chk('静的', 'library/ の .json は配布リンクとして開ける。書き出したコースのファイルを置いただけでも一覧に並ぶ。ファイルで出すときは library の画面を開く',
         "if (s.slice(0, 8) === 'library/')" in src and "if (entry.file) { location.href = _shareBaseUrl() + '?course=' + encodeURIComponent(entry.file); return; }" in src
@@ -1132,15 +1137,16 @@ def functional_checks(index_path):
 
         # INV-P: 配布リンクは「同じ場所の.json」だけ受け付ける（外部URLや上位フォルダを弾く）
         sf = page.evaluate("""()=>{ try{
-            const ok  = ['course-1.json','a_b-c.json','x.JSON','library/a-1.json'].map(v=>_safeCourseFile(v));
+            const ok  = ['course-1.json','a_b-c.json','x.JSON','library/a-1.json','footpath_波賀町の町並み.json'].map(v=>_safeCourseFile(v));
             const bad = ['../secret.json','https://evil.example/x.json','/etc/passwd.json','sub/dir.json',
-                         'x.txt','','javascript:alert(1)', null].map(v=>_safeCourseFile(v));
+                         'x.txt','','javascript:alert(1)', null, 'a%2e%2e.json', 'a#b.json', 'a?b.json', '.json'].map(v=>_safeCourseFile(v));
             return {ok:ok, bad:bad,
                     name1:_shareFileName('Course 01!!'), name2:_shareFileName('a.json'),
                     name3:_shareFileName('波賀町 コース'), base:/\\/$/.test(_shareBaseUrl())};
           }catch(e){ return 'ERR:'+e.message; } }""")
         ok_sf = (isinstance(sf, dict)
                  and sf['ok'][0] == 'course-1.json' and sf['ok'][1] == 'a_b-c.json' and sf['ok'][2] == 'x.JSON' and sf['ok'][3] == 'library/a-1.json'
+                 and sf['ok'][4] == 'footpath_波賀町の町並み.json'
                  and all(v is None for v in sf['bad'])
                  and sf['name1'] == 'Course-01.json' and sf['name2'] == 'a.json' and sf['name3'] == 'course.json'
                  and sf['base'] is True)
@@ -2004,23 +2010,28 @@ def functional_checks(index_path):
                         && document.getElementById('pubOwnerToggle').hidden === false;   // v195：合言葉が無ければ「作者に送る」が主役
             _ghSetToken(keepTok); window._ghRepo = keepRepo2;
             Object.defineProperty(navigator, 'clipboard', {configurable:true, value: keepCb});
-            // ④ 一覧は library フォルダ（GitHub API）も読む
-            window.fetch = async (u, o) => { const s2 = String(u);
-              if (s2.indexOf('api.github.com') >= 0) return new Response(JSON.stringify([{type:'file', name:'a.json'}, {type:'file', name:'b.json'}]), {status:200});
+            // ④ 一覧は library フォルダも、一番上（v197）も読む
+            let skipHit = false;
+            window.fetch = async (u, o) => { const s2 = String(u), dec = decodeURIComponent(s2);
+              if (s2.indexOf('/contents/library') >= 0) return new Response(JSON.stringify([{type:'file', name:'a.json'}, {type:'file', name:'b.json'}]), {status:200});
+              if (s2.indexOf('/contents?') >= 0) return new Response(JSON.stringify([{type:'file', name:'footpath_千種町.json'}, {type:'file', name:'package.json'}, {type:'dir', name:'data'}]), {status:200});   // v197：一番上
               if (s2.indexOf('library/a.json') >= 0) return new Response(JSON.stringify({name:'フォルダのコースA', area:'', by:'', at:'2026-09-12', allowEdit:false, d:j.d}), {status:200});
               if (s2.indexOf('library/b.json') >= 0) return new Response(JSON.stringify({name:'フォルダのコースB', area:'', by:'', at:'2026-09-11', savedAt:'2026-09-11T00:00:00Z', wps:[{id:1,type:'spot'}]}), {status:200});   // v196：書き出したコースのファイルそのまま
+              if (dec.indexOf('footpath_千種町.json') >= 0) return new Response(JSON.stringify({name:'一番上のコース', savedAt:'2026-09-10T00:00:00Z', noEdit:true, wps:[{id:1,type:'spot'}]}), {status:200});
+              if (s2.indexOf('package.json') >= 0) { skipHit = true; return new Response('{}', {status:200}); }   // 飛ばすので呼ばれないはず
               if (s2.indexOf('library.json') >= 0) return new Response(JSON.stringify({courses:[]}), {status:200});
               return keepFetch(u, o); };
             const keepRepo = _ghRepo; window._ghRepo = () => ({user:'editroom1980', repo:'footpath-map'});
             const list = await _libLoad();
-            out.folder = list.length === 2 && list[0].name === 'フォルダのコースA' && list[1].file === 'library/b.json';   // 新しい順・ファイルのまま置いたものも並ぶ
+            out.folder = list.length === 3 && list[0].name === 'フォルダのコースA' && list[1].file === 'library/b.json';   // 新しい順・ファイルのまま置いたものも並ぶ
+            out.top = list[2].file === 'footpath_千種町.json' && list[2].name === '一番上のコース' && list[2].allowEdit === false && !skipHit;   // v197：一番上のファイルも並ぶ／コースでない .json は読まない
             window._ghRepo = keepRepo; window.fetch = keepFetch; window.open = keepOpen;
             closePublishSheet(); setCourses(keepC);
             document.querySelectorAll('#toastBox .toast').forEach(e => e.remove());
             return out;
           }catch(e){ return 'ERR:'+e.message; } }""")
-        chk('機能', 'みんなのコースに出す：名前と「見た人にできること」を選んで1回で出せる。見るだけ＝取り込みを断る印が入る。一覧は library フォルダも読む',
-            isinstance(pb, dict) and all(pb.get(k) for k in ('shown', 'name', 'opts', 'picked', 'body', 'locked', 'free', 'picker', 'goShown', 'put', 'setup', 'folder')), str(pb)[:300])
+        chk('機能', 'みんなのコースに出す：名前と「見た人にできること」を選んで1回で出せる。見るだけ＝取り込みを断る印が入る。一覧は library フォルダと一番上の両方を読む',
+            isinstance(pb, dict) and all(pb.get(k) for k in ('shown', 'name', 'opts', 'picked', 'body', 'locked', 'free', 'picker', 'goShown', 'put', 'setup', 'folder', 'top')), str(pb)[:300])
 
         # v190: 一覧に出す絵：写真から選ぶ→保存される／地図の絵に戻す→消える／一覧のアイコンに出る
         ic = page.evaluate("""async ()=>{ try{

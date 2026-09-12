@@ -3203,7 +3203,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v196';
+const APP_VERSION = 'v197';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -7729,11 +7729,11 @@ function _viewParams() {
 function _safeCourseFile(v) {
   if (!v) return null;
   let s = String(v).trim();
-  if (s.includes('..') || s.includes('\\') || s.includes(':')) return null;
+  if (s.includes('..') || s.includes('\\') || /[:?#%<>"|*]/.test(s) || /[\u0000-\u001f]/.test(s)) return null;
   let dir = '';
   if (s.slice(0, 8) === 'library/') { dir = 'library/'; s = s.slice(8); }   // v196：みんなのコースの置き場所だけは中を見てよい
-  if (s.includes('/')) return null;
-  return /^[A-Za-z0-9_.-]+\.json$/i.test(s) ? dir + s : null;   // 拡張子の大小は問わない（サーバ上の実名に合わせる）
+  if (!s || s.includes('/') || s.charAt(0) === '.') return null;
+  return /\.json$/i.test(s) ? dir + s : null;   // v197：日本語のファイル名も可（記号と上の階層は上で弾いている）／拡張子の大小は問わない
 }
 
 // 配布用JSONを読み込む。成功したら true。（?course= の実処理。テストからも呼べるように分離）
@@ -10121,34 +10121,38 @@ async function openLibrarySheet(){
     _libRender(list);
   } catch(_) { _libRender([]); }
 }
-/* 一覧の読み方（v191）：まず library フォルダのファイルを全部読む（置き場所が GitHub なら中身を一覧できる）。
-   だめなら今までどおり library.json 1つを読む。どちらも無ければ「まだ1件も出ていません」 */
+/* 一覧の読み方（v197）：置き場所（GitHub）の **library フォルダと一番上の両方** のファイルを読む。
+   ＝どこに上げてもコースは一覧に並ぶ。だめなら今までどおり library.json 1つを読む。 */
 async function _libLoad(){
   const out = [];
   const gh = _ghRepo();
-  if (gh) {
-    try {
-      const r = await fetch('https://api.github.com/repos/' + gh.user + '/' + gh.repo + '/contents/library?t=' + Date.now(), {cache:'no-store'});
-      if (r.ok) {
-        const files = (await r.json()).filter(f => f && f.type === 'file' && /\.json$/i.test(f.name || ''));
-        for (const f of files.slice(0, 60)) {
-          try {
-            const c = await (await fetch('library/' + f.name + '?t=' + Date.now(), {cache:'no-store'})).json();
-            if (!c || !c.name) continue;
-            if (c.d) { out.push(c); continue; }                       // アプリが作った形（リンクの中身つき）
-            if (Array.isArray(c.wps)) out.push({name: c.name, area: c.area || '', by: c.by || '',   // v196：書き出したコースのファイルをそのまま置いた場合
-              at: String(c.savedAt || '').slice(0, 10), allowEdit: c.noEdit !== true, file: 'library/' + f.name});
-          } catch(_) {}
-        }
-      }
-    } catch(_) {}
-  }
+  if (gh) { await _libScanDir(gh, 'library', out); await _libScanDir(gh, '', out); }   // v197：上げる場所を間違えても出るように
   try {
     const j = await (await fetch(LIBRARY_URL + '?t=' + Date.now(), {cache:'no-store'})).json();
     (j && Array.isArray(j.courses) ? j.courses : []).forEach(c => { if (c && c.d && c.name) out.push(c); });
   } catch(_) {}
   out.sort((a, b) => String(b.at || '').localeCompare(String(a.at || '')));
   return out;
+}
+/* 置き場所のフォルダを1つ見て、コースのファイルを拾う（v197）。
+   アプリが作った形（{name, d}）と、「書き出す」で作ったコースのファイル（{name, wps}）の両方を受ける。 */
+async function _libScanDir(gh, dir, out){
+  try {
+    const r = await fetch('https://api.github.com/repos/' + gh.user + '/' + gh.repo + '/contents' + (dir ? '/' + dir : '') + '?t=' + Date.now(), {cache:'no-store'});
+    if (!r.ok) return;
+    const files = (await r.json()).filter(f => f && f.type === 'file' && /\.json$/i.test(f.name || '') && LIB_SKIP.indexOf(f.name) < 0);
+    for (const f of files.slice(0, 60)) {
+      const path = (dir ? dir + '/' : '') + f.name;
+      if (out.some(o => o.file === path)) continue;
+      try {
+        const c = await (await fetch(path.split('/').map(encodeURIComponent).join('/') + '?t=' + Date.now(), {cache:'no-store'})).json();
+        if (!c || !c.name) continue;
+        if (c.d) { out.push(c); continue; }                       // アプリが作った形（リンクの中身つき）
+        if (Array.isArray(c.wps)) out.push({name: c.name, area: c.area || '', by: c.by || '',   // v196：書き出したコースのファイルをそのまま置いた場合
+          at: String(c.savedAt || '').slice(0, 10), allowEdit: c.noEdit !== true, file: path});
+      } catch(_) {}
+    }
+  } catch(_) {}
 }
 function _ghRepo(){
   const m = /^([a-z0-9-]+)\.github\.io$/i.exec(location.hostname || ''); if (!m) return null;
@@ -10373,6 +10377,7 @@ function _libHowTo(){ openPublishSheet(); }   // 旧名（呼び出し側は据�
    コースの中身を縮めてリンクの「#」の後ろに入れてしまえば、置き場所の用意なしで、その場で配れる。
    ・写真は入らない（大きすぎる）。写真も配るときは今までどおりファイルを置く
    ・「#」の後ろはサーバに送られないので、置き場所（GitHub Pages）の設定は何も要らない */
+const LIB_SKIP = ['library.json', 'manifest.json', 'package.json', 'package-lock.json', 'sample.json', 'version.json'];   // v197：一番上を見るとき、コースではないファイルは飛ばす
 const LIBRARY_URL = 'library.json';   // みんなのコース（v185）。アプリと同じ場所に置く1つのファイル。中身は {courses:[{name, area, by, at, d}]}
 const LINK_DATA_MAX = 60000;   // これを超えるリンクは長すぎるので勧めない（文字数）
 function _b64url(bytes){

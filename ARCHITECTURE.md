@@ -447,7 +447,10 @@ CONSTANTS(904) → STATE(968) → STORAGE(1015) → 版のお知らせ(1021) →
 - 開くときは `location.href = _shareBaseUrl() + '#d=' + d`＝配るリンクと同じ入口を通す（読み込みの道を1本にする）。
 - 出すときは `_libHowTo()` が1行を組み立ててクリップボードへ入れ、`_ghEditUrl(LIBRARY_URL)`（GitHub の編集画面）を開く。人手で貼り付けて保存する運用。
 
-## みんなのコース（v185→v191）
-- 一覧：`_libLoad()` が ① 置き場所が GitHub Pages なら GitHub の一覧 API で `library/` のファイル名を取り、中身は**同じ場所（`library/<名>.json`）**から読む ② だめなら `library.json`（`{courses:[…]}`）。どちらも 1 件は `{name, area, by, at, allowEdit, d}`。
+## みんなのコース（v185→v197）
+- 一覧：`_libLoad()` が ① 置き場所が GitHub Pages なら `_libScanDir()` で **`library/` と一番上の両方**を GitHub の一覧 API で読み、中身は同じ場所（`library/<名>.json` / `<名>.json`）から取る ② だめなら `library.json`（`{courses:[…]}`）。
+  - 1 件の形は 2 通り：アプリが作った `{name, area, by, at, allowEdit, d}`（`d`＝配るリンクの中身）と、**「書き出す」で作ったコースのファイルそのもの**（`{name, wps:[…]}`。`file:'<置き場所での道>'` を持ち、`?course=<道>` で開く＝写真も出る）。
+  - `LIB_SKIP`＝一番上にある**コースでない `.json`**（`version.json`・`package.json` など）。読みにいかない。
+  - `_safeCourseFile()` が受けるのは**同じ場所の `.json` だけ**：`library/` の 1 階層だけ許し、`..`・`/`・`\`・`: ? # % < > " | *`・先頭の `.` を弾く。ファイル名の日本語は可（v197）。
 - 出す：`openPublishSheet()` →（名前・見た人にできること）→ `_pubGo()` が `_ghPutFile(path, text, message)` で **GitHub の contents API に PUT**（v193）。合言葉は `LS.ghToken`（この端末のみ）。GitHub の `/new/main?value=…` 方式は中身が大きいと GitHub 側がエラーになるので**使わない**。合言葉を使わない道は `_pubByFile()`（ファイル保存＋アップロード画面）とコピー。
 - 「見るだけ」は `_courseForLink(course, {allowEdit:false})` が `noEdit:true` を入れる＝受け取った側の `_isLockedShare` が効く。
