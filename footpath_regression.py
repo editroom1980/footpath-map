@@ -463,7 +463,7 @@ def static_checks(src):
         and '.leaflet-overlay-pane, button' not in src)   # v207：canvas を弾かない（実機で始められなかった原因）
     # --- v206: 片手で拡大縮小（ダブルタップして押したまま上下） ---
     chk('静的', '片手の拡大縮小：ダブルタップの2回目を押したまま、下で拡大・上で縮小。押した所を軸にする。印やボタンの上では始めない',
-        'function _initOneHandZoom' in src and 'const ONE_ZOOM_GAP_MS = 320;' in src and 'const ONE_ZOOM_STEP_PX = 70;' in src
+        'function _initOneHandZoom' in src and 'const ONE_ZOOM_GAP_MS = 400;' in src and 'const ONE_ZOOM_STEP_PX = 70;' in src
         and 'function _ozSkipTarget' in src and 'leafMap.setZoomAround(_oz.anchor, want, {animate: false})' in src
         and 'const ONE_ZOOM_GO_PX = 12;' in src and 'まだ何も横取りしない（構えるだけ）' in src   # ふつうの2回タップは通す
         and '_initOneHandZoom();' in src and 'body.onezoom #map{touch-action:none}' in src and "ozTip:       'fp_oz_tip'" in src)

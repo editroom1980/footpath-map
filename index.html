@@ -3207,7 +3207,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v210';
+const APP_VERSION = 'v211';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -5462,7 +5462,7 @@ function _nearRoute(pt){   // 画面座標 pt が今の道順の線から LINE_H
    ・2回目のタップは捕まえてしまう（stopPropagation）ので、長押しの仕掛け（道を変更・スポット追加）とはぶつからない
    ・印やボタンの上から始めたときは何もしない（今までどおりの動き）
    ・押している所を軸に拡大縮小する（見ていた場所が逃げない） */
-const ONE_ZOOM_GAP_MS = 320;    // 1回目から2回目までの間（これ以内ならダブルタップ）
+const ONE_ZOOM_GAP_MS = 400;    // 1回目から2回目までの間（これ以内ならダブルタップ・v211：指では少しゆっくりになるため広げた）
 const ONE_ZOOM_NEAR_PX = 40;    // 1回目と2回目の近さ
 const ONE_ZOOM_STEP_PX = 70;    // これだけ指を動かすと1段
 const ONE_ZOOM_GO_PX = 12;      // 2回目を押したまま縦にこれだけ動かしたら拡大縮小に切り替える
@@ -10425,7 +10425,7 @@ function _libRender(list){
   const box = document.getElementById('libList'), note = document.getElementById('libNote'); if (!box) return;
   if (list === null) { note.textContent = '読み込んでいます…'; box.innerHTML = ''; return; }
   if (!list.length) { note.innerHTML = 'まだ1件も出ていません。<br>下の「ここに自分のコースを出す」→「出す」を押すだけで、<b>すぐにここへ並びます</b>（登録も合言葉もいりません）。'; box.innerHTML = ''; return; }
-  note.textContent = 'みんなが出したコースです。押すと、その場で歩く人の画面が開きます（写真は入っていません）。';
+  note.textContent = 'みんなが出したコースです。押すと、その場で歩く人の画面が開きます（写真つきで出されたものは写真も出ます）。';
   box.innerHTML = list.map((c, i) => '<button type="button" class="lb-row tap" data-i="' + i + '">'
     + '<span class="lb-name">' + escHtml(c.name || '(名称未設定)') + '</span>'
     + '<span class="lb-sub">' + escHtml([c.area, c.by ? c.by + ' さん' : '', c.at || ''].filter(Boolean).join('・')) + '</span>'
