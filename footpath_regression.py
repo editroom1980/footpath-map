@@ -451,6 +451,7 @@ def static_checks(src):
     chk('静的', '置き場所は library フォルダと一番上の両方を読む。コースでない .json は飛ばす。日本語のファイル名も配布リンクで開ける',
         'async function _libScanDir' in src and "await _libScanDir(gh, 'library', out); await _libScanDir(gh, '', out);" in src
         and 'const LIB_SKIP =' in src and 'LIB_SKIP.indexOf(f.name) < 0' in src and "s.charAt(0) === '.'" in src
+        and "o.file.normalize('NFC') === key" in src
         and "return /\\.json$/i.test(s) ? dir + s : null;" in src and "/[:?#%<>\"|*]/.test(s)" in src)
     # --- v196: library に置いた「コースのファイル」もそのまま並ぶ（写真つきで開ける）---
     chk('静的', 'library/ の .json は配布リンクとして開ける。書き出したコースのファイルを置いただけでも一覧に並ぶ。ファイルで出すときは library の画面を開く',
@@ -2014,17 +2015,17 @@ def functional_checks(index_path):
             let skipHit = false;
             window.fetch = async (u, o) => { const s2 = String(u), dec = decodeURIComponent(s2);
               if (s2.indexOf('/contents/library') >= 0) return new Response(JSON.stringify([{type:'file', name:'a.json'}, {type:'file', name:'b.json'}]), {status:200});
-              if (s2.indexOf('/contents?') >= 0) return new Response(JSON.stringify([{type:'file', name:'footpath_千種町.json'}, {type:'file', name:'package.json'}, {type:'dir', name:'data'}]), {status:200});   // v197：一番上
+              if (s2.indexOf('/contents?') >= 0) return new Response(JSON.stringify([{type:'file', name:'footpath_おにぎり.json'}, {type:'file', name:'footpath_おにぎり.json'.normalize('NFD')}, {type:'file', name:'package.json'}, {type:'dir', name:'data'}]), {status:200});   // v197：一番上／v198：濁点違いの同じ名前
               if (s2.indexOf('library/a.json') >= 0) return new Response(JSON.stringify({name:'フォルダのコースA', area:'', by:'', at:'2026-09-12', allowEdit:false, d:j.d}), {status:200});
               if (s2.indexOf('library/b.json') >= 0) return new Response(JSON.stringify({name:'フォルダのコースB', area:'', by:'', at:'2026-09-11', savedAt:'2026-09-11T00:00:00Z', wps:[{id:1,type:'spot'}]}), {status:200});   // v196：書き出したコースのファイルそのまま
-              if (dec.indexOf('footpath_千種町.json') >= 0) return new Response(JSON.stringify({name:'一番上のコース', savedAt:'2026-09-10T00:00:00Z', noEdit:true, wps:[{id:1,type:'spot'}]}), {status:200});
+              if (dec.normalize('NFC').indexOf('footpath_おにぎり.json') >= 0) return new Response(JSON.stringify({name:'一番上のコース', savedAt:'2026-09-10T00:00:00Z', noEdit:true, wps:[{id:1,type:'spot'}]}), {status:200});
               if (s2.indexOf('package.json') >= 0) { skipHit = true; return new Response('{}', {status:200}); }   // 飛ばすので呼ばれないはず
               if (s2.indexOf('library.json') >= 0) return new Response(JSON.stringify({courses:[]}), {status:200});
               return keepFetch(u, o); };
             const keepRepo = _ghRepo; window._ghRepo = () => ({user:'editroom1980', repo:'footpath-map'});
             const list = await _libLoad();
             out.folder = list.length === 3 && list[0].name === 'フォルダのコースA' && list[1].file === 'library/b.json';   // 新しい順・ファイルのまま置いたものも並ぶ
-            out.top = list[2].file === 'footpath_千種町.json' && list[2].name === '一番上のコース' && list[2].allowEdit === false && !skipHit;   // v197：一番上のファイルも並ぶ／コースでない .json は読まない
+            out.top = list[2].file === 'footpath_おにぎり.json' && list[2].name === '一番上のコース' && list[2].allowEdit === false && !skipHit;   // v197：一番上のファイルも並ぶ／コースでない .json は読まない／v198：濁点違いの同じ名前は1つだけ
             window._ghRepo = keepRepo; window.fetch = keepFetch; window.open = keepOpen;
             closePublishSheet(); setCourses(keepC);
             document.querySelectorAll('#toastBox .toast').forEach(e => e.remove());

@@ -3203,7 +3203,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v197';
+const APP_VERSION = 'v198';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -10143,7 +10143,8 @@ async function _libScanDir(gh, dir, out){
     const files = (await r.json()).filter(f => f && f.type === 'file' && /\.json$/i.test(f.name || '') && LIB_SKIP.indexOf(f.name) < 0);
     for (const f of files.slice(0, 60)) {
       const path = (dir ? dir + '/' : '') + f.name;
-      if (out.some(o => o.file === path)) continue;
+      const key = path.normalize('NFC');   // v198：Mac から上げた名前は濁点の作り方が違うことがある（同じコースが2つ並ぶのを防ぐ）
+      if (out.some(o => o.file && o.file.normalize('NFC') === key)) continue;
       try {
         const c = await (await fetch(path.split('/').map(encodeURIComponent).join('/') + '?t=' + Date.now(), {cache:'no-store'})).json();
         if (!c || !c.name) continue;
