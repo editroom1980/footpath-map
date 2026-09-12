@@ -84,6 +84,7 @@ html,body{touch-action:manipulation;min-height:calc(100% + var(--sat));font-fami
 #homeTip .ht-d{font-size:12.5px;color:var(--t-sub);line-height:1.75}
 #homeTip .ht-b{margin-top:10px;width:100%;min-height:var(--tap);border:none;border-radius:11px;background:var(--brand-grad);color:#fff;
   font-family:inherit;font-size:14px;font-weight:800;cursor:pointer}
+#homeTip .ht-b2{margin-top:6px;background:#F1ECE3;color:#6A5A44}   /* v223：あとにする */
 #storageInfo.warn{color:#C0562A;font-weight:700}
 .s1-fab{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:16px;border-radius:16px;background:var(--brand-grad);color:#fff;border:none;font-family:'Plus Jakarta Sans','Hiragino Sans',sans-serif;font-size:15px;font-weight:800;box-shadow:0 6px 16px var(--brand-sh);cursor:pointer}
 .s1-fab .svgi{font-size:20px}
@@ -727,6 +728,42 @@ body.viewonly #firstTip,body.embed #firstTip{display:none!important}
 #libSheet .lb-n{font-size:11.5px;color:var(--t-sub);line-height:1.7;margin-bottom:10px}
 #libSheet .lb-row{display:block;width:100%;text-align:left;border:0.5px solid #EDE7DC;border-radius:12px;background:#FCFAF6;padding:10px 12px;margin-bottom:8px;font-family:inherit;cursor:pointer}
 /* 自分が出したコースだけに出る「消す」（v212） */
+/* ホーム画面に追加の案内（v223）：チュートリアルと同じ形 */
+#a2hsSheet{position:fixed;inset:0;z-index:5650;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.45);padding:16px}
+#a2hsSheet.show{display:flex}
+#a2hsSheet .tr-box{background:#fff;width:100%;max-width:430px;max-height:86vh;border-radius:18px;padding:18px 18px calc(16px + var(--sab));display:flex;flex-direction:column;gap:12px;box-shadow:0 12px 40px rgba(0,0,0,.3)}
+#a2hsSheet .tr-hd{display:flex;align-items:center;gap:8px}
+#a2hsSheet .tr-x{margin-left:auto;width:32px;height:32px;border:0;border-radius:50%;background:#F1ECE3;color:#6A645E;font-size:14px;cursor:pointer}
+#a2hsSheet .tr-ic{font-size:34px;line-height:1;text-align:center}
+#a2hsSheet .tr-t{font-size:18px;font-weight:800;color:#3E2A0E;text-align:center;line-height:1.4}
+#a2hsSheet .tr-d{font-size:13.5px;color:#4A443E;line-height:1.8;overflow-y:auto;flex:1}
+#a2hsSheet .ah-steps{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:10px}
+#a2hsSheet .ah-steps li{display:flex;gap:9px;align-items:flex-start;font-size:14px;color:#2C2620;line-height:1.6}
+#a2hsSheet .ah-steps b.n{flex-shrink:0;width:23px;height:23px;border-radius:50%;background:var(--brand);color:#fff;font-size:12.5px;display:flex;align-items:center;justify-content:center}
+#a2hsSheet .ah-mark{display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:26px;border-radius:7px;background:#EFF4FF;border:0.5px solid #C9D8F5;vertical-align:-7px;margin:0 2px}
+#a2hsSheet .tr-foot{display:flex;gap:8px}
+#a2hsSheet .tr-foot button{flex:1;min-height:46px;border:0;border-radius:12px;font-family:inherit;font-size:15px;font-weight:800;cursor:pointer}
+#a2hsSheet .tr-back{background:#F1ECE3;color:#4A2E0E}
+#a2hsSheet .tr-next{background:var(--brand-grad);color:#fff}
+/* はじめての案内（v222）：作る→出すまでを順に見せる。何度でも開ける */
+#tourSheet{position:fixed;inset:0;z-index:5600;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.45);padding:16px}
+#tourSheet.show{display:flex}
+#tourSheet .tr-box{background:#fff;width:100%;max-width:430px;max-height:86vh;border-radius:18px;padding:18px 18px calc(16px + var(--sab));display:flex;flex-direction:column;gap:12px;box-shadow:0 12px 40px rgba(0,0,0,.3)}
+#tourSheet .tr-hd{display:flex;align-items:center;gap:8px}
+#tourSheet .tr-step{font-size:11.5px;font-weight:800;color:#fff;background:var(--brand);border-radius:10px;padding:3px 9px}
+#tourSheet .tr-x{margin-left:auto;width:32px;height:32px;border:0;border-radius:50%;background:#F1ECE3;color:#6A645E;font-size:14px;cursor:pointer}
+#tourSheet .tr-ic{font-size:34px;line-height:1;text-align:center;margin-top:2px}
+#tourSheet .tr-t{font-size:18px;font-weight:800;color:#3E2A0E;text-align:center;line-height:1.4}
+#tourSheet .tr-d{font-size:13.5px;color:#4A443E;line-height:1.75;overflow-y:auto;flex:1}
+#tourSheet .tr-d b{color:#2C2620}
+#tourSheet .tr-dots{display:flex;gap:5px;justify-content:center}
+#tourSheet .tr-dots i{width:7px;height:7px;border-radius:50%;background:#E3DCD1}
+#tourSheet .tr-dots i.on{background:var(--brand)}
+#tourSheet .tr-foot{display:flex;gap:8px}
+#tourSheet .tr-foot button{flex:1;min-height:46px;border:0;border-radius:12px;font-family:inherit;font-size:15px;font-weight:800;cursor:pointer}
+#tourSheet .tr-back{background:#F1ECE3;color:#4A2E0E;flex:0 0 96px!important}
+#tourSheet .tr-next{background:var(--brand-grad);color:#fff}
+.s1-help{display:block;width:100%;margin:8px 0 0;padding:11px;border:0.5px dashed #D9CFC0;border-radius:12px;background:transparent;color:#6A5A44;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer}
 /* 取り込んだスポットの整理（v217） */
 #gotSheet{position:fixed;inset:0;z-index:5200;display:none;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.35)}
 #gotSheet.show{display:flex}
@@ -1287,12 +1324,15 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
       <button class="s1-tool" onclick="exportAllCourses()" title="保存されている全コースを1つのファイルに書き出します">すべて書き出す<br>（バックアップ）</button>
       <label class="s1-tool" title="バックアップファイルからコースを戻します">バックアップ<br>から復元<input type="file" accept=".json" style="display:none" onchange="importBackupFile(this)"></label>
     </div>
+    <button type="button" class="s1-help tap" onclick="openTour()">📖 はじめての方へ（使い方を順番に見る）</button>
+    <button type="button" class="s1-help tap" onclick="openA2hs()">📲 ホーム画面に追加する</button>
     <div id="backupInfo"></div>
     <div id="storageInfo"></div>
     <div id="homeTip">
-      <div class="ht-t">📱 iPhone をお使いの方へ</div>
-      <div class="ht-d">Safari は、このアプリを <b>7日以上開かない</b>と、保存したコースを消すことがあります。<br><b>ホーム画面に追加</b>すると消えにくくなります。下の共有ボタン（□↑）→「ホーム画面に追加」です。</div>
-      <button class="ht-b tap" onclick="dismissHomeTip()">わかった</button>
+      <div class="ht-t">📱 ホーム画面に追加しませんか？</div>
+      <div class="ht-d">ふつうのアプリのように1回で開けます。ブラウザは<b>しばらく開かない</b>と保存したコースを消すことがありますが、ホーム画面に追加しておくと消えにくくなります。</div>
+      <button class="ht-b tap" onclick="openA2hs()">追加のしかたを見る</button>
+      <button class="ht-b tap ht-b2" onclick="dismissHomeTip()">あとにする</button>
     </div>
   </div>
   <div style="padding:14px 0 6px">
@@ -1338,6 +1378,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
       <button class="pp-row" onclick="closePcPops();exportCourse()">ファイルに保存</button>
       <button class="pp-row" onclick="closePcPops();exportRouteCoords()">座標を書き出す</button>
       <button class="pp-row" onclick="closePcPops();saveMapNoText()">地図だけ画像で保存</button>
+      <button class="pp-row" onclick="closePcPops();openTour()">はじめての方へ（使い方）</button>
       <button class="pp-row" onclick="closePcPops();openHelp()">操作ガイド</button>
       <div class="pp-sec ed">詳細</div>
       <button class="pp-row ed" id="btnManual" onclick="toggleManualMode();_syncPcPops()" title="OFF にすると、これから置く調整点が道に吸い付かない（地図に無い山道・農道用）">道なりに引く<span class="pp-sw"></span></button>
@@ -2280,6 +2321,7 @@ const LS = {
   boxMine:     'fp_box_mine',     // みんなの箱に自分が出したコース（一覧が消えても戻せるように・v199）
   ozTip:       'fp_oz_tip',       // 片手の拡大縮小の案内を見たか（1回だけ出す・v206）
   boxOwn:      'fp_box_own',      // みんなのマップに自分が出したもの（消せるのは出した本人だけ・v212）
+  tourSeen:    'fp_tour_seen',    // はじめての案内（チュートリアル）を見たか（v222）
   devId:       'fp_dev_id',       // この端末の印（作者の見分け・v220）。名前も個人情報も入らない乱数
   walkSpeed:   'fp_walkspeed',    // 歩く速さの段階（WALK_SPEEDS の添字）
   shareLinks:  'fp_sharelinks',   // コースIDごとの共有リンク（印刷用シートのQRに使う）
@@ -2858,6 +2900,8 @@ if (window.visualViewport) window.visualViewport.addEventListener('resize', () =
 window.addEventListener('DOMContentLoaded', () => {
   renderCourseList();
   if (typeof _applyViewLock === 'function') _applyViewLock();   // v214：地図の右の「閲覧／編集」ボタンに絵を入れる
+  _tourFirstRun();   // v222：はじめての人には使い方を出す
+  _a2FirstRun();     // v223：ホーム画面への追加の案内
   // 共有リンクで開いた人のブラウザにサンプルを入れない（見に来ただけの人の保存領域を汚さない）
   if (!_viewParams().on) {
     ensureSampleCourse()                       // 初回のみサンプルを取り込む（失敗しても起動に影響しない）
@@ -3235,7 +3279,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 手描きの道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した手描きの道id（直前取り消し用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v221';
+const APP_VERSION = 'v223';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -7079,6 +7123,173 @@ function undoDeleteWp() {
 /* ============================================================
    HELP MODAL
    ============================================================ */
+/* はじめての案内（v222・オーナー指示「作ってからみんなのマップに出すまでのチュートリアル」）。
+   ・初回だけ自動で開く（LS.tourSeen）。あとは一覧の「はじめての方へ」からいつでも開ける
+   ・1枚ずつ進む。最後は「コースを作る」で新規作成へ */
+const TOUR = [
+  {ic:'🚶', t:'フットパスマップメーカーへ ようこそ', d:'歩くコースを地図で作り、写真と説明をつけて、<b>みんなのマップ</b>に出すまでを順番にご案内します。<br>この案内は、あとから一覧の「はじめての方へ」で何度でも開けます。'},
+  {ic:'➕', t:'1. コースを作る', d:'一覧のいちばん下の <b>「新しいコースを作成」</b> を押します。<br>コースの名前（例：波賀町の棚田コース）を入れると、地図の画面になります。'},
+  {ic:'📍', t:'2. スポットを置く', d:'地図を<b>長押し</b>すると「ここにスポットを追加しますか？」と出ます。<br>・<b>コースに入れる</b>＝歩く順番に入ります<br>・<b>立ち寄り先にする</b>＝順番には入れず、目印だけ<br><br>お店や神社などは、メニューの <b>「まわりの施設を探す」</b> でまとめて置けます（多すぎたら「スポットを整理」で消せます）。'},
+  {ic:'📷', t:'3. 写真と説明を入れる', d:'地図のスポット（○）を押すと、名前・種類・写真・説明を書けます。<br>写真は歩く人のカードに<b>シールのように</b>貼られ、みんなのマップに出すときも一緒に届きます。'},
+  {ic:'✏️', t:'4. 道順を整える', d:'スポットを2つ以上置くと、道なりに赤い線が引かれます。<br>・<b>ルート調整</b>…線をつまんで通したい道へ動かす<br>・<b>手描き</b>…指でなぞってそのとおりに引く<br>・<b>道を足す</b>…地図に無いあぜ道などを描き足す'},
+  {ic:'📝', t:'5. コースの情報を書く', d:'メニューの <b>「コースのことを書く」</b> から、アクセス・トイレ・駐車場・見どころ・歩く人の心得を書けます。<br>「まわりの施設を探す」で取り込むと、トイレや駐車場は自動で書き込まれます。'},
+  {ic:'💾', t:'6. 保存する', d:'右上の <b>「保存」</b> を押すと、この端末に保存されます（勝手には保存しません）。<br>一覧に戻るときも「保存しますか？」と確認します。'},
+  {ic:'📖', t:'7. みんなのマップに出す', d:'<b>「配る」→「みんなのマップに出す」</b>。<br>出す人の名前と、見た人にできること（<b>見るだけ</b>／<b>直してもよい</b>）を選んで <b>「出す」</b> を押すだけ。<br>登録も合言葉もいりません。押した瞬間に全員の一覧に並びます。'},
+  {ic:'🔗', t:'8. 歩く人に渡す', d:'「配る」からは、ほかにも<br>・<b>共有リンク</b>…LINE やメールでそのまま送れます<br>・<b>印刷用シート</b>…A4 で刷って配れます<br>・<b>画像</b>…地図の絵だけ保存<br><br>お疲れさまでした。さっそく作ってみましょう。'}
+];
+let _tourI = 0;
+function openTour(i){
+  _tourI = i || 0;
+  let sh = document.getElementById('tourSheet');
+  if (!sh) {
+    sh = document.createElement('div'); sh.id = 'tourSheet';
+    sh.innerHTML = '<div class="tr-box"><div class="tr-hd"><span class="tr-step" id="tourStep"></span>'
+      + '<button type="button" class="tr-x tap" aria-label="閉じる">✕</button></div>'
+      + '<div class="tr-ic" id="tourIc"></div><div class="tr-t" id="tourT"></div><div class="tr-d" id="tourD"></div>'
+      + '<div class="tr-dots" id="tourDots"></div>'
+      + '<div class="tr-foot"><button type="button" class="tr-back tap" id="tourBack">もどる</button>'
+      + '<button type="button" class="tr-next tap" id="tourNext">次へ</button></div></div>';
+    document.body.appendChild(sh);
+    sh.addEventListener('click', e => { if (e.target === sh) closeTour(); });
+    sh.querySelector('.tr-x').addEventListener('click', closeTour);
+    sh.querySelector('#tourBack').addEventListener('click', () => { if (_tourI > 0) { _tourI--; _tourRender(); } });
+    sh.querySelector('#tourNext').addEventListener('click', () => {
+      if (_tourI < TOUR.length - 1) { _tourI++; _tourRender(); return; }
+      closeTour();
+      if (typeof openNewCourseSheet === 'function' && document.getElementById('s1').style.display !== 'none') openNewCourseSheet();
+    });
+  }
+  try { localStorage.setItem(LS.tourSeen, '1'); } catch(_) {}
+  _tourRender();
+  sh.classList.add('show');
+}
+function closeTour(){ const sh = document.getElementById('tourSheet'); if (sh) sh.classList.remove('show'); }
+function _tourRender(){
+  const p = TOUR[_tourI]; if (!p) return;
+  document.getElementById('tourStep').textContent = (_tourI + 1) + ' / ' + TOUR.length;
+  document.getElementById('tourIc').textContent = p.ic;
+  document.getElementById('tourT').textContent = p.t;
+  document.getElementById('tourD').innerHTML = p.d;
+  document.getElementById('tourDots').innerHTML = TOUR.map((_, i) => '<i class="' + (i === _tourI ? 'on' : '') + '"></i>').join('');
+  document.getElementById('tourBack').style.visibility = _tourI ? 'visible' : 'hidden';
+  document.getElementById('tourNext').textContent = (_tourI === TOUR.length - 1) ? 'コースを作る' : '次へ';
+}
+function _tourFirstRun(){   // 初回だけ自動で開く（配るリンクで開いた人には出さない）
+  try { if (localStorage.getItem(LS.tourSeen)) return; } catch(_) { return; }
+  if (_viewParams().on) return;
+  setTimeout(() => { if (document.getElementById('s1').style.display !== 'none') openTour(0); }, 700);
+}
+/* ===== ホーム画面に追加（v223・オーナー指示「しそチャンNET と同じように」）=====
+   ・Android など Chromium 系＝ブラウザが出す合図（beforeinstallprompt）を捕まえておき、
+     「追加する」ボタン1つで確認の画面を出す（メニューを探させない）
+   ・iPhone/iPad はその仕組みが無いので、共有マークからの手順を案内する
+   ・LINE などアプリ内のブラウザでは追加できないので、先にブラウザで開いてもらう
+   ・すでにホーム画面から開いている人には出さない */
+let _a2Prompt = null, _a2T0 = Date.now();
+const A2HS_WAIT_MS = 25000;   // 合図が来るのを待つ時間（しそチャンNET の実測に合わせる）
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); _a2Prompt = e; });
+window.addEventListener('appinstalled', () => { _a2Prompt = null; try { localStorage.setItem(LS.homeTipSeen, '1'); } catch(_) {} _a2Open('done'); });
+function _a2Standalone(){
+  try {
+    if (window.navigator.standalone === true) return true;
+    if (window.matchMedia && matchMedia('(display-mode: standalone)').matches) return true;
+  } catch(_) {}
+  return false;
+}
+function _a2Apple(){
+  const u = navigator.userAgent;
+  if (/iPhone|iPod|iPad/.test(u)) return true;
+  try { if (/Mac/.test(u) && navigator.maxTouchPoints > 1) return true; } catch(_) {}   // iPadOS は Mac を名乗る
+  return false;
+}
+function _a2InApp(){ return /Line\/|FBAN|FBAV|Instagram|Twitter for|MicroMessenger/.test(navigator.userAgent); }
+function _a2Pc(){
+  const u = navigator.userAgent;
+  if (/Android|iPhone|iPod|iPad|Mobile/.test(u)) return false;
+  if (/Windows NT|CrOS|X11/.test(u)) return true;
+  if (/Macintosh/.test(u)) { try { return !(navigator.maxTouchPoints > 1); } catch(_) { return true; } }
+  return !('ontouchstart' in window);
+}
+function _a2MayGetPrompt(){   // まだ合図が来る見込みがあるか（Chromium は少し遅れて来る）
+  if (_a2Prompt || _a2Apple()) return false;
+  try { if (!('onbeforeinstallprompt' in window)) return false; } catch(_) { return false; }
+  return (Date.now() - _a2T0) < A2HS_WAIT_MS;
+}
+const A2_SHARE = '<span class="ah-mark"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="#1B62D6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v13"/><path d="M8 7l4-4 4 4"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg></span>';
+const A2_DOTS = '<span class="ah-mark"><svg viewBox="0 0 24 24" width="15" height="15" fill="#1B62D6"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></span>';
+function _a2Screen(kind){
+  if (kind === 'done') return {ic:'🎉', t:'追加できました', d:'ホーム画面のアイコンから開いてお使いください。<br>アイコンが見つからないときは、ホーム画面を左右にめくって全部のページをご覧ください。', b:'とじる'};
+  if (kind === 'already') return {ic:'👍', t:'すでに追加されています', d:'いまホーム画面のアイコンから開いています。このままお使いください。', b:'とじる'};
+  if (kind === 'inapp') return {ic:'↗️', t:'このままでは追加できません', d:'LINE などの中で見ているため、ホーム画面に置けません。<br>右上のメニューから <b>「ブラウザで開く」</b>（Safari・Chrome）を選んでから、もう一度お試しください。', b:'とじる'};
+  if (kind === 'pc') return {ic:'💻', t:'パソコンでご覧です', d:'ホーム画面への追加はスマートフォン・タブレットの機能です。<br>パソコンでは、このページを<b>お気に入り（ブックマーク）</b>に入れておくと次から開きやすくなります。', b:'とじる'};
+  if (kind === 'ios') return {ic:'📱', t:'ホーム画面に追加します', steps:[
+      '画面の下（横向きのときは上）にある ' + A2_SHARE + ' を押す',
+      '出てきた一覧を下へたどり <b>「ホーム画面に追加」</b> を押す',
+      '右上の <b>「追加」</b> を押す'
+    ], note:'この ' + A2_SHARE + ' が見当たらないときは、アドレスバーの右の ' + A2_DOTS + ' の中にあります（Safari の表示設定によって変わります）。', b:'できた'};
+  if (kind === 'android') return {ic:'📱', t:'ホーム画面に追加します', steps:[
+      '右上の ' + A2_DOTS + ' を押す',
+      '<b>「ホーム画面に追加」</b>（または「アプリをインストール」）を押す',
+      '<b>「追加」</b>を押す'
+    ], note:'ブラウザによって言い方が少し変わります。見つからないときは、メニューの中を上から順にご覧ください。', b:'できた'};
+  return {ic:'📲', t:'ホーム画面に追加しませんか？', d:'ふつうのアプリのように、1回押すだけで開けるようになります。<br>Safari は<b>7日以上開かない</b>と保存したコースを消すことがありますが、ホーム画面に追加しておくと消えにくくなります。',
+          b:'ホーム画面に追加', alt:'あとにする'};
+}
+function _a2Open(kind){
+  let sh = document.getElementById('a2hsSheet');
+  if (!sh) {
+    sh = document.createElement('div'); sh.id = 'a2hsSheet';
+    sh.innerHTML = '<div class="tr-box"><div class="tr-hd"><button type="button" class="tr-x tap" aria-label="閉じる">✕</button></div>'
+      + '<div class="tr-ic" id="a2Ic"></div><div class="tr-t" id="a2T"></div><div class="tr-d" id="a2D"></div>'
+      + '<div class="tr-foot"><button type="button" class="tr-back tap" id="a2Alt" aria-label="あとにする" hidden></button>'
+      + '<button type="button" class="tr-next tap" id="a2Go" aria-label="ホーム画面に追加"></button></div></div>';
+    document.body.appendChild(sh);
+    sh.addEventListener('click', e => { if (e.target === sh) closeA2hs(); });
+    sh.querySelector('.tr-x').addEventListener('click', closeA2hs);
+    sh.querySelector('#a2Alt').addEventListener('click', closeA2hs);
+  }
+  const v = _a2Screen(kind);
+  sh.querySelector('#a2Ic').textContent = v.ic;
+  sh.querySelector('#a2T').textContent = v.t;
+  sh.querySelector('#a2D').innerHTML = v.steps
+    ? ('<ol class="ah-steps">' + v.steps.map((t, i) => '<li><b class="n">' + (i + 1) + '</b><span>' + t + '</span></li>').join('') + '</ol>'
+       + (v.note ? '<div style="margin-top:12px;font-size:12.5px;color:#6A645E;line-height:1.7">' + v.note + '</div>' : ''))
+    : v.d;
+  const go = sh.querySelector('#a2Go'), alt = sh.querySelector('#a2Alt');
+  go.textContent = v.b; alt.hidden = !v.alt; if (v.alt) alt.textContent = v.alt;
+  go.onclick = (kind === 'start') ? _a2Go : closeA2hs;
+  sh.classList.add('show');
+}
+function closeA2hs(){ const sh = document.getElementById('a2hsSheet'); if (sh) sh.classList.remove('show'); try { localStorage.setItem(LS.homeTipSeen, '1'); } catch(_) {} }
+/* 「ホーム画面に追加」を押したあと：1タップで入れられる端末はそのまま、だめなら手順の案内へ */
+async function _a2Go(){
+  if (_a2Prompt) {
+    const p = _a2Prompt; _a2Prompt = null;
+    try { p.prompt(); const r = await p.userChoice; if (r && r.outcome === 'accepted') { _a2Open('done'); return; } closeA2hs(); return; }
+    catch(_) {}
+  }
+  if (_a2InApp()) { _a2Open('inapp'); return; }
+  if (_a2Pc()) { _a2Open('pc'); return; }
+  _a2Open(_a2Apple() ? 'ios' : 'android');
+}
+/* 入口：一覧の案内カードと、いつでも開ける行 */
+function openA2hs(){
+  if (_a2Standalone()) { _a2Open('already'); return; }
+  if (_a2InApp()) { _a2Open('inapp'); return; }
+  if (_a2Pc()) { _a2Open('pc'); return; }
+  _a2Open('start');
+}
+function _a2FirstRun(){   // 初回だけ、そっと出す（配るリンクで開いた人・追加済みには出さない）
+  if (_a2Standalone() || _viewParams().on) return;
+  try { if (localStorage.getItem(LS.homeTipSeen)) return; } catch(_) { return; }
+  const wait = _a2MayGetPrompt() ? 6000 : 2500;   // 1タップの合図を少し待ってから出す
+  setTimeout(() => {
+    if (_a2Standalone()) return;
+    if (document.getElementById('s1').style.display === 'none') return;
+    if (document.getElementById('tourSheet') && document.getElementById('tourSheet').classList.contains('show')) return;   // 使い方の案内が出ている間は譲る
+    openA2hs();
+  }, wait);
+}
 function openHelp()  { document.getElementById('helpModal').classList.add('show'); }
 function closeHelp() { document.getElementById('helpModal').classList.remove('show'); }
 

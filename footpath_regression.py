@@ -447,6 +447,16 @@ def static_checks(src):
     # --- v157: 番号の丸と種類の丸を横に並べる（オーナー指摘：iPhone で片方しか見えない）---
     chk('静的', '番号つきで種類がある地点：地図は「種類の丸＋右上に番号の小丸」、一覧・並べ替え・印刷用シート・カードは番号と種類を並べて出す',
         'class="wp-num"' in src and 'class="wp-dot cat"' in src and 'class="ro-badge cat"' in src and 'class="sh-cat"' in src and 'class="vip-dot vip-dot2"' in src and '_catBadge' not in src and 'wp-pair' not in src)
+    # --- v222/v223: はじめての案内（チュートリアル）とホーム画面への追加 ---
+    chk('静的', 'はじめての案内：作る→出すまでを順に見せ、初回は自動、あとから何度でも開ける',
+        'const TOUR = [' in src and 'function openTour' in src and 'function _tourFirstRun' in src
+        and "tourSeen:    'fp_tour_seen'" in src and 'はじめての方へ（使い方を順番に見る）' in src
+        and 'みんなのマップに出す' in src and "sh.id = 'tourSheet'" in src)
+    chk('静的', 'ホーム画面に追加：Android はボタン1つ（beforeinstallprompt）、iPhone は手順、アプリ内ブラウザとパソコンは別の案内',
+        "window.addEventListener('beforeinstallprompt'" in src and 'function _a2Go' in src and 'function openA2hs' in src
+        and 'function _a2Standalone' in src and 'function _a2Apple' in src and 'function _a2InApp' in src and 'function _a2Pc' in src
+        and 'const A2HS_WAIT_MS = 25000;' in src and 'ホーム画面に追加する' in src and "_a2Open('ios')" not in src
+        and "_a2Open(_a2Apple() ? 'ios' : 'android')" in src)
     # --- v221: みんなのマップから開いたコースには、一覧の情報から作者の印を付ける ---
     chk('静的', 'v220 より前に出されたコース（中身に印が無いもの）でも、一覧の作者を印にして再投稿を止める',
         'function _shareOrgSet' in src and 'function _applyShareOrigin' in src and 'function _libOrigin' in src
@@ -2059,7 +2069,7 @@ def functional_checks(index_path):
             isinstance(pc3, dict) and pc3.get('noText') == [] and pc3.get('dup') == [] and pc3.get('nBtn', 0) >= 8
             and pc3.get('hdrH', 99) <= 60 and pc3.get('railIn') and pc3.get('hint') == 'クリックでスポットを追加（スマホは長押し）'
             and pc3.get('popMapOpen') and pc3.get('bm') == 'gsi_photo' and pc3.get('pill') == '航空写真'
-            and pc3.get('legendOpen') and pc3.get('legendRows', 0) >= 2 and pc3.get('moreOpen') and pc3.get('moreRows') == 14
+            and pc3.get('legendOpen') and pc3.get('legendRows', 0) >= 2 and pc3.get('moreOpen') and pc3.get('moreRows') == 15
             and pc3.get('manualFlip') and pc3.get('hintVia') == 'ルート調整：茶色い点を動かす／赤い線をクリックで点を足す（地図は固定）'
             and pc3.get('viewHidden') and pc3.get('viewBack') and pc3.get('closedAll'), str(pc3)[:300])
 
@@ -2297,6 +2307,37 @@ def functional_checks(index_path):
             isinstance(bx, dict) and all(bx.get(k) for k in ('oneBtn', 'idx', 'body', 'list', 'open', 'mine', 'heal', 'big', 'moved',
                                                             'phPut', 'phFlag', 'phGot', 'phSticker', 'dup', 'dup2', 'dup3',
                                                             'mineFlag', 'deleted', 'delMark', 'moved2')), str(bx)[:420])
+
+        # v222/v223: はじめての案内とホーム画面への追加
+        tw = page.evaluate("""()=>{ try{
+            const out = {};
+            // ① はじめての案内：8枚あり、次へで進み、最後は「コースを作る」
+            openTour(0);
+            out.open = document.getElementById('tourSheet').classList.contains('show');
+            out.first = document.getElementById('tourStep').textContent === '1 / ' + TOUR.length;
+            out.back0 = document.getElementById('tourBack').style.visibility === 'hidden';
+            document.getElementById('tourNext').click();
+            out.second = document.getElementById('tourStep').textContent === '2 / ' + TOUR.length;
+            openTour(TOUR.length - 1);
+            out.last = document.getElementById('tourNext').textContent === 'コースを作る'
+                       && /みんなのマップ|配る/.test(document.getElementById('tourD').textContent + document.getElementById('tourT').textContent);
+            closeTour();
+            out.closed = !document.getElementById('tourSheet').classList.contains('show');
+            out.seen = localStorage.getItem(LS.tourSeen) === '1';
+            // ② ホーム画面に追加：入口を押すと案内が出て、iPhone は3手順
+            openA2hs();
+            out.a2 = document.getElementById('a2hsSheet').classList.contains('show');
+            _a2Open('ios');
+            out.ios = document.querySelectorAll('#a2hsSheet .ah-steps li').length === 3
+                      && /ホーム画面に追加/.test(document.getElementById('a2D').textContent);
+            _a2Open('inapp');
+            out.inapp = /ブラウザで開く/.test(document.getElementById('a2D').textContent);
+            closeA2hs();
+            out.a2closed = !document.getElementById('a2hsSheet').classList.contains('show');
+            return out;
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        chk('機能', 'はじめての案内は順に進み最後は「コースを作る」／ホーム画面の追加は端末に合わせた案内が出る',
+            isinstance(tw, dict) and all(tw.get(k) for k in ('open', 'first', 'back0', 'second', 'last', 'closed', 'seen', 'a2', 'ios', 'inapp', 'a2closed')), str(tw)[:240])
 
         # v220: 他人のコースは自分名義で出せない（作者の印）
         og = page.evaluate("""()=>{ try{
