@@ -316,6 +316,7 @@ html,body{touch-action:manipulation;min-height:calc(100% + var(--sat));font-fami
 #addWpDlg .aw-alt small{display:block;font-size:11px;color:var(--t-sub);margin-top:2px}
 #addWpDlg .aw-no{width:100%;margin-top:8px;min-height:var(--tap);border:none;border-radius:11px;background:transparent;color:#9b948c;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer}
 body.viewing #addWpDlg,body.viewonly #addWpDlg{display:none!important}
+body.onezoom #map{touch-action:none}   /* 片手で拡大縮小している間だけ、指の動きを地図に渡さない（v206） */
 /* 場所を動かす（v164） */
 #moveBar{display:none;position:fixed;top:calc(60px + var(--sat));left:50%;transform:translateX(-50%);width:min(560px,calc(100% - 24px));z-index:1400;background:#fff;border:2px solid var(--brand);border-radius:14px;padding:10px 12px;box-shadow:0 6px 24px rgba(0,0,0,.25);gap:10px;align-items:center;flex-wrap:wrap}
 #moveBar.show{display:flex}
@@ -2249,6 +2250,7 @@ const LS = {
   pubBy:       'fp_pub_by',       // みんなのコースに出すときの名前（前回の入力を覚える・v191）
   ghToken:     'fp_gh_token',     // 置き場所（GitHub）の合言葉。この端末にだけ残す（v193）
   boxMine:     'fp_box_mine',     // みんなの箱に自分が出したコース（一覧が消えても戻せるように・v199）
+  ozTip:       'fp_oz_tip',       // 片手の拡大縮小の案内を見たか（1回だけ出す・v206）
   walkSpeed:   'fp_walkspeed',    // 歩く速さの段階（WALK_SPEEDS の添字）
   shareLinks:  'fp_sharelinks',   // コースIDごとの配布リンク（配布シートのQRに使う）
   visits:      'fp_visits',       // スタンプ（コースIDごと・訪れたスポットと時刻）
@@ -3079,6 +3081,7 @@ function initMap() {
   leafMap.on('click', onMapClick);
   _initLineHold();                        // 道を変更：赤い線の長押し（v169）
   _initWpAddHold();                       // スポット：長押し→確認して置く（v171）
+  _initOneHandZoom();                     // 片手で拡大縮小：ダブルタップして押したまま上下（v206）
   leafMap.on('movestart', hideCtxMenu);
   leafMap.on('zoomend', () => _scheduleViewUpdate(true));   // v173：拡大縮小したあとの描き直しは1回にまとめる
   const _dsc = document.getElementById('iDesc');
@@ -3201,7 +3204,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v205';
+const APP_VERSION = 'v206';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -5451,6 +5454,72 @@ function _nearRoute(pt){   // 画面座標 pt が今の道順の線から LINE_H
   return false;
 }
 /* 地図を動かせるかは道具で決まる（v169）：「道を変更」の間は固定（線を引っぱる指で地図が動かないように）。なぞる中は enterDrawMode が別に止める */
+/* 片手で拡大縮小（v206・オーナー指示）：**2回続けてタップし、2回目を押したまま**
+   下へ動かすと拡大、上へ動かすと縮小。指1本でできるので、片手で持ったまま使える。
+   ・2回目のタップは捕まえてしまう（stopPropagation）ので、長押しの仕掛け（道を変更・スポット追加）とはぶつからない
+   ・印やボタンの上から始めたときは何もしない（今までどおりの動き）
+   ・押している所を軸に拡大縮小する（見ていた場所が逃げない） */
+const ONE_ZOOM_GAP_MS = 320;    // 1回目から2回目までの間（これ以内ならダブルタップ）
+const ONE_ZOOM_NEAR_PX = 40;    // 1回目と2回目の近さ
+const ONE_ZOOM_STEP_PX = 70;    // これだけ指を動かすと1段
+const ONE_ZOOM_GO_PX = 12;      // 2回目を押したまま縦にこれだけ動かしたら拡大縮小に切り替える
+let _oz = null, _ozArm = null, _ozLastTap = 0, _ozLastXY = null;
+function _ozSkipTarget(t){
+  return !!(t && t.closest && t.closest('.leaflet-marker-icon, .leaflet-control, .leaflet-popup, .leaflet-overlay-pane, button, a, input, textarea, select, label'));
+}
+function _initOneHandZoom(){
+  const c = leafMap && leafMap.getContainer(); if (!c || c._ozInit) return;
+  c._ozInit = true;
+  c.addEventListener('pointerdown', e => {
+    if (e.pointerType === 'mouse' || e.isPrimary === false) return;
+    if (_ozSkipTarget(e.target)) { _ozLastTap = 0; return; }
+    const now = Date.now();
+    const near = _ozLastXY && Math.abs(e.clientX - _ozLastXY[0]) < ONE_ZOOM_NEAR_PX && Math.abs(e.clientY - _ozLastXY[1]) < ONE_ZOOM_NEAR_PX;
+    if (_oz) _ozEnd();
+    /* 2回目のタップでは、まだ何も横取りしない（構えるだけ）。
+       縦に動かし始めて初めて拡大縮小に切り替える＝ふつうの2回タップは今までどおり通す。 */
+    if (now - _ozLastTap < ONE_ZOOM_GAP_MS && near) { _ozArm = {x: e.clientX, y: e.clientY, id: e.pointerId}; _ozLastTap = 0; return; }
+    _ozArm = null; _ozLastTap = now; _ozLastXY = [e.clientX, e.clientY];
+  }, true);
+  c.addEventListener('pointermove', _ozMove, true);
+  c.addEventListener('pointerup', _ozEnd, true);
+  c.addEventListener('pointercancel', _ozEnd, true);
+}
+function _ozStart(e){
+  if (!leafMap || !_ozArm) return;
+  const pt = leafMap.mouseEventToContainerPoint(e);
+  _oz = {y: _ozArm.y, z0: leafMap.getZoom(), anchor: leafMap.containerPointToLatLng(pt), id: _ozArm.id};
+  _ozArm = null;
+  try { leafMap.getContainer().setPointerCapture(_oz.id); } catch(_) {}
+  try { leafMap.dragging.disable(); } catch(_) {}
+  document.body.classList.add('onezoom');
+  _ozHintOnce();
+}
+function _ozMove(e){
+  if (_ozArm && e.pointerId === _ozArm.id) {   // 構えている間：縦に動いたら切り替える
+    const dy = e.clientY - _ozArm.y, dx = e.clientX - _ozArm.x;
+    if (Math.abs(dy) >= ONE_ZOOM_GO_PX && Math.abs(dy) > Math.abs(dx)) _ozStart(e);
+    else return;
+  }
+  if (!_oz || e.pointerId !== _oz.id) return;
+  e.preventDefault(); e.stopPropagation();
+  const step = Math.round((e.clientY - _oz.y) / ONE_ZOOM_STEP_PX);   // 下へ＝プラス＝拡大
+  const want = Math.max(leafMap.getMinZoom(), Math.min(leafMap.getMaxZoom(), _oz.z0 + step));
+  if (want !== leafMap.getZoom()) leafMap.setZoomAround(_oz.anchor, want, {animate: false});
+}
+function _ozEnd(e){
+  if (e && _ozArm && e.pointerId === _ozArm.id) _ozArm = null;
+  if (!_oz) return;
+  if (e) { try { e.preventDefault(); e.stopPropagation(); } catch(_) {} }
+  try { leafMap.getContainer().releasePointerCapture(_oz.id); } catch(_) {}
+  _oz = null; _ozLastTap = 0; _ozLastXY = null;
+  document.body.classList.remove('onezoom');
+  _syncMapDrag();   // 道を変更の最中なら、地図は止めたまま
+}
+function _ozHintOnce(){   // 案内は1回だけ（毎回出すとうるさい）
+  try { if (localStorage.getItem(LS.ozTip)) return; localStorage.setItem(LS.ozTip, '1'); } catch(_) {}
+  showToast('押したまま　下＝拡大／上＝縮小');
+}
 function _syncMapDrag(){
   if (!leafMap) return;
   const lock = (mode === 'via' && !viewMode) || _drawActive || !!(_hold && _hold.active);

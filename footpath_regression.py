@@ -447,6 +447,12 @@ def static_checks(src):
     # --- v157: 番号の丸と種類の丸を横に並べる（オーナー指摘：iPhone で片方しか見えない）---
     chk('静的', '番号つきで種類がある地点：地図は「種類の丸＋右上に番号の小丸」、一覧・並べ替え・配布シート・カードは番号と種類を並べて出す',
         'class="wp-num"' in src and 'class="wp-dot cat"' in src and 'class="ro-badge cat"' in src and 'class="sh-cat"' in src and 'class="vip-dot vip-dot2"' in src and '_catBadge' not in src and 'wp-pair' not in src)
+    # --- v206: 片手で拡大縮小（ダブルタップして押したまま上下） ---
+    chk('静的', '片手の拡大縮小：ダブルタップの2回目を押したまま、下で拡大・上で縮小。押した所を軸にする。印やボタンの上では始めない',
+        'function _initOneHandZoom' in src and 'const ONE_ZOOM_GAP_MS = 320;' in src and 'const ONE_ZOOM_STEP_PX = 70;' in src
+        and 'function _ozSkipTarget' in src and 'leafMap.setZoomAround(_oz.anchor, want, {animate: false})' in src
+        and 'const ONE_ZOOM_GO_PX = 12;' in src and 'まだ何も横取りしない（構えるだけ）' in src   # ふつうの2回タップは通す
+        and '_initOneHandZoom();' in src and 'body.onezoom #map{touch-action:none}' in src and "ozTip:       'fp_oz_tip'" in src)
     # --- v205: 見るだけの画面でも写真が出る（カードだけでなく地図の印も） ---
     chk('静的', '配ったコースでもシールの設定を残し、写真が届いたら地図の印をシールに作り直す',
         'delete c.stickers;' not in src and "if (typeof refreshIcons === 'function') refreshIcons();" in src
@@ -2207,6 +2213,33 @@ def functional_checks(index_path):
         chk('機能', 'みんなの箱：合言葉なしで「出す」1つ。中身と一覧の両方を書き、すぐ並び、押すと中身が取れる。一覧が消えても自分のぶんは戻る。写し終わったら置き場所のぶんだけ出す',
             isinstance(bx, dict) and all(bx.get(k) for k in ('oneBtn', 'idx', 'body', 'list', 'open', 'mine', 'heal', 'big', 'moved',
                                                             'phPut', 'phFlag', 'phGot', 'dup')), str(bx)[:340])
+
+        # v206: 片手の拡大縮小：ダブルタップして押したまま下＝拡大／上＝縮小。1回タップだけでは変わらない
+        oz = page.evaluate("""()=>{ try{
+            const c = leafMap.getContainer(), r = c.getBoundingClientRect();
+            const x = Math.round(r.left + r.width / 2), y = Math.round(r.top + r.height / 2);
+            const ev = (type, opt) => c.dispatchEvent(new PointerEvent(type, Object.assign(
+              {pointerId: 7, pointerType: 'touch', isPrimary: true, bubbles: true, cancelable: true, clientX: x, clientY: y}, opt || {})));
+            const z0 = leafMap.getZoom(), out = {};
+            ev('pointerdown'); ev('pointerup');                       // 1回目のタップだけでは何も起きない
+            ev('pointermove', {clientY: y + 210});
+            out.single = leafMap.getZoom() === z0;
+            ev('pointerdown'); ev('pointermove', {clientY: y + 210}); // 2回目を押したまま下へ＝拡大
+            const zIn = leafMap.getZoom();
+            ev('pointermove', {clientY: y - 140});                    // そのまま上へ＝縮小
+            const zOut = leafMap.getZoom();
+            ev('pointerup', {clientY: y - 140});
+            out.zoomIn = zIn === z0 + 3;
+            out.zoomOut = zOut === z0 - 2;
+            out.ended = !_oz && !document.body.classList.contains('onezoom');
+            ev('pointermove', {clientY: y + 300});                    // 指を離したあとは効かない
+            out.after = leafMap.getZoom() === zOut;
+            leafMap.setZoom(z0, {animate: false});
+            document.querySelectorAll('#toastBox .toast').forEach(e => e.remove());
+            return out;
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        chk('機能', '片手の拡大縮小：1回タップでは変わらず、ダブルタップして押したまま下で拡大・上で縮小、離すと止まる',
+            isinstance(oz, dict) and all(oz.get(k) for k in ('single', 'zoomIn', 'zoomOut', 'ended', 'after')), str(oz)[:200])
 
         # v203: 作者の端末なら、アプリを開いたときに箱→置き場所へ写す（GitHub の定期実行が遅れても届く）
         mr = page.evaluate("""async ()=>{ try{
