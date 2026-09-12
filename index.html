@@ -3204,7 +3204,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v203';
+const APP_VERSION = 'v204';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -10160,11 +10160,21 @@ async function _libLoad(){
   out.forEach(e => { if (e && e.boxId) moved[e.boxId] = 1; });
   _boxForget(Object.keys(moved));
   boxRows.forEach(e => { if (!moved[e.id]) out.push(e); });
-  out.sort((a, b) => String(b.at || '').localeCompare(String(a.at || '')));
-  return out;
+  const list = _libPickNewest(out);   // v204：出し直したら新しいほうだけ
+  list.sort((a, b) => String(b.at || '').localeCompare(String(a.at || '')));
+  return list;
 }
 /* 置き場所のフォルダを1つ見て、コースのファイルを拾う（v197）。
    アプリが作った形（{name, d}）と、「書き出す」で作ったコースのファイル（{name, wps}）の両方を受ける。 */
+/* 同じコースを出し直したときは、新しいほう（ts が後）だけ残す（v204）。
+   印（cid＝作った人の端末でのコース番号）が無い古いものは、そのまま全部残す。 */
+function _libPickNewest(rows){
+  const newest = {};
+  (rows || []).forEach(e => { const k = e && e.cid; if (!k) return;
+    const p = newest[k];
+    if (!p || String(e.ts || e.at || '') > String(p.ts || p.at || '')) newest[k] = e; });
+  return (rows || []).filter(e => !e || !e.cid || newest[e.cid] === e);
+}
 async function _libScanDir(gh, dir, out){
   try {
     const r = await fetch('https://api.github.com/repos/' + gh.user + '/' + gh.repo + '/contents' + (dir ? '/' + dir : '') + '?t=' + Date.now(), {cache:'no-store'});
@@ -10249,7 +10259,8 @@ function _boxNorm(arr){   // 並べ替え・重複外し・長すぎる項目の
     seen[e.id] = 1;
     out.push({id: String(e.id).slice(0, 40), name: String(e.name).slice(0, 80), area: String(e.area || '').slice(0, 40),
               by: String(e.by || '').slice(0, 24), at: String(e.at || '').slice(0, 10), allowEdit: e.allowEdit !== false,
-              ph: e.ph ? 1 : undefined, box: true});   // v202：写真が付いているか
+              ph: e.ph ? 1 : undefined, box: true,    // v202：写真が付いているか
+              cid: e.cid ? String(e.cid).slice(0, 24) : undefined, ts: e.ts ? String(e.ts).slice(0, 24) : undefined});   // v204：同じコースの出し直しを見分ける
   });
   out.sort((a, b) => String(b.at).localeCompare(String(a.at)) || String(b.id).localeCompare(String(a.id)));
   return out.slice(0, BOX_MAX_ROWS);
@@ -10341,7 +10352,7 @@ async function _boxMirror(list){
   for (const e of rows) {
     const d = await _boxOpen(e); if (!d) continue;
     const body = {name: e.name || '', area: e.area || '', by: e.by || '', at: e.at || '',
-                  allowEdit: e.allowEdit !== false, from: 'box', d: d};
+                  allowEdit: e.allowEdit !== false, from: 'box', cid: e.cid || undefined, ts: e.ts || undefined, d: d};
     if (e.ph) {
       const pj = await _boxRead(cfg, 'ph', e.id);
       if (pj && pj.p) {
@@ -10534,7 +10545,8 @@ async function _pubOut(){
   const go = document.getElementById('pubGo'); if (go) { go.disabled = true; go.textContent = '出しています…'; }
   const by = ((document.getElementById('pubBy') || {}).value || '').trim();
   const entry = {id: _boxNewId(), name: r.c.name || '(名称未設定)', area: r.c.area || '', by: by,
-                 at: new Date().toISOString().slice(0, 10), allowEdit: _pubAllowEdit, box: true};
+                 at: new Date().toISOString().slice(0, 10), allowEdit: _pubAllowEdit, box: true,
+                 cid: String(r.c.id || ''), ts: new Date().toISOString()};   // v204：出し直したら古いほうは並べない
   if (go) go.textContent = '写真を用意しています…';
   let ph = null;
   try { ph = (await _sharePhotos(r.c)).photos; } catch(_) {}   // v202：写真も一緒に出す（小さく作り直して別置き）

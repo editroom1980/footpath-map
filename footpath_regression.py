@@ -447,6 +447,11 @@ def static_checks(src):
     # --- v157: 番号の丸と種類の丸を横に並べる（オーナー指摘：iPhone で片方しか見えない）---
     chk('静的', '番号つきで種類がある地点：地図は「種類の丸＋右上に番号の小丸」、一覧・並べ替え・配布シート・カードは番号と種類を並べて出す',
         'class="wp-num"' in src and 'class="wp-dot cat"' in src and 'class="ro-badge cat"' in src and 'class="sh-cat"' in src and 'class="vip-dot vip-dot2"' in src and '_catBadge' not in src and 'wp-pair' not in src)
+    # --- v204: 同じコースを出し直したら、新しいほうだけ並べる ---
+    chk('静的', '出し直したコースは新しいほうだけ一覧に出す（元のコースの印 cid と出した時刻 ts で見分ける・写しにも運ぶ）',
+        "cid: String(r.c.id || ''), ts: new Date().toISOString()" in src and 'function _libPickNewest' in src
+        and 'newest[e.cid] === e' in src and 'cid: e.cid ? String(e.cid).slice(0, 24) : undefined' in src
+        and "cid: e.cid || undefined, ts: e.ts || undefined" in src)
     # --- v203: 写し取りは2つの道で（GitHub の定期実行が遅れても、作者がアプリを開けば写る）---
     chk('静的', '箱→置き場所の写し取りは、定期実行だけに頼らない（アプリ側でも写す・押し出したときにも動く・同じ名前なら入れ替える）',
         'async function _boxMirror' in src and 'const BOX_MIRROR_MAX = 5;' in src
@@ -2185,6 +2190,11 @@ def functional_checks(index_path):
             const list2 = await _libLoad();
             out.moved = list2.length === 1 && list2[0].boxId === id && list2[0].box !== true && list2[0].d === 'ZZZ'
                         && JSON.parse(localStorage.getItem(LS.boxMine) || '[]').length === 0;
+            // v204: 同じコース（cid が同じ）を出し直したら、新しいほうだけ並ぶ
+            out.dup = _libPickNewest([{name:'古い', cid:'c1', ts:'2026-09-12T01:00:00Z'},
+                                      {name:'新しい', cid:'c1', ts:'2026-09-12T09:00:00Z'},
+                                      {name:'別', cid:'c2', ts:'2026-09-12T02:00:00Z'},
+                                      {name:'印なし'}]).map(e => e.name).join(',') === '新しい,別,印なし';
             window._ghRepo = keepRepo3;
             window.fetch = keepFetch; _boxCfgCache = keepCfg; _boxOn = false; setCourses(keepC); currentCourseId = keepId;
             if (keepMine === null) localStorage.removeItem(LS.boxMine); else localStorage.setItem(LS.boxMine, keepMine);
@@ -2194,7 +2204,7 @@ def functional_checks(index_path):
           }catch(e){ return 'ERR:'+e.message; } }""")
         chk('機能', 'みんなの箱：合言葉なしで「出す」1つ。中身と一覧の両方を書き、すぐ並び、押すと中身が取れる。一覧が消えても自分のぶんは戻る。写し終わったら置き場所のぶんだけ出す',
             isinstance(bx, dict) and all(bx.get(k) for k in ('oneBtn', 'idx', 'body', 'list', 'open', 'mine', 'heal', 'big', 'moved',
-                                                            'phPut', 'phFlag', 'phGot')), str(bx)[:340])
+                                                            'phPut', 'phFlag', 'phGot', 'dup')), str(bx)[:340])
 
         # v203: 作者の端末なら、アプリを開いたときに箱→置き場所へ写す（GitHub の定期実行が遅れても届く）
         mr = page.evaluate("""async ()=>{ try{

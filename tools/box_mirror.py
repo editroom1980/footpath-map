@@ -120,6 +120,9 @@ def main():
         out = {'name': name[:80], 'area': str(row.get('area') or '')[:40],
                'by': str(row.get('by') or '')[:24], 'at': str(row.get('at') or '')[:10],
                'allowEdit': row.get('allowEdit') is not False, 'from': 'box', 'd': d}
+        if row.get('cid'):                                  # v204：同じコースの出し直しを見分ける印
+            out['cid'] = str(row['cid'])[:24]
+            out['ts'] = str(row.get('ts') or '')[:24]
         if row.get('ph'):                                   # v202：写真も一緒に写す（別ファイル・一覧では読まない）
             pb = _read_json(_url(cfg, 'ph', cid))
             pics = (pb or {}).get('p')
