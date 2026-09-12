@@ -447,6 +447,11 @@ def static_checks(src):
     # --- v157: 番号の丸と種類の丸を横に並べる（オーナー指摘：iPhone で片方しか見えない）---
     chk('静的', '番号つきで種類がある地点：地図は「種類の丸＋右上に番号の小丸」、一覧・並べ替え・印刷用シート・カードは番号と種類を並べて出す',
         'class="wp-num"' in src and 'class="wp-dot cat"' in src and 'class="ro-badge cat"' in src and 'class="sh-cat"' in src and 'class="vip-dot vip-dot2"' in src and '_catBadge' not in src and 'wp-pair' not in src)
+    # --- v227: 取り込みのあと、まずスタート地点を決める ---
+    chk('静的', '取り込みが終わったら「まず、スタート地点を決めましょう」を出す（近い順に選ぶ・あとで決めるも可・メニューからも開ける）',
+        'function openStartPick' in src and 'function _startPickGo' in src and 'まず、スタート地点を決めましょう' in src
+        and 'setTimeout(() => _startPickAuto(), 700);' in src and 'function _startPickAuto' in src and 'closePcPops();openStartPick(true)' in src and "id='gotStart'" not in src
+        and "_setRole(wp, 'start');" in src and 'gotStart' in src)
     # --- v225/v226: 見るだけ／編集できる・まわりの施設の取りこぼし・スタート／ゴールの役 ---
     chk('静的', '公開の選択肢は「見るだけ／編集できる」', '<b>編集できる</b>' in src and '直してもよい' not in src
         and "(c.allowEdit === false ? '見るだけ' : '編集できる')" in src)
@@ -2072,7 +2077,7 @@ def functional_checks(index_path):
             isinstance(pc3, dict) and pc3.get('noText') == [] and pc3.get('dup') == [] and pc3.get('nBtn', 0) >= 8
             and pc3.get('hdrH', 99) <= 60 and pc3.get('railIn') and pc3.get('hint') == 'クリックでスポットを追加（スマホは長押し）'
             and pc3.get('popMapOpen') and pc3.get('bm') == 'gsi_photo' and pc3.get('pill') == '航空写真'
-            and pc3.get('legendOpen') and pc3.get('legendRows', 0) >= 2 and pc3.get('moreOpen') and pc3.get('moreRows') == 12
+            and pc3.get('legendOpen') and pc3.get('legendRows', 0) >= 2 and pc3.get('moreOpen') and pc3.get('moreRows') == 13
             and pc3.get('manualFlip') and pc3.get('hintVia') == 'ルート調整：茶色い点を動かす／赤い線をクリックで点を足す（地図は固定）'
             and pc3.get('viewHidden') and pc3.get('viewBack') and pc3.get('closedAll'), str(pc3)[:300])
 
@@ -2310,6 +2315,34 @@ def functional_checks(index_path):
             isinstance(bx, dict) and all(bx.get(k) for k in ('oneBtn', 'idx', 'body', 'list', 'open', 'mine', 'heal', 'big', 'moved',
                                                             'phPut', 'phFlag', 'phGot', 'phSticker', 'dup', 'dup2', 'dup3',
                                                             'mineFlag', 'deleted', 'delMark', 'moved2')), str(bx)[:420])
+
+        # v227: 取り込みのあと、まずスタート地点を決める
+        sp2 = page.evaluate("""async ()=>{ try{
+            const keepW = wps.slice(), out = {};
+            wps.forEach(w => { if (w.role) w.role = undefined; if (w.type === 'start' || w.type === 'goal') w.type = 'spot'; });
+            const c = leafMap.getCenter();
+            idW++; const near = {id:idW, type:'parking', name:'ちかい駐車場', desc:'', tel:'', dwell:0, fitBefore:true, fitAfter:true,
+              onRoute:false, lat:c.lat + 0.001, lng:c.lng, photos:[], labelDir:'auto', marker:null}; wps.push(near); buildWpMarker(near);
+            openStartPick(true); await new Promise(r => setTimeout(r, 300));
+            out.open = document.getElementById('startPickSheet').classList.contains('show');
+            const rows = [...document.querySelectorAll('#startPickList .gs-row')];
+            out.rows = rows.length >= 1;
+            out.disabled = document.getElementById('spGo').disabled === true;
+            const r0 = rows.find(r => /ちかい駐車場/.test(r.textContent)).querySelector('input');
+            r0.checked = true; r0.dispatchEvent(new Event('change'));
+            out.enabled = document.getElementById('spGo').disabled === false;
+            _startPickGo(); await new Promise(r => setTimeout(r, 200));
+            out.set = _isStart(near) && near.onRoute === true && !document.getElementById('startPickSheet').classList.contains('show');
+            // すでにスタートがあれば、取り込み後の自動表示はしない
+            openStartPick();
+            out.skip = !document.getElementById('startPickSheet').classList.contains('show');
+            wps.forEach(w => { if (keepW.indexOf(w) < 0 && w.marker) leafMap.removeLayer(w.marker); });
+            wps = keepW; refreshIcons(); redrawList();
+            document.querySelectorAll('#toastBox .toast').forEach(e => e.remove());
+            return out;
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        chk('機能', 'スタート地点を決める：近い順に並び、選ぶとその場所がスタート（道順にも入る）。決まっていれば自動では出ない',
+            isinstance(sp2, dict) and all(sp2.get(k) for k in ('open', 'rows', 'disabled', 'enabled', 'set', 'skip')), str(sp2)[:200])
 
         # v226: スタート／ゴールの役（印はその場所の種類＋右上の S/G）
         sg = page.evaluate("""()=>{ try{

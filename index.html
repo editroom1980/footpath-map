@@ -764,6 +764,23 @@ body.viewonly #firstTip,body.embed #firstTip{display:none!important}
 #tourSheet .tr-back{background:#F1ECE3;color:#4A2E0E;flex:0 0 96px!important}
 #tourSheet .tr-next{background:var(--brand-grad);color:#fff}
 .s1-help{display:block;width:100%;margin:8px 0 0;padding:11px;border:0.5px dashed #D9CFC0;border-radius:12px;background:transparent;color:#6A5A44;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer}
+/* スタート地点を決める（v227）：スポットを整理と同じ形 */
+#startPickSheet{position:fixed;inset:0;z-index:5300;display:none;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.35)}
+#startPickSheet.show{display:flex}
+#startPickSheet .gs-box{background:#fff;width:100%;max-width:520px;max-height:82vh;border-radius:16px 16px 0 0;padding:14px 14px calc(14px + var(--sab));display:flex;flex-direction:column;gap:8px}
+#startPickSheet .gs-hd{display:flex;align-items:center;gap:8px}
+#startPickSheet .gs-t{font-size:16px;font-weight:800;color:#4A2E0E;flex:1}
+#startPickSheet .gs-x{width:32px;height:32px;border:0;border-radius:50%;background:#F1ECE3;color:#6A645E;font-size:14px;cursor:pointer}
+#startPickSheet .gs-n{font-size:12px;color:#6A645E;line-height:1.5}
+#startPickSheet #startPickList{overflow-y:auto;flex:1;-webkit-overflow-scrolling:touch}
+#startPickSheet .gs-row{display:flex;align-items:center;gap:9px;padding:9px 6px;border-bottom:0.5px solid #F0EAE0;font-size:13.5px;color:#2C2620;cursor:pointer}
+#startPickSheet .gs-row input{width:19px;height:19px;flex-shrink:0;accent-color:var(--brand)}
+#startPickSheet .gs-dot{width:11px;height:11px;border-radius:50%;flex-shrink:0}
+#startPickSheet .gs-name{flex:1;min-width:0;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#startPickSheet .gs-name small{display:block;font-weight:600;font-size:11px;color:#9b948c}
+#startPickSheet .gs-d{flex-shrink:0;font-size:12px;color:#6A645E;font-variant-numeric:tabular-nums}
+#startPickSheet .gs-foot{display:flex;gap:8px;align-items:center}
+#startPickSheet .gs-foot .ds-btn{flex:1}
 /* 取り込んだスポットの整理（v217） */
 #gotSheet{position:fixed;inset:0;z-index:5200;display:none;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.35)}
 #gotSheet.show{display:flex}
@@ -1370,6 +1387,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
     <div class="pc-pop" id="popMore" role="menu">
       <button class="pp-row ed" onclick="closePcPops();openRenameSheet()" title="このコースの名前とエリアを変える">コースの名前を変える</button>
       <button class="pp-row ed" onclick="closePcPops();openNearbySheet()" title="OpenStreetMap と Wikipedia から、コースの周りのお店・史跡・学校などを候補にして選んで置く">まわりの施設を探す（お店・史跡・学校…）</button>
+      <button class="pp-row ed" onclick="closePcPops();openStartPick(true)" title="歩きはじめる場所を決める（あとから変えられます）">スタート地点を決める</button>
       <button class="pp-row ed" onclick="closePcPops();openGotSheet()" title="スポットを近い順の一覧で選んで削除する（まとめて選べます）">スポットを整理</button>
       <button class="pp-row ed" onclick="closePcPops();reverseCourse()" title="スポットの順番を逆にして、スタートとゴールを入れ替える">逆回りにする</button>
       <button class="pp-row ed" onclick="closePcPops();loopCourse()" title="出発点にゴールを置いて、帰りの道順を自動で引く">出発点に戻る周回にする</button>
@@ -3247,7 +3265,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 手描きの道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した手描きの道id（直前取り消し用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v226';
+const APP_VERSION = 'v227';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -8745,12 +8763,14 @@ function openGotSheet(){
       +   '<button type="button" class="gs-chip tap" data-pick="got">取り込んだもの</button>'
       +   '<button type="button" class="gs-chip tap" data-pick="none">選択を外す</button></div>'
       + '<div id="gotList"></div>'
-      + '<div class="gs-foot"><button type="button" class="ds-btn" id="gotDel" disabled>選んだものを削除</button></div></div>';
+      + '<div class="gs-foot"><button type="button" class="f-ghost tap" id="gotStart">スタート地点を決める</button>'
+      +   '<button type="button" class="ds-btn" id="gotDel" disabled>選んだものを削除</button></div></div>';
     document.body.appendChild(sh);
     sh.addEventListener('click', e => { if (e.target === sh) closeGotSheet(); });
     sh.querySelector('.gs-x').addEventListener('click', closeGotSheet);
     sh.querySelectorAll('.gs-chip').forEach(b => b.addEventListener('click', () => _gotPick(b.getAttribute('data-pick'))));
     sh.querySelector('#gotDel').addEventListener('click', _gotDelete);
+    sh.querySelector('#gotStart').addEventListener('click', () => { closeGotSheet(); openStartPick(true); });
   }
   _gsSel = new Set();
   _gotRender();
@@ -8819,6 +8839,72 @@ function addNearbySelected(){
   const f = _autoInfoFromSpots();   // v182：トイレ・駐車場・バス停・お店を「コースの情報」に自動で書き込む
   showToast(n + ' 件をスポットにしました（道順には入れていません。○を押すと種類や説明を直せます・「取り消し」で戻せます）'
             + (f ? '／コースの情報に ' + f + ' 項目を自動で書きました' : ''));
+  setTimeout(() => _startPickAuto(), 700);   // v227：取り込んだら、まずスタート地点を決める
+}
+/* スタート地点を決める（v227・オーナー指示「取り込みが終わったら、最初にスタート地点を決めることから始める」）。
+   ・取り込んだスポットの中から選ぶ（地図の真ん中から近い順）か、地図を押して決める
+   ・すでにスタートがあるコースでは出さない */
+let _spSel = null;
+/* 自動で出すのは「作りはじめのコース」だけ（v227）：スタートも歩く順のスポットも無いとき。
+   すでに道順があるコースに取り込んだときは、じゃまをしない（メニューや「スポットを整理」から開ける） */
+function _startPickAuto(){
+  if (viewMode || wps.some(_isStart) || wps.some(_isNumbered)) return;
+  if (document.querySelector('.fsh.show, #gotSheet.show, #pubSheet.show, #libSheet.show')) return;
+  openStartPick();
+}
+function openStartPick(force){
+  if (viewMode) return;
+  if (!force && wps.some(_isStart)) return;        // もう決まっている
+  const list = wps.filter(w => w && w.type !== 'node');
+  if (!list.length) { showToast('先にスポットを置いてください'); return; }
+  let sh = document.getElementById('startPickSheet');
+  if (!sh) {
+    sh = document.createElement('div'); sh.id = 'startPickSheet';
+    sh.innerHTML = '<div class="gs-box"><div class="gs-hd"><div class="gs-t">まず、スタート地点を決めましょう</div>'
+      + '<button type="button" class="gs-x tap" aria-label="閉じる">✕</button></div>'
+      + '<div class="gs-n">歩きはじめる場所を選んでください。駐車場やバス停が便利です。（あとから変えられます）</div>'
+      + '<div id="startPickList"></div>'
+      + '<div class="gs-foot"><button type="button" class="f-ghost tap" id="spLater">あとで決める</button>'
+      + '<button type="button" class="ds-btn" id="spGo" disabled>ここをスタートにする</button></div></div>';
+    document.body.appendChild(sh);
+    sh.addEventListener('click', e => { if (e.target === sh) closeStartPick(); });
+    sh.querySelector('.gs-x').addEventListener('click', closeStartPick);
+    sh.querySelector('#spLater').addEventListener('click', closeStartPick);
+    sh.querySelector('#spGo').addEventListener('click', _startPickGo);
+  }
+  _spSel = null;
+  _startPickRender();
+  sh.classList.add('show');
+}
+function closeStartPick(){ const sh = document.getElementById('startPickSheet'); if (sh) sh.classList.remove('show'); }
+function _startPickRender(){
+  const box = document.getElementById('startPickList'); if (!box) return;
+  const c = leafMap ? leafMap.getCenter() : null;
+  const list = wps.filter(w => w && w.type !== 'node')
+    .map(w => ({w: w, d: c ? _distM([c.lat, c.lng], [w.lat, w.lng]) : 0}))
+    .sort((a, b) => a.d - b.d).slice(0, 60);
+  box.innerHTML = list.map(it => {
+    const w = it.w, t = WT.find(x => x.v === w.type) || WT[0];
+    return '<label class="gs-row"><input type="radio" name="spPick" data-id="' + w.id + '"' + (_spSel === w.id ? ' checked' : '') + '>'
+      + '<span class="gs-dot" style="background:' + t.c + '"></span>'
+      + '<span class="gs-name">' + escHtml((w.name || t.l).split('\n')[0]) + '<small>' + escHtml(t.l) + '</small></span>'
+      + '<span class="gs-d">' + _fmtDistM(it.d) + '</span></label>';
+  }).join('');
+  box.querySelectorAll('input[type=radio]').forEach(r => r.addEventListener('change', () => {
+    _spSel = Number(r.getAttribute('data-id'));
+    const b = document.getElementById('spGo'); if (b) b.disabled = false;
+  }));
+  const b = document.getElementById('spGo'); if (b) b.disabled = !_spSel;
+}
+function _startPickGo(){
+  const wp = wps.find(w => w.id === _spSel); if (!wp) return;
+  saveSnapshot();
+  _setRole(wp, 'start');
+  wp.onRoute = true;
+  closeStartPick();
+  clearCache(); redrawStraight(); scheduleRouting(); refreshIcons(); redrawList(); _markDirty();
+  if (leafMap) leafMap.panTo([wp.lat, wp.lng], {animate: true});
+  showToast('「' + ((wp.name || 'ここ').split('\n')[0]) + '」をスタートにしました。次は歩く順にスポットを選びましょう');
 }
 /* 取り込んだスポットから「コースの情報」を自動で書く（v182・オーナー指示）。
    ・空いている項目だけ書く（利用者が書いたものは上書きしない）
