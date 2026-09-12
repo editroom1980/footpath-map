@@ -6,7 +6,9 @@ name: みんなの箱をGitHubに写す
 
 on:
   schedule:
-    - cron: '*/10 * * * *'   # 10分ごと（GitHub の都合で数分ずれることがある）
+    - cron: '*/10 * * * *'   # 10分ごと（GitHub の都合で大きく遅れる・動かないこともある）
+  push:
+    branches: [ main ]       # v203：何か直して出したときにも写す（定期実行が遅れても届く）
   workflow_dispatch:         # 手動でも実行できる
 
 permissions:

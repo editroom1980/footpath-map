@@ -447,6 +447,11 @@ def static_checks(src):
     # --- v157: 番号の丸と種類の丸を横に並べる（オーナー指摘：iPhone で片方しか見えない）---
     chk('静的', '番号つきで種類がある地点：地図は「種類の丸＋右上に番号の小丸」、一覧・並べ替え・配布シート・カードは番号と種類を並べて出す',
         'class="wp-num"' in src and 'class="wp-dot cat"' in src and 'class="ro-badge cat"' in src and 'class="sh-cat"' in src and 'class="vip-dot vip-dot2"' in src and '_catBadge' not in src and 'wp-pair' not in src)
+    # --- v203: 写し取りは2つの道で（GitHub の定期実行が遅れても、作者がアプリを開けば写る）---
+    chk('静的', '箱→置き場所の写し取りは、定期実行だけに頼らない（アプリ側でも写す・押し出したときにも動く・同じ名前なら入れ替える）',
+        'async function _boxMirror' in src and 'const BOX_MIRROR_MAX = 5;' in src
+        and '_boxMirror(list).then(' in src and "'library/box-' + e.id + '.json'" in src
+        and 'if (res.status === 422) {' in src and 'sha: sha' in src)
     # --- v202: みんなのコースでも写真が見られる／一覧の読み込みを速く ---
     chk('静的', 'みんなのコースに写真を付ける：小さく作り直して箱の別の場所へ。開いたあとから貼る（地図はすぐ出す）。写しも一緒に運ぶ',
         'const SHARE_PH_PX = 640' in src and 'SHARE_PH_PER_SPOT' in src and 'SHARE_PH_TOTAL' in src
@@ -469,7 +474,7 @@ def static_checks(src):
     _mir = open(_mir_py, encoding='utf-8').read() if os.path.exists(_mir_py) else ''
     _yml = open(_mir_yml, encoding='utf-8').read() if os.path.exists(_mir_yml) else ''
     chk('静的', '箱→置き場所の写し取り：定期実行の手順と写し取りの道具がある（library/box-<ID>.json へ・荒らし対策の上限つき）',
-        bool(_mir) and bool(_yml) and "cron: '*/10 * * * *'" in _yml and 'contents: write' in _yml
+        bool(_mir) and bool(_yml) and "cron: '*/10 * * * *'" in _yml and 'contents: write' in _yml and 'branches: [ main ]' in _yml
         and 'python3 tools/box_mirror.py' in _yml and '[skip ci]' in _yml
         and "'box-' + cid + '.json'" in _mir and 'MAX_PER_RUN' in _mir and 'MAX_BYTES' in _mir
         and '_read_json(_url(cfg, \'idx\'))' in _mir
@@ -548,7 +553,7 @@ def static_checks(src):
     chk('静的', '出すのはアプリから直接（GitHub の contents API に PUT）。合言葉はこの端末だけに残し、送り先は GitHub だけ。合言葉を使わない「ファイルで出す」もある',
         'function _ghPutFile' in src and 'function _ghToken' in src and 'function _ghSetToken' in src and "ghToken:     'fp_gh_token'" in src
         and "'Authorization':'Bearer ' + t" in src and 'function _pubByFile' in src and 'id="pubTokenSave"' in src and 'id="pubForget"' in src
-        and 'function _ghNewFileUrl' not in src and src.count('api.github.com') == 2)
+        and 'function _ghNewFileUrl' not in src and src.count('api.github.com') == 3)   # v203：一覧・PUT・入れ替え用の sha 取得の3か所だけ
     # --- v192: 「配る」から出せる／iPhone でも窓が開く／出すコースを選べる ---
     chk('静的', '配るの画面に「みんなのコースに出す」がある。出すは押したその場で窓を開く（setTimeout では開かない）。出すコースを選べる',
         'data-share="pub"' in src and 'closeShareSheet();openPublishSheet()' in src and 'function _pubPrepare' in src and 'let _pubCourse = null, _pubData' in src
@@ -2190,6 +2195,41 @@ def functional_checks(index_path):
         chk('機能', 'みんなの箱：合言葉なしで「出す」1つ。中身と一覧の両方を書き、すぐ並び、押すと中身が取れる。一覧が消えても自分のぶんは戻る。写し終わったら置き場所のぶんだけ出す',
             isinstance(bx, dict) and all(bx.get(k) for k in ('oneBtn', 'idx', 'body', 'list', 'open', 'mine', 'heal', 'big', 'moved',
                                                             'phPut', 'phFlag', 'phGot')), str(bx)[:340])
+
+        # v203: 作者の端末なら、アプリを開いたときに箱→置き場所へ写す（GitHub の定期実行が遅れても届く）
+        mr = page.evaluate("""async ()=>{ try{
+            const keepFetch = window.fetch, keepCfg = _boxCfgCache, keepRepo = window._ghRepo, keepTok = _ghToken();
+            const keepMine = localStorage.getItem(LS.boxMine); localStorage.removeItem(LS.boxMine);
+            const base = 'https://example.invalid/api/data/', idxKey = base + 'k1', store = {}, puts = [];
+            const id = '20260912-cccc';
+            store[idxKey] = JSON.stringify({courses:[{id:id, name:'写しテスト', area:'兵庫県', by:'検査', at:'2026-09-12', allowEdit:false, ph:1}]});
+            store[idxKey + '-' + id] = JSON.stringify({d:'DDDD'});
+            store[idxKey + '-' + id + '-ph'] = JSON.stringify({p:{'1':['data:image/jpeg;base64,AAAA']}});
+            _boxCfgCache = {kind:'textdb', base: base, key:'k1'};
+            window._ghRepo = () => ({user:'u', repo:'r'}); _ghSetToken('test-token');
+            window.fetch = async (u, o) => { const s = String(u).split('?')[0];
+              if (s.indexOf('api.github.com') >= 0 && o && o.method === 'PUT') {
+                puts.push({url: s, body: JSON.parse(decodeURIComponent(escape(atob(JSON.parse(o.body).content))))});
+                return new Response('{}', {status:201});
+              }
+              if (s.indexOf(base) === 0) { if (o && o.method === 'POST') { store[s] = o.body; return new Response('ok', {status:200}); }
+                                           return new Response(store[s] || '', {status: (store[s] === undefined ? 404 : 200)}); }
+              return keepFetch(u, o); };
+            const n = await _boxMirror(await _boxList());
+            const course = puts.find(p => p.url.indexOf('box-' + id + '.json') >= 0);
+            const photo  = puts.find(p => p.url.indexOf('box-' + id + '-photos.json') >= 0);
+            const out = {n: n === 1,
+              course: !!course && course.body.d === 'DDDD' && course.body.from === 'box' && course.body.allowEdit === false
+                      && course.body.ph === 'library/box-' + id + '-photos.json',
+              photo: !!photo && Array.isArray(photo.body.p['1']),
+              gone: JSON.parse(store[idxKey]).courses.length === 0};                 // 写したら箱から外す
+            window.fetch = keepFetch; _boxCfgCache = keepCfg; window._ghRepo = keepRepo; _ghSetToken(keepTok || '');
+            if (keepMine === null) localStorage.removeItem(LS.boxMine); else localStorage.setItem(LS.boxMine, keepMine);
+            document.querySelectorAll('#toastBox .toast').forEach(e => e.remove());
+            return out;
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        chk('機能', '作者の端末では、箱のコースを置き場所（library/box-<ID>.json）へ写真ごと写し、写したぶんを箱から外す',
+            isinstance(mr, dict) and all(mr.get(k) for k in ('n', 'course', 'photo', 'gone')), str(mr)[:240])
 
         # v190: 一覧に出す絵：写真から選ぶ→保存される／地図の絵に戻す→消える／一覧のアイコンに出る
         ic = page.evaluate("""async ()=>{ try{

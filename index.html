@@ -3204,7 +3204,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v202';
+const APP_VERSION = 'v203';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -10095,6 +10095,17 @@ async function _ghPutFile(path, text, message){
       body: JSON.stringify({message: message || ('add ' + path), content: _b64utf8(text)})
     });
     if (res.ok) return {ok:true};
+    if (res.status === 422) {   // v203：同じ名前がすでにある＝中身を入れ替える（写し直しでつまずかない）
+      const url = 'https://api.github.com/repos/' + r.user + '/' + r.repo + '/contents/' + path;
+      const g = await fetch(url, {headers:{'Authorization':'Bearer ' + t, 'Accept':'application/vnd.github+json'}});
+      if (g.ok) {
+        const sha = (await g.json()).sha;
+        const res2 = await fetch(url, {method:'PUT',
+          headers:{'Authorization':'Bearer ' + t, 'Accept':'application/vnd.github+json', 'Content-Type':'application/json'},
+          body: JSON.stringify({message: message || ('update ' + path), content: _b64utf8(text), sha: sha})});
+        if (res2.ok) return {ok:true};
+      }
+    }
     return {ok:false, why: res.status === 401 || res.status === 403 ? 'auth' : (res.status === 404 ? 'notfound' : 'http' + res.status)};
   } catch(_) { return {ok:false, why:'network'}; }
 }
@@ -10125,6 +10136,7 @@ async function openLibrarySheet(){
     _lib = {courses: list};
     _libCache = {at: Date.now(), list: list};
     _libRender(list);
+    _boxMirror(list).then(n => { if (n) { _libCache = null; showToast(n + '件を置き場所に保存しました（消えなくなりました）'); } });   // v203：作者の端末なら、その場で写す
   } catch(_) { if (!fresh) _libRender([]); }
 }
 /* 一覧の読み方（v197）：置き場所（GitHub）の **library フォルダと一番上の両方** のファイルを読む。
@@ -10318,6 +10330,34 @@ async function _boxOpen(entry){
   return (j && typeof j.d === 'string') ? j.d : null;
 }
 function _boxNewId(){ return new Date().toISOString().slice(0, 10).replace(/-/g, '') + '-' + Math.random().toString(36).slice(2, 8); }
+/* 箱 → 置き場所へ写す（v203）。GitHub の定期実行が遅れても、作者がアプリを開けば写る（同じことを2つの道でやる）。
+   写すのは合言葉を持っている人の端末だけ。写したぶんは箱の一覧から外すので、二重には並ばない。 */
+const BOX_MIRROR_MAX = 5;   // 一度に写す件数（開いたときに待たせないため）
+async function _boxMirror(list){
+  if (!(_ghToken() && _ghRepo())) return 0;
+  const cfg = await _boxCfg(); if (!cfg) return 0;
+  const rows = (list || []).filter(e => e && e.box).slice(0, BOX_MIRROR_MAX);
+  const done = [];
+  for (const e of rows) {
+    const d = await _boxOpen(e); if (!d) continue;
+    const body = {name: e.name || '', area: e.area || '', by: e.by || '', at: e.at || '',
+                  allowEdit: e.allowEdit !== false, from: 'box', d: d};
+    if (e.ph) {
+      const pj = await _boxRead(cfg, 'ph', e.id);
+      if (pj && pj.p) {
+        const pPath = 'library/box-' + e.id + '-photos.json';
+        if ((await _ghPutFile(pPath, JSON.stringify({p: pj.p}), '写真: ' + (e.name || ''))).ok) body.ph = pPath;
+      }
+    }
+    if ((await _ghPutFile('library/box-' + e.id + '.json', JSON.stringify(body, null, 1), 'みんなのコース: ' + (e.name || ''))).ok) done.push(e.id);
+  }
+  if (done.length) {
+    const cur = await _boxList();
+    await _boxWrite(cfg, 'idx', null, {courses: _boxNorm(cur.filter(e => done.indexOf(e.id) < 0))});
+    _boxForget(done);
+  }
+  return done.length;
+}
 function _ghRepo(){
   const m = /^([a-z0-9-]+)\.github\.io$/i.exec(location.hostname || ''); if (!m) return null;
   const seg = String(location.pathname || '').split('/').filter(Boolean);
