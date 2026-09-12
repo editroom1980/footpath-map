@@ -447,6 +447,10 @@ def static_checks(src):
     # --- v157: 番号の丸と種類の丸を横に並べる（オーナー指摘：iPhone で片方しか見えない）---
     chk('静的', '番号つきで種類がある地点：地図は「種類の丸＋右上に番号の小丸」、一覧・並べ替え・配布シート・カードは番号と種類を並べて出す',
         'class="wp-num"' in src and 'class="wp-dot cat"' in src and 'class="ro-badge cat"' in src and 'class="sh-cat"' in src and 'class="vip-dot vip-dot2"' in src and '_catBadge' not in src and 'wp-pair' not in src)
+    # --- v194: 合言葉の作り方を、GitHub の画面の順番どおりに出す ---
+    chk('静的', '合言葉の作り方が番号つきで出る（Token name・Expiration・Only select repositories・Contents: Read and write・Generate token・貼り付け）',
+        'class="pb-steps"' in src and 'Token name' in src and 'Expiration' in src and 'Only select repositories' in src
+        and 'Read and write' in src and 'Generate token' in src and 'id="pubRepoName"' in src and '① 合言葉を作る画面を開く' in src)
     # --- v193: 置き場所へ直接出す（合言葉を1回だけ登録）。GitHub の画面まかせをやめた ---
     chk('静的', '出すのはアプリから直接（GitHub の contents API に PUT）。合言葉はこの端末だけに残し、送り先は GitHub だけ。合言葉を使わない「ファイルで出す」もある',
         'function _ghPutFile' in src and 'function _ghToken' in src and 'function _ghSetToken' in src and "ghToken:     'fp_gh_token'" in src

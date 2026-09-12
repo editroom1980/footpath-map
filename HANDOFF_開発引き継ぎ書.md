@@ -1,6 +1,6 @@
 # フットパスマップメーカー 開発引き継ぎ書
 
-最終更新時点の版：**v193** ／ 対象：`index.html`（単一ファイル）
+最終更新時点の版：**v194** ／ 対象：`index.html`（単一ファイル）
 
 この文書は、コードで開発を継続する人（または Claude Code）が、
 現状を正確に把握し、**不具合を出さず・いつでも元に戻せる**やり方で作業を続けるためのものです。
@@ -24,7 +24,7 @@
 
 ---
 
-## 2. 現在の状態（v193 実装済み）
+## 2. 現在の状態（v194 実装済み）
 
 | 内部名（コード・保存データ） | 画面の語（v130〜） | 以前の語 |
 |---|---|---|
@@ -159,6 +159,8 @@
 - **v77** ○内文字を円いっぱいに（`_wpFont`、2文字は縮小してはみ出し防止）＋PCに地名ラベルサイズ設定（`LABEL_SIZES`・`cycleLabelSize`、保存画像に反映）。
 - **v78** ○内文字の中心ずれ修正（html2canvasがflex中央寄せを下げて描画→`text-align:center; line-height:内側`へ）＋地名ラベルの右ずれ修正（bind後のインライン変更で位置が古くなる→`tooltip.update()`）＋ラベル5段階化＋背景地図に3種追加（地形図/淡色/色違い）＋PCツールバーに「地図」切替。
 - **v79** サンプルコース自動取り込み（`sample.json`・`ensureSampleCourse`）。初回のみ・削除で復活せず・既存に非干渉・失敗しても起動継続。
+- **v194** **合言葉の作り方を、GitHub の画面の順番どおりに出す**（オーナーが作成画面で止まったため）。
+  - 出す画面の中に番号つきの手順：① Token name（`footpath-map`）② Expiration（No expiration か 90 days）③ Repository access → Only select repositories → **その置き場所の名前を自動で表示** ④ Permissions → Repository permissions → **Contents → Read and write** ⑤ 一番下の Generate token ⑥ 出てきた `github_pat_…` をコピー（閉じると二度と見られない）⑦ アプリに戻って貼り付け。
 - **v193** **出すのはアプリから直接（GitHub の画面まかせをやめた）**（オーナー指摘「GitHub が Whoops になって使えない」）。
   - v191〜192 は「新しいファイルの画面に中身を入れて開く」方式。中身が 6KB ほどあると **GitHub 側がエラー（Whoops, something went wrong!）** になり、公開できなかった。
   - 直し：**置き場所の合言葉（GitHub のアクセストークン）を1回だけ登録**してもらい、アプリから直接ファイルを置く（`PUT /repos/…/contents/library/…json`・`_ghPutFile`）。以後は「出す」を押すだけで数秒で並ぶ。

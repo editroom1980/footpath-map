@@ -684,6 +684,9 @@ body.viewonly #firstTip,body.embed #firstTip{display:none!important}
 #pubSheet .pb-setup{border:1.5px solid #E3DCD1;border-radius:12px;padding:10px 12px;margin:4px 0 10px;background:#FCFAF6}
 #pubSheet .pb-setup .pb-l{margin-top:0}
 #pubSheet .pb-setup .pb-copy{margin-bottom:8px}
+#pubSheet .pb-steps{margin:8px 0 10px 0;padding-left:20px;font-size:12px;color:#3D3835;line-height:1.85}
+#pubSheet .pb-steps li{margin-bottom:4px}
+#pubSheet .pb-steps code{background:#F2EEE7;border-radius:4px;padding:1px 5px;font-size:11.5px}
 #pubSheet .pb-copy{margin-top:8px}
 #pubSheet .pb-l{display:block;font-size:11px;font-weight:700;color:var(--t-sub);margin:10px 0 5px 2px}
 #pubSheet .s1-input{margin-bottom:4px}
@@ -3197,7 +3200,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v193';
+const APP_VERSION = 'v194';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -10183,10 +10186,18 @@ function openPublishSheet(course){
       + '<div class="pb-setup" id="pubSetup" hidden>'
       +   '<div class="pb-l">はじめの1回だけ：置き場所の合言葉</div>'
       +   '<div class="pb-n">GitHub の「合言葉（アクセストークン）」を1回だけ登録すると、次からは「出す」を押すだけで出せます。合言葉は<b>この端末の中だけ</b>に残り、送り先は GitHub だけです。</div>'
-      +   '<button type="button" class="pb-copy tap" id="pubTokenNew">合言葉を作る画面を開く</button>'
-      +   '<div class="pb-n">開いた画面で「Repository access → Only select repositories → このリポジトリ」、「Permissions → Repository permissions → Contents → Read and write」を選んで作ります。</div>'
+      +   '<button type="button" class="pb-copy tap" id="pubTokenNew">① 合言葉を作る画面を開く</button>'
+      +   '<ol class="pb-steps">'
+      +     '<li><b>Token name</b>：<code>footpath-map</code> と入れる（何でもよい）</li>'
+      +     '<li><b>Expiration</b>（期限）：長く使うなら <b>No expiration</b>／不安なら 90 days</li>'
+      +     '<li><b>Repository access</b>：<b>Only select repositories</b> を選び、<b id="pubRepoName">このコースの置き場所</b> を選ぶ</li>'
+      +     '<li><b>Permissions</b> → <b>Repository permissions</b> → 一覧から <b>Contents</b> を探して <b>Read and write</b> にする（ほかは触らない）</li>'
+      +     '<li>一番下の <b>Generate token</b> を押す</li>'
+      +     '<li>出てきた <code>github_pat_…</code> を <b>コピー</b>（この画面を閉じると二度と見られません）</li>'
+      +     '<li>アプリに戻って、下の欄に貼り付けて「② この合言葉を覚える」</li>'
+      +   '</ol>'
       +   '<input class="s1-input" id="pubToken" type="password" placeholder="github_pat_… を貼り付け" autocomplete="off">'
-      +   '<button type="button" class="pb-go tap" id="pubTokenSave">この合言葉を覚える</button>'
+      +   '<button type="button" class="pb-go tap" id="pubTokenSave">② この合言葉を覚える</button>'
       + '</div>'
       + '<button type="button" class="pb-copy tap" id="pubFile">ファイルで出す（合言葉を使わない）</button>'
       + '<button type="button" class="pb-copy tap" id="pubCopy">出す内容をコピーする</button>'
@@ -10218,6 +10229,7 @@ function openPublishSheet(course){
   const by = sh.querySelector('#pubBy'); if (by && !by.value) { try { by.value = localStorage.getItem(LS.pubBy) || ''; } catch(_) {} }
   _pubPickEdit(!(c.noEdit === true));
   _pubPrepare();   // v192：中身を先に作っておく
+  const rn = sh.querySelector('#pubRepoName'); const rp = _ghRepo(); if (rn && rp) rn.textContent = rp.repo;
   _pubSyncButtons();
   sh.classList.add('show');
 }
