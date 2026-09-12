@@ -1458,7 +1458,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
 
       <!-- モバイル: コントロールシェルフ -->
       <div id="mobileShelf">
-        <button id="mobileEditBack" class="tap" onclick="toggleViewMode()">✎ 編集にもどる</button>
+        <button id="mobileEditBack" class="tap" onclick="toggleViewMode()">✎ 編集モード</button>
                 <div class="mob-modes">
           <button id="mobileWpBtn" class="mob-mode on tap" onclick="setMode('wp')" aria-label="スポット"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11a3 3 0 1 0 6 0a3 3 0 0 0 -6 0" /> <path d="M17.657 16.657l-4.243 4.243a2 2 0 0 1 -2.827 0l-4.244 -4.243a8 8 0 1 1 11.314 0" /></svg><span class="mob-mode-l">スポット</span></button>
           <button id="mobileDrawBtn" class="mob-mode tap" onclick="setMode('draw')" aria-label="指でなぞって描く"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 19a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" /> <path d="M19 7a2 2 0 1 0 0 -4a2 2 0 0 0 0 4" /> <path d="M11 19h5.5a3.5 3.5 0 0 0 0 -7h-8a3.5 3.5 0 0 1 0 -7h4.5" /></svg><span class="mob-mode-l">なぞる</span></button>
@@ -3210,7 +3210,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v214';
+const APP_VERSION = 'v215';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
