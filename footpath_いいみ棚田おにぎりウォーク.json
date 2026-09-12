@@ -1,0 +1,301 @@
+{
+  "id": 1779589945830,
+  "name": "いいみ棚田おにぎりウォーク",
+  "area": "兵庫県宍粟市波賀町飯見",
+  "start": "波賀B＆G海洋センター",
+  "goal": "波賀B＆G海洋センター",
+  "desc": "",
+  "center": {
+    "lat": 35.16778760004101,
+    "lng": 134.5376890897751
+  },
+  "zoom": 17,
+  "wps": [
+    {
+      "id": 1,
+      "type": "start",
+      "name": "波賀B＆G海洋センター",
+      "desc": "",
+      "tel": "",
+      "dwell": 0,
+      "fitBefore": true,
+      "fitAfter": false,
+      "onRoute": true,
+      "lat": 35.161080091795256,
+      "lng": 134.54226493835452,
+      "labelDir": "bottom",
+      "photos": []
+    },
+    {
+      "id": 2,
+      "type": "course",
+      "name": "上野貯木場跡\n(森林鉄道終点)",
+      "desc": "",
+      "tel": "",
+      "dwell": 0,
+      "fitBefore": true,
+      "fitAfter": true,
+      "onRoute": true,
+      "lat": 35.16334961139318,
+      "lng": 134.5426565408707,
+      "labelDir": "top",
+      "photos": []
+    },
+    {
+      "id": 3,
+      "type": "course",
+      "name": "関西電力上野発電所",
+      "desc": "昭和３年(1928)に開設された関西電力上野発電所。上野地区約800世帯分の電力を賄っている。\n上流の野尻地区から隧道を通り、水が送られてきている。停電時には１分間で送電再開できる自動システムが設置されている。",
+      "tel": "",
+      "dwell": 0,
+      "fitBefore": true,
+      "fitAfter": false,
+      "onRoute": true,
+      "lat": 35.164915214087785,
+      "lng": 134.5428711175919,
+      "labelDir": "left",
+      "photos": []
+    },
+    {
+      "id": 4,
+      "type": "course",
+      "name": "森林鉄道軌道跡",
+      "desc": "国有林から切り出された木材を輸送する目的で大正5年(1916)に開設された波賀森林鉄道。路線延長は、最盛期は\n昭和33年(1958)頃には50㎞にも及んだ。昭和50年(1975)に林野庁から当時の波賀町に払い下げられ、一部はサイクリングロードとして整備された。",
+      "tel": "",
+      "dwell": 0,
+      "fitBefore": true,
+      "fitAfter": true,
+      "onRoute": true,
+      "lat": 35.17230866155641,
+      "lng": 134.54035520553592,
+      "labelDir": "top",
+      "photos": []
+    },
+    {
+      "id": 8,
+      "type": "course",
+      "name": "ひとのわ",
+      "desc": "飯見集落では、住民同士のきずなが希薄化しないように、親睦を図れるコミュニティーカフェとして「ひとのわ」を設置。\nひとのわを含め、集落内には、老若男女の案山子が約100体あり、集ってきた人を癒やしてくれる。",
+      "tel": "",
+      "dwell": 0,
+      "fitBefore": true,
+      "fitAfter": true,
+      "onRoute": true,
+      "lat": 35.174167880637846,
+      "lng": 134.53588128089908,
+      "labelDir": "top",
+      "photos": []
+    },
+    {
+      "id": 5,
+      "type": "course",
+      "name": "飯見公民館",
+      "desc": "",
+      "tel": "",
+      "dwell": 0,
+      "fitBefore": true,
+      "fitAfter": true,
+      "onRoute": true,
+      "lat": 35.172510371343044,
+      "lng": 134.53668594360354,
+      "labelDir": "top",
+      "photos": []
+    },
+    {
+      "id": 7,
+      "type": "course",
+      "name": "加茂新明神社",
+      "desc": "揖保川の支流引原川の谷に向かった傾斜地に、約50世帯の家々が、密集して建ち並ぶ波賀町飯見集落の氏神さま。\n約300年前に岡田一族の先祖が京都の上賀茂神社から新明様を預かってきたのが始まりと伝わる。\n市道から登る階段は約120段！",
+      "tel": "",
+      "dwell": 0,
+      "fitBefore": false,
+      "fitAfter": false,
+      "onRoute": true,
+      "lat": 35.17215957139246,
+      "lng": 134.5335102081299,
+      "labelDir": "top",
+      "photos": []
+    },
+    {
+      "id": 6,
+      "type": "course",
+      "name": "つなぐ棚田遺産\n飯見の棚田",
+      "desc": "令和3年、農林水産省認定「つなぐ棚田遺産」に選ばれた飯見の棚田。\n17.2ヘクタール、171枚の棚田が広がっている。農村景観と棚田を次代に繋いでいくために、減農薬栽\n培に取り組み、美味しくて体によい米づくりを実践している。\n夏は虫送り行事、秋は道の駅みなみ波賀で新米まつりを開催している。",
+      "tel": "",
+      "dwell": 0,
+      "fitBefore": true,
+      "fitAfter": true,
+      "onRoute": true,
+      "lat": 35.16782706723301,
+      "lng": 134.53025937080386,
+      "labelDir": "top",
+      "photos": []
+    },
+    {
+      "id": 10,
+      "type": "goal",
+      "name": "",
+      "desc": "",
+      "tel": "",
+      "dwell": 0,
+      "fitBefore": false,
+      "fitAfter": true,
+      "onRoute": true,
+      "lat": 35.16111736944027,
+      "lng": 134.5421361923218,
+      "labelDir": "top",
+      "photos": []
+    }
+  ],
+  "vps": [
+    {
+      "id": "v1",
+      "segAfter": 1,
+      "fitBefore": true,
+      "fitAfter": true,
+      "lat": 35.16122262387516,
+      "lng": 134.54277455806735,
+      "order": 0
+    },
+    {
+      "id": "v27",
+      "segAfter": 4,
+      "fitBefore": true,
+      "fitAfter": true,
+      "lat": 35.17372938940272,
+      "lng": 134.5383703708649,
+      "order": 0.5
+    },
+    {
+      "id": "v32",
+      "segAfter": 3,
+      "fitBefore": true,
+      "fitAfter": true,
+      "lat": 35.16691054638751,
+      "lng": 134.54193234443667,
+      "order": 0
+    },
+    {
+      "id": "v33",
+      "segAfter": 3,
+      "fitBefore": false,
+      "fitAfter": false,
+      "lat": 35.16666058436417,
+      "lng": 134.54196453094485,
+      "order": -1
+    },
+    {
+      "id": "v34",
+      "segAfter": 3,
+      "fitBefore": false,
+      "fitAfter": false,
+      "lat": 35.166493942588446,
+      "lng": 134.54203963279727,
+      "order": -2
+    },
+    {
+      "id": "v35",
+      "segAfter": 3,
+      "fitBefore": false,
+      "fitAfter": false,
+      "lat": 35.16600717123538,
+      "lng": 134.54237759113315,
+      "order": -3
+    },
+    {
+      "id": "v36",
+      "segAfter": 3,
+      "fitBefore": false,
+      "fitAfter": false,
+      "lat": 35.16568265538133,
+      "lng": 134.5426565408707,
+      "order": -4
+    },
+    {
+      "id": "v37",
+      "segAfter": 3,
+      "fitBefore": false,
+      "fitAfter": false,
+      "lat": 35.165344982104386,
+      "lng": 134.54273700714114,
+      "order": -5
+    },
+    {
+      "id": "v38",
+      "segAfter": 3,
+      "fitBefore": false,
+      "fitAfter": false,
+      "lat": 35.16506870292586,
+      "lng": 134.5427638292313,
+      "order": -6
+    },
+    {
+      "id": "v40",
+      "segAfter": 7,
+      "fitBefore": false,
+      "fitAfter": false,
+      "lat": 35.17247967640778,
+      "lng": 134.53495323657992,
+      "order": 0
+    },
+    {
+      "id": "v42",
+      "segAfter": 5,
+      "fitBefore": false,
+      "fitAfter": false,
+      "lat": 35.17250598635299,
+      "lng": 134.5349478721619,
+      "order": 1
+    },
+    {
+      "id": "v47",
+      "segAfter": 7,
+      "fitBefore": false,
+      "fitAfter": false,
+      "lat": 35.1721420313552,
+      "lng": 134.53353166580203,
+      "order": -1
+    },
+    {
+      "id": "v49",
+      "segAfter": 7,
+      "fitBefore": true,
+      "fitAfter": false,
+      "lat": 35.172501601362704,
+      "lng": 134.53553795814517,
+      "order": 0
+    },
+    {
+      "id": "v50",
+      "segAfter": 5,
+      "fitBefore": false,
+      "fitAfter": false,
+      "lat": 35.172532296289695,
+      "lng": 134.53553259372714,
+      "order": 0.5
+    },
+    {
+      "id": "v51",
+      "segAfter": 1,
+      "fitBefore": false,
+      "fitAfter": true,
+      "lat": 35.16115245426705,
+      "lng": 134.5422998070717,
+      "order": -1
+    },
+    {
+      "id": "v52",
+      "segAfter": 6,
+      "fitBefore": true,
+      "fitAfter": false,
+      "lat": 35.16119192467905,
+      "lng": 134.542171061039,
+      "order": 0
+    }
+  ],
+  "customRoads": [],
+  "customPaths": [],
+  "maxWpId": 10,
+  "maxVpNum": 52,
+  "savedAt": "2026-06-18T03:13:13.310Z"
+}
