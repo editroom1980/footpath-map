@@ -733,9 +733,9 @@ def static_checks(src):
                                '<span class="mm-tog-l">描いた道に吸い付く</span>', '<span>スポットの編集</span>', '👁 歩く人の見え方', "l:'描いた道の点'"]))
     chk('静的', '操作ガイドが今の画面の語で書かれている', '<h3>📍 スポットを置く・直す</h3>' in src and '<h3>↔ 道を変更（線を引っぱる）</h3>' in src
         and '<h3>💾 保存・配る</h3>' in src and 'ウェイポイントの追加・編集' not in src)
-    chk('静的', 'コースの削除は確認ダイアログではなく10秒の「元に戻す」',
-        "confirm('このコースを削除しますか？')" not in src and 'const DELETE_UNDO_MS = 10000;' in src and 'function undoDeleteCourse' in src
-        and "b.textContent = '元に戻す';" in src)
+    chk('静的', 'コースの削除は「確認してから」＋そのあと10秒の「元に戻す」（v183・二重の網）',
+        'function askDeleteCourse' in src and "askDeleteCourse(c.id);" in src and "ov.id = 'delCourseDlg'" in src and '#delCourseDlg .dc-yes{' in src
+        and 'const DELETE_UNDO_MS = 10000;' in src and 'function undoDeleteCourse' in src and "b.textContent = '元に戻す';" in src)
     # --- v129: 種別の追加（学校・幼稚園／公民館・集会所）と、大きく出す4つの入れ替え ---
     chk('静的', '種別に学校・幼稚園と公民館・集会所がある（○の記号つき）',
         "v:'school',  l:'学校・幼稚園'" in src and "v:'hall',    l:'公民館・役所・郵便局'" in src and "school:  {d:" in src and "hall:    {d:" in src)   # v155: 絵に
@@ -1897,6 +1897,29 @@ def functional_checks(index_path):
             and pl.get('bigs') == ['ビュースポット', '史跡・記念碑', '飲食店・ショップ', '神社・寺院'] and pl.get('restHidden')
             and pl.get('restN', 0) >= 5 and pl.get('selVal') == 'parking' and pl.get('onChip') == '駐車場' and pl.get('savedType') == 'parking',
             str(pl)[:260])
+
+        # v183: 一覧の「削除」は必ず確認してから消す（やめる＝消えない／削除する＝消えて「元に戻す」が出る）
+        dc = page.evaluate("""()=>{ try{
+            const keepC = getCourses(), keepP = _delPending;
+            setCourses([{id: 9301, name:'消す検査コース', wps:[{id:1,type:'spot'},{id:2,type:'node'}], savedAt:'T'}]);
+            const s1 = document.getElementById('s1'), s2 = document.getElementById('s2'), d1 = s1.style.display, d2 = s2.style.display;
+            s2.style.display = 'none'; s1.style.display = 'flex'; renderCourseList();
+            const del = document.querySelector('#courseList .cc-act.rd'); del.click();
+            const dlg = document.getElementById('delCourseDlg');
+            const out = {asks: !!dlg && dlg.classList.contains('show') && getCourses().length === 1,
+                         name: dlg.querySelector('.dc-t').textContent.indexOf('消す検査コース') >= 0,
+                         count: dlg.querySelector('.dc-d').textContent.indexOf('1 か所') >= 0};   // 描いた道の点は数えない
+            dlg.querySelector('.dc-no').click();
+            out.cancel = !dlg.classList.contains('show') && getCourses().length === 1;
+            del.click(); dlg.querySelector('.dc-yes').click();
+            out.deleted = getCourses().length === 0 && !dlg.classList.contains('show');
+            out.undoToast = !!document.getElementById('undoToast');
+            _finalizeDelete(); setCourses(keepC); _delPending = keepP; renderCourseList();
+            s1.style.display = d1; s2.style.display = d2;
+            return out;
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        chk('機能', 'コースの削除：必ず確認が出る／やめると消えない／削除すると消えて「元に戻す」が出る',
+            isinstance(dc, dict) and all(dc.get(k) for k in ('asks', 'name', 'count', 'cancel', 'deleted', 'undoToast')), str(dc)[:220])
 
         # v130: コースを削除すると「元に戻す」が出て、押すと同じ位置・同じ中身で戻る。10秒たつと確定
         du = page.evaluate("""()=>{ try{

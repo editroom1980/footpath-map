@@ -656,6 +656,16 @@ body.viewonly #firstTip,body.embed #firstTip{display:none!important}
 @media (min-width:769px){#kokoroeSheet{left:50%;right:auto;bottom:auto;top:50%;transform:translate(-50%,-50%);width:480px;max-width:calc(100vw - 32px);border-radius:16px;padding:18px 20px 20px}#kokoroeSheet .ds-dh{display:none}}
 #infoSheet .ci-auto{width:100%;margin-top:4px;min-height:var(--tap);border:1.5px solid #D4C4A8;border-radius:11px;background:#FAF6EE;color:#4A2E0E;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer}
 /* コース名を変えるシート（v180）。心得と同じ見た目 */
+/* コースを消す前の確認（v183） */
+#delCourseDlg{display:none;position:fixed;inset:0;z-index:6000;align-items:center;justify-content:center;background:rgba(0,0,0,.45);padding:24px}
+#delCourseDlg.show{display:flex}
+#delCourseDlg .dc-box{background:#fff;border-radius:16px;max-width:340px;width:100%;padding:20px 18px;box-shadow:0 10px 40px rgba(0,0,0,.3)}
+#delCourseDlg .dc-t{font-size:16px;font-weight:800;color:#231C14;line-height:1.45;overflow-wrap:anywhere}
+#delCourseDlg .dc-d{font-size:12.5px;color:var(--t-sub);margin-top:8px;line-height:1.7}
+#delCourseDlg .dc-btns{display:flex;flex-direction:column;gap:8px;margin-top:16px}
+#delCourseDlg .dc-btns button{min-height:var(--tap);border:none;border-radius:11px;font-family:inherit;font-size:15px;font-weight:800;cursor:pointer}
+#delCourseDlg .dc-yes{background:#DC2626;color:#fff}
+#delCourseDlg .dc-no{background:#EEE5D8;color:#4A2E0E}
 #renameScrim{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:3400;display:none}
 #renameSheet{position:fixed;left:0;right:0;bottom:0;z-index:3401;display:none;background:#fff;border-radius:20px 20px 0 0;
   padding:10px 16px max(16px,var(--sab));box-shadow:0 -6px 24px rgba(0,0,0,.18);max-height:88vh;overflow-y:auto}
@@ -3047,7 +3057,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v182';
+const APP_VERSION = 'v183';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -9201,6 +9211,27 @@ async function saveCourse(opts) {
 
 /* コースの削除（v130）：確認ダイアログの代わりに、すぐ消して10秒間「元に戻す」を出す。
    戻すときは同じ位置・同じ中身で戻る。10秒たったら確定（この時点で何かを追加で消すことはない） */
+/* コースを消す前の確認（v183・オーナー指摘「押したらいきなり消えて危険すぎる」）。
+   消したあとも10秒は「元に戻す」が出る（v130）。二重の網 */
+function askDeleteCourse(id){
+  const c = getCourses().find(x => x && x.id === id); if (!c) return;
+  const nm = (c.name || '(名称未設定)');
+  const n = Array.isArray(c.wps) ? c.wps.filter(w => w && w.type !== 'node').length : 0;
+  let ov = document.getElementById('delCourseDlg');
+  if (!ov) {
+    ov = document.createElement('div'); ov.id = 'delCourseDlg';
+    ov.innerHTML = '<div class="dc-box"><div class="dc-t"></div><div class="dc-d"></div>'
+      + '<div class="dc-btns"><button type="button" class="dc-no tap">やめる</button><button type="button" class="dc-yes tap">削除する</button></div></div>';
+    document.body.appendChild(ov);
+    ov.addEventListener('click', e => { if (e.target === ov) ov.classList.remove('show'); });
+    ov.querySelector('.dc-no').addEventListener('click', () => ov.classList.remove('show'));
+  }
+  ov.querySelector('.dc-t').textContent = '「' + nm + '」を削除しますか？';
+  ov.querySelector('.dc-d').textContent = 'スポット ' + n + ' か所ぶんが、この端末から消えます。消したあと10秒は「元に戻す」で戻せます。';
+  const yes = ov.querySelector('.dc-yes');
+  yes.onclick = () => { ov.classList.remove('show'); deleteCourse(id); };
+  ov.classList.add('show');
+}
 function deleteCourse(id) {
   const list = getCourses();
   const idx  = list.findIndex(c => c && c.id === id);
@@ -9426,7 +9457,7 @@ function renderCourseList() {
     card.addEventListener('click', e => { if (e.target && e.target.closest && e.target.closest('.cc-act')) return; loadCourseData(c); });   // v179：カードのどこを押しても開く（ボタンを除く）
     expBtn.addEventListener('click', e=>{e.stopPropagation();exportCourseData(c);});
     shareBtn.addEventListener('click', e=>{e.stopPropagation();openShareDialog(c);});
-    delBtn.addEventListener('click', e=>{e.stopPropagation();deleteCourse(c.id);});
+    delBtn.addEventListener('click', e=>{e.stopPropagation();askDeleteCourse(c.id);});   // v183：必ず確認してから消す
     cont.appendChild(card);
   });
   if (typeof _fillPhotoImgs === 'function') _fillPhotoImgs(cont);   // v179：背景の写真（IndexedDB のぶん）を流し込む
