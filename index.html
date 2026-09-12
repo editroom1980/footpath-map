@@ -383,7 +383,7 @@ body.embed #s2, body.embed #mapArea, body.embed #mapWrap{height:100%!important;m
 /* 発見（v143） */
 .wp-sticker.find{border-color:#E8F5E9}
 .find-dot{border-radius:50%;color:#fff;font-weight:bold;text-align:center;border:2.5px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.45);cursor:pointer}
-#mobileFindBtn[hidden],#btnFind[hidden],#mmFindsRow[hidden],#btnGoal[hidden],#mmGoalRow[hidden],#mmKokoroeRow[hidden],#mmInfoRow[hidden],#mmPubRow[hidden]{display:none!important}
+#mobileFindBtn[hidden],#btnFind[hidden],#mmFindsRow[hidden],#btnGoal[hidden],#mmGoalRow[hidden],#mmKokoroeRow[hidden],#mmInfoRow[hidden],#mmPubRow[hidden],#mmGetRow[hidden]{display:none!important}
 /* スポットの編集：くわしい設定（v148） */
 .m-more{border:1px solid #E6DCCB;border-radius:10px;padding:0 10px;margin:4px 0 10px;background:#FCFAF6}
 .m-switch{display:flex!important;align-items:center;gap:10px;background:#FCFAF6;border:1px solid #E6DCCB;border-radius:10px;padding:8px 10px;margin:6px 0 10px;cursor:pointer;font-weight:normal!important}
@@ -585,7 +585,7 @@ body.viewonly #descSec.view-desc textarea{background:#F9F7F4;border-color:#E6DCC
 #updBar .upd-x{background:transparent;color:#D9CDB4;padding:6px 4px;font-size:14px}
 #offlineBadge{position:fixed;top:calc(8px + var(--sat));left:50%;transform:translateX(-50%);background:rgba(90,58,26,.92);color:#fff;font-size:11px;padding:4px 14px;border-radius:14px;z-index:2600;pointer-events:none;display:none}
 body.offline #offlineBadge{display:block}
-#viewBadge{position:fixed;top:calc(8px + var(--sat));left:50%;transform:translateX(-50%);background:rgba(196,112,58,.9);color:#fff;font-size:11px;padding:4px 14px;border-radius:14px;z-index:2500;pointer-events:none;display:none}
+#viewBadge{position:fixed;top:calc(8px + var(--sat));left:50%;transform:translateX(-50%);background:rgba(196,112,58,.92);color:#fff;font-size:11px;font-family:inherit;font-weight:700;padding:6px 14px;border:0;border-radius:14px;z-index:2500;display:none;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.2)}
 .ctx-it.ctx-convert{color:var(--ok)}
 /* Context menu */
 #ctxMenu{display:none;position:fixed;z-index:5000;background:#fff;border:1px solid #C4B89A;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,.25);min-width:215px;max-width:min(300px,calc(100vw - 24px - env(safe-area-inset-left) - env(safe-area-inset-right)));max-height:calc(100vh - 24px - var(--sat) - var(--sab));overflow-y:auto;font-family:'Hiragino Sans','Meiryo',sans-serif}
@@ -727,6 +727,10 @@ body.viewonly #firstTip,body.embed #firstTip{display:none!important}
 #libSheet .lb-x{width:36px;height:36px;border:none;border-radius:50%;background:#F2EEE7;color:#8A8077;font-size:15px;cursor:pointer}
 #libSheet .lb-n{font-size:11.5px;color:var(--t-sub);line-height:1.7;margin-bottom:10px}
 #libSheet .lb-row{display:block;width:100%;text-align:left;border:0.5px solid #EDE7DC;border-radius:12px;background:#FCFAF6;padding:10px 12px;margin-bottom:8px;font-family:inherit;cursor:pointer}
+/* 自分が出したコースだけに出る「消す」（v212） */
+#libSheet .lb-item{display:flex;align-items:stretch;gap:6px}
+#libSheet .lb-item .lb-row{flex:1;min-width:0}
+#libSheet .lb-del{flex-shrink:0;margin-bottom:8px;padding:0 12px;border:0.5px solid #E8C9C9;border-radius:12px;background:#FDF3F3;color:#B3261E;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer}
 #libSheet .lb-name{display:block;font-size:14.5px;font-weight:800;color:#231C14;line-height:1.35;overflow-wrap:anywhere}
 #libSheet .lb-sub{display:block;font-size:11.5px;color:var(--t-sub);margin-top:2px}
 #libSheet .lb-add{width:100%;min-height:var(--tap);border:1.5px solid #D4C4A8;border-radius:12px;background:#FAF6EE;color:#4A2E0E;font-family:inherit;font-size:13.5px;font-weight:700;cursor:pointer;margin-top:4px}
@@ -1693,6 +1697,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
           <div class="mm-map" onclick="closeMobileMenu();openReorderSheet()" data-edit="1"><span class="mm-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 6h9"/><path d="M11 12h9"/><path d="M12 18h8"/><path d="M4 16a2 2 0 1 1 4 0c0 .6-.5 1-1 1.5L4 20h4"/><path d="M6 10V4L4 6"/></svg></span><span class="mm-map-l">順番・逆回り・周回</span><span class="mm-v" id="mmReorderN">›</span></div>
           <div class="mm-map" onclick="closeMobileMenu();openNearbySheet()" data-edit="1"><span class="mm-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7"/><path d="M21 21l-6-6"/></svg></span><span class="mm-map-l">周辺の情報を取り込む</span><span class="mm-v">›</span></div>
           <div class="mm-map" onclick="closeMobileMenu();saveMapOffline()" title="このコースの範囲の地図を端末に保存します（圏外でも表示できます）"><span class="mm-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/><path d="M7 11l5 5 5-5"/><path d="M12 4v12"/></svg></span><span class="mm-map-l">地図を持ち歩く</span><span class="mm-v">›</span></div>
+          <div class="mm-map" onclick="closeMobileMenu();importOpenedCourse()" id="mmGetRow" hidden><span class="mm-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12"/><path d="M7 11l5 5 5-5"/><path d="M4 20h16"/></svg></span><span class="mm-map-l">このコースを自分のコースに追加</span><span class="mm-v">›</span></div>
           <div class="mm-map" onclick="closeMobileMenu();openPublishSheet(buildCurrentSaveData())" id="mmPubRow" hidden><span class="mm-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V6a2 2 0 0 1 2-2h5v15H6a2 2 0 0 0-2 2z"/><path d="M20 19V6a2 2 0 0 0-2-2h-5v15h5a2 2 0 0 1 2 2z"/></svg></span><span class="mm-map-l">このコースをみんなのコースに出す</span><span class="mm-v">›</span></div>
           <div class="mm-map" onclick="closeMobileMenu();openKokoroeSheet('view')" id="mmKokoroeRow" hidden><span class="mm-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19.5 12.6L12 20l-7.5-7.4a5 5 0 1 1 7.5-6.6 5 5 0 1 1 7.5 6.6"/></svg></span><span class="mm-map-l">歩く人の心得</span><span class="mm-v" id="mmKokoroe">›</span></div>
           <div class="mm-map" onclick="closeMobileMenu();openFindsSheet()" id="mmFindsRow" hidden><span class="mm-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h1a2 2 0 0 0 2-2 1 1 0 0 1 1-1h6a1 1 0 0 1 1 1 2 2 0 0 0 2 2h1a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2"/><circle cx="12" cy="13" r="3"/></svg></span><span class="mm-map-l">見つけたもの</span><span class="mm-v" id="mmFinds">0 件 ›</span></div>
@@ -1846,7 +1851,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
 
 <!-- View Mode Info Panel -->
 <div id="viewInfoPanel"></div>
-<div id="viewBadge">👁 歩く人の見え方</div>
+<button type="button" id="viewBadge" onclick="toggleViewMode()" aria-label="編集にもどる">👁 歩く人の見え方（押すと編集にもどる）</button>
 <div id="offlineBadge">📴 オフライン（保存した地図を表示中）</div>
 
 <!-- WPタイプピッカー -->
@@ -2254,6 +2259,7 @@ const LS = {
   ghToken:     'fp_gh_token',     // 置き場所（GitHub）の合言葉。この端末にだけ残す（v193）
   boxMine:     'fp_box_mine',     // みんなの箱に自分が出したコース（一覧が消えても戻せるように・v199）
   ozTip:       'fp_oz_tip',       // 片手の拡大縮小の案内を見たか（1回だけ出す・v206）
+  boxOwn:      'fp_box_own',      // みんなのコースに自分が出したもの（消せるのは出した本人だけ・v212）
   walkSpeed:   'fp_walkspeed',    // 歩く速さの段階（WALK_SPEEDS の添字）
   shareLinks:  'fp_sharelinks',   // コースIDごとの配布リンク（配布シートのQRに使う）
   visits:      'fp_visits',       // スタンプ（コースIDごと・訪れたスポットと時刻）
@@ -3207,7 +3213,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v211';
+const APP_VERSION = 'v212';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -8620,6 +8626,8 @@ function _syncFindUi(){
   const kr = document.getElementById('mmKokoroeRow'); if (kr) kr.hidden = !on;   // 歩く人だけに出す行（作る人は「コースのことを書く」の中・v152）
   const ir = document.getElementById('mmInfoRow'); if (ir) ir.hidden = !on;
   const pr = document.getElementById('mmPubRow'); if (pr) pr.hidden = !(on && _ghToken() && _ghRepo() && courseInfo && courseInfo.name);   // v195：受け取ったリンクを、そのまま一覧に載せる（置き場所を持っている人だけ）
+  const gr2 = document.getElementById('mmGetRow');   // v212：配られたコースを自分の一覧に取り込む（自分の端末に無いものだけ）
+  if (gr2) gr2.hidden = !(on && courseInfo && courseInfo.name && currentCourseId == null && !courseInfo.noEdit);
   const gb = document.getElementById('btnGoal'); if (gb) gb.hidden = !on;
 }
 /* 貼る（シート） */
@@ -10172,16 +10180,18 @@ async function _libLoad(){
   const gh = _ghRepo();
   /* v202：箱・library フォルダ・一番上・library.json を **同時に** 読む（1つずつ待たない＝速い） */
   const res = await Promise.all([
-    _boxList().catch(() => []),                                              // v199：みんなの箱（合言葉なし・すぐ反映）
-    gh ? Promise.all([_libScanDir(gh, 'library', out), _libScanDir(gh, '', out)]) : null,   // v197：上げる場所を間違えても出るように
+    _boxList().catch(() => []),
+    _boxDelSet().catch(() => ({})),   // v212：消した印（置き場所に残っていても出さない）                                            // v199：みんなの箱（合言葉なし・すぐ反映）
+    gh ? Promise.all([_libScanDir(gh, 'library', out), _libScanDir(gh, '', out)]) : null,   // v197：上げる場所を間違えても出るように（順番は res[0]=箱 res[1]=消した印）
     (async () => { try {
       const j = await (await fetch(LIBRARY_URL + '?t=' + Date.now(), {cache: 'no-store'})).json();
       (j && Array.isArray(j.courses) ? j.courses : []).forEach(c => { if (c && c.d && c.name) out.push(c); });
     } catch(_) {} })()
   ]);
-  const boxRows = res[0] || [];
+  const boxRows = res[0] || [], gone = res[1] || {};
   /* v200：箱から置き場所へ写し終わったコースは、置き場所のぶんだけを出す（二重に並べない）。
      写し終わったものは端末の控えからも外す＝箱が空でも一覧はそのまま。 */
+  for (let i = out.length - 1; i >= 0; i--) { if (out[i] && out[i].boxId && gone[out[i].boxId]) out.splice(i, 1); }   // v212：消されたもの
   const moved = {};
   out.forEach(e => { if (e && e.boxId) moved[e.boxId] = 1; });
   _boxForget(Object.keys(moved));
@@ -10256,6 +10266,8 @@ function _boxUrl(cfg, what, id){
     if (what === 'idx') return u + '/idx.json';
     if (what === 'row') return u + '/idx/' + id + '.json';
     if (what === 'ph')  return u + '/ph/' + id + '.json';   // v202：写真
+    if (what === 'del') return u + '/del/' + id + '.json';  // v212：消した印
+    if (what === 'delAll') return u + '/del.json';
     return u + '/c/' + id + '.json';
   }
   const b = String(cfg.base || BOX_DEFAULT.base) + String(cfg.key || BOX_DEFAULT.key);
@@ -10302,6 +10314,22 @@ function _boxNorm(arr){   // 並べ替え・重複外し・長すぎる項目の
 }
 function _boxIdFromFile(name){ const m = /^box-([A-Za-z0-9-]{4,40})\.json$/i.exec(String(name || '')); return m ? m[1] : ''; }   // v200：箱から写したファイル
 function _boxMine(){ try { return JSON.parse(localStorage.getItem(LS.boxMine) || '[]') || []; } catch(_) { return []; } }
+/* 自分が出したものの控え（v212）。写し取りのあとも残すので、置き場所に移ったコースも本人なら消せる。 */
+function _boxOwnList(){ try { return JSON.parse(localStorage.getItem(LS.boxOwn) || '[]') || []; } catch(_) { return []; } }
+function _boxOwnAdd(entry){
+  try { const a = _boxOwnList().filter(e => e && e.id !== entry.id);
+        a.unshift({id: entry.id, cid: entry.cid || '', name: entry.name || '', at: entry.at || ''});
+        localStorage.setItem(LS.boxOwn, JSON.stringify(a.slice(0, 100))); } catch(_) {}
+}
+function _boxOwnDrop(id){
+  try { localStorage.setItem(LS.boxOwn, JSON.stringify(_boxOwnList().filter(e => e && e.id !== id))); } catch(_) {}
+}
+/* この一覧の1件は、自分が出したものか（箱のID・写したファイルのID・元のコース番号のどれかで見る） */
+function _boxIsMine(e){
+  if (!e) return false;
+  const own = _boxOwnList(), id = e.id || e.boxId || '';
+  return own.some(o => o && ((id && o.id === id) || (e.cid && o.cid && o.cid === e.cid)));
+}
 function _boxForget(ids){   // v200：置き場所へ写し終わったぶんは、端末の控えから外す
   if (!ids || !ids.length) return;
   try {
@@ -10318,8 +10346,10 @@ async function _boxList(){
   let arr = [];
   if (Array.isArray(raw)) arr = raw;
   else if (raw && Array.isArray(raw.courses)) arr = raw.courses;
-  else if (raw && typeof raw === 'object') arr = Object.keys(raw).map(k => Object.assign({id: k}, raw[k]));
-  return _boxNorm(arr.concat(_boxMine()));
+  else if (raw && typeof raw === 'object') arr = Object.keys(raw).filter(k => k !== 'del').map(k => Object.assign({id: k}, raw[k]));
+  const del = {};
+  (raw && Array.isArray(raw.del) ? raw.del : []).forEach(k => { del[String(k)] = 1; });
+  return _boxNorm(arr.concat(_boxMine())).filter(e => !del[e.id]);   // v212：消したものは戻さない
 }
 /* 共有する写真を作る（v202・オーナー指示「みんなが共有するマップで写真が見れるように」）。
    リンクに入れると大きすぎるので、写真だけ箱の別の場所に置く。小さく作り直し、枚数と合計の大きさで止める。 */
@@ -10378,8 +10408,39 @@ async function _boxPublish(entry, data, photos){
   if (cfg.kind === 'firebase') ok = await _boxWrite(cfg, 'row', entry.id, entry);
   else { const cur = await _boxList(); ok = await _boxWrite(cfg, 'idx', null, {courses: _boxNorm([entry].concat(cur))}); }
   if (!ok) return {ok: false, why: 'idx'};
-  _boxRemember(entry);
+  _boxRemember(entry); _boxOwnAdd(entry);   // v212：出した本人だけが消せるように控える
   return {ok: true};
+}
+/* みんなのコースから消す（v212・オーナー指示「出した本人だけは消せるように」）。
+   箱の一覧から外し、**消した印（del）**を残す。置き場所に写ったファイルは、
+   その印を見て写し取りの仕組み（tools/box_mirror.py）が消す。印がある間はアプリも出さない。 */
+async function _boxDelete(id){
+  const cfg = await _boxCfg(); if (!cfg || !id) return false;
+  if (cfg.kind === 'firebase') {
+    const ok = await _boxWrite(cfg, 'row', id, null);
+    await _boxWrite(cfg, 'c', id, null); await _boxWrite(cfg, 'ph', id, null);
+    await _boxWrite(cfg, 'del', id, true);
+    if (ok) { _boxOwnDrop(id); _boxForget([id]); }
+    return ok;
+  }
+  const raw = await _boxRead(cfg, 'idx') || {};
+  const rows = (Array.isArray(raw) ? raw : (raw.courses || [])).filter(r => r && String(r.id) !== String(id));
+  const del = (raw && Array.isArray(raw.del) ? raw.del : []).filter(x => x !== id);
+  del.unshift(id);
+  const ok = await _boxWrite(cfg, 'idx', null, {courses: rows, del: del.slice(0, 200)});
+  if (ok) { _boxOwnDrop(id); _boxForget([id]); await _boxWrite(cfg, 'c', id, ''); await _boxWrite(cfg, 'ph', id, ''); }
+  return ok;
+}
+async function _boxDelSet(){   // 消した印の一覧（置き場所に残っているファイルを隠すのに使う）
+  const cfg = await _boxCfg(); if (!cfg) return {};
+  const out = {};
+  if (cfg.kind === 'firebase') {
+    const j = await _boxRead(cfg, 'delAll'); Object.keys(j || {}).forEach(k => { out[k] = 1; });
+    return out;
+  }
+  const raw = await _boxRead(cfg, 'idx');
+  (raw && Array.isArray(raw.del) ? raw.del : []).forEach(k => { out[String(k)] = 1; });
+  return out;
 }
 async function _boxOpen(entry){
   const cfg = await _boxCfg(); if (!cfg) return null;
@@ -10426,11 +10487,44 @@ function _libRender(list){
   if (list === null) { note.textContent = '読み込んでいます…'; box.innerHTML = ''; return; }
   if (!list.length) { note.innerHTML = 'まだ1件も出ていません。<br>下の「ここに自分のコースを出す」→「出す」を押すだけで、<b>すぐにここへ並びます</b>（登録も合言葉もいりません）。'; box.innerHTML = ''; return; }
   note.textContent = 'みんなが出したコースです。押すと、その場で歩く人の画面が開きます（写真つきで出されたものは写真も出ます）。';
-  box.innerHTML = list.map((c, i) => '<button type="button" class="lb-row tap" data-i="' + i + '">'
+  box.innerHTML = list.map((c, i) => '<div class="lb-item"><button type="button" class="lb-row tap" data-i="' + i + '">'
     + '<span class="lb-name">' + escHtml(c.name || '(名称未設定)') + '</span>'
     + '<span class="lb-sub">' + escHtml([c.area, c.by ? c.by + ' さん' : '', c.at || ''].filter(Boolean).join('・')) + '</span>'
-    + '<span class="lb-tag' + (c.allowEdit === false ? ' ro' : '') + '">' + (c.allowEdit === false ? '見るだけ' : '直してもよい') + '</span></button>').join('');
+    + '<span class="lb-tag' + (c.allowEdit === false ? ' ro' : '') + '">' + (c.allowEdit === false ? '見るだけ' : '直してもよい') + '</span></button>'
+    + (_boxIsMine(c) ? '<button type="button" class="lb-del tap" data-d="' + i + '" aria-label="自分が出したこのコースを消す">消す</button>' : '')
+    + '</div>').join('');
   box.querySelectorAll('.lb-row').forEach(b => b.addEventListener('click', () => _libOpen(list[Number(b.getAttribute('data-i'))])));
+  box.querySelectorAll('.lb-del').forEach(b => b.addEventListener('click', () => _libAskDelete(list[Number(b.getAttribute('data-d'))])));   // v212：出した本人だけ
+}
+/* 配られたコース（みんなのコース・配るリンク）を、自分のコース一覧に取り込む（v212・オーナー指示）。
+   「見るだけ」で出されたものは、作者の意思どおり取り込まない。写真も一緒に入る。 */
+async function importOpenedCourse(){
+  const data = buildCurrentSaveData();
+  if (!data || !data.name || !Array.isArray(data.wps) || !data.wps.length) { showToast('取り込めるコースがありません'); return; }
+  if (courseInfo.noEdit || _isLockedShare(data)) { showToast('このコースは作者が「見るだけ」で出しています（取り込みはできません）'); return; }
+  showToast('取り込んでいます…');
+  data.id = Date.now();
+  data.savedAt = new Date().toISOString();
+  data.shared = undefined; data.noEdit = undefined;      // 自分のコースになるので配布の印は外す
+  try { await _stashPhotos([data]); } catch(_) {}        // 写真は IndexedDB へ
+  const courses = getCourses(); courses.push(data);
+  if (!setCourses(courses)) { showToast('保存できませんでした（保存容量がいっぱいです）'); return; }
+  showToast('自分のコースに追加しました。一覧から開いて編集できます');
+  setTimeout(() => { location.href = _shareBaseUrl(); }, 1200);   // 編集できる画面（一覧）へ戻す
+}
+/* 出した本人が、みんなのコースから自分のコースを消す（v212）。必ず確認してから。 */
+function _libAskDelete(entry){
+  if (!entry) return;
+  const id = entry.id || entry.boxId;
+  if (!id) { showToast('このコースは消せません'); return; }
+  if (!confirm('「' + (entry.name || '') + '」を みんなのコース から消します。\nよろしいですか？（自分が出したものだけ消せます）')) return;
+  showToast('消しています…');
+  _boxDelete(id).then(ok => {
+    if (!ok) { showToast('消せませんでした。電波の良いところでもう一度お試しください'); return; }
+    _libCache = null;
+    showToast('消しました（置き場所に写ったぶんも、まもなく消えます）');
+    openLibrarySheet();
+  });
 }
 /* コースを開くときの移動（v201・オーナー報告「箱に上げたコースが開かない」）。
    同じアドレスで # だけ変えてもブラウザは読み込み直さない＝何も起きなかった。

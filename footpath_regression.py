@@ -447,6 +447,16 @@ def static_checks(src):
     # --- v157: 番号の丸と種類の丸を横に並べる（オーナー指摘：iPhone で片方しか見えない）---
     chk('静的', '番号つきで種類がある地点：地図は「種類の丸＋右上に番号の小丸」、一覧・並べ替え・配布シート・カードは番号と種類を並べて出す',
         'class="wp-num"' in src and 'class="wp-dot cat"' in src and 'class="ro-badge cat"' in src and 'class="sh-cat"' in src and 'class="vip-dot vip-dot2"' in src and '_catBadge' not in src and 'wp-pair' not in src)
+    # --- v212: 出した本人だけ消せる／見るだけから編集に戻る／自分の一覧に取り込む ---
+    chk('静的', '出した本人だけが「消す」を押せる（控えは写し取りでも消さない）。消した印を残し、写したファイルも仕組みが消す',
+        "boxOwn:      'fp_box_own'" in src and 'function _boxOwnAdd' in src and 'function _boxIsMine' in src
+        and 'async function _boxDelete' in src and 'async function _boxDelSet' in src and 'function _libAskDelete' in src
+        and 'class="lb-del tap"' in src and '_boxIsMine(c) ?' in src)
+    chk('静的', '「歩く人の見え方」の札を押すと編集にもどる（札がボタンになっている）',
+        'id="viewBadge" onclick="toggleViewMode()"' in src and '押すと編集にもどる' in src)
+    chk('静的', '配られたコースを自分のコース一覧に取り込める（見るだけのものは断る・写真も一緒）',
+        'async function importOpenedCourse' in src and 'id="mmGetRow"' in src and 'このコースを自分のコースに追加' in src
+        and '_isLockedShare(data)' in src and '_stashPhotos([data])' in src and 'currentCourseId == null && !courseInfo.noEdit' in src)
     # --- v209: 同じコースが何度も出されても、一覧には1つだけ ---
     chk('静的', '同じコースは1つにまとめる（印でまとめてから、もう一度「名前＋エリア」でまとめる）',
         'function _libKey' in src and "'n:' + n + '|'" in src and 'function _libPick(' in src
@@ -507,7 +517,8 @@ def static_checks(src):
         and 'python3 tools/box_mirror.py' in _yml and '[skip ci]' in _yml
         and "'box-' + cid + '.json'" in _mir and 'MAX_PER_RUN' in _mir and 'MAX_BYTES' in _mir
         and '_read_json(_url(cfg, \'idx\'))' in _mir
-        and "out['ph'] = 'library/box-' + cid + '-photos.json'" in _mir)   # v202：写真も一緒に写す
+        and "out['ph'] = 'library/box-' + cid + '-photos.json'" in _mir   # v202：写真も一緒に写す
+        and 'def _sweep_deleted' in _mir and "'box-' + cid + '-photos.json'" in _mir)   # v212：本人が消したものは library からも消す
     # 写し取りの道具を、にせの箱（通信を差し替え）で実際に動かす
     _mv = {}
     if _mir:
@@ -557,7 +568,7 @@ def static_checks(src):
     chk('静的', 'みんなの箱：box.json で差し替えられ、中身と一覧を分けて置く。出すボタンは1つ。一覧は箱と置き場所の両方を並べる',
         "const BOX_DEFAULT = {kind: 'textdb'" in src and "const BOX_FILE = 'box.json';" in src and 'async function _boxPublish' in src
         and 'async function _boxList' in src and 'async function _boxOpen' in src and 'function _boxNorm' in src
-        and "if (entry.box) { _libOpenBox(entry); return; }" in src and 'const boxRows = res[0] || [];' in src
+        and "if (entry.box) { _libOpenBox(entry); return; }" in src and 'const boxRows = res[0] || [], gone = res[1] || {};' in src
         and '_boxOn ? _pubOut() : _pubGo(false)' in src and "'Content-Type': 'text/plain'" in src
         and '登録も合言葉もいりません' in src and 'LS.boxMine' in src)
     # --- v197: どこに上げても一覧に並ぶ（library フォルダと一番上の両方を見る）／日本語のファイル名も開ける ---
@@ -2201,6 +2212,14 @@ def functional_checks(index_path):
             store[idxKey] = '{"courses":[]}';
             out.heal = (await _boxList()).length === 1;                                    // 一覧を消されても自分のぶんは戻る
             out.big = (await _boxPublish({id:'x', name:'大', at:'2026-09-12'}, 'a'.repeat(BOX_MAX + 1))).why === 'big';
+            // v212: 出した本人だけが消せる（消すと箱から外れ、消した印が残る）
+            out.mineFlag = _boxIsMine({id: id}) && !_boxIsMine({id: 'zzz-9999'});
+            const delOk = await _boxDelete(id);
+            const idxAfter = JSON.parse(store[idxKey] || '{}');
+            out.deleted = delOk && (idxAfter.courses || []).length === 0 && (idxAfter.del || [])[0] === id
+                          && (await _boxList()).length === 0 && !_boxIsMine({id: id});
+            out.delMark = (await _boxDelSet())[id] === 1;
+            // 消したあとも置き場所にファイルが残っていたら、一覧には出さない
             // v200: 置き場所へ写し終わったら、箱のぶんは出さず置き場所のぶんだけを出す（端末の控えも外れる）
             const keepRepo3 = window._ghRepo; window._ghRepo = () => ({user:'u', repo:'r'});
             window.fetch = async (u, o) => { const s = String(u).split('?')[0];
@@ -2213,8 +2232,11 @@ def functional_checks(index_path):
                                            return new Response(store[s] || '', {status: (store[s] === undefined ? 404 : 200)}); }
               return keepFetch(u, o); };
             const list2 = await _libLoad();
-            out.moved = list2.length === 1 && list2[0].boxId === id && list2[0].box !== true && list2[0].d === 'ZZZ'
-                        && JSON.parse(localStorage.getItem(LS.boxMine) || '[]').length === 0;
+            out.moved = list2.length === 0;   // v212：消した印があるので、写したファイルがあっても出さない
+            store[idxKey] = JSON.stringify({courses: []});   // 印を消すと、写したファイルが出る
+            const list3 = await _libLoad();
+            out.moved2 = list3.length === 1 && list3[0].boxId === id && list3[0].box !== true && list3[0].d === 'ZZZ'
+                         && JSON.parse(localStorage.getItem(LS.boxMine) || '[]').length === 0;
             // v204: 同じコース（cid が同じ）を出し直したら、新しいほうだけ並ぶ
             out.dup = _libPickNewest([{name:'古い', cid:'c1', ts:'2026-09-12T01:00:00Z'},
                                       {name:'新しい', cid:'c1', ts:'2026-09-12T09:00:00Z'},
@@ -2236,7 +2258,8 @@ def functional_checks(index_path):
           }catch(e){ return 'ERR:'+e.message; } }""")
         chk('機能', 'みんなの箱：合言葉なしで「出す」1つ。中身と一覧の両方を書き、すぐ並び、押すと中身が取れる。一覧が消えても自分のぶんは戻る。写し終わったら置き場所のぶんだけ出す',
             isinstance(bx, dict) and all(bx.get(k) for k in ('oneBtn', 'idx', 'body', 'list', 'open', 'mine', 'heal', 'big', 'moved',
-                                                            'phPut', 'phFlag', 'phGot', 'phSticker', 'dup', 'dup2', 'dup3')), str(bx)[:400])
+                                                            'phPut', 'phFlag', 'phGot', 'phSticker', 'dup', 'dup2', 'dup3',
+                                                            'mineFlag', 'deleted', 'delMark', 'moved2')), str(bx)[:420])
 
         # v206: 片手の拡大縮小：ダブルタップして押したまま下＝拡大／上＝縮小。1回タップだけでは変わらない
         oz = page.evaluate("""()=>{ try{

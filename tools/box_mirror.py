@@ -85,15 +85,55 @@ def _read_json(url):
         return None
 
 
+def _sweep_deleted(cfg, raw):
+    """出した本人が消したコース（del の印）を、library/ からも消す（v212）"""
+    ids = []
+    if isinstance(raw, dict) and isinstance(raw.get('del'), list):
+        ids = [str(i) for i in raw['del'] if ID_OK.match(str(i))]
+    if cfg.get('kind') == 'firebase':
+        d = _read_json(str(cfg.get('url', '')).rstrip('/') + '/del.json')
+        if isinstance(d, dict):
+            ids = [k for k in d.keys() if ID_OK.match(str(k))]
+    done = []
+    for cid in ids[:MAX_PER_RUN]:
+        hit = False
+        for name in ('box-' + cid + '.json', 'box-' + cid + '-photos.json'):
+            path = os.path.join(LIB_DIR, name)
+            if os.path.exists(path):
+                os.remove(path)
+                print('消しました:', path)
+                hit = True
+        done.append(cid)
+        if hit:
+            pass
+    if done and cfg.get('kind') != 'firebase':      # 消し終わった印は箱から外す（印がたまらないように）
+        fresh = _read_json(_url(cfg, 'idx')) or {}
+        rest = [str(i) for i in (fresh.get('del') or []) if str(i) not in done]
+        try:
+            _http(_url(cfg, 'idx'), data=json.dumps({'courses': _rows(fresh), 'del': rest}, ensure_ascii=False))
+        except Exception as e:
+            print('印を外せません:', e)
+    elif done:
+        for cid in done:
+            try:
+                _http(str(cfg.get('url', '')).rstrip('/') + '/del/' + cid + '.json', data='null', ctype='application/json')
+            except Exception:
+                pass
+    return len(done)
+
+
 def main():
     cfg = _cfg()
     if not cfg:
         print('箱は使わない設定です')
         return 0
     raw = _read_json(_url(cfg, 'idx'))
+    swept = _sweep_deleted(cfg, raw)
+    if swept:
+        raw = _read_json(_url(cfg, 'idx'))          # 書き戻したので読み直す
     rows = _rows(raw)
     if not rows:
-        print('箱は空です')
+        print('箱は空です（消した印の処理:', swept, '件）')
         return 0
     os.makedirs(LIB_DIR, exist_ok=True)
     done, kept, bad = [], [], []
