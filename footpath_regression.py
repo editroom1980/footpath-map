@@ -447,10 +447,15 @@ def static_checks(src):
     # --- v157: 番号の丸と種類の丸を横に並べる（オーナー指摘：iPhone で片方しか見えない）---
     chk('静的', '番号つきで種類がある地点：地図は「種類の丸＋右上に番号の小丸」、一覧・並べ替え・配布シート・カードは番号と種類を並べて出す',
         'class="wp-num"' in src and 'class="wp-dot cat"' in src and 'class="ro-badge cat"' in src and 'class="sh-cat"' in src and 'class="vip-dot vip-dot2"' in src and '_catBadge' not in src and 'wp-pair' not in src)
+    # --- v180: コース名を変えられる（一覧のカード・メニュー・PC のその他）---
+    chk('静的', 'コース名を変えるシートがあり、入口は一覧のカードの「名前」ボタン、スマホのメニュー、PC の「その他」の3つ',
+        'id="renameSheet"' in src and 'id="rnName"' in src and 'id="rnArea"' in src and 'function openRenameSheet' in src and 'function saveRenameSheet' in src
+        and 'class="cc-act nm tap" title="コース名を変える"' in src and 'closeMobileMenu();openRenameSheet()' in src and 'closePcPops();openRenameSheet()' in src
+        and src.count('class="cc-act-l"') == 4)
     # --- v179: コースの一覧をコンパクトに＋写真を背景に（オーナー指示）---
     chk('静的', '一覧の1件は小さくまとめ（1行の情報・ボタンは横並び）、写真があれば薄く敷いて文字を濃くする',
         'class="cc-bg"' in src and '.cc.has-photo::before{' in src and '.cc-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.8' in src
-        and 'class="cc-sub"' in src and ".cc-acts{position:relative;z-index:2;display:flex;flex-direction:row" in src and src.count('class="cc-act-l"') == 3)
+        and 'class="cc-sub"' in src and ".cc-acts{position:relative;z-index:2;display:flex;flex-direction:row" in src and src.count('class="cc-act-l"') == 4)
     # --- v178: 「道を変更」で変更点を出し、足す・動かす・消す（オーナー指示）---
     chk('静的', '道を変更の間だけ変更点が出てつまめる（大きめの茶色い点）。線をタップで足す、点をタップで消す・案内。道具を変えると隠れる',
         'function _vpEditing' in src and 'function _syncVpEdit' in src and 'function _viaTapAdd' in src and 'function _makeVpOnRoute' in src
@@ -565,7 +570,7 @@ def static_checks(src):
         "if (!name) { alert('コース名を入れてください。');" in src and 'function _herePos' in src and 'const c = area ? await geocode(area) : await _herePos();' in src
         and 'id="s1Start"' not in src and 'id="s1Goal"' not in src)
     chk('静的', 'スマホの下の道具と一覧のカードのボタンに文字が付いている（アイコンだけにしない）',
-        src.count('class="mob-mode-l"') == 4 and src.count('class="cc-act-l"') == 3 and 'ファイルから読み込む（コース・GPX・発見）' in src)
+        src.count('class="mob-mode-l"') == 4 and src.count('class="cc-act-l"') == 4 and 'ファイルから読み込む（コース・GPX・発見）' in src)
     chk('静的', '最初の案内に「赤い線を引っぱると道順が変わる」がある', '道順を変えたいときは「道を変更」で赤い線を引っぱります。' in src)
     # --- v148: 手数を減らす（自動保存・道具の整理・スポット編集の畳み込み）---
     chk('静的', '未保存フラグは _markDirty() だけが立て、勝手には保存しない（v170：自動保存なし・直接 _dirty = true は無い）',
@@ -1811,7 +1816,7 @@ def functional_checks(index_path):
             isinstance(pc3, dict) and pc3.get('noText') == [] and pc3.get('dup') == [] and pc3.get('nBtn', 0) >= 8
             and pc3.get('hdrH', 99) <= 60 and pc3.get('railIn') and pc3.get('hint') == 'クリックでスポットを追加（スマホは長押し）'
             and pc3.get('popMapOpen') and pc3.get('bm') == 'gsi_photo' and pc3.get('pill') == '航空写真'
-            and pc3.get('legendOpen') and pc3.get('legendRows', 0) >= 2 and pc3.get('moreOpen') and pc3.get('moreRows') == 12
+            and pc3.get('legendOpen') and pc3.get('legendRows', 0) >= 2 and pc3.get('moreOpen') and pc3.get('moreRows') == 13
             and pc3.get('manualFlip') and pc3.get('hintVia') == '道を変更：茶色い点を動かす／赤い線をクリックで点を足す（地図は固定）'
             and pc3.get('viewHidden') and pc3.get('viewBack') and pc3.get('closedAll'), str(pc3)[:300])
 
@@ -2478,6 +2483,36 @@ def functional_checks(index_path):
         chk('機能', '高低差のなぞり：距離→標高・勾配・位置、帯をなぞると見出し・地図の印・縦線、離してもしばらく残る、消える、勾配の面',
             isinstance(scr, dict) and all(scr.get(k) for k in ('point', 'ends', 'scrub', 'held', 'cleared', 'grade')), str(scr)[:240])
 
+        # v180: コース名を変える：一覧のカードから（その場で保存）／地図の画面から（保存はまだ・未保存の印が付く）／空の名前は断る
+        rn = page.evaluate("""async ()=>{ try{
+            const keepC = getCourses(), keepName = courseInfo.name, keepArea = courseInfo.area, keepD = _dirty, keepId = currentCourseId, keepV = viewMode; viewMode = false;
+            const out = {};
+            // ① 一覧のコースの名前を変える → その場で保存される
+            setCourses([{id: 977001, name:'むかしの名前', area:'むかしのエリア', savedAt:new Date().toISOString(), wps:[{id:1, type:'spot'}]}]);
+            currentCourseId = null; renderCourseList();
+            openRenameSheet(977001);
+            out.opened = getComputedStyle(document.getElementById('renameSheet')).display !== 'none' && document.getElementById('rnName').value === 'むかしの名前' && document.getElementById('rnArea').value === 'むかしのエリア';
+            document.getElementById('rnName').value = ''; saveRenameSheet();
+            out.needsName = getComputedStyle(document.getElementById('renameSheet')).display !== 'none';   // 空では閉じない
+            document.getElementById('rnName').value = 'あたらしい名前'; document.getElementById('rnArea').value = 'あたらしいエリア'; saveRenameSheet();
+            const c2 = getCourses()[0];
+            out.savedInList = c2.name === 'あたらしい名前' && c2.area === 'あたらしいエリア' && getComputedStyle(document.getElementById('renameSheet')).display === 'none';
+            out.listShows = (document.querySelector('#courseList .cc-name') || {}).textContent === 'あたらしい名前';
+            // ② 開いているコースの名前を変える → 未保存の印が付く（勝手に保存しない）
+            setCourses(keepC); currentCourseId = keepId; courseInfo.name = keepName; courseInfo.area = keepArea; _dirty = false; _setSaveState('saved');
+            const before = JSON.stringify(getCourses());
+            openRenameSheet();
+            out.openedOpen = document.getElementById('rnName').value === (keepName || '');
+            document.getElementById('rnName').value = 'この場で変えた名前'; saveRenameSheet();
+            out.appliedOpen = courseInfo.name === 'この場で変えた名前' && document.getElementById('cnDisp').textContent === 'この場で変えた名前' && _dirty === true && JSON.stringify(getCourses()) === before;
+            courseInfo.name = keepName; courseInfo.area = keepArea; _applyCourseName(keepName || '', keepArea || '');
+            _dirty = keepD; _setSaveState(keepD ? 'dirty' : 'saved'); viewMode = keepV; renderCourseList();
+            document.querySelectorAll('#toastBox .toast').forEach(e => e.remove());
+            return out;
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        chk('機能', 'コース名を変える：一覧はその場で保存／開いているコースは未保存の印が付く（勝手に保存しない）／空の名前は断る',
+            isinstance(rn, dict) and all(rn.get(k) for k in ('opened', 'needsName', 'savedInList', 'listShows', 'openedOpen', 'appliedOpen')), str(rn)[:260])
+
         # v179: 一覧：1件が小さくなり、写真のあるコースは背景に写真が入る／どこを押しても開く／ボタンは押しても開かない
         cl = page.evaluate("""async ()=>{ try{
             const keepC = getCourses(), keepId = currentCourseId;
@@ -2493,11 +2528,12 @@ def functional_checks(index_path):
                          photo: cards[0].classList.contains('has-photo') && !!cards[0].querySelector('img.cc-bg'),
                          noPhoto: !cards[1].classList.contains('has-photo') && !!cards[1].querySelector('.cc-thumb'),
                          opacity: parseFloat(getComputedStyle(cards[0].querySelector('img.cc-bg')).opacity) <= 0.85,
-                         acts: cards[0].querySelectorAll('.cc-act').length === 3 && cards[0].querySelectorAll('.cc-act-l').length === 3,
+                         acts: cards[0].querySelectorAll('.cc-act').length === 4 && cards[0].querySelectorAll('.cc-act-l').length === 4,
                          sub: !!cards[0].querySelector('.cc-sub') && cards[0].querySelector('.cc-sub').textContent.indexOf('地点') >= 0};
             let opened = 0; const keepLoad = window.loadCourseData; window.loadCourseData = () => { opened++; };
             cards[0].querySelector('.cc-name').click(); out.openByName = opened === 1;
-            cards[0].querySelector('.cc-act').click(); out.actNoOpen = opened === 1;
+            cards[0].querySelector('.cc-act').click(); out.actNoOpen = opened === 1;   // 1つめは「名前」ボタン（v180）
+            if (typeof closeRenameSheet === 'function') closeRenameSheet();            // 開いたシートは閉じてから次の検査へ
             window.loadCourseData = keepLoad;
             setCourses(keepC); currentCourseId = keepId; renderCourseList();
             s1.style.display = d1; s2.style.display = d2;

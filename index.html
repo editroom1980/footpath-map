@@ -104,9 +104,9 @@ html,body{touch-action:manipulation;min-height:calc(100% + var(--sat));font-fami
 .cc-st{display:flex;align-items:center;gap:4px;font-size:11px;color:#4A453F;flex-shrink:0}
 .cc-st .svgi{font-size:12px;color:#B09877}
 .cc-st b{font-family:'Plus Jakarta Sans','Hiragino Sans',sans-serif;font-weight:800;color:#2C2620}
-.cc-acts{position:relative;z-index:2;display:flex;flex-direction:row;gap:5px;flex-shrink:0}
-.cc-act{width:42px;height:42px;border-radius:9px;border:0.5px solid #EDE7DC;background:rgba(250,248,244,.92);display:flex;flex-direction:column;gap:1px;align-items:center;justify-content:center;color:#8A8077;font-size:13px;cursor:pointer;font-family:inherit}
-.cc-act-l{font-size:8.5px;line-height:1;font-weight:700}   /* v149：アイコンだけでは分からないので文字を添える */
+.cc-acts{position:relative;z-index:2;display:flex;flex-direction:row;gap:4px;flex-shrink:0}
+.cc-act{width:38px;height:42px;border-radius:9px;border:0.5px solid #EDE7DC;background:rgba(250,248,244,.92);display:flex;flex-direction:column;gap:1px;align-items:center;justify-content:center;color:#8A8077;font-size:13px;cursor:pointer;font-family:inherit}
+.cc-act-l{font-size:8px;line-height:1;font-weight:700}   /* v149：アイコンだけでは分からないので文字を添える */
 .cc-act.rd{color:#DC2626}
 .cc-act .svgi{font-size:14px}
 .no-courses{font-size:12px;color:var(--t-sub);text-align:center;padding:30px 0}
@@ -652,6 +652,19 @@ body.viewonly #firstTip,body.embed #firstTip{display:none!important}
 #kokoroeSheet .ds-btn.ghost{flex:0 0 96px;background:#F2EEE7;color:var(--t-sub)}
 #kokoroeSheet .ds-btn.ghost:only-child{flex:1}
 @media (min-width:769px){#kokoroeSheet{left:50%;right:auto;bottom:auto;top:50%;transform:translate(-50%,-50%);width:480px;max-width:calc(100vw - 32px);border-radius:16px;padding:18px 20px 20px}#kokoroeSheet .ds-dh{display:none}}
+/* コース名を変えるシート（v180）。心得と同じ見た目 */
+#renameScrim{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:3400;display:none}
+#renameSheet{position:fixed;left:0;right:0;bottom:0;z-index:3401;display:none;background:#fff;border-radius:20px 20px 0 0;
+  padding:10px 16px max(16px,var(--sab));box-shadow:0 -6px 24px rgba(0,0,0,.18);max-height:88vh;overflow-y:auto}
+#renameSheet .ds-dh{width:38px;height:4px;border-radius:2px;background:#D9D1C4;margin:0 auto 12px}
+#renameSheet .ds-t{font-size:17px;font-weight:800;color:#231C14}
+#renameSheet .ds-n{font-size:11.5px;color:var(--t-sub);margin:4px 0 12px;line-height:1.7}
+#renameSheet .rn-l{display:block;font-size:11px;font-weight:700;color:var(--t-sub);margin:0 0 4px 2px}
+#renameSheet .s1-input{margin-bottom:12px}
+#renameSheet .ds-row{display:flex;gap:9px;margin-top:4px}
+#renameSheet .ds-btn{flex:1;min-height:var(--tap);border:none;border-radius:12px;font-family:inherit;font-size:14px;font-weight:700;background:var(--brand-grad);color:#fff;cursor:pointer}
+#renameSheet .ds-btn.ghost{flex:0 0 96px;background:#F2EEE7;color:var(--t-sub)}
+@media (min-width:769px){#renameSheet{left:50%;right:auto;bottom:auto;top:50%;transform:translate(-50%,-50%);width:420px;max-width:calc(100vw - 32px);border-radius:16px;padding:18px 20px 20px}#renameSheet .ds-dh{display:none}}
 /* コースの情報のシート（v139）。心得と同じ見た目 */
 #infoScrim{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:3400;display:none}
 #infoSheet{position:fixed;left:0;right:0;bottom:0;z-index:3401;display:none;background:#fff;border-radius:20px 20px 0 0;
@@ -1191,6 +1204,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
     <button class="hbtn hbtn-share" onclick="openShareSheet()" title="配る&#10;画像・配布シート・リンク・GPX">配る</button>
     <!-- その他（v126）：使う頻度の低いものと詳細。編集の項目は .ed（閲覧中は隠す）-->
     <div class="pc-pop" id="popMore" role="menu">
+      <button class="pp-row ed" onclick="closePcPops();openRenameSheet()" title="このコースの名前とエリアを変える">コースの名前を変える</button>
       <button class="pp-row ed" onclick="closePcPops();openNearbySheet()" title="OpenStreetMap と Wikipedia から、コースの周りのお店・史跡・学校などを候補にして選んで置く">周辺の情報を取り込む（お店・史跡・学校…）</button>
       <button class="pp-row ed" onclick="closePcPops();reverseCourse()" title="スポットの順番を逆にして、スタートとゴールを入れ替える">逆回りにする</button>
       <button class="pp-row ed" onclick="closePcPops();loopCourse()" title="出発点にゴールを置いて、帰りの道順を自動で引く">出発点に戻る周回にする</button>
@@ -1396,6 +1410,22 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
         </div>
       </div>
 
+      <!-- コース名を変える（v180・オーナー指示「最初の画面や設定画面で名前を変更できるように」） -->
+      <div id="renameScrim" onclick="closeRenameSheet()"></div>
+      <div id="renameSheet" role="dialog" aria-label="コース名を変える">
+        <div class="ds-dh"></div>
+        <div class="ds-t">コースの名前</div>
+        <div class="ds-n">配布シートと配布リンクにも、この名前が出ます。</div>
+        <label class="rn-l" for="rnName">コース名</label>
+        <input class="s1-input" id="rnName" placeholder="例：飯見の棚田おにぎりウォーク" maxlength="60">
+        <label class="rn-l" for="rnArea">エリア（任意）</label>
+        <input class="s1-input" id="rnArea" placeholder="例：宍粟市波賀町飯見" maxlength="60">
+        <div class="ds-row">
+          <button class="ds-btn ghost" onclick="closeRenameSheet()">やめる</button>
+          <button class="ds-btn" onclick="saveRenameSheet()">この名前にする</button>
+        </div>
+      </div>
+
       <!-- コースの情報（v139）：協会式の項目。歩く人は読む、作る人は書く -->
       <div id="infoScrim" onclick="closeInfoSheet()"></div>
       <div id="infoSheet" role="dialog" aria-label="コースの情報">
@@ -1568,6 +1598,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
         <div class="mm-sec">コース</div>
         <div class="mm-maplist">
           <div class="mm-map" onclick="openMmSub('write')" data-edit="1"><span class="mm-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l10.5-10.5a2.828 2.828 0 1 0-4-4L4 16v4"/><path d="M13.5 6.5l4 4"/></svg></span><span class="mm-map-l">コースの説明を書く</span><span class="mm-v" id="mmWrite">›</span></div>
+          <div class="mm-map" onclick="closeMobileMenu();openRenameSheet()" data-edit="1"><span class="mm-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l10.5-10.5a2.828 2.828 0 1 0-4-4L4 16v4"/><path d="M13.5 6.5l4 4"/></svg></span><span class="mm-map-l">コースの名前を変える</span><span class="mm-v" id="mmName">›</span></div>
           <div class="mm-map" onclick="closeMobileMenu();openFixRouteSheet()" data-edit="1"><span class="mm-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8.1 8.1 0 0 0 -15.5 -2m-.5 -4v4h4"/><path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4"/></svg></span><span class="mm-map-l">道順を直す</span><span class="mm-v">›</span></div>
           <div class="mm-map" onclick="closeMobileMenu();openReorderSheet()" data-edit="1"><span class="mm-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 6h9"/><path d="M11 12h9"/><path d="M12 18h8"/><path d="M4 16a2 2 0 1 1 4 0c0 .6-.5 1-1 1.5L4 20h4"/><path d="M6 10V4L4 6"/></svg></span><span class="mm-map-l">順番・逆回り・周回</span><span class="mm-v" id="mmReorderN">›</span></div>
           <div class="mm-map" onclick="closeMobileMenu();openNearbySheet()" data-edit="1"><span class="mm-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7"/><path d="M21 21l-6-6"/></svg></span><span class="mm-map-l">周辺の情報を取り込む</span><span class="mm-v">›</span></div>
@@ -3012,7 +3043,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v179';
+const APP_VERSION = 'v180';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -4693,6 +4724,7 @@ function _syncMmValues(){
     v('mmInfo', viewMode ? (_courseInfoCount() ? '見る' : 'なし') : (_courseInfoCount() ? `${_courseInfoCount()} / ${COURSE_INFO_FIELDS.length}` : 'まだ')); v('mmInfo2', _courseInfoCount() ? `${_courseInfoCount()} / ${COURSE_INFO_FIELDS.length}` : 'まだ');   // 歩く人には件数より「見る」（v153）
     const _wd = ((document.getElementById('iDesc') || {}).value || '').trim() ? 1 : 0; const _wn = _wd + Math.min(1, _courseInfoCount()) + ((courseInfo.kokoroe || '').trim() ? 1 : 0); v('mmWrite', _wn === 0 ? 'まだ' : _wn + ' / 3');   // v170：「書いた」を外す
     v('mmTheme', _themeName());
+    const _nm = (courseInfo.name || '').trim(); v('mmName', _nm.length > 12 ? _nm.slice(0, 12) + '…' : _nm);
   } catch(_) {}
 }
 
@@ -7614,6 +7646,60 @@ function _kokoroeRows(custom, forSheet) {   // 配布シート用（1行ずつ�
 function _kokoroeSpeechText(custom) {
   return '歩く人の心得。' + KOKOROE.map(g => g.h + '。' + g.items.join('。')).join('。') + (custom ? '。この地域からのお願い。' + custom : '');
 }
+/* ===== コース名を変える（v180）=====
+   ・一覧（最初の画面）：カードの「名前」ボタン → 保存してあるコースの名前とエリアを直す（その場で保存する）
+   ・地図の画面：メニュー › コース（PC はその他）→ 開いているコースの名前とエリアを直す（保存は「保存」ボタン） */
+let _renameId = null;   // null＝いま開いているコース、数値＝一覧の保存済みコース
+function openRenameSheet(courseId){
+  const sh = document.getElementById('renameSheet'), sc = document.getElementById('renameScrim'); if (!sh || !sc) return;
+  if (typeof closeMobileMenu === 'function') closeMobileMenu();
+  if (typeof closePcPops === 'function') closePcPops();
+  let name = '', area = '';
+  if (courseId == null) {
+    if (viewMode) { showToast('コース名は編集画面で変えられます'); return; }
+    if (!courseInfo || !courseInfo.name) { showToast('先にコースを開いてください'); return; }
+    name = courseInfo.name || ''; area = courseInfo.area || '';
+  } else {
+    const c = getCourses().find(x => x && x.id === courseId); if (!c) return;
+    name = c.name || ''; area = c.area || '';
+  }
+  _renameId = courseId == null ? null : courseId;
+  document.getElementById('rnName').value = name;
+  document.getElementById('rnArea').value = area;
+  sc.style.display = 'block'; sh.style.display = 'block';
+  setTimeout(() => { const el = document.getElementById('rnName'); if (el) { el.focus(); el.select(); } }, 60);
+}
+function closeRenameSheet(){
+  const sh = document.getElementById('renameSheet'), sc = document.getElementById('renameScrim');
+  if (sc) sc.style.display = 'none'; if (sh) sh.style.display = 'none';
+  _renameId = null;
+}
+function _applyCourseName(name, area){   // 開いているコースの表示を書き換える
+  const cn = document.getElementById('cnDisp'); if (cn) cn.textContent = name;
+  const mct = document.getElementById('mobileCourseTitle'); if (mct) mct.textContent = name;
+  courseInfo.name = name; courseInfo.area = area;
+}
+function saveRenameSheet(){
+  const name = (document.getElementById('rnName').value || '').trim();
+  const area = (document.getElementById('rnArea').value || '').trim();
+  if (!name) { alert('コース名を入れてください。'); document.getElementById('rnName').focus(); return; }
+  const id = _renameId;
+  if (id == null) {                       // いま開いているコース：保存は「保存」ボタンで
+    const changed = (courseInfo.name !== name) || ((courseInfo.area || '') !== area);
+    _applyCourseName(name, area);
+    if (changed) _markDirty();
+    closeRenameSheet(); _syncMmValues();
+    showToast(changed ? '名前を変えました（「保存」を押すと確定します）' : '名前は同じままです');
+    return;
+  }
+  const list = getCourses(), c = list.find(x => x && x.id === id);   // 一覧のコース：その場で保存する
+  if (!c) { closeRenameSheet(); return; }
+  c.name = name; c.area = area;
+  const ok = setCourses(list);
+  if (id === currentCourseId) _applyCourseName(name, area);          // 開いたままのコースなら画面も合わせる
+  closeRenameSheet(); renderCourseList();
+  showToast(ok ? '名前を変えました' : '⚠️ 保存できませんでした（保存容量がいっぱいかもしれません）');
+}
 function openKokoroeSheet(mode) {
   const sh = document.getElementById('kokoroeSheet'), sc = document.getElementById('kokoroeScrim'); if (!sh || !sc) return;
   if (typeof closeMobileMenu === 'function') closeMobileMenu();
@@ -9298,11 +9384,13 @@ function renderCourseList() {
         </div>
       </div>
       <div class="cc-acts">
+        <button class="cc-act nm tap" title="コース名を変える" aria-label="コース名を変える"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l10.5-10.5a2.828 2.828 0 1 0-4-4L4 16v4"/><path d="M13.5 6.5l4 4"/></svg><span class="cc-act-l">名前</span></button>
         <button class="cc-act tap" title="ファイルに書き出す（JSON）" aria-label="ファイルに書き出す"><svg class=\"svgi\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d="M14 3v4a1 1 0 0 0 1 1h4" /> <path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2" /> <path d="M12 17v-6" /> <path d="M9.5 14.5l2.5 2.5l2.5 -2.5" /></svg><span class="cc-act-l">書き出す</span></button>
         <button class="cc-act tap" title="配布用リンクを作る" aria-label="配布用リンクを作る"><svg class=\"svgi\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d="M9 15l6 -6" /> <path d="M11 6l.463 -.536a5 5 0 0 1 7.071 7.072l-.534 .464" /> <path d="M13 18l-.397 .534a5.068 5.068 0 0 1 -7.127 0a4.972 4.972 0 0 1 0 -7.071l.524 -.463" /></svg><span class="cc-act-l">リンク</span></button>
         <button class="cc-act rd tap" title="削除" aria-label="削除"><svg class=\"svgi\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d="M4 7l16 0" /> <path d="M10 11l0 6" /> <path d="M14 11l0 6" /> <path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12" /> <path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3" /></svg><span class="cc-act-l">削除</span></button>
       </div>`;
-    const [expBtn,shareBtn,delBtn] = card.querySelectorAll('.cc-act');
+    const [nameBtn,expBtn,shareBtn,delBtn] = card.querySelectorAll('.cc-act');
+    nameBtn.addEventListener('click', e=>{e.stopPropagation();openRenameSheet(c.id);});
     card.addEventListener('click', e => { if (e.target && e.target.closest && e.target.closest('.cc-act')) return; loadCourseData(c); });   // v179：カードのどこを押しても開く（ボタンを除く）
     expBtn.addEventListener('click', e=>{e.stopPropagation();exportCourseData(c);});
     shareBtn.addEventListener('click', e=>{e.stopPropagation();openShareDialog(c);});
