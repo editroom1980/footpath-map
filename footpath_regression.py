@@ -447,6 +447,17 @@ def static_checks(src):
     # --- v157: 番号の丸と種類の丸を横に並べる（オーナー指摘：iPhone で片方しか見えない）---
     chk('静的', '番号つきで種類がある地点：地図は「種類の丸＋右上に番号の小丸」、一覧・並べ替え・配布シート・カードは番号と種類を並べて出す',
         'class="wp-num"' in src and 'class="wp-dot cat"' in src and 'class="ro-badge cat"' in src and 'class="sh-cat"' in src and 'class="vip-dot vip-dot2"' in src and '_catBadge' not in src and 'wp-pair' not in src)
+    # --- v191: みんなのコースに「ボタンひとつ」で出す＋見た人にできること ---
+    chk('静的', '出す画面（名前・見た人にできること・出す）。押すと中身まで入れた置き場所の画面を開く。一覧は library フォルダも読む',
+        'function openPublishSheet' in src and 'function _pubGo' in src and 'function _ghNewFileUrl' in src and 'function _libLoad' in src and 'function _ghRepo' in src
+        and "sh.id = 'pubSheet'" in src and 'data-edit="2"' in src and 'allowEdit: _pubAllowEdit' in src
+        and "if (opts && typeof opts.allowEdit === 'boolean') c.noEdit = opts.allowEdit ? undefined : true;" in src
+        and 'api.github.com/repos/' in src and "pubBy:       'fp_pub_by'" in src)
+    # --- v190: 一覧に出す絵を名前と一緒に変えられる／一覧のボタンの間隔をそろえる ---
+    chk('静的', 'コースの名前の画面で「一覧に出す絵」を選べる（コースの写真から／その場で選ぶ／地図の絵に戻す）。保存データに icon が入る',
+        'id="rnIconPrev"' in src and 'id="rnIconPick"' in src and 'id="rnIconFile"' in src and 'id="rnIconClear"' in src and 'function _rnIconInit' in src
+        and 'icon:     courseInfo.icon || undefined,' in src and 'icon: data.icon || undefined};' in src and 'const photo = c.icon || (_pw ? _pw.photos[0] : null);' in src
+        and 'function _courseThumbSvg' in src and '.s1-import{' in src and 'cursor:pointer;margin-top:8px}' in src)
     # --- v189: 重なって「+n」になった印から、中身を選んで開ける（オーナー指摘）---
     chk('静的', '束ねた印を押すと中身の一覧が出て選べる（寄るだけではない）。束ねた中身は _clusterIds に覚える',
         'function openClusterPicker' in src and 'function _openSpotFromCluster' in src and '_clusterIds' in src
@@ -1925,6 +1936,83 @@ def functional_checks(index_path):
             and pl.get('restN', 0) >= 5 and pl.get('selVal') == 'parking' and pl.get('onChip') == '駐車場' and pl.get('savedType') == 'parking',
             str(pl)[:260])
 
+        # v191: 出す画面：中身とファイル名を組み立てる／「見るだけ」を選ぶと直せない印が入る／library フォルダも読む
+        pb = page.evaluate("""async ()=>{ try{
+            const keepFetch = window.fetch, keepOpen = window.open, keepC = getCourses();
+            const c = buildCurrentSaveData(); if (!c) return 'no course';
+            setCourses([c]);
+            let opened = '';
+            window.open = (u) => { opened = String(u || ''); return null; };
+            openPublishSheet(c); await new Promise(r => setTimeout(r, 200));
+            const sh = document.getElementById('pubSheet');
+            const out = {shown: sh.classList.contains('show'), name: sh.querySelector('#pubName').textContent === c.name,
+                         opts: sh.querySelectorAll('.pb-opt').length === 2};
+            document.getElementById('pubBy').value = 'たろう';
+            // ①「見るだけ」を選んで出す → コピーされた中身に allowEdit:false と noEdit が入る
+            sh.querySelector('.pb-opt[data-edit=\"1\"]').click(); out.picked = _pubAllowEdit === false;
+            let copied = ''; const keepCb = navigator.clipboard;
+            Object.defineProperty(navigator, 'clipboard', {configurable:true, value:{writeText: t => { copied = t; return Promise.resolve(); }}});
+            await _pubGo(true); await new Promise(r => setTimeout(r, 150));
+            const j = JSON.parse(copied);
+            out.body = j.name === c.name && j.by === 'たろう' && j.allowEdit === false && typeof j.d === 'string' && j.d.length > 100;
+            const back = await _courseFromHash('#d=' + j.d);
+            out.locked = !!back && back.noEdit === true && back.shared === true && _isLockedShare(back) === true;
+            // ②「直してもよい」なら直せる
+            openPublishSheet(c); sh.querySelector('.pb-opt[data-edit=\"2\"]').click();
+            await _pubGo(true); const j2 = JSON.parse(copied);
+            const back2 = await _courseFromHash('#d=' + j2.d);
+            out.free = j2.allowEdit === true && !!back2 && !back2.noEdit && _isLockedShare(back2) === false;
+            // ③ 置き場所の画面の URL（GitHub Pages のときだけ）
+            out.ghUrl = (_ghNewFileUrl('library/a.json', '{}') || '').indexOf('/new/main?filename=library%2Fa.json&value=') > 0
+                        || _ghNewFileUrl('library/a.json', '{}') === null;   // ローカル検証では null でよい
+            Object.defineProperty(navigator, 'clipboard', {configurable:true, value: keepCb});
+            // ④ 一覧は library フォルダ（GitHub API）も読む
+            window.fetch = async (u, o) => { const s2 = String(u);
+              if (s2.indexOf('api.github.com') >= 0) return new Response(JSON.stringify([{type:'file', name:'a.json'}, {type:'file', name:'b.json'}]), {status:200});
+              if (s2.indexOf('library/a.json') >= 0) return new Response(JSON.stringify({name:'フォルダのコースA', area:'', by:'', at:'2026-09-12', allowEdit:false, d:j.d}), {status:200});
+              if (s2.indexOf('library/b.json') >= 0) return new Response(JSON.stringify({name:'フォルダのコースB', area:'', by:'', at:'2026-09-11', allowEdit:true, d:j.d}), {status:200});
+              if (s2.indexOf('library.json') >= 0) return new Response(JSON.stringify({courses:[]}), {status:200});
+              return keepFetch(u, o); };
+            const keepRepo = _ghRepo; window._ghRepo = () => ({user:'editroom1980', repo:'footpath-map'});
+            const list = await _libLoad();
+            out.folder = list.length === 2 && list[0].name === 'フォルダのコースA';   // 新しい順
+            window._ghRepo = keepRepo; window.fetch = keepFetch; window.open = keepOpen;
+            closePublishSheet(); setCourses(keepC);
+            document.querySelectorAll('#toastBox .toast').forEach(e => e.remove());
+            return out;
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        chk('機能', 'みんなのコースに出す：名前と「見た人にできること」を選んで1回で出せる。見るだけ＝取り込みを断る印が入る。一覧は library フォルダも読む',
+            isinstance(pb, dict) and all(pb.get(k) for k in ('shown', 'name', 'opts', 'picked', 'body', 'locked', 'free', 'ghUrl', 'folder')), str(pb)[:260])
+
+        # v190: 一覧に出す絵：写真から選ぶ→保存される／地図の絵に戻す→消える／一覧のアイコンに出る
+        ic = page.evaluate("""async ()=>{ try{
+            const keepC = getCourses(), keepId = currentCourseId, keepIcon = courseInfo.icon, keepD = _dirty, keepV = viewMode; viewMode = false;
+            const png = 'data:image/gif;base64,R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==';
+            setCourses([{id: 991001, name:'絵の検査コース', area:'', savedAt:new Date().toISOString(), wps:[{id:1, type:'spot', name:'あ', photos:[png]}]}]);
+            currentCourseId = null;
+            const s1 = document.getElementById('s1'), s2 = document.getElementById('s2'), d1 = s1.style.display, d2 = s2.style.display;
+            s2.style.display = 'none'; s1.style.display = 'flex'; renderCourseList();
+            openRenameSheet(991001); await new Promise(r => setTimeout(r, 200));
+            const out = {opened: getComputedStyle(document.getElementById('renameSheet')).display !== 'none'};
+            document.getElementById('rnIconPick').click(); await new Promise(r => setTimeout(r, 250));
+            const strip = document.getElementById('rnIconStrip');
+            out.strip = !strip.hidden && strip.querySelectorAll('img').length === 1;
+            strip.querySelector('img').click();
+            out.picked = _renameIcon === png;
+            saveRenameSheet(); await new Promise(r => setTimeout(r, 200));
+            out.saved = (getCourses()[0] || {}).icon === png;
+            out.card = !!document.querySelector('#courseList .cc-thumb img.cc-ph');
+            openRenameSheet(991001); await new Promise(r => setTimeout(r, 150));
+            document.getElementById('rnIconClear').click(); saveRenameSheet(); await new Promise(r => setTimeout(r, 150));
+            out.cleared = !(getCourses()[0] || {}).icon;
+            setCourses(keepC); currentCourseId = keepId; courseInfo.icon = keepIcon; _dirty = keepD; viewMode = keepV; renderCourseList();
+            s1.style.display = d1; s2.style.display = d2;
+            document.querySelectorAll('#toastBox .toast').forEach(e => e.remove());
+            return out;
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        chk('機能', '一覧に出す絵：コースの写真から選んで保存でき、一覧のアイコンに出る／地図の絵に戻せる',
+            isinstance(ic, dict) and all(ic.get(k) for k in ('opened', 'strip', 'picked', 'saved', 'card', 'cleared')), str(ic)[:220])
+
         # v189: 重なった印（+n）：押すと中身の一覧が出て、選ぶとその設定が開く（寄っても離れない位置でも開ける）
         cp = page.evaluate("""async ()=>{ try{
             const keepU = undoStack.length, keepD = _dirty, keepV = viewMode, keepW = wps.slice(), keepZ = leafMap.getZoom(), keepC = leafMap.getCenter(); viewMode = false;
@@ -2995,16 +3083,25 @@ def functional_checks(index_path):
         bd = page.evaluate("""async ()=>{ try{
             for (let i = 0; i < 40 && !_elevData; i++) await new Promise(r => setTimeout(r, 150));   // 直前の検査の道順計算が終わるのを待つ
             if (!_elevData) return 'no elev';
+            for (let i = 0; i < 60 && !_elevData; i++) await new Promise(r => setTimeout(r, 150));   // 直前の検査で道順が変わると標高は作り直しになる。それを待つ
+            if (!_elevData) return 'no elev';
             _scrubClear(); _setElevExpanded(false); await new Promise(r => setTimeout(r, 600));
+            _setElevExpanded(true); await new Promise(r => setTimeout(r, 200));   // 一度開いて描かせる（なぞりの受け口はここで付く）
+            for (let i = 0; i < 30 && !(document.getElementById('mobileElevSvg') || {})._scrubInit; i++) { _drawElevBand(); await new Promise(r => setTimeout(r, 100)); }
+            _setElevExpanded(false); await new Promise(r => setTimeout(r, 400));
+            if (!(document.getElementById('mobileElevSvg') || {})._scrubInit) return 'no scrub init';
             const svg = document.getElementById('mobileElevSvg'), band = document.getElementById('mobileElevBand'); const r = svg.getBoundingClientRect();
             const x = r.left + r.width * 0.5, y = r.top + r.height * 0.5;
             const pe = (type, dx, dy) => new PointerEvent(type, {clientX: x + dx, clientY: y + dy, pointerId: 9, pointerType: 'touch', isPrimary: true, bubbles: true, cancelable: true});
             const te = (type, dx, dy) => { const t = new Touch({identifier: 9, target: svg, clientX: x + dx, clientY: y + dy}); return new TouchEvent(type, {touches: type === 'touchend' ? [] : [t], changedTouches: [t], bubbles: true, cancelable: true}); };
             const gesture = (dx, dy) => { svg.dispatchEvent(pe('pointerdown', 0, 0)); svg.dispatchEvent(te('touchstart', 0, 0)); svg.dispatchEvent(pe('pointermove', dx / 2, dy / 2)); svg.dispatchEvent(te('touchmove', dx / 2, dy / 2)); svg.dispatchEvent(pe('pointermove', dx, dy)); svg.dispatchEvent(te('touchmove', dx, dy)); svg.dispatchEvent(pe('pointerup', dx, dy)); svg.dispatchEvent(te('touchend', dx, dy)); };
             const out = {};
+            const ensure = async () => { for (let i = 0; i < 40 && !_elevData; i++) await new Promise(r => setTimeout(r, 150)); _drawElevBand(); };   // 直前の道順計算で標高が作り直しになっていたら待つ
             gesture(0, -40); await new Promise(r => setTimeout(r, 500)); out.flickOpens = _elevExpanded === true && !_scrub;
+            await ensure();
             gesture(30, 0); out.scrubKeeps = _elevExpanded === true && !!_scrub && _scrubOn === false && !!_scrubTimer; _scrubClear();
             gesture(0, 40); await new Promise(r => setTimeout(r, 500)); out.flickCloses = _elevExpanded === false && !_scrub;
+            await ensure();
             svg.dispatchEvent(pe('pointerdown', 0, 0)); svg.dispatchEvent(te('touchstart', 0, 0)); svg.dispatchEvent(pe('pointerup', 0, 0)); svg.dispatchEvent(te('touchend', 0, 0));
             out.tapLooks = !!_scrub && _elevExpanded === false; _scrubClear();
             document.getElementById('mobileElevChev').click(); await new Promise(r => setTimeout(r, 500)); out.button = _elevExpanded === true;

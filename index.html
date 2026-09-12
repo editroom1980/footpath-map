@@ -64,9 +64,9 @@ html,body{touch-action:manipulation;min-height:calc(100% + var(--sat));font-fami
 .s1-sec-h{display:flex;align-items:center;justify-content:space-between;margin:4px 4px 12px}
 .s1-sec-h>span:first-child{font-family:'Plus Jakarta Sans','Hiragino Sans',sans-serif;font-size:13px;font-weight:800;color:#1C1917}
 .s1-count{font-size:11px;color:#A39B8E;background:#fff;border:0.5px solid #ECE6DC;padding:2px 10px;border-radius:11px;font-weight:600}
-.s1-import{width:100%;display:flex;align-items:center;justify-content:center;gap:7px;padding:13px;border-radius:14px;border:1.5px dashed #D8CEBE;background:transparent;color:#8A7A60;font-size:12px;font-weight:600;cursor:pointer;margin-top:3px}
+.s1-import{width:100%;display:flex;align-items:center;justify-content:center;gap:7px;padding:13px;border-radius:14px;border:1.5px dashed #D8CEBE;background:transparent;color:#8A7A60;font-size:12px;font-weight:600;cursor:pointer;margin-top:8px}   /* v190：上下の間隔をそろえる */
 .s1-import .svgi{font-size:16px}
-.s1-tools{display:flex;gap:8px;margin-top:8px}
+.s1-tools{display:flex;gap:8px;margin-top:8px}   /* v190：ファイルから読み込む・みんなのコース・書き出す の間隔をそろえた */
 .s1-tool{flex:1;display:flex;align-items:center;justify-content:center;gap:5px;padding:10px 6px;border-radius:11px;border:1px solid #E6DCCB;background:#FBF9F5;color:#6A645E;font-size:11.5px;font-family:inherit;cursor:pointer;text-align:center;line-height:1.35}
 .s1-tool:hover{background:#F4EFE7}
 #storageInfo{margin-top:8px;font-size:11px;color:var(--t-sub);text-align:center;line-height:1.6}
@@ -661,6 +661,31 @@ body.viewonly #firstTip,body.embed #firstTip{display:none!important}
 .ova-seg .ova-l{font-size:11px;color:var(--t-sub);font-weight:700}
 .ova-seg button{flex:1;min-height:34px;border:1px solid #D4C4A8;border-radius:8px;background:#FAF6EE;color:#4A2E0E;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer}
 .ova-seg button.on{background:var(--brand);color:#fff;border-color:var(--brand)}
+/* みんなのコースに出す（v191） */
+#pubSheet{display:none;position:fixed;inset:0;z-index:6100;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.45)}
+#pubSheet.show{display:flex}
+#pubSheet .pb-box{background:#fff;width:100%;max-width:520px;border-radius:18px 18px 0 0;padding:12px 16px calc(16px + var(--sab));max-height:88vh;overflow-y:auto}
+#pubSheet .pb-hd{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+#pubSheet .pb-t{flex:1;font-size:17px;font-weight:800;color:#231C14}
+#pubSheet .pb-x{width:36px;height:36px;border:none;border-radius:50%;background:#F2EEE7;color:#8A8077;font-size:15px;cursor:pointer}
+#pubSheet .pb-course{display:flex;align-items:center;gap:10px;padding:8px;border:0.5px solid #EDE7DC;border-radius:12px;background:#FCFAF6;margin-bottom:12px}
+#pubSheet .pb-ic{width:48px;height:48px;border-radius:11px;overflow:hidden;background:#EDE9DD;flex:none}
+#pubSheet .pb-ic img,#pubSheet .pb-ic svg{width:48px;height:48px;object-fit:cover;display:block}
+#pubSheet .pb-meta{min-width:0}
+#pubSheet .pb-meta b{display:block;font-size:14.5px;font-weight:800;color:#231C14;overflow-wrap:anywhere}
+#pubSheet .pb-meta small{font-size:11.5px;color:var(--t-sub)}
+#pubSheet .pb-l{display:block;font-size:11px;font-weight:700;color:var(--t-sub);margin:10px 0 5px 2px}
+#pubSheet .s1-input{margin-bottom:4px}
+#pubSheet .pb-opt{display:block;width:100%;text-align:left;border:1.5px solid #E3DCD1;border-radius:12px;background:#fff;padding:10px 12px;margin-bottom:8px;font-family:inherit;cursor:pointer;min-height:var(--tap)}
+#pubSheet .pb-opt b{display:block;font-size:14.5px;font-weight:800;color:#231C14}
+#pubSheet .pb-opt small{display:block;font-size:11.5px;color:var(--t-sub);margin-top:2px;line-height:1.5}
+#pubSheet .pb-opt.on{border-color:var(--brand);background:#FFF9F2}
+#pubSheet .pb-opt.on b{color:var(--brand)}
+#pubSheet .pb-n{font-size:11.5px;color:var(--t-sub);line-height:1.7;margin:6px 0 10px}
+#pubSheet .pb-go{width:100%;min-height:var(--tap);border:none;border-radius:12px;background:var(--brand-grad);color:#fff;font-family:inherit;font-size:15px;font-weight:800;cursor:pointer}
+#pubSheet .pb-copy{width:100%;min-height:var(--tap);margin-top:8px;border:1.5px solid #D4C4A8;border-radius:12px;background:#FAF6EE;color:#4A2E0E;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer}
+#libSheet .lb-tag{display:inline-block;margin-top:4px;font-size:10.5px;font-weight:700;color:var(--brand);background:#FFF1E3;border-radius:6px;padding:2px 7px}
+#libSheet .lb-tag.ro{color:#6A645E;background:#F1EDE6}
 /* 重なった印から選ぶ（v189） */
 #clusterSheet{display:none;position:fixed;inset:0;z-index:5200;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.42)}
 #clusterSheet.show{display:flex}
@@ -676,7 +701,7 @@ body.viewonly #firstTip,body.embed #firstTip{display:none!important}
 #clusterSheet .cl-zoom{width:100%;min-height:var(--tap);border:1.5px solid #D4C4A8;border-radius:12px;background:#FAF6EE;color:#4A2E0E;font-family:inherit;font-size:13.5px;font-weight:700;cursor:pointer}
 @media (min-width:769px){#clusterSheet{align-items:center}#clusterSheet .cl-box{border-radius:16px}}
 /* みんなのコース（v185） */
-.s1-lib{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;min-height:var(--tap);margin:0 0 10px;border:1.5px solid #D4C4A8;border-radius:12px;background:#FAF6EE;color:#4A2E0E;font-family:inherit;font-size:13.5px;font-weight:700;cursor:pointer}
+.s1-lib{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;min-height:var(--tap);margin:8px 0 0;border:1.5px solid #D4C4A8;border-radius:12px;background:#FAF6EE;color:#4A2E0E;font-family:inherit;font-size:13.5px;font-weight:700;cursor:pointer}
 .s1-lib .svgi{width:18px;height:18px;color:var(--brand)}
 #libSheet{display:none;position:fixed;inset:0;z-index:6000;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.45)}
 #libSheet.show{display:flex}
@@ -707,6 +732,14 @@ body.viewonly #firstTip,body.embed #firstTip{display:none!important}
 #renameSheet .ds-t{font-size:17px;font-weight:800;color:#231C14}
 #renameSheet .ds-n{font-size:11.5px;color:var(--t-sub);margin:4px 0 12px;line-height:1.7}
 #renameSheet .rn-l{display:block;font-size:11px;font-weight:700;color:var(--t-sub);margin:0 0 4px 2px}
+#renameSheet .rn-ic{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+#renameSheet .rn-ic-prev{width:56px;height:56px;border-radius:13px;overflow:hidden;background:#EDE9DD;flex:none}
+#renameSheet .rn-ic-prev img,#renameSheet .rn-ic-prev svg{width:56px;height:56px;object-fit:cover;display:block}
+#renameSheet .rn-ic-btns{flex:1;min-width:0;display:flex;flex-wrap:wrap;gap:6px}
+#renameSheet .rn-ic-b{flex:1 1 46%;min-height:36px;border:1.5px solid #D4C4A8;border-radius:10px;background:#FAF6EE;color:#4A2E0E;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer}
+#renameSheet .rn-ic-strip{display:flex;gap:6px;overflow-x:auto;padding:2px 0 10px;-webkit-overflow-scrolling:touch}
+#renameSheet .rn-ic-strip img{width:56px;height:56px;object-fit:cover;border-radius:10px;border:2px solid transparent;flex:none;cursor:pointer}
+#renameSheet .rn-ic-strip img.on{border-color:var(--brand)}
 #renameSheet .s1-input{margin-bottom:12px}
 #renameSheet .ds-row{display:flex;gap:9px;margin-top:4px}
 #renameSheet .ds-btn{flex:1;min-height:var(--tap);border:none;border-radius:12px;font-family:inherit;font-size:14px;font-weight:700;background:var(--brand-grad);color:#fff;cursor:pointer}
@@ -1811,6 +1844,13 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
     <div class="ds-dh"></div>
     <div class="ds-t">コースの名前</div>
     <div class="ds-n">配布シートと配布リンクにも、この名前が出ます。</div>
+    <div class="rn-l">一覧に出す絵</div>
+    <div class="rn-ic"><div class="rn-ic-prev" id="rnIconPrev"></div>
+      <div class="rn-ic-btns"><button type="button" class="rn-ic-b tap" id="rnIconPick">写真から選ぶ</button>
+      <button type="button" class="rn-ic-b tap" id="rnIconFile">写真を撮る・選ぶ</button>
+      <button type="button" class="rn-ic-b tap" id="rnIconClear">地図の絵に戻す</button></div></div>
+    <div class="rn-ic-strip" id="rnIconStrip" hidden></div>
+    <input type="file" accept="image/*" id="rnIconInput" style="display:none">
     <label class="rn-l" for="rnName">コース名</label>
     <input class="s1-input" id="rnName" placeholder="例：飯見の棚田おにぎりウォーク" maxlength="60">
     <label class="rn-l" for="rnArea">エリア（任意）</label>
@@ -1876,7 +1916,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
       <h3>💾 保存・配る</h3>
       <ul>
         <li>「配る」→ <b>かんたん：このリンクをそのまま配る</b>。リンクの中にコースが入っているので、置き場所の用意は要りません（写真は入りません）</li>
-        <li>一覧の<b>「みんなのコースを見る」</b>：みんなが出したコースが並びます。自分のコースを出すときは「配る」→「みんなのコースに出す」（1行をコピーして、開いた画面に貼り付けて保存）</li>
+        <li>一覧の<b>「みんなのコースを見る」</b>：みんなが出したコースが並びます。自分のコースを出すときは「配る」→「みんなのコースに出す」→ 名前と「見た人にできること」を選んで<b>「出す」</b>。開いた画面で緑の「Commit changes」を押すだけです</li>
         <li>保存は「保存」ボタンで行います（勝手には保存しません）。保存していない変更があると、ボタンが「保存」（濃い色）のままになります。一覧に戻るときにも「保存して戻る／保存せずに戻る」を確認します。この端末のブラウザに残ります</li>
         <li>「配る」→ 画像・配布シート（A4）・リンク・GPX の4つの出口と、配る前の確認（歩いた・私有地・分岐・注意…）が1枚にまとまっています</li>
         <li>「見た目 › 地図の色」で線と印の色を選べます。歩く人の画面と配布シートも同じ色になります</li>
@@ -2189,6 +2229,7 @@ const LS = {
   labelSize:   'fp_labelsize',    // 名称ラベルの文字サイズ段階（LABEL_SIZES の添字）
   wpSize:      'fp_wpsize',       // スポット○の大きさ段階（WP_SIZES の添字）
   ovAlpha:     'fp_ovalpha',      // 航空写真に重ねる地図の濃さ（OVERLAY_ALPHAS の添字・v188）
+  pubBy:       'fp_pub_by',       // みんなのコースに出すときの名前（前回の入力を覚える・v191）
   walkSpeed:   'fp_walkspeed',    // 歩く速さの段階（WALK_SPEEDS の添字）
   shareLinks:  'fp_sharelinks',   // コースIDごとの配布リンク（配布シートのQRに使う）
   visits:      'fp_visits',       // スタンプ（コースIDごと・訪れたスポットと時刻）
@@ -3142,7 +3183,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v189';
+const APP_VERSION = 'v191';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -7811,6 +7852,7 @@ function _kokoroeSpeechText(custom) {
    ・一覧（最初の画面）：カードの「名前」ボタン → 保存してあるコースの名前とエリアを直す（その場で保存する）
    ・地図の画面：メニュー › コース（PC はその他）→ 開いているコースの名前とエリアを直す（保存は「保存」ボタン） */
 let _renameId = null;   // null＝いま開いているコース、数値＝一覧の保存済みコース
+let _renameIcon = null; // 名前を変える画面で選んでいる絵（v190）。'' ＝地図の絵に戻す
 function openRenameSheet(courseId){
   const sh = document.getElementById('renameSheet'), sc = document.getElementById('renameScrim'); if (!sh || !sc) return;
   if (typeof closeMobileMenu === 'function') closeMobileMenu();
@@ -7827,13 +7869,61 @@ function openRenameSheet(courseId){
   _renameId = courseId == null ? null : courseId;
   document.getElementById('rnName').value = name;
   document.getElementById('rnArea').value = area;
+  _rnIconInit(courseId);   // v190：一覧に出す絵
   sc.style.display = 'block'; sh.style.display = 'block';
   setTimeout(() => { const el = document.getElementById('rnName'); if (el) { el.focus(); el.select(); } }, 60);
+}
+/* 一覧に出す絵（v190・オーナー指示「コースのアイコン画像も名前と一緒に変更できるように」）。
+   コースの写真から選ぶか、その場で撮る／選ぶ。選ばなければ最初の写真（それも無ければ地図の絵） */
+function _rnIconInit(courseId){
+  const c = (courseId == null) ? null : getCourses().find(x => x && x.id === courseId);
+  _renameIcon = null;   // null＝変更なし
+  const cur = (courseId == null) ? (courseInfo.icon || '') : ((c && c.icon) || '');
+  _rnIconPreview(cur || _rnIconAuto(courseId));
+  const strip = document.getElementById('rnIconStrip'); if (strip) { strip.hidden = true; strip.innerHTML = ''; }
+  const pick = document.getElementById('rnIconPick'), file = document.getElementById('rnIconFile'), clear = document.getElementById('rnIconClear'), inp = document.getElementById('rnIconInput');
+  if (pick) pick.onclick = () => _rnIconStrip(courseId);
+  if (file) file.onclick = () => inp && inp.click();
+  if (clear) clear.onclick = () => { _renameIcon = ''; _rnIconPreview(''); };
+  if (inp) inp.onchange = async function(){
+    const f = this.files && this.files[0]; this.value = '';
+    if (!f) return;
+    const url = await new Promise(res => { const r = new FileReader(); r.onload = e => res(e.target.result); r.onerror = () => res(''); r.readAsDataURL(f); });
+    if (!url) { showToast('写真を読み込めませんでした'); return; }
+    const small = await _makeSticker(url);
+    if (!small) { showToast('写真を小さくできませんでした'); return; }
+    _renameIcon = small; _rnIconPreview(small);
+  };
+}
+function _rnIconAuto(courseId){   // 選んでいないときに出る絵（最初の写真）
+  const list = (courseId == null) ? wps : (((getCourses().find(x => x && x.id === courseId)) || {}).wps || []);
+  const w = (list || []).find(x => x && Array.isArray(x.photos) && x.photos[0]);
+  return w ? w.photos[0] : '';
+}
+function _rnIconPreview(src){
+  const box = document.getElementById('rnIconPrev'); if (!box) return;
+  if (!src) { box.innerHTML = _courseThumbSvg(); return; }
+  box.innerHTML = '<img ' + _photoAttr(src) + ' alt="">';
+  _fillPhotoImgs(box);
+}
+function _rnIconStrip(courseId){
+  const strip = document.getElementById('rnIconStrip'); if (!strip) return;
+  const list = (courseId == null) ? wps : (((getCourses().find(x => x && x.id === courseId)) || {}).wps || []);
+  const photos = [];
+  (list || []).forEach(w => (w && Array.isArray(w.photos) ? w.photos : []).forEach(ph => { if (ph && photos.indexOf(ph) < 0 && photos.length < 12) photos.push(ph); }));
+  if (!photos.length) { showToast('このコースにはまだ写真がありません'); return; }
+  strip.hidden = false;
+  strip.innerHTML = photos.map(ph => '<img ' + _photoAttr(ph) + ' data-ph-src="' + escHtml(ph) + '" alt="">').join('');
+  strip.querySelectorAll('img').forEach(im => im.addEventListener('click', () => {
+    const v = im.getAttribute('data-ph-src'); _renameIcon = v; _rnIconPreview(v);
+    strip.querySelectorAll('img').forEach(o => o.classList.toggle('on', o === im));
+  }));
+  _fillPhotoImgs(strip);
 }
 function closeRenameSheet(){
   const sh = document.getElementById('renameSheet'), sc = document.getElementById('renameScrim');
   if (sc) sc.style.display = 'none'; if (sh) sh.style.display = 'none';
-  _renameId = null;
+  _renameId = null; _renameIcon = null;
 }
 function _applyCourseName(name, area){   // 開いているコースの表示を書き換える
   const cn = document.getElementById('cnDisp'); if (cn) cn.textContent = name;
@@ -7846,7 +7936,8 @@ function saveRenameSheet(){
   if (!name) { alert('コース名を入れてください。'); document.getElementById('rnName').focus(); return; }
   const id = _renameId;
   if (id == null) {                       // いま開いているコース：保存は「保存」ボタンで
-    const changed = (courseInfo.name !== name) || ((courseInfo.area || '') !== area);
+    const changed = (courseInfo.name !== name) || ((courseInfo.area || '') !== area) || (_renameIcon !== null && (courseInfo.icon || '') !== _renameIcon);
+    if (_renameIcon !== null) courseInfo.icon = _renameIcon || undefined;   // v190
     _applyCourseName(name, area);
     if (changed) _markDirty();
     closeRenameSheet(); _syncMmValues();
@@ -7856,6 +7947,8 @@ function saveRenameSheet(){
   const list = getCourses(), c = list.find(x => x && x.id === id);   // 一覧のコース：その場で保存する
   if (!c) { closeRenameSheet(); return; }
   c.name = name; c.area = area;
+  if (_renameIcon !== null) { if (_renameIcon) c.icon = _renameIcon; else delete c.icon; }   // v190
+  if (id === currentCourseId && _renameIcon !== null) courseInfo.icon = _renameIcon || undefined;
   const ok = setCourses(list);
   if (id === currentCourseId) _applyCourseName(name, area);          // 開いたままのコースなら画面も合わせる
   closeRenameSheet(); renderCourseList();
@@ -9311,6 +9404,7 @@ function buildCurrentSaveData() {
     desc:    document.getElementById('iDesc')?.value||'',
     kokoroe: courseInfo.kokoroe || '',   // 歩く人の心得の「地域の追記」（標準の文は KOKOROE）（v137）
     info:    _courseInfoClean(),         // アクセス・駐車場・トイレ・休憩・季節・注意・問い合わせ・難易度（v139）
+    icon:     courseInfo.icon || undefined,             // 一覧に出す絵（v190）。無ければ最初の写真
     stickers: courseInfo.stickers ? true : undefined,   // 写真のある印をシールで見せる（v142）。OFF のときは書かない
     theme:    courseInfo.theme || undefined,            // 地図の色（v145）。標準のときは書かない
     check:    _courseCheckClean(),                      // 配る前の確認の✓（手で付けるものだけ・v146）
@@ -9431,7 +9525,7 @@ function _fitCourseToScreen(data){
 }
 function loadCourseData(data) {
   _scDismissed = false;    // 開き直したらはじめかたを出し直せる（v165）
-  courseInfo = {name:data.name, area:data.area, start:data.start||'', goal:data.goal||'', kokoroe:data.kokoroe||'', info:(data.info && typeof data.info === 'object') ? Object.assign({}, data.info) : {}, stickers: data.stickers === true, theme:(data.theme && typeof data.theme === 'object') ? Object.assign({}, data.theme) : null, check:(data.check && typeof data.check === 'object') ? Object.assign({}, data.check) : {}, noEdit: data.noEdit === true};
+  courseInfo = {name:data.name, area:data.area, start:data.start||'', goal:data.goal||'', kokoroe:data.kokoroe||'', info:(data.info && typeof data.info === 'object') ? Object.assign({}, data.info) : {}, stickers: data.stickers === true, theme:(data.theme && typeof data.theme === 'object') ? Object.assign({}, data.theme) : null, check:(data.check && typeof data.check === 'object') ? Object.assign({}, data.check) : {}, noEdit: data.noEdit === true, icon: data.icon || undefined};
   applyTheme(courseInfo.theme, {quiet:true});   // 印と線を作る前に色を決める（v145）
   currentCourseId = data.id;
   _dirty = false;             // 読み込み直後は未保存の変更なし
@@ -9543,6 +9637,7 @@ function loadCourseData(data) {
   }, 60);
 }
 
+function _courseThumbSvg(){ return `<svg viewBox="0 0 56 56" width="56" height="56"><rect width="56" height="56" fill="#E4E8D4"/><path stroke="#fff" stroke-width="3.2" fill="none" d="M0,21 L21,25 L42,17 L56,23"/><path stroke="#fff" stroke-width="2.6" fill="none" d="M27,0 L25,56"/><path stroke="#D64545" stroke-width="2.1" fill="none" stroke-dasharray="1.5,3" stroke-linecap="round" d="M9,40 Q17,29 27,31 L40,25 L35,42 L21,48"/><circle cx="40" cy="25" r="3.6" fill="${COLOR.brand}"/></svg>`; }   // 一覧の地図の絵（v190：名前の画面でも使う）
 function renderCourseList() {
   const cont    = document.getElementById('courseList');
   const courses = getCourses();
@@ -9573,11 +9668,11 @@ function renderCourseList() {
   }
   cont.innerHTML = '';
   const _fmtDate = t => { try { const d = new Date(t); return isNaN(d) ? '' : (d.getMonth() + 1) + '/' + d.getDate(); } catch(_) { return ''; } };
-  const _thumb = `<svg viewBox="0 0 56 56" width="56" height="56"><rect width="56" height="56" fill="#E4E8D4"/><path stroke="#fff" stroke-width="3.2" fill="none" d="M0,21 L21,25 L42,17 L56,23"/><path stroke="#fff" stroke-width="2.6" fill="none" d="M27,0 L25,56"/><path stroke="#D64545" stroke-width="2.1" fill="none" stroke-dasharray="1.5,3" stroke-linecap="round" d="M9,40 Q17,29 27,31 L40,25 L35,42 L21,48"/><circle cx="40" cy="25" r="3.6" fill="${COLOR.brand}"/></svg>`;
+  const _thumb = _courseThumbSvg();
   courses.forEach(c => {
     const wpCount = Array.isArray(c.wps) ? c.wps.filter(w => w && w.type !== 'node').length : 0;
-    const _pw = Array.isArray(c.wps) ? c.wps.find(w => w && Array.isArray(w.photos) && w.photos[0]) : null;   // v179：コースの写真を背景に
-    const photo = _pw ? _pw.photos[0] : null;
+    const _pw = Array.isArray(c.wps) ? c.wps.find(w => w && Array.isArray(w.photos) && w.photos[0]) : null;   // v179：コースの写真をアイコンに
+    const photo = c.icon || (_pw ? _pw.photos[0] : null);   // v190：選んだ絵があればそれ
     const when  = _fmtDate(c.savedAt);
     const card = document.createElement('div');
     card.className = 'cc';
@@ -9897,7 +9992,7 @@ function openShareDialog(course) {
     window.open(location.origin + location.pathname + '?view=' + encodeURIComponent(course.id), '_blank');
   };
   const libBtn = ov.querySelector('#shLib');
-  if (libBtn) { libBtn.hidden = !_ghEditUrl(LIBRARY_URL); libBtn.onclick = () => { ov.style.display = 'none'; _libHowTo(); }; }
+  if (libBtn) { libBtn.hidden = false; libBtn.onclick = () => { ov.style.display = 'none'; openPublishSheet(course); }; }
   ov.querySelector('#shClose').onclick = () => { ov.style.display = 'none'; };
   ov.style.display = 'flex';
 }
@@ -9950,6 +10045,12 @@ function _ghEditUrlFor(hostname, pathname, file){   // v185：ライブラリの
   return up.replace(/\/upload\/main$/, '/edit/main/' + file);
 }
 function _ghEditUrl(file){ try { return _ghEditUrlFor(location.hostname, location.pathname, file); } catch(_) { return null; } }
+function _ghNewFileUrl(file, value){   // v191：中身まで入れた「新しいファイル」の画面（押すのは Commit だけ）
+  const up = _ghUploadUrl(); if (!up) return null;
+  const base = up.replace(/\/upload\/main$/, '/new/main');
+  const u = base + '?filename=' + encodeURIComponent(file) + (value ? '&value=' + encodeURIComponent(value) : '');
+  return u.length > 30000 ? null : u;   // 長すぎるときは手で貼ってもらう
+}
 /* ===== みんなのコース（v185・オーナー指示「全員が共有して見に行けるライブラリ」）=====
    サーバは使わない。アプリと同じ場所の library.json を読むだけ。1件は {name, area, by, at, d}。
    d はリンクに入れるのと同じ中身（写真なし・圧縮）。配りたい人は「出す用の1行」をコピーして、
@@ -9966,18 +10067,48 @@ async function openLibrarySheet(){
     document.body.appendChild(sh);
     sh.addEventListener('click', e => { if (e.target === sh) sh.classList.remove('show'); });
     sh.querySelector('.lb-x').addEventListener('click', () => sh.classList.remove('show'));
-    sh.querySelector('#libAdd').addEventListener('click', () => { sh.classList.remove('show'); _libHowTo(); });
+    sh.querySelector('#libAdd').addEventListener('click', () => { sh.classList.remove('show'); openPublishSheet(); });
   }
   sh.classList.add('show');
-  document.getElementById('libAdd').hidden = !_ghEditUrl(LIBRARY_URL);
+  document.getElementById('libAdd').hidden = false;   // v191：出す画面は置き場所が無くても開ける（コピーで貼れる）
   _libRender(null);
   try {
-    const res = await fetch(LIBRARY_URL + '?t=' + Date.now(), {cache:'no-store'});
-    if (!res.ok) throw new Error('http ' + res.status);
-    const j = await res.json();
-    _lib = (j && Array.isArray(j.courses)) ? j : {courses: []};
-    _libRender(_lib.courses);
+    const list = await _libLoad();
+    _lib = {courses: list};
+    _libRender(list);
   } catch(_) { _libRender([]); }
+}
+/* 一覧の読み方（v191）：まず library フォルダのファイルを全部読む（置き場所が GitHub なら中身を一覧できる）。
+   だめなら今までどおり library.json 1つを読む。どちらも無ければ「まだ1件も出ていません」 */
+async function _libLoad(){
+  const out = [];
+  const gh = _ghRepo();
+  if (gh) {
+    try {
+      const r = await fetch('https://api.github.com/repos/' + gh.user + '/' + gh.repo + '/contents/library?t=' + Date.now(), {cache:'no-store'});
+      if (r.ok) {
+        const files = (await r.json()).filter(f => f && f.type === 'file' && /\.json$/i.test(f.name || ''));
+        for (const f of files.slice(0, 60)) {
+          try {
+            const c = await (await fetch('library/' + f.name + '?t=' + Date.now(), {cache:'no-store'})).json();
+            if (c && c.d && c.name) out.push(c);
+          } catch(_) {}
+        }
+      }
+    } catch(_) {}
+  }
+  try {
+    const j = await (await fetch(LIBRARY_URL + '?t=' + Date.now(), {cache:'no-store'})).json();
+    (j && Array.isArray(j.courses) ? j.courses : []).forEach(c => { if (c && c.d && c.name) out.push(c); });
+  } catch(_) {}
+  out.sort((a, b) => String(b.at || '').localeCompare(String(a.at || '')));
+  return out;
+}
+function _ghRepo(){
+  const m = /^([a-z0-9-]+)\.github\.io$/i.exec(location.hostname || ''); if (!m) return null;
+  const seg = String(location.pathname || '').split('/').filter(Boolean);
+  if (!seg.length || /\.html?$/i.test(seg[0])) return null;
+  return {user: m[1], repo: seg[0]};
 }
 function _libRender(list){
   const box = document.getElementById('libList'), note = document.getElementById('libNote'); if (!box) return;
@@ -9986,25 +10117,82 @@ function _libRender(list){
   note.textContent = 'みんなが出したコースです。押すと、その場で歩く人の画面が開きます（写真は入っていません）。';
   box.innerHTML = list.map((c, i) => '<button type="button" class="lb-row tap" data-i="' + i + '">'
     + '<span class="lb-name">' + escHtml(c.name || '(名称未設定)') + '</span>'
-    + '<span class="lb-sub">' + escHtml([c.area, c.by ? c.by + ' さん' : '', c.at || ''].filter(Boolean).join('・')) + '</span></button>').join('');
+    + '<span class="lb-sub">' + escHtml([c.area, c.by ? c.by + ' さん' : '', c.at || ''].filter(Boolean).join('・')) + '</span>'
+    + '<span class="lb-tag' + (c.allowEdit === false ? ' ro' : '') + '">' + (c.allowEdit === false ? '見るだけ' : '直してもよい') + '</span></button>').join('');
   box.querySelectorAll('.lb-row').forEach(b => b.addEventListener('click', () => _libOpen(list[Number(b.getAttribute('data-i'))])));
 }
 function _libOpen(entry){
   if (!entry || !entry.d) { showToast('このコースは開けませんでした'); return; }
   location.href = _shareBaseUrl() + '#d=' + entry.d;   // 配るリンクと同じ入口で開く
 }
-async function _libHowTo(){
+/* みんなのコースに出す（v191・オーナー指示「ボタンひとつで選んで投稿できるように」）。
+   サーバは使わないので、置き場所（GitHub）の「新しいファイル」の画面を**中身まで入れた状態で**開く。
+   利用者がすることは、緑の「Commit changes」を押すだけ。見た人が直してよいかもここで選ぶ */
+let _pubCourse = null;
+function openPublishSheet(course){
   const list = getCourses();
-  if (!list.length) { showToast('先にコースを作ってください'); return; }
-  const c = (currentCourseId != null && list.find(x => x.id === currentCourseId)) || list[0];
-  const url = await _makeDataLink(c);
-  const d = url.slice(url.indexOf('#') + 3);
-  const line = JSON.stringify({name: c.name || '', area: c.area || '', by: '', at: new Date().toISOString().slice(0, 10), d: d});
-  if (navigator.clipboard) { try { await navigator.clipboard.writeText(line); } catch(_) {} }
-  const gh = _ghEditUrl(LIBRARY_URL);
-  showToast('「' + (c.name || 'コース') + '」を出す1行をコピーしました。開いた画面の courses の中に貼り付けて保存してください');
-  if (gh) setTimeout(() => window.open(gh, '_blank'), 400);
+  const c = course || (currentCourseId != null && list.find(x => x.id === currentCourseId)) || list[0];
+  if (!c) { showToast('先にコースを作ってください'); return; }
+  _pubCourse = c;
+  let sh = document.getElementById('pubSheet');
+  if (!sh) {
+    sh = document.createElement('div'); sh.id = 'pubSheet';
+    sh.innerHTML = '<div class="pb-box"><div class="pb-hd"><div class="pb-t">みんなのコースに出す</div><button type="button" class="pb-x tap" aria-label="閉じる">✕</button></div>'
+      + '<div class="pb-course"><div class="pb-ic" id="pubIcon"></div><div class="pb-meta"><b id="pubName"></b><small id="pubArea"></small></div></div>'
+      + '<label class="pb-l" for="pubBy">出す人の名前（任意）</label><input class="s1-input" id="pubBy" placeholder="例：波賀町の会" maxlength="24">'
+      + '<div class="pb-l">見た人にできること</div>'
+      + '<button type="button" class="pb-opt tap" data-edit="1"><b>見るだけ</b><small>歩く画面で見てもらう（自分のコースとして直すのは断る）</small></button>'
+      + '<button type="button" class="pb-opt tap" data-edit="2"><b>直してもよい</b><small>気に入った人が自分のコースに取り込んで、作り変えてよい</small></button>'
+      + '<div class="pb-n" id="pubNote"></div>'
+      + '<button type="button" class="pb-go tap" id="pubGo">出す</button>'
+      + '<button type="button" class="pb-copy tap" id="pubCopy">出す内容をコピーする（手で貼るとき）</button></div>';
+    document.body.appendChild(sh);
+    sh.addEventListener('click', e => { if (e.target === sh) closePublishSheet(); });
+    sh.querySelector('.pb-x').addEventListener('click', closePublishSheet);
+    sh.querySelectorAll('.pb-opt').forEach(b => b.addEventListener('click', () => _pubPickEdit(b.getAttribute('data-edit') === '2')));
+    sh.querySelector('#pubGo').addEventListener('click', () => _pubGo(false));
+    sh.querySelector('#pubCopy').addEventListener('click', () => _pubGo(true));
+  }
+  sh.querySelector('#pubName').textContent = c.name || '(名称未設定)';
+  sh.querySelector('#pubArea').textContent = [c.area || '', (Array.isArray(c.wps) ? c.wps.filter(w => w && w.type !== 'node').length : 0) + ' か所'].filter(Boolean).join('・');
+  const ic = sh.querySelector('#pubIcon');
+  const ph = c.icon || ((Array.isArray(c.wps) ? (c.wps.find(w => w && Array.isArray(w.photos) && w.photos[0]) || {}).photos : null) || [])[0];
+  ic.innerHTML = ph ? '<img ' + _photoAttr(ph) + ' alt="">' : _courseThumbSvg(); _fillPhotoImgs(ic);
+  const by = sh.querySelector('#pubBy'); if (by && !by.value) { try { by.value = localStorage.getItem(LS.pubBy) || ''; } catch(_) {} }
+  _pubPickEdit(!(c.noEdit === true));
+  const gh = _ghNewFileUrl('x.json', '');
+  sh.querySelector('#pubNote').textContent = gh ? '「出す」を押すと置き場所の画面が開きます。中身は入った状態なので、緑の「Commit changes」を押すだけです（1〜2分でみんなの一覧に並びます）。'
+                                               : 'この置き場所では自動で開けません。「出す内容をコピーする」を押して、library フォルダに新しいファイルとして貼り付けてください。';
+  sh.querySelector('#pubGo').hidden = !gh;
+  sh.classList.add('show');
 }
+function closePublishSheet(){ const sh = document.getElementById('pubSheet'); if (sh) sh.classList.remove('show'); _pubCourse = null; }
+let _pubAllowEdit = true;
+function _pubPickEdit(allow){
+  _pubAllowEdit = !!allow;
+  document.querySelectorAll('#pubSheet .pb-opt').forEach(b => b.classList.toggle('on', (b.getAttribute('data-edit') === '2') === _pubAllowEdit));
+}
+function _pubSlug(name){
+  const s = String(name || '').replace(/[^A-Za-z0-9ぁ-んァ-ヶ一-龠ー]+/g, '-').replace(/^-|-$/g, '');
+  return (s || 'course').slice(0, 20);
+}
+async function _pubGo(copyOnly){
+  const c = _pubCourse; if (!c) return;
+  const by = ((document.getElementById('pubBy') || {}).value || '').trim();
+  try { localStorage.setItem(LS.pubBy, by); } catch(_) {}
+  const url = await _makeDataLink(c, {allowEdit: _pubAllowEdit});
+  const d = url.slice(url.indexOf('#') + 3);
+  const body = JSON.stringify({name: c.name || '', area: c.area || '', by: by, at: new Date().toISOString().slice(0, 10),
+                               allowEdit: _pubAllowEdit, d: d}, null, 1);
+  const file = 'library/' + new Date().toISOString().slice(0, 10).replace(/-/g, '') + '-' + _pubSlug(c.name) + '-' + Math.random().toString(36).slice(2, 6) + '.json';
+  if (navigator.clipboard) { try { await navigator.clipboard.writeText(body); } catch(_) {} }
+  const gh = _ghNewFileUrl(file, body);
+  if (copyOnly || !gh) { closePublishSheet(); showToast('出す内容をコピーしました。library フォルダに新しいファイルとして貼り付けてください'); return; }
+  closePublishSheet();
+  showToast('置き場所の画面を開きます。緑の「Commit changes」を押すと、みんなの一覧に並びます');
+  setTimeout(() => window.open(gh, '_blank'), 300);
+}
+function _libHowTo(){ openPublishSheet(); }   // 旧名（呼び出し側は据え置き）
 /* ===== リンクにコースを丸ごと入れる（v184・オーナー指摘「リンクを配るをコピーしても開けない」）=====
    これまでは「JSONファイルを書き出して、置き場所に上げてから」でないとリンクが開けなかった。
    コースの中身を縮めてリンクの「#」の後ろに入れてしまえば、置き場所の用意なしで、その場で配れる。
@@ -10023,15 +10211,16 @@ function _unb64url(str){
   for (let i = 0; i < b.length; i++) out[i] = b.charCodeAt(i);
   return out;
 }
-function _courseForLink(course){   // リンクに入れる中身（写真は外す）
+function _courseForLink(course, opts){   // リンクに入れる中身（写真は外す）
   const c = JSON.parse(JSON.stringify(course || {}));
   (c.wps || []).forEach(w => { if (w && w.photos) w.photos = []; });
   delete c.stickers;               // シールは写真が要るので外す
   c.shared = true;                 // 配ったものの印（改変の可否に効く・v147）
+  if (opts && typeof opts.allowEdit === 'boolean') c.noEdit = opts.allowEdit ? undefined : true;   // v191：見た人が直してよいか
   return c;
 }
-async function _makeDataLink(course){
-  const raw = new TextEncoder().encode(JSON.stringify(_courseForLink(course)));
+async function _makeDataLink(course, opts){
+  const raw = new TextEncoder().encode(JSON.stringify(_courseForLink(course, opts)));
   const base = _shareBaseUrl();
   if (typeof CompressionStream !== 'undefined') {
     try {
