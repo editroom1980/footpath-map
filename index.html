@@ -3204,7 +3204,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v201';
+const APP_VERSION = 'v202';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -7800,7 +7800,7 @@ function initViewMode() {
     if (v.data) {                                   // ⓪ リンクの中にコースが入っている（v184：置き場所が要らない）
       const data = await _courseFromHash(v.data);
       if (!data) _showViewError('リンクからコースを読み取れませんでした。\nリンクが途中で切れていないか、最後までコピーされているかご確認ください。');
-      else { loadCourseData(data); maybeShowWalkTip(); }
+      else { loadCourseData(data); maybeShowWalkTip(); _applySharePhotos(); }   // v202：写真はあとから貼る（地図はすぐ出す）
       return;
     }
     if (v.file) {                                   // ① 配布リンク：同じ場所のJSONを読む（誰の端末でも開ける）
@@ -7816,9 +7816,11 @@ function initViewMode() {
   }, 60);
 }
 
+let _viewInfoId = null;   // いま開いているカードのスポット（v202：あとから写真が届いたら作り直すため）
 function showViewInfo(wpId) {
   const wp = wps.find(w => w.id === wpId);
   if (!wp) return;
+  _viewInfoId = wpId;
   const t   = WT.find(x => x.v === wp.type) || WT[0];
   const catLine = (wp.type !== 'spot' && wp.type !== 'start' && wp.type !== 'goal') ? `<div class="vip-cat">${_typeSvg(wp.type, 12, t.c)}<span>${escHtml(t.l)}</span></div>` : '';
 
@@ -7843,6 +7845,7 @@ function showViewInfo(wpId) {
 }
 
 function closeViewInfo() {
+  _viewInfoId = null;
   document.getElementById('viewInfoPanel').classList.remove('show');
   _stopSpeaking();                                   // カードを閉じたら読み上げも止める（v134）
 }
@@ -10115,25 +10118,30 @@ async function openLibrarySheet(){
   }
   sh.classList.add('show');
   document.getElementById('libAdd').hidden = false;   // v191：出す画面は置き場所が無くても開ける（コピーで貼れる）
-  _libRender(null);
+  const fresh = _libCache && (Date.now() - _libCache.at < LIB_CACHE_MS);   // v202：開いたばかりなら、まず前の一覧をすぐ出す
+  _libRender(fresh ? _libCache.list : null);
   try {
     const list = await _libLoad();
     _lib = {courses: list};
+    _libCache = {at: Date.now(), list: list};
     _libRender(list);
-  } catch(_) { _libRender([]); }
+  } catch(_) { if (!fresh) _libRender([]); }
 }
 /* 一覧の読み方（v197）：置き場所（GitHub）の **library フォルダと一番上の両方** のファイルを読む。
    ＝どこに上げてもコースは一覧に並ぶ。だめなら今までどおり library.json 1つを読む。 */
 async function _libLoad(){
   const out = [];
-  let boxRows = [];
-  try { boxRows = await _boxList(); } catch(_) {}   // v199：みんなの箱（合言葉なし・すぐ反映）
   const gh = _ghRepo();
-  if (gh) { await _libScanDir(gh, 'library', out); await _libScanDir(gh, '', out); }   // v197：上げる場所を間違えても出るように
-  try {
-    const j = await (await fetch(LIBRARY_URL + '?t=' + Date.now(), {cache:'no-store'})).json();
-    (j && Array.isArray(j.courses) ? j.courses : []).forEach(c => { if (c && c.d && c.name) out.push(c); });
-  } catch(_) {}
+  /* v202：箱・library フォルダ・一番上・library.json を **同時に** 読む（1つずつ待たない＝速い） */
+  const res = await Promise.all([
+    _boxList().catch(() => []),                                              // v199：みんなの箱（合言葉なし・すぐ反映）
+    gh ? Promise.all([_libScanDir(gh, 'library', out), _libScanDir(gh, '', out)]) : null,   // v197：上げる場所を間違えても出るように
+    (async () => { try {
+      const j = await (await fetch(LIBRARY_URL + '?t=' + Date.now(), {cache: 'no-store'})).json();
+      (j && Array.isArray(j.courses) ? j.courses : []).forEach(c => { if (c && c.d && c.name) out.push(c); });
+    } catch(_) {} })()
+  ]);
+  const boxRows = res[0] || [];
   /* v200：箱から置き場所へ写し終わったコースは、置き場所のぶんだけを出す（二重に並べない）。
      写し終わったものは端末の控えからも外す＝箱が空でも一覧はそのまま。 */
   const moved = {};
@@ -10149,19 +10157,24 @@ async function _libScanDir(gh, dir, out){
   try {
     const r = await fetch('https://api.github.com/repos/' + gh.user + '/' + gh.repo + '/contents' + (dir ? '/' + dir : '') + '?t=' + Date.now(), {cache:'no-store'});
     if (!r.ok) return;
-    const files = (await r.json()).filter(f => f && f.type === 'file' && /\.json$/i.test(f.name || '') && LIB_SKIP.indexOf(f.name) < 0);
-    for (const f of files.slice(0, 60)) {
+    const files = (await r.json()).filter(f => f && f.type === 'file' && /\.json$/i.test(f.name || '')
+      && LIB_SKIP.indexOf(f.name) < 0 && !/-photos\.json$/i.test(f.name));   // v202：写真の入れ物は一覧に出さない（大きいので読まない）
+    const got = await Promise.all(files.slice(0, 60).map(async f => {        // v202：1つずつ待たずに、まとめて取りに行く
       const path = (dir ? dir + '/' : '') + f.name;
-      const key = path.normalize('NFC');   // v198：Mac から上げた名前は濁点の作り方が違うことがある（同じコースが2つ並ぶのを防ぐ）
-      if (out.some(o => o.file && o.file.normalize('NFC') === key)) continue;
-      try {
-        const c = await (await fetch(path.split('/').map(encodeURIComponent).join('/') + '?t=' + Date.now(), {cache:'no-store'})).json();
-        if (!c || !c.name) continue;
-        if (c.d) { const bid = _boxIdFromFile(f.name); if (bid) c.boxId = bid; out.push(c); continue; }   // アプリが作った形（リンクの中身つき）／v200：箱から写したものは元のIDを覚える
-        if (Array.isArray(c.wps)) out.push({name: c.name, area: c.area || '', by: c.by || '',   // v196：書き出したコースのファイルをそのまま置いた場合
-          at: String(c.savedAt || '').slice(0, 10), allowEdit: c.noEdit !== true, file: path});
-      } catch(_) {}
-    }
+      try {   // 中身が変わったときだけ取り直す（?s=）＝2回目からは端末の控えで即表示
+        const c = await (await fetch(path.split('/').map(encodeURIComponent).join('/') + '?s=' + String(f.sha || '').slice(0, 8))).json();
+        return {path: path, c: c};
+      } catch(_) { return null; }
+    }));
+    got.forEach(g => {
+      if (!g || !g.c || !g.c.name) return;
+      const key = g.path.normalize('NFC');   // v198：Mac から上げた名前は濁点の作り方が違うことがある（同じコースが2つ並ぶのを防ぐ）
+      if (out.some(o => o.file && o.file.normalize('NFC') === key)) return;
+      const c = g.c;
+      if (c.d) { const bid = _boxIdFromFile(g.path.split('/').pop()); if (bid) c.boxId = bid; out.push(c); return; }   // アプリが作った形（リンクの中身つき）／v200：箱から写したものは元のIDを覚える
+      if (Array.isArray(c.wps)) out.push({name: c.name, area: c.area || '', by: c.by || '',   // v196：書き出したコースのファイルをそのまま置いた場合
+        at: String(c.savedAt || '').slice(0, 10), allowEdit: c.noEdit !== true, file: g.path});
+    });
   } catch(_) {}
 }
 /* ===== みんなの箱（v199） =====
@@ -10169,6 +10182,7 @@ async function _libScanDir(gh, dir, out){
    ・見る：一覧を読むだけ。押したら中身を取りに行き、配るリンクと同じ入口（#d=）で開く
    ・箱は誰でも書けるので、自分が出したぶんは端末にも覚えておき、一覧から消えていても出す（自己修復） */
 let _boxCfgCache;   // undefined＝未確認 ／ null＝箱を使わない ／ それ以外＝箱の設定
+let _libCache = null;   // v202：みんなのコース一覧の控え {at, list}
 async function _boxCfg(){
   if (_boxCfgCache !== undefined) return _boxCfgCache;
   let cfg = BOX_DEFAULT;
@@ -10182,9 +10196,14 @@ async function _boxCfg(){
 function _boxUrl(cfg, what, id){
   if (cfg.kind === 'firebase') {   // 自分で用意した無料の箱（Firebase Realtime Database）
     const u = String(cfg.url || '').replace(/\/+$/, '');
-    return what === 'idx' ? u + '/idx.json' : (what === 'row' ? u + '/idx/' + id + '.json' : u + '/c/' + id + '.json');
+    if (what === 'idx') return u + '/idx.json';
+    if (what === 'row') return u + '/idx/' + id + '.json';
+    if (what === 'ph')  return u + '/ph/' + id + '.json';   // v202：写真
+    return u + '/c/' + id + '.json';
   }
-  return String(cfg.base || BOX_DEFAULT.base) + String(cfg.key || BOX_DEFAULT.key) + (what === 'idx' ? '' : '-' + id);
+  const b = String(cfg.base || BOX_DEFAULT.base) + String(cfg.key || BOX_DEFAULT.key);
+  if (what === 'idx') return b;
+  return b + '-' + id + (what === 'ph' ? '-ph' : '');
 }
 async function _boxFetch(url, opt){
   const ctl = (typeof AbortController === 'function') ? new AbortController() : null;
@@ -10217,7 +10236,8 @@ function _boxNorm(arr){   // 並べ替え・重複外し・長すぎる項目の
     if (!e || !e.id || !e.name || seen[e.id]) return;
     seen[e.id] = 1;
     out.push({id: String(e.id).slice(0, 40), name: String(e.name).slice(0, 80), area: String(e.area || '').slice(0, 40),
-              by: String(e.by || '').slice(0, 24), at: String(e.at || '').slice(0, 10), allowEdit: e.allowEdit !== false, box: true});
+              by: String(e.by || '').slice(0, 24), at: String(e.at || '').slice(0, 10), allowEdit: e.allowEdit !== false,
+              ph: e.ph ? 1 : undefined, box: true});   // v202：写真が付いているか
   });
   out.sort((a, b) => String(b.at).localeCompare(String(a.at)) || String(b.id).localeCompare(String(a.id)));
   return out.slice(0, BOX_MAX_ROWS);
@@ -10243,10 +10263,47 @@ async function _boxList(){
   else if (raw && typeof raw === 'object') arr = Object.keys(raw).map(k => Object.assign({id: k}, raw[k]));
   return _boxNorm(arr.concat(_boxMine()));
 }
-async function _boxPublish(entry, data){
+/* 共有する写真を作る（v202・オーナー指示「みんなが共有するマップで写真が見れるように」）。
+   リンクに入れると大きすぎるので、写真だけ箱の別の場所に置く。小さく作り直し、枚数と合計の大きさで止める。 */
+async function _shrinkDataUrl(src, px, q){
+  return new Promise(res => {
+    try {
+      const img = new Image();
+      img.onload = () => {
+        let w = img.width, h = img.height;
+        if (w > px || h > px) { if (w >= h) { h = Math.round(h * px / w); w = px; } else { w = Math.round(w * px / h); h = px; } }
+        const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+        cv.getContext('2d').drawImage(img, 0, 0, w, h);
+        try { res(cv.toDataURL('image/jpeg', q)); } catch(_) { res(''); }
+      };
+      img.onerror = () => res('');
+      img.src = src;
+    } catch(_) { res(''); }
+  });
+}
+async function _sharePhotos(course){
+  const out = {}; let total = 0, n = 0;
+  for (const w of ((course && course.wps) || [])) {
+    if (!w || !Array.isArray(w.photos) || !w.photos.length) continue;
+    const arr = [];
+    for (const p of w.photos.slice(0, SHARE_PH_PER_SPOT)) {
+      const src = await _photoSrc(p); if (!src) continue;
+      const small = await _shrinkDataUrl(src, SHARE_PH_PX, SHARE_PH_Q); if (!small) continue;
+      if (total + small.length > SHARE_PH_TOTAL) break;
+      arr.push(small); total += small.length; n++;
+    }
+    if (arr.length) out[String(w.id)] = arr;
+    if (total >= SHARE_PH_TOTAL) break;
+  }
+  return {photos: out, count: n, bytes: total};
+}
+async function _boxPublish(entry, data, photos){
   const cfg = await _boxCfg(); if (!cfg) return {ok: false, why: 'off'};
   if (!data) return {ok: false, why: 'empty'};
   if (data.length > BOX_MAX) return {ok: false, why: 'big'};
+  if (photos && Object.keys(photos).length) {                                 // v202：写真は別置き＝開くのが遅くならない
+    if (await _boxWrite(cfg, 'ph', entry.id, {p: photos})) entry.ph = 1;
+  }
   if (!(await _boxWrite(cfg, 'c', entry.id, {d: data}))) return {ok: false, why: 'write'};   // 先に中身。一覧に載る＝必ず開ける
   let ok;
   if (cfg.kind === 'firebase') ok = await _boxWrite(cfg, 'row', entry.id, entry);
@@ -10287,15 +10344,36 @@ function _goShare(hash){
   if (_shareGoPlan(base, location.href) === 'reload') { location.hash = h; location.reload(); return; }
   location.href = base + h;
 }
+/* 写真の在りかを、開き直したあとの画面へ渡す（v202）。このタブの中だけに一時的に置く。 */
+function _sharePhSet(url){ try { if (url) sessionStorage.setItem(SHARE_PH_KEY, url); else sessionStorage.removeItem(SHARE_PH_KEY); } catch(_) {} }
+function _sharePhTake(){ try { const v = sessionStorage.getItem(SHARE_PH_KEY); sessionStorage.removeItem(SHARE_PH_KEY); return v || ''; } catch(_) { return ''; } }
+/* 開いたあと、写真だけあとから貼る（地図はすぐ出る＝待たされない） */
+async function _applySharePhotos(){
+  const url = _sharePhTake(); if (!url) return;
+  try {
+    const r = await fetch(url + (url.indexOf('?') < 0 ? '?t=' : '&t=') + Date.now(), {cache: 'no-store'});
+    if (!r.ok) return;
+    const j = await r.json(); const p = j && j.p;
+    if (!p || typeof p !== 'object') return;
+    let n = 0;
+    wps.forEach(w => { const a = p[String(w.id)]; if (Array.isArray(a) && a.length) { w.photos = a.slice(0, SHARE_PH_PER_SPOT); n += w.photos.length; } });
+    if (!n) return;
+    const panel = document.getElementById('viewInfoPanel');
+    if (panel && panel.classList.contains('show') && _viewInfoId != null) showViewInfo(_viewInfoId);   // 開いているカードは作り直す
+  } catch(_) {}
+}
 async function _libOpenBox(entry){   // v199：箱のコースは、中身を取りに行ってから開く
   showToast('開いています…');
+  const cfg = await _boxCfg();
   const d = await _boxOpen(entry);
   if (!d) { showToast('このコースは開けませんでした（もう一度お試しください）'); return; }
+  _sharePhSet(entry.ph && cfg ? _boxUrl(cfg, 'ph', entry.id) : '');   // v202：写真はあとから
   _goShare('#d=' + d);
 }
 function _libOpen(entry){
   if (!entry) return;
   if (entry.box) { _libOpenBox(entry); return; }   // v199：みんなの箱
+  if (entry.ph && typeof entry.ph === 'string') _sharePhSet(entry.ph);   // v202：置き場所に写したコースの写真
   if (entry.file) { location.href = _shareBaseUrl() + '?course=' + encodeURIComponent(entry.file); return; }   // v196：置いたファイルをそのまま開く（写真も出る）
   if (!entry.d) { showToast('このコースは開けませんでした'); return; }
   _goShare('#d=' + entry.d);   // 配るリンクと同じ入口で開く（v201：# だけの移動でも必ず開き直す）
@@ -10417,7 +10495,11 @@ async function _pubOut(){
   const by = ((document.getElementById('pubBy') || {}).value || '').trim();
   const entry = {id: _boxNewId(), name: r.c.name || '(名称未設定)', area: r.c.area || '', by: by,
                  at: new Date().toISOString().slice(0, 10), allowEdit: _pubAllowEdit, box: true};
-  const res = await _boxPublish(entry, _pubData);
+  if (go) go.textContent = '写真を用意しています…';
+  let ph = null;
+  try { ph = (await _sharePhotos(r.c)).photos; } catch(_) {}   // v202：写真も一緒に出す（小さく作り直して別置き）
+  if (go) go.textContent = '出しています…';
+  const res = await _boxPublish(entry, _pubData, ph);
   if (res.ok && _ghToken() && _ghRepo()) { try { await _ghPutFile(r.file, r.body, 'みんなのコース: ' + (r.c.name || '')); } catch(_) {} }   // 作者の端末なら置き場所にも残す
   if (go) { go.disabled = false; go.textContent = '出す'; }
   if (res.ok) { closePublishSheet(); showToast('出しました。「みんなのコースを見る」にもう並んでいます'); return; }
@@ -10528,8 +10610,12 @@ function _libHowTo(){ openPublishSheet(); }   // 旧名（呼び出し側は据�
 const BOX_FILE = 'box.json';
 const BOX_DEFAULT = {kind: 'textdb', base: 'https://textdb.dev/api/data/', key: 'footpath-map-minna-2026a'};
 const BOX_MAX = 300000;     // 1コースの中身の上限（文字数）
+const SHARE_PH_PX = 640, SHARE_PH_Q = 0.6;   // みんなのコースに付ける写真（v202）。小さく作り直してから送る
+const SHARE_PH_PER_SPOT = 2, SHARE_PH_TOTAL = 600000;   // 1スポット2枚まで・全部で約600KBまで
+const SHARE_PH_KEY = 'fp_share_ph';          // 開くときに写真の在りかを渡す（このタブだけ・読み込み直しをまたぐ）
 const BOX_MAX_ROWS = 300;   // 一覧に載せる上限
 const BOX_TIMEOUT = 12000;  // 箱とのやりとりの待ち時間
+const LIB_CACHE_MS = 60000; // みんなのコース一覧を覚えておく時間（v202：2回目の表示を待たせない）
 const LIB_SKIP = ['box.json', 'library.json', 'manifest.json', 'package.json', 'package-lock.json', 'sample.json', 'version.json'];   // v197：一番上を見るとき、コースではないファイルは飛ばす
 const LIBRARY_URL = 'library.json';   // みんなのコース（v185）。アプリと同じ場所に置く1つのファイル。中身は {courses:[{name, area, by, at, d}]}
 const LINK_DATA_MAX = 60000;   // これを超えるリンクは長すぎるので勧めない（文字数）

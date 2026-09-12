@@ -120,6 +120,15 @@ def main():
         out = {'name': name[:80], 'area': str(row.get('area') or '')[:40],
                'by': str(row.get('by') or '')[:24], 'at': str(row.get('at') or '')[:10],
                'allowEdit': row.get('allowEdit') is not False, 'from': 'box', 'd': d}
+        if row.get('ph'):                                   # v202：写真も一緒に写す（別ファイル・一覧では読まない）
+            pb = _read_json(_url(cfg, 'ph', cid))
+            pics = (pb or {}).get('p')
+            if isinstance(pics, dict) and pics:
+                ppath = os.path.join(LIB_DIR, 'box-' + cid + '-photos.json')
+                with open(ppath, 'w', encoding='utf-8') as f:
+                    json.dump({'p': pics}, f, ensure_ascii=False)
+                out['ph'] = 'library/box-' + cid + '-photos.json'
+                print('写真も写しました:', ppath)
         with open(path, 'w', encoding='utf-8') as f:
             json.dump(out, f, ensure_ascii=False, indent=1)
         print('写しました:', path)
@@ -143,6 +152,7 @@ def main():
             _http(_url(cfg, 'idx'), data=json.dumps({'courses': rest}, ensure_ascii=False))
             for cid in done:
                 _http(_url(cfg, 'c', cid), data='')      # 中身も空にして箱を軽くする
+                _http(_url(cfg, 'ph', cid), data='')     # v202：写真も空にする
         except Exception as e:
             print('箱を書き戻せません（次回また写します）:', e)
     print('写した件数:', len(done))

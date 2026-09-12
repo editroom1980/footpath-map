@@ -447,6 +447,17 @@ def static_checks(src):
     # --- v157: 番号の丸と種類の丸を横に並べる（オーナー指摘：iPhone で片方しか見えない）---
     chk('静的', '番号つきで種類がある地点：地図は「種類の丸＋右上に番号の小丸」、一覧・並べ替え・配布シート・カードは番号と種類を並べて出す',
         'class="wp-num"' in src and 'class="wp-dot cat"' in src and 'class="ro-badge cat"' in src and 'class="sh-cat"' in src and 'class="vip-dot vip-dot2"' in src and '_catBadge' not in src and 'wp-pair' not in src)
+    # --- v202: みんなのコースでも写真が見られる／一覧の読み込みを速く ---
+    chk('静的', 'みんなのコースに写真を付ける：小さく作り直して箱の別の場所へ。開いたあとから貼る（地図はすぐ出す）。写しも一緒に運ぶ',
+        'const SHARE_PH_PX = 640' in src and 'SHARE_PH_PER_SPOT' in src and 'SHARE_PH_TOTAL' in src
+        and 'async function _shrinkDataUrl' in src and 'async function _sharePhotos' in src
+        and 'async function _applySharePhotos' in src and 'function _sharePhSet' in src and 'function _sharePhTake' in src
+        and "_applySharePhotos();" in src and "what === 'ph'" in src and 'let _viewInfoId = null;' in src)
+    chk('静的', '一覧の読み込みを速く：箱と置き場所を同時に読み、ファイルもまとめて取り、中身が変わった時だけ取り直す。写真の入れ物は一覧で読まない',
+        'const res = await Promise.all([' in src and 'files.slice(0, 60).map(async f =>' in src
+        and "'?s=' + String(f.sha || '').slice(0, 8)" in src and "!/-photos\\.json$/i.test(f.name)" in src
+        and 'const LIB_CACHE_MS = 60000;' in src and 'let _libCache = null;' in src
+        and '_libRender(fresh ? _libCache.list : null);' in src)
     # --- v201: 一覧から開くとき、# だけの移動では読み込み直されない（オーナー報告「箱に上げたコースが開かない」）---
     chk('静的', 'みんなのコースを押したときは _goShare で開く（同じ場所なら # を書いてから読み込み直す）。location.href に直接 # を入れない',
         'function _shareGoPlan' in src and 'function _goShare' in src and "_goShare('#d=' + d);" in src
@@ -461,7 +472,8 @@ def static_checks(src):
         bool(_mir) and bool(_yml) and "cron: '*/10 * * * *'" in _yml and 'contents: write' in _yml
         and 'python3 tools/box_mirror.py' in _yml and '[skip ci]' in _yml
         and "'box-' + cid + '.json'" in _mir and 'MAX_PER_RUN' in _mir and 'MAX_BYTES' in _mir
-        and '_read_json(_url(cfg, \'idx\'))' in _mir)
+        and '_read_json(_url(cfg, \'idx\'))' in _mir
+        and "out['ph'] = 'library/box-' + cid + '-photos.json'" in _mir)   # v202：写真も一緒に写す
     # 写し取りの道具を、にせの箱（通信を差し替え）で実際に動かす
     _mv = {}
     if _mir:
@@ -511,12 +523,12 @@ def static_checks(src):
     chk('静的', 'みんなの箱：box.json で差し替えられ、中身と一覧を分けて置く。出すボタンは1つ。一覧は箱と置き場所の両方を並べる',
         "const BOX_DEFAULT = {kind: 'textdb'" in src and "const BOX_FILE = 'box.json';" in src and 'async function _boxPublish' in src
         and 'async function _boxList' in src and 'async function _boxOpen' in src and 'function _boxNorm' in src
-        and "if (entry.box) { _libOpenBox(entry); return; }" in src and 'boxRows = await _boxList();' in src
+        and "if (entry.box) { _libOpenBox(entry); return; }" in src and 'const boxRows = res[0] || [];' in src
         and '_boxOn ? _pubOut() : _pubGo(false)' in src and "'Content-Type': 'text/plain'" in src
         and '登録も合言葉もいりません' in src and 'LS.boxMine' in src)
     # --- v197: どこに上げても一覧に並ぶ（library フォルダと一番上の両方を見る）／日本語のファイル名も開ける ---
     chk('静的', '置き場所は library フォルダと一番上の両方を読む。コースでない .json は飛ばす。日本語のファイル名も配布リンクで開ける',
-        'async function _libScanDir' in src and "await _libScanDir(gh, 'library', out); await _libScanDir(gh, '', out);" in src
+        'async function _libScanDir' in src and "_libScanDir(gh, 'library', out), _libScanDir(gh, '', out)" in src
         and 'const LIB_SKIP =' in src and 'LIB_SKIP.indexOf(f.name) < 0' in src and "s.charAt(0) === '.'" in src
         and "o.file.normalize('NFC') === key" in src
         and "return /\\.json$/i.test(s) ? dir + s : null;" in src and "/[:?#%<>\"|*]/.test(s)" in src)
@@ -2122,8 +2134,9 @@ def functional_checks(index_path):
               if (s.indexOf(base) !== 0) return keepFetch(u, o);
               if (o && o.method === 'POST') { store[s] = o.body; return new Response('ok', {status:200}); }
               return new Response(store[s] || '', {status: (store[s] === undefined ? 404 : 200)}); };
+            const png = 'data:image/gif;base64,R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==';
             setCourses([{id: 993001, name:'箱の検査コース', area:'兵庫県', savedAt:new Date().toISOString(),
-                         wps:[{id:1, type:'spot', name:'あ', lat:35.1, lng:134.4}]}]);
+                         wps:[{id:1, type:'spot', name:'あ', lat:35.1, lng:134.4, photos:[png]}]}]);
             currentCourseId = null;
             const out = {};
             openPublishSheet(getCourses()[0]); await new Promise(r => setTimeout(r, 800));
@@ -2131,7 +2144,7 @@ def functional_checks(index_path):
                          && document.getElementById('pubSetup').hidden === true;          // 合言葉が無くても「出す」1つ
             document.getElementById('pubBy').value = 'テスト会';
             await _pubOut(); await new Promise(r => setTimeout(r, 300));
-            out.wrote = Object.keys(store).length === 2;                                   // 中身と一覧の2つを書く
+            out.wrote = Object.keys(store).length;                                          // 中身・一覧・写真
             const idx = JSON.parse(store[idxKey] || '{}');
             out.idx = Array.isArray(idx.courses) && idx.courses.length === 1 && idx.courses[0].name === '箱の検査コース'
                       && idx.courses[0].by === 'テスト会' && idx.courses[0].box === true;
@@ -2141,6 +2154,15 @@ def functional_checks(index_path):
             out.list = list.length === 1 && list[0].id === id && list[0].box === true;
             out.open = (await _boxOpen(list[0])) === JSON.parse(store[idxKey + '-' + id]).d;   // 押したら中身が取れる
             out.mine = (JSON.parse(localStorage.getItem(LS.boxMine) || '[]')[0] || {}).id === id;
+            // v202: 写真は別の場所に置き、一覧には印だけ。開いたあとから貼る
+            const phKey = idxKey + '-' + id + '-ph';
+            const phBody = JSON.parse(store[phKey] || '{}');
+            out.phPut = !!store[phKey] && Array.isArray(phBody.p && phBody.p['1']) && phBody.p['1'][0].indexOf('data:image/jpeg') === 0;
+            out.phFlag = idx.courses[0].ph === 1 && list[0].ph === 1;
+            const keepWps = wps.slice(); wps.length = 0; wps.push({id: 1, type:'spot', name:'あ', photos: []});
+            _sharePhSet(phKey); await _applySharePhotos();
+            out.phGot = Array.isArray(wps[0].photos) && wps[0].photos.length === 1 && _sharePhTake() === '';
+            wps.length = 0; keepWps.forEach(w => wps.push(w));
             store[idxKey] = '{"courses":[]}';
             out.heal = (await _boxList()).length === 1;                                    // 一覧を消されても自分のぶんは戻る
             out.big = (await _boxPublish({id:'x', name:'大', at:'2026-09-12'}, 'a'.repeat(BOX_MAX + 1))).why === 'big';
@@ -2166,7 +2188,8 @@ def functional_checks(index_path):
             return out;
           }catch(e){ return 'ERR:'+e.message; } }""")
         chk('機能', 'みんなの箱：合言葉なしで「出す」1つ。中身と一覧の両方を書き、すぐ並び、押すと中身が取れる。一覧が消えても自分のぶんは戻る。写し終わったら置き場所のぶんだけ出す',
-            isinstance(bx, dict) and all(bx.get(k) for k in ('oneBtn', 'wrote', 'idx', 'body', 'list', 'open', 'mine', 'heal', 'big', 'moved')), str(bx)[:300])
+            isinstance(bx, dict) and all(bx.get(k) for k in ('oneBtn', 'idx', 'body', 'list', 'open', 'mine', 'heal', 'big', 'moved',
+                                                            'phPut', 'phFlag', 'phGot')), str(bx)[:340])
 
         # v190: 一覧に出す絵：写真から選ぶ→保存される／地図の絵に戻す→消える／一覧のアイコンに出る
         ic = page.evaluate("""async ()=>{ try{
