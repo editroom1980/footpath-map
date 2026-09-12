@@ -345,8 +345,6 @@ body.moving #modeHint{display:none!important}
 .vip-dot2{width:26px;height:26px;margin-left:-4px}
 .vip-name{font-size:16px;font-weight:bold;color:#2C1B0E;flex:1;line-height:1.3}
 .vip-close{width:28px;height:28px;background:#EEE8DE;border:none;border-radius:50%;font-size:14px;cursor:pointer;flex-shrink:0}
-.vip-say{flex-shrink:0;min-height:36px;padding:0 12px;border:1.5px solid #E3DCD1;border-radius:18px;background:#fff;font-family:inherit;font-size:12.5px;font-weight:700;color:#2C2620;cursor:pointer}
-.vip-say.on{background:var(--brand-soft);border-color:var(--brand);color:var(--brand)}
 .vip-desc{font-size:13px;color:#444;line-height:1.7;margin-bottom:8px;white-space:pre-wrap}
 .vip-tel a{font-size:13px;color:#1a6fc4;display:block;margin-bottom:10px}
 /* 歩く人のカードの写真（v176）：白いふちとテープで「貼ってある」見た目に。少しだけ傾ける */
@@ -1498,7 +1496,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
       <div id="kokoroeScrim" onclick="closeKokoroeSheet()"></div>
       <div id="kokoroeSheet" role="dialog" aria-label="歩く人の心得">
         <div class="ds-dh"></div>
-        <div class="kk-hd"><div class="ds-t">歩く人の心得</div><button class="vip-say tap" id="kkSay" onclick="speakKokoroe()" aria-label="読み上げ">🔊 読み上げ</button></div>
+        <div class="kk-hd"><div class="ds-t">歩く人の心得</div></div>
         <div class="ds-n" id="kkNote">このコースを歩く人へのお願いです。配布シートと配布リンクに載ります。</div>
         <div class="kk-std" id="kkStd"></div>
         <div class="kk-custom" id="kkCustom" hidden></div>
@@ -2325,7 +2323,6 @@ let _delPending     = null;  // 削除して「元に戻す」待ちのコース
 let _walkPos        = null;  // 歩く人のいまの位置 {lat,lng,acc}。◎か追従で入る（v132）
 let _walkHeading    = null;  // 端末のコンパスの向き（度・北=0）。許可が取れたときだけ（v132）
 let _routeCumRef    = null, _routeCum = null;   // _lastRouteCoords ごとの累積距離（v132）
-let _speaking       = false; // 解説を読み上げ中か（v134）
 let _showMapLabels  = true;  // 地図ラベル表示フラグ
 let _lastRouteCoords= null;  // 最後のルート座標（高低差用）
 let _elevData       = null;  // 高低差データキャッシュ
@@ -3204,7 +3201,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v204';
+const APP_VERSION = 'v205';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -7827,7 +7824,6 @@ function showViewInfo(wpId) {
   let html2 = `<div class="vip-handle"></div><div class="vip-hdr">
     <div class="vip-dot" style="background:${_isNumbered(wp) ? _spotColor() : t.c}">${_wpMarkHtml(wp, 18)}</div>${(_isNumbered(wp) && _hasCatIcon(wp)) ? `<div class="vip-dot vip-dot2" style="background:${t.c}">${_typeSvg(wp.type, 16)}</div>` : ''}
     <div class="vip-name">${escHtml(wp.name || t.l)}${catLine}</div>
-    ${_canSpeak() ? `<button class="vip-say tap" id="vipSay" onclick="speakSpot(${wp.id})" aria-label="読み上げ">🔊 読み上げ</button>` : ''}
     <button class="vip-close" onclick="closeViewInfo()">✕</button>
   </div>`;
   if (wp.photos && wp.photos.length) {
@@ -7847,33 +7843,16 @@ function showViewInfo(wpId) {
 function closeViewInfo() {
   _viewInfoId = null;
   document.getElementById('viewInfoPanel').classList.remove('show');
-  _stopSpeaking();                                   // カードを閉じたら読み上げも止める（v134）
 }
 
-/* ===== 解説の読み上げ（v134・段階2-2）=====
-   端末の音声合成（Web Speech）を使う。サーバも通信も要らない。iPhone は押したときだけ鳴らせるので、ボタンから呼ぶ */
-function _canSpeak() { return typeof window !== 'undefined' && 'speechSynthesis' in window && typeof SpeechSynthesisUtterance !== 'undefined'; }
-function _spotSpeechText(wp) {
-  const t = WT.find(x => x.v === wp.type) || WT[0];
-  const name = (wp.name || t.l).replace(/\n/g, '、');
-  const desc = (wp.desc || '').trim();
-  return desc ? name + '。' + desc : name + '。';
-}
-function _syncSayBtn() {
-  ['vipSay', 'kkSay'].forEach(id => { const b = document.getElementById(id); if (!b) return;
-    b.textContent = _speaking ? '⏹ 止める' : '🔊 読み上げ';
-    b.classList.toggle('on', _speaking);
-    b.setAttribute('aria-label', _speaking ? '読み上げを止める' : '読み上げ'); });
-}
+/* 読み上げ（v134）は v205 で廃止（オーナー指示「固有名詞の読み方がいい加減なら要らない」）。
+   端末の音声合成は地名・人名の読みを外すことが多く、案内として当てにならないため機能ごと外した。 */
 
 /* ===== 歩く人の心得（v137）===== */
 function _kokoroeRows(custom, forSheet) {   // 配布シート用（1行ずつ）／シート用は _renderKokoroeStd
   const rows = KOKOROE.map(g => '<div><b>' + escHtml(g.h) + '</b>' + g.items.map(escHtml).join('・') + '</div>');
   if (custom) rows.push('<div><b>この地域から</b>' + escHtml(custom).replace(/\n/g, '<br>') + '</div>');
   return rows.join('');
-}
-function _kokoroeSpeechText(custom) {
-  return '歩く人の心得。' + KOKOROE.map(g => g.h + '。' + g.items.join('。')).join('。') + (custom ? '。この地域からのお願い。' + custom : '');
 }
 /* ===== コース名を変える（v180）=====
    ・一覧（最初の画面）：カードの「名前」ボタン → 保存してあるコースの名前とエリアを直す（その場で保存する）
@@ -7994,13 +7973,11 @@ function openKokoroeSheet(mode) {
   document.getElementById('kkNote').textContent = edit ? '標準の文はそのまま載ります。この地域からのお願いがあれば下に書いてください（配布シートと配布リンクに載ります）。'
                                                        : 'このコースを歩く人へのお願いです。';
   if (edit) document.getElementById('kkText').value = courseInfo.kokoroe || '';
-  _syncSayBtn();
   sc.style.display = 'block'; sh.style.display = 'block';
 }
 function closeKokoroeSheet() {
   const sh = document.getElementById('kokoroeSheet'), sc = document.getElementById('kokoroeScrim');
   if (sc) sc.style.display = 'none'; if (sh) sh.style.display = 'none';
-  _stopSpeaking();
 }
 function saveKokoroeSheet() {
   const v = (document.getElementById('kkText').value || '').trim();
@@ -8008,7 +7985,6 @@ function saveKokoroeSheet() {
   closeKokoroeSheet(); _syncMmValues(); renderShareInfo();
   showToast(v ? 'この地域からのお願いを書き込みました（保存はまだです）' : '標準の心得だけを載せます');
 }
-function speakKokoroe() { _speakText(_kokoroeSpeechText((courseInfo.kokoroe || '').trim())); }
 
 /* ===== シール（v142）：写真のあるスポットの印を、写真そのものにする =====
    1枚目の写真を STICKER_PX 角に切り出して divIcon の背景にする。作るのは非同期なので、できるまでは○の印。
@@ -8877,30 +8853,6 @@ function saveInfoSheet() {
   closeInfoSheet(); _syncMmValues(); renderShareInfo(); _renderDifficulty(_lastRouteDistM);
   showToast(_courseInfoCount() ? 'コースの情報を書き込みました（保存はまだです）' : 'コースの情報は空のままです');
 }
-function _stopSpeaking() {
-  if (_canSpeak()) { try { window.speechSynthesis.cancel(); } catch(_) {} }
-  _speaking = false; _syncSayBtn();
-}
-function speakSpot(wpId) {
-  const wp = wps.find(w => w.id === wpId); if (!wp) return;
-  _speakText(_spotSpeechText(wp));
-}
-function _speakText(text) {
-  if (!_canSpeak()) { showToast('この端末では読み上げを使えません'); return; }
-  if (_speaking) { _stopSpeaking(); return; }
-  try {
-    window.speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = 'ja-JP'; u.rate = 1.0;
-    const vs = window.speechSynthesis.getVoices ? (window.speechSynthesis.getVoices() || []) : [];
-    const ja = vs.find(v => (v.lang || '').toLowerCase().startsWith('ja'));
-    try { if (ja) u.voice = ja; } catch(_) {}          // 声の指定に失敗しても既定の声で読む
-    u.onend = u.onerror = () => { _speaking = false; _syncSayBtn(); };
-    _speaking = true; _syncSayBtn();
-    window.speechSynthesis.speak(u);
-  } catch(_) { _speaking = false; _syncSayBtn(); showToast('読み上げを始められませんでした'); }
-}
-
 function openFullPhoto(src) {
   const w2 = window.open('', '_blank');
   w2.document.write(`<!doctype html><html><body style="margin:0;background:#000;display:flex;align-items:center;justify-content:center;min-height:100vh"><img src="${src}" style="max-width:100%;max-height:100vh;object-fit:contain"></body></html>`);;
@@ -10409,6 +10361,7 @@ async function _applySharePhotos(){
     let n = 0;
     wps.forEach(w => { const a = p[String(w.id)]; if (Array.isArray(a) && a.length) { w.photos = a.slice(0, SHARE_PH_PER_SPOT); n += w.photos.length; } });
     if (!n) return;
+    if (typeof refreshIcons === 'function') refreshIcons();   // v205：写真が届いたら、地図の印もシールに変える
     const panel = document.getElementById('viewInfoPanel');
     if (panel && panel.classList.contains('show') && _viewInfoId != null) showViewInfo(_viewInfoId);   // 開いているカードは作り直す
   } catch(_) {}
@@ -10685,7 +10638,7 @@ function _unb64url(str){
 function _courseForLink(course, opts){   // リンクに入れる中身（写真は外す）
   const c = JSON.parse(JSON.stringify(course || {}));
   (c.wps || []).forEach(w => { if (w && w.photos) w.photos = []; });
-  delete c.stickers;               // シールは写真が要るので外す
+  // v205：シールの設定は残す（写真は箱の別の場所から届く。写真が無ければ今までどおり○の印になる）
   c.shared = true;                 // 配ったものの印（改変の可否に効く・v147）
   if (opts && typeof opts.allowEdit === 'boolean') c.noEdit = opts.allowEdit ? undefined : true;   // v191：見た人が直してよいか
   return c;

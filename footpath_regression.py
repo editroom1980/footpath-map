@@ -447,6 +447,10 @@ def static_checks(src):
     # --- v157: 番号の丸と種類の丸を横に並べる（オーナー指摘：iPhone で片方しか見えない）---
     chk('静的', '番号つきで種類がある地点：地図は「種類の丸＋右上に番号の小丸」、一覧・並べ替え・配布シート・カードは番号と種類を並べて出す',
         'class="wp-num"' in src and 'class="wp-dot cat"' in src and 'class="ro-badge cat"' in src and 'class="sh-cat"' in src and 'class="vip-dot vip-dot2"' in src and '_catBadge' not in src and 'wp-pair' not in src)
+    # --- v205: 見るだけの画面でも写真が出る（カードだけでなく地図の印も） ---
+    chk('静的', '配ったコースでもシールの設定を残し、写真が届いたら地図の印をシールに作り直す',
+        'delete c.stickers;' not in src and "if (typeof refreshIcons === 'function') refreshIcons();" in src
+        and 'v205：シールの設定は残す' in src)
     # --- v204: 同じコースを出し直したら、新しいほうだけ並べる ---
     chk('静的', '出し直したコースは新しいほうだけ一覧に出す（元のコースの印 cid と出した時刻 ts で見分ける・写しにも運ぶ）',
         "cid: String(r.c.id || ''), ts: new Date().toISOString()" in src and 'function _libPickNewest' in src
@@ -827,7 +831,6 @@ def static_checks(src):
     chk('静的', '心得は配布シート・歩く人の最初の案内・メニュー・PCの帯・配るの「載る情報」に出る',
         '<div class="sh-kokoroe">' in src and "openKokoroeSheet('view')\">心得を読む</button>" in src and '<span class="mm-map-l">歩く人の心得</span>' in src
         and 'id="btnKokoroe"' in src and 'id="ssKokoroe"' in src)
-    chk('静的', '心得は読み上げられる（共通の読み上げ関数）', 'function _speakText' in src and 'function speakKokoroe' in src and 'function _kokoroeSpeechText' in src)
     chk('静的', 'PCで配布リンクを開いた人に「一覧」を見せない', 'body.viewonly .hbtn-back{display:none!important}' in src)
     # --- v136: 見直しで見つけた3件（通知の折り返し／削除タイマー／圏外の縮尺10）---
     chk('静的', '通知は折り返す（375px幅で両側にはみ出していた）', 'white-space:normal;text-align:center' in src and '#toastBox .toast{' in src)
@@ -840,11 +843,10 @@ def static_checks(src):
     chk('静的', 'モバイル回線・節約モード・埋め込みでは見送り、Wi-Fi なら上限1,200枚',
         "if (nc && (nc.saveData || nc.type === 'cellular')) return 0;" in src and 'const OFFLINE_AUTO_WIFI_TILES = 1200;' in src
         and "if (document.body.classList.contains('embed')) return 0;" in src and "get('offauto') === '0'" in src)
-    # --- v134: 解説の読み上げ（ロードマップ 段階2-2）---
-    chk('静的', 'スポットのカードに「読み上げ」がある（端末の音声・サーバ不要・日本語）',
-        'class="vip-say tap" id="vipSay"' in src and 'function speakSpot' in src and "u.lang = 'ja-JP'" in src and 'function _spotSpeechText' in src)
-    chk('静的', 'カードを閉じると読み上げも止まる', "_stopSpeaking();                                   // カードを閉じたら読み上げも止める" in src
-        and 'window.speechSynthesis.cancel()' in src)
+    # --- v205: 読み上げは廃止（オーナー指示「固有名詞の読み方がいい加減なら要らない」）---
+    chk('静的', '読み上げの部品と音声合成の呼び出しが残っていない（スポットのカード・心得の両方）',
+        'vipSay' not in src and 'kkSay' not in src and 'speechSynthesis' not in src and 'function speakSpot' not in src
+        and 'function _speakText' not in src and 'function speakKokoroe' not in src and 'vip-say' not in src)
     # --- v133: 高低差グラフに「いまここ」（ロードマップ 段階2-4）---
     chk('静的', '高低差の帯に「いまここ」の丸がある（位置が入ったときだけ・一番上に描く）',
         'class="ev-here"' in src and 'function _elevHerePoint' in src and 'function _drawElevHere' in src
@@ -2567,25 +2569,6 @@ def functional_checks(index_path):
             isinstance(eh, dict) and eh.get('none') and eh.get('x30') is not None and eh.get('inside') and eh.get('moved')
             and abs(eh.get('a30', 0) - 0.3) < 0.06 and abs(eh.get('a60', 0) - 0.6) < 0.06, str(eh)[:220])
 
-        # v134: 読み上げ：押すと名前＋解説を日本語で読み、もう一度で止まり、カードを閉じても止まる（音声は差し替えて数える）
-        sp2 = page.evaluate("""()=>{ try{
-            const keepSS = window.speechSynthesis, keepV = viewMode, calls = [], out = {};
-            let cancels = 0;
-            Object.defineProperty(window, 'speechSynthesis', {configurable: true, value: {speak: u => calls.push({t: u.text, l: u.lang}), cancel: () => cancels++, getVoices: () => [{lang: 'ja-JP', name: 'テスト'}]}});
-            const wp = wps.find(w => w.type !== 'node'); const keepD = wp.desc; wp.desc = '検査用の解説です';
-            viewMode = true; showViewInfo(wp.id);
-            const b = document.getElementById('vipSay'); out.hasBtn = !!b && b.textContent.trim() === '🔊 読み上げ';
-            b.click(); out.spoke = calls.length === 1 && calls[0].l === 'ja-JP' && calls[0].t.indexOf('検査用の解説です') >= 0 && calls[0].t.indexOf((wp.name || '').split('\\n')[0] || 'x') >= 0;
-            out.stopLabel = b.textContent.trim() === '⏹ 止める' && _speaking === true;
-            b.click(); out.stopped = _speaking === false && cancels >= 1 && b.textContent.trim() === '🔊 読み上げ';
-            b.click(); const c2 = cancels; closeViewInfo(); out.closeStops = _speaking === false && cancels > c2;
-            wp.desc = keepD; viewMode = keepV;
-            Object.defineProperty(window, 'speechSynthesis', {configurable: true, value: keepSS});
-            return out;
-          }catch(e){ return 'ERR:'+e.message; } }""")
-        chk('機能', '読み上げ：名前＋解説を日本語で読み、もう一度で止まり、カードを閉じても止まる',
-            isinstance(sp2, dict) and sp2.get('hasBtn') and sp2.get('spoke') and sp2.get('stopLabel') and sp2.get('stopped') and sp2.get('closeStops'), str(sp2)[:220])
-
         # v135: 自動の持ち歩きは、コース範囲のタイルを上限内で取り、コースごとに1回（取得先は差し替えて数える）
         oa = page.evaluate("""()=>{ return (async()=>{ try{
             const keepFetch = window.fetch, keepLS = localStorage.getItem(LS.offAuto); localStorage.removeItem(LS.offAuto);
@@ -2640,11 +2623,9 @@ def functional_checks(index_path):
         chk('機能', '長い通知が375px幅に収まり、続けて2回削除しても新しい「元に戻す」が残って戻せる',
             isinstance(rv, dict) and rv.get('toastIn') and rv.get('newToastKept') and rv.get('pendingKept') and rv.get('restored'), str(rv)[:200])
 
-        # v137: 心得：追記が保存データに入り、配布シートに標準＋追記が載り、読む画面と書く画面が動き、読み上げ文に3見出しが入る
+        # v137: 心得：追記が保存データに入り、配布シートに標準＋追記が載り、読む画面と書く画面が動く（読み上げは v205 で廃止）
         kk = page.evaluate("""()=>{ try{
-            const keepK = courseInfo.kokoroe, keepD = _dirty, keepV = viewMode, keepSS = window.speechSynthesis;
-            const calls = [];
-            Object.defineProperty(window, 'speechSynthesis', {configurable: true, value: {speak: u => calls.push(u.text), cancel: () => {}, getVoices: () => []}});
+            const keepK = courseInfo.kokoroe, keepD = _dirty, keepV = viewMode;
             courseInfo.kokoroe = '5月は農道を譲ってください';
             const out = {saved: buildCurrentSaveData().kokoroe === '5月は農道を譲ってください'};
             const html = _sheetHtml('data:,', 800);
@@ -2653,7 +2634,7 @@ def functional_checks(index_path):
             const sh = document.getElementById('kokoroeSheet');
             out.viewShown = getComputedStyle(sh).display !== 'none' && document.getElementById('kkEdit').hidden && !document.getElementById('kkCustom').hidden
                             && document.getElementById('kkCustom').textContent.indexOf('5月は農道') >= 0;
-            document.getElementById('kkSay').click(); out.spoken = calls.length === 1 && /配慮する/.test(calls[0]) && /5月は農道/.test(calls[0]);
+            out.noSay = !document.getElementById('kkSay');   // v205：読み上げは無い
             closeKokoroeSheet(); viewMode = false;
             openKokoroeSheet('edit');
             out.editShown = !document.getElementById('kkEdit').hidden && document.getElementById('kkText').value === '5月は農道を譲ってください';
@@ -2661,11 +2642,10 @@ def functional_checks(index_path):
             out.savedEdit = courseInfo.kokoroe === 'クマ鈴をお持ちください' && _dirty === true;
             renderShareInfo(); out.shareRow = document.getElementById('ssKokoroe').textContent.indexOf('追記') >= 0;
             courseInfo.kokoroe = keepK; _dirty = keepD; viewMode = keepV;
-            Object.defineProperty(window, 'speechSynthesis', {configurable: true, value: keepSS});
             return out;
           }catch(e){ return 'ERR:'+e.message; } }""")
-        chk('機能', '心得：追記が保存され、配布シートに標準＋追記、読む／書く画面と読み上げが動く',
-            isinstance(kk, dict) and all(kk.get(k) for k in ('saved', 'sheet', 'viewShown', 'spoken', 'editShown', 'savedEdit', 'shareRow')), str(kk)[:220])
+        chk('機能', '心得：追記が保存され、配布シートに標準＋追記、読む／書く画面が動く（読み上げは無い）',
+            isinstance(kk, dict) and all(kk.get(k) for k in ('saved', 'sheet', 'viewShown', 'noSay', 'editShown', 'savedEdit', 'shareRow')), str(kk)[:220])
 
         # v138: 既定の速さ／区間の目安／帯：タップでカード・到着・約
         f3 = page.evaluate("""()=>{ try{
