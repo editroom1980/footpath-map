@@ -447,6 +447,10 @@ def static_checks(src):
     # --- v157: 番号の丸と種類の丸を横に並べる（オーナー指摘：iPhone で片方しか見えない）---
     chk('静的', '番号つきで種類がある地点：地図は「種類の丸＋右上に番号の小丸」、一覧・並べ替え・配布シート・カードは番号と種類を並べて出す',
         'class="wp-num"' in src and 'class="wp-dot cat"' in src and 'class="ro-badge cat"' in src and 'class="sh-cat"' in src and 'class="vip-dot vip-dot2"' in src and '_catBadge' not in src and 'wp-pair' not in src)
+    # --- v196: library に置いた「コースのファイル」もそのまま並ぶ（写真つきで開ける）---
+    chk('静的', 'library/ の .json は配布リンクとして開ける。書き出したコースのファイルを置いただけでも一覧に並ぶ。ファイルで出すときは library の画面を開く',
+        "if (s.slice(0, 8) === 'library/')" in src and "if (entry.file) { location.href = _shareBaseUrl() + '?course=' + encodeURIComponent(entry.file); return; }" in src
+        and 'if (Array.isArray(c.wps)) out.push({name: c.name' in src and "window.open(up + '/library', '_blank');" in src)
     # --- v195: 置き場所を持たない人は「作者に送って載せてもらう」／受け取った作者はそのまま載せる ---
     chk('静的', '合言葉が無い人には「作者に送って載せてもらう」が主役。置き場所を持っている人の設定は畳む。受け取ったリンクは歩く人の画面のメニューから載せられる',
         'id="pubSend"' in src and 'function _pubSend' in src and 'id="pubOwnerToggle"' in src and 'id="pubOwner"' in src
@@ -1128,7 +1132,7 @@ def functional_checks(index_path):
 
         # INV-P: 配布リンクは「同じ場所の.json」だけ受け付ける（外部URLや上位フォルダを弾く）
         sf = page.evaluate("""()=>{ try{
-            const ok  = ['course-1.json','a_b-c.json','x.JSON'].map(v=>_safeCourseFile(v));
+            const ok  = ['course-1.json','a_b-c.json','x.JSON','library/a-1.json'].map(v=>_safeCourseFile(v));
             const bad = ['../secret.json','https://evil.example/x.json','/etc/passwd.json','sub/dir.json',
                          'x.txt','','javascript:alert(1)', null].map(v=>_safeCourseFile(v));
             return {ok:ok, bad:bad,
@@ -1136,7 +1140,7 @@ def functional_checks(index_path):
                     name3:_shareFileName('波賀町 コース'), base:/\\/$/.test(_shareBaseUrl())};
           }catch(e){ return 'ERR:'+e.message; } }""")
         ok_sf = (isinstance(sf, dict)
-                 and sf['ok'][0] == 'course-1.json' and sf['ok'][1] == 'a_b-c.json' and sf['ok'][2] == 'x.JSON'
+                 and sf['ok'][0] == 'course-1.json' and sf['ok'][1] == 'a_b-c.json' and sf['ok'][2] == 'x.JSON' and sf['ok'][3] == 'library/a-1.json'
                  and all(v is None for v in sf['bad'])
                  and sf['name1'] == 'Course-01.json' and sf['name2'] == 'a.json' and sf['name3'] == 'course.json'
                  and sf['base'] is True)
@@ -2004,12 +2008,12 @@ def functional_checks(index_path):
             window.fetch = async (u, o) => { const s2 = String(u);
               if (s2.indexOf('api.github.com') >= 0) return new Response(JSON.stringify([{type:'file', name:'a.json'}, {type:'file', name:'b.json'}]), {status:200});
               if (s2.indexOf('library/a.json') >= 0) return new Response(JSON.stringify({name:'フォルダのコースA', area:'', by:'', at:'2026-09-12', allowEdit:false, d:j.d}), {status:200});
-              if (s2.indexOf('library/b.json') >= 0) return new Response(JSON.stringify({name:'フォルダのコースB', area:'', by:'', at:'2026-09-11', allowEdit:true, d:j.d}), {status:200});
+              if (s2.indexOf('library/b.json') >= 0) return new Response(JSON.stringify({name:'フォルダのコースB', area:'', by:'', at:'2026-09-11', savedAt:'2026-09-11T00:00:00Z', wps:[{id:1,type:'spot'}]}), {status:200});   // v196：書き出したコースのファイルそのまま
               if (s2.indexOf('library.json') >= 0) return new Response(JSON.stringify({courses:[]}), {status:200});
               return keepFetch(u, o); };
             const keepRepo = _ghRepo; window._ghRepo = () => ({user:'editroom1980', repo:'footpath-map'});
             const list = await _libLoad();
-            out.folder = list.length === 2 && list[0].name === 'フォルダのコースA';   // 新しい順
+            out.folder = list.length === 2 && list[0].name === 'フォルダのコースA' && list[1].file === 'library/b.json';   // 新しい順・ファイルのまま置いたものも並ぶ
             window._ghRepo = keepRepo; window.fetch = keepFetch; window.open = keepOpen;
             closePublishSheet(); setCourses(keepC);
             document.querySelectorAll('#toastBox .toast').forEach(e => e.remove());
