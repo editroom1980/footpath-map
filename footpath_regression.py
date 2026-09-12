@@ -447,13 +447,26 @@ def static_checks(src):
     # --- v157: 番号の丸と種類の丸を横に並べる（オーナー指摘：iPhone で片方しか見えない）---
     chk('静的', '番号つきで種類がある地点：地図は「種類の丸＋右上に番号の小丸」、一覧・並べ替え・配布シート・カードは番号と種類を並べて出す',
         'class="wp-num"' in src and 'class="wp-dot cat"' in src and 'class="ro-badge cat"' in src and 'class="sh-cat"' in src and 'class="vip-dot vip-dot2"' in src and '_catBadge' not in src and 'wp-pair' not in src)
+    # --- v214: 言い方を「閲覧モード／編集モード」に統一・地図の右のボタンを整理 ---
+    chk('静的', '「歩く人の見え方」をやめて「閲覧モード／編集モード」に統一。上の札は廃止。みんなのコースは「削除」',
+        '歩く人の見え方' not in src and 'viewBadge' not in src and "'編集モード' : '閲覧モード'" in src
+        and '<span id="btnViewTxt">閲覧モード</span>' in src and '<span class="mm-tog-l">閲覧モード</span>' in src
+        and '閲覧モードにしました' in src and '編集モードにもどりました' in src
+        and '>削除</button>' in src and '消します。' not in src)
+    chk('静的', '地図の右のボタンは 次のスポット・現在地・カメラ・モード切替 の順（＋−は廃止）。追いかけは専用ボタン',
+        'leafMap&&leafMap.zoomIn()' not in src and 'leafMap&&leafMap.zoomOut()' not in src
+        and 'id="mobileNextBtn"' in src and 'id="mobileModeBtn"' in src
+        and src.index('id="mobileNextBtn"') < src.index('class="mrb gps tap"') < src.index('id="mobileFindBtn"') < src.index('id="mobileModeBtn"')
+        and src.index('id="mobileModeBtn"') < src.index('id="mobileUndoBtn"')
+        and "document.querySelectorAll('.mrb.next')" in src and 'const ICON_VIEW' in src and 'const ICON_EDIT' in src
+        and 'body.viewonly #mobileModeBtn{display:none!important}' in src)
     # --- v212: 出した本人だけ消せる／見るだけから編集に戻る／自分の一覧に取り込む ---
     chk('静的', '出した本人だけが「消す」を押せる（控えは写し取りでも消さない）。消した印を残し、写したファイルも仕組みが消す',
         "boxOwn:      'fp_box_own'" in src and 'function _boxOwnAdd' in src and 'function _boxIsMine' in src
         and 'async function _boxDelete' in src and 'async function _boxDelSet' in src and 'function _libAskDelete' in src
         and 'class="lb-del tap"' in src and '_boxIsMine(c) ?' in src)
-    chk('静的', '「歩く人の見え方」の札を押すと編集にもどる（札がボタンになっている）',
-        'id="viewBadge" onclick="toggleViewMode()"' in src and '押すと編集にもどる' in src)
+    chk('静的', '閲覧モードと編集モードは、地図の右のボタンで切り替えられる（上の札は v214 で廃止）',
+        'id="mobileModeBtn"' in src and 'toggleViewMode();_syncMobileMenu()' in src)
     chk('静的', '配られたコースを自分のコース一覧に取り込める（見るだけのものは断る・写真も一緒）',
         'async function importOpenedCourse' in src and 'id="mmGetRow"' in src and 'このコースを自分のコースに追加' in src
         and '_isLockedShare(data)' in src and '_stashPhotos([data])' in src and "String(c.id) === String(currentCourseId)" in src)
@@ -737,7 +750,7 @@ def static_checks(src):
     # --- v154: ノッチ／ステータスバーに重ならない（致命的・オーナー指摘）---
     chk('静的', '地図はノッチの下まで広げ（viewport-fit=cover・透明ステータスバー）、押す部品は全部 --sat で下げる。配布シートは外側タップと Esc で閉じる',
         'viewport-fit=cover' in src and 'content="black-translucent"' in src and ':root{--sat:env(safe-area-inset-top,0px);--sab:env(safe-area-inset-bottom,0px)}' in src
-        and all(re.search(r'#' + i + r'\{[^}]*var\(--sat\)', src) for i in ('modeHint', 'viewBadge', 'offlineBadge', 'crFinishBar', 'helpModal', 'sheetOver', 'nextBar', 'updBar'))
+        and all(re.search(r'#' + i + r'\{[^}]*var\(--sat\)', src) for i in ('modeHint', 'offlineBadge', 'crFinishBar', 'helpModal', 'sheetOver', 'nextBar', 'updBar'))
         and re.search(r'#mobileTopBar\{[^}]*var\(--sat\)', src) and 'padding:var(--sat) 0 var(--sab)' in src
         and src.split("get('debug')")[0].count('env(safe-area-inset-top') == 1   # :root の定義だけ（他は var(--sat) 経由）
         and "if (e.target === ov) closePrintSheet();" in src and "e.key === 'Escape'" in src)
@@ -746,8 +759,8 @@ def static_checks(src):
     _mk = re.sub(r'<script\b.*?</script>', '', src[_a:_b], flags=re.S)
     _unbal = [t for t in ('div', 'span', 'button', 'label', 'details', 'ul', 'li', 'select', 'textarea') if len(re.findall(r'<' + t + r'\b', _mk)) != _mk.count('</' + t + '>')]
     chk('静的', '画面の骨組み（body の HTML）でタグの開きと閉じが釣り合っている', not _unbal, str(_unbal))
-    chk('静的', 'スマホでは「歩く人の見え方」の札を上の帯の下に出す。歩く人のメニューの「コースの情報」は件数でなく「見る」',
-        '@media (max-width:768px){#viewBadge{top:calc(72px + var(--sat))}}' in src and "v('mmInfo', viewMode ? (_courseInfoCount() ? '見る' : 'なし')" in src)
+    chk('静的', '歩く人のメニューの「コースの情報」は件数でなく「見る」',
+        "v('mmInfo', viewMode ? (_courseInfoCount() ? '見る' : 'なし')" in src)
     # --- v152: 手数を減らす④（メニューの「コースのことを書く」にまとめる）---
     chk('静的', 'スマホのメニュー：説明・情報・心得（書く側）は2階層目「コースのことを書く」に。歩く人には心得・情報の行を残す',
         'data-sub="write"' in src and "write:'コースのことを書く'" in src and 'id="mmKokoroeRow"' in src and 'id="mmInfoRow"' in src
@@ -809,7 +822,7 @@ def static_checks(src):
     chk('静的', '発見はコースIDごとに端末に残り（LS.finds）、写真は IndexedDB、片づけで消さない',
         "finds:       'fp_finds'" in src and 'function _saveFinds' in src and 'await _stashPhotoArray(f.photos);' in src and "Object.values(_allFinds()).forEach(list =>" in src)
     chk('静的', '貼る入口はスマホの📷・PCの「発見」ピル・メニューの行。歩く人の画面でだけ出す',
-        'id="mobileFindBtn"' in src and 'id="btnFind"' in src and 'id="mmFindsRow"' in src and 'function _syncFindUi' in src and "showToast('発見は「歩く人の見え方」のときに貼れます')" in src)
+        'id="mobileFindBtn"' in src and 'id="btnFind"' in src and 'id="mmFindsRow"' in src and 'function _syncFindUi' in src and "showToast('発見は「閲覧モード」のときに貼れます')" in src)
     chk('静的', '作者へは Web Share（ファイル）か保存で送り、押した直後に開けるよう先にファイルを作る',
         'navigator.canShare({files:[file]})' in src and 'function _prepareFindsFile' in src and "fpFinds:1" in src)
     chk('静的', '作者側は読み込みで発見ファイルを見分け、「その他」の道順に入らないスポットとして取り込む',
@@ -891,8 +904,8 @@ def static_checks(src):
     chk('静的', '位置の入口は _onWalkerPos の1つ（◎と追従の両方から）',
         src.count('_onWalkerPos(lat, lng, acc);') == 1 and src.count('_onWalkerPos(lat, lng, pos.coords.accuracy || 0);') == 1
         and 'function _routeProgress' in src and 'function _bearing' in src)
-    chk('静的', '歩く人の画面では ◎ が追いかける（1回きりでは距離が更新されないため）',
-        "if (document.body.classList.contains('viewonly')) { toggleFollowMode(); return; }" in src and '次のスポットまでの距離が出ます（もう一度押すと止まります）' in src)
+    chk('静的', '追いかけは専用ボタン（v214：現在地ボタンとは別。1回きりでは距離が更新されないため）',
+        'id="mobileNextBtn" onclick="toggleFollowMode()"' in src and '次のスポットまでの距離が出ます（もう一度押すと止まります）' in src)
     chk('静的', 'コンパスは押したときだけ許可を求める', 'function enableCompass' in src and 'DeviceOrientationEvent.requestPermission' in src)
     # --- v131: PC・スマホの機能を揃える（ロードマップ 段階1-6）---
     def _region(a, b):
@@ -902,7 +915,7 @@ def static_checks(src):
     _feats = {"なぞり描き": "setMode('draw')", "自分で描いた道": 'toggleCustomMode()', "現在地": 'gotoCurrentLocation()', "並べ替え画面": 'openReorderSheet()',
               "自分で描いた道を使う": 'toggleCustomFeature()', "描いた道に吸い付く": 'toggleCustomSnap()', "道に沿わせる": 'toggleManualMode()',
               "地名とスポット": 'toggleMapLabels()', "文字の大きさ": 'setLabelSize(', "印の大きさ": 'setWpSize(',
-              "道順を直す": 'openFixRouteSheet()', "背景地図": "setBaseMap(", "歩く人の見え方": 'toggleViewMode()', "配る": 'openShareSheet()', "保存": 'saveCourse()', "取消": 'undoLast()',
+              "道順を直す": 'openFixRouteSheet()', "背景地図": "setBaseMap(", "閲覧モード": 'toggleViewMode()', "配る": 'openShareSheet()', "保存": 'saveCourse()', "取消": 'undoLast()',
               "やり直し": 'redoAction()', "すべて消去": 'clearAll()', "操作ガイド": 'openHelp()', "JSONで保存": 'exportCourse()', "座標": 'exportRouteCoords()',
               "文字なし保存": 'saveMapNoText()'}
     _missing = [f"{k}(PC)" for k, v in _feats.items() if v not in _pc] + [f"{k}(スマホ)" for k, v in _feats.items() if v not in _mob]
@@ -918,7 +931,7 @@ def static_checks(src):
     chk('静的', '画面に出る旧語（調整点・細道・なぞり・手動・スナップ・閲覧モード・ウェイポイント）が残っていない', not _left, str(_left)[:160])
     chk('静的', '新しい語が入っている（道を変更・自分で描いた道・指でなぞって描く・道に沿わせる・描いた道に吸い付く・スポット）',
         all(w in src for w in ['aria-label="道を変更"', 'aria-label="指でなぞって描く"', 'aria-label="自分で描いた道"', '<span class="mm-tog-l">道に沿わせる</span>',
-                               '<span class="mm-tog-l">描いた道に吸い付く</span>', '<span>スポットの編集</span>', '👁 歩く人の見え方', "l:'描いた道の点'"]))
+                               '<span class="mm-tog-l">描いた道に吸い付く</span>', '<span>スポットの編集</span>', "l:'描いた道の点'"]))
     chk('静的', '操作ガイドが今の画面の語で書かれている', '<h3>📍 スポットを置く・直す</h3>' in src and '<h3>↔ 道を変更（線を引っぱる）</h3>' in src
         and '<h3>💾 保存・配る</h3>' in src and 'ウェイポイントの追加・編集' not in src)
     chk('静的', 'コースの削除は「確認してから」＋そのあと10秒の「元に戻す」（v183・二重の網）',
@@ -949,8 +962,8 @@ def static_checks(src):
     except Exception as _e:
         chk('静的', 'サンプルコースに道順と標高が同梱されている（開いても問い合わせ0）', False, str(_e)[:120])
     # --- v126: PCの道具を役割で3群に（ロードマップ 段階1-3／図4）---
-    chk('静的', '上バー＝一覧・コース名・歩く人の見え方・その他・保存・配る（文字つき）',
-        'class="hbtn hbtn-back" onclick="backToS1()"' in src and 'id="btnView"' in src and '<span id="btnViewTxt">歩く人の見え方</span>' in src
+    chk('静的', '上バー＝一覧・コース名・閲覧モード・その他・保存・配る（文字つき）',
+        'class="hbtn hbtn-back" onclick="backToS1()"' in src and 'id="btnView"' in src and '<span id="btnViewTxt">閲覧モード</span>' in src
         and 'id="btnMore"' in src and '<span>保存</span></button>' in src and 'class="hbtn" onclick="exportGpx()"' not in src)
     chk('静的', '地図の左＝置く・通り道・取消（#tbar を地図の上に、id は据え置き）',
         src.index('<div id="map"></div>') < src.index('<div id="tbar">') and all(f'id="{i}"' in src for i in ('btnWp','btnVia','btnUndo','btnRedo'))
@@ -967,7 +980,7 @@ def static_checks(src):
         'body.viewing #tbar, body.viewing #pcHint' in src and 'body.viewonly #tbar, body.viewonly #pcHint, body.viewonly #btnView' in src
         and 'body.embed #tbar, body.embed #pcHint, body.embed #pcTr, body.embed #pcBl' in src
         and src.count('#tbar,#pcHint,#pcTr,#pcBl{display:none!important}') == 2
-        and "t.textContent = on ? '編集にもどる' : '歩く人の見え方'" in src)
+        and "t.textContent = on ? '編集モード' : '閲覧モード'" in src)
     chk('静的', '375px以上はボタン44pxのまま折り返しで収め、340px以下だけ見た目を詰める',
         '@media (max-width:399px){#mobileShelf .mob-stat-s{display:none}}' in src
         and '@media (max-width:340px){' in src and '#mobileShelf .mob-mode{min-width:40px' in src
@@ -2010,9 +2023,9 @@ def functional_checks(index_path):
             setMode('via'); out.hintVia = document.getElementById('tbar-st').textContent; setMode('wp');
             toggleViewMode();
             out.viewHidden = !vis(document.getElementById('tbar')) && !vis(document.getElementById('pcHint')) && vis(document.getElementById('pcTr'))
-                             && document.getElementById('btnViewTxt').textContent === '編集にもどる';
+                             && document.getElementById('btnViewTxt').textContent === '編集モード';
             toggleViewMode();
-            out.viewBack = document.getElementById('btnViewTxt').textContent === '歩く人の見え方' && !document.body.classList.contains('viewing');
+            out.viewBack = document.getElementById('btnViewTxt').textContent === '閲覧モード' && !document.body.classList.contains('viewing');
             out.closedAll = !document.querySelector('.pc-pop.show');
             return out;
           }catch(e){ return 'ERR:'+e.message; } }""")
@@ -2616,7 +2629,7 @@ def functional_checks(index_path):
             return out;
           }catch(e){ return 'ERR:'+e.message; } }""")
         chk('機能', '次のスポット：位置を差し替えると距離が更新され、ゴールで「着きました」、向きは矢印＋方角',
-            isinstance(nb, dict) and nb.get('shown0') and '◎' in nb.get('hint', '') and nb.get('dirOk') and nb.get('d1', 0) > 0
+            isinstance(nb, dict) and nb.get('shown0') and '➤' in nb.get('hint', '') and nb.get('dirOk') and nb.get('d1', 0) > 0
             and nb.get('advanced') and nb.get('closer') and nb.get('t3') == 'ゴールに着きました' and nb.get('done')
             and nb.get('rotWithHeading') == 'rotate(0deg)' and nb.get('embedHidden') and nb.get('hiddenAfter'), str(nb)[:300])
 
@@ -2687,7 +2700,7 @@ def functional_checks(index_path):
         # v136: 長い通知が375px幅に収まる／続けて2回削除しても新しい「元に戻す」が残る
         page.set_viewport_size({'width': 375, 'height': 812})
         rv = page.evaluate("""()=>{ return (async () => { try{
-            showToast('👁 歩く人の見え方：スポットをタップすると写真・解説が出ます（検査用の長い文）');
+            showToast('閲覧モードにしました：スポットをタップすると写真・解説が出ます（検査用の長い文）');
             const t = [...document.querySelectorAll('#toastBox .toast')].pop(); const r = t.getBoundingClientRect(); t.remove();
             const out = {toastIn: r.left >= 0 && r.right <= innerWidth, w: Math.round(r.width)};
             const keepC = getCourses(), keepP = _delPending;
@@ -2902,7 +2915,7 @@ def functional_checks(index_path):
 
         # v151: 画面の上に出るもの（歩く人のカード・操作ガイド・メニュー・種類の選択）が body 直下にあり、実際に見える
         dom = page.evaluate("""()=>{ try{
-            const ids = ['viewInfoPanel','helpModal','ctxMenu','wpTypePicker','viewBadge','offlineBadge','mobileMenuSheet','toastBox'];
+            const ids = ['viewInfoPanel','helpModal','ctxMenu','wpTypePicker','offlineBadge','mobileMenuSheet','toastBox'];
             const inside = ids.filter(id => { const e = document.getElementById(id); return e && e.closest('#mOver'); });
             const keepV = viewMode, keepCls = document.body.className;
             viewMode = true; document.body.classList.add('viewing');

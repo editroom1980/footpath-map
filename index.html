@@ -131,7 +131,7 @@ html,body{touch-action:manipulation;min-height:calc(100% + var(--sat));font-fami
 
 /* ====== SCREEN 2 ====== */
 #s2{height:100vh;display:none;flex-direction:column}
-/* 上バー（v126・図4）：左＝一覧・コース名、右＝歩く人の見え方・その他・保存・配る */
+/* 上バー（v126・図4）：左＝一覧・コース名、右＝閲覧モード・その他・保存・配る */
 #hdr{position:relative;background:#fff;color:#231C14;padding:0 12px;height:52px;display:flex;align-items:center;gap:8px;flex-shrink:0;border-bottom:1px solid #E3DCD1;z-index:1200}
 #cnDisp{font-size:15.5px;font-weight:800;color:#231C14;flex:1;min-width:0;line-height:1.25;white-space:normal;overflow-wrap:anywhere;
   display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}   /* v182：2行まで出す（1行で切らない） */
@@ -368,7 +368,7 @@ body.moving #modeHint{display:none!important}
 @media (prefers-reduced-motion:reduce){.vip-ph{transition:none}}
 /* 埋め込み表示（?embed=1）：ホームページの中に置くので、地図だけを見せる */
 body.embed #hdr, body.embed #sidebar, body.embed #tbar, body.embed #pcHint, body.embed #pcTr, body.embed #pcBl, body.embed #mobileTopBar, body.embed #mobileShelf,
-body.embed #mobileElevBand, body.embed #viewBadge, body.embed #mobileRbtns{display:none!important}
+body.embed #mobileElevBand, body.embed #mobileRbtns{display:none!important}
 body.embed #s2, body.embed #mapArea, body.embed #mapWrap{height:100%!important;min-height:0!important}
 #stampBar{position:absolute;right:8px;bottom:8px;z-index:1200;display:none;background:rgba(255,255,255,.94);
   color:#4A2E0E;font-size:12px;font-weight:700;padding:6px 11px;border-radius:14px;
@@ -491,7 +491,7 @@ body.embed .leaflet-control-attribution{font-size:9px}
 body.viewonly #tbar, body.viewonly #pcHint, body.viewonly #btnView, body.viewonly #btnMore, body.viewonly .hbtn-share,
 body.viewonly #descSec, body.viewonly .hbtn-save, body.viewonly .drag-hint,
 body.viewonly .mob-modes, body.viewonly .mob-save,
-body.viewonly #mobileUndoBtn, body.viewonly #mobileRedoBtn{display:none!important}
+body.viewonly #mobileUndoBtn, body.viewonly #mobileRedoBtn, body.viewonly #mobileModeBtn{display:none!important}
 /* 閲覧中（作る人の「閲覧モード」も、配布リンクの閲覧専用も）は、編集の操作をすべて隠す。
    歩く人の画面と同じ見え方にし、「確認しているつもりで点を増やす」事故を防ぐ（v120） */
 body.viewing #tbar .ed, body.viewonly #tbar .ed, body.viewing #tbar, body.viewing #pcHint, body.viewing #popMore .ed,
@@ -585,7 +585,6 @@ body.viewonly #descSec.view-desc textarea{background:#F9F7F4;border-color:#E6DCC
 #updBar .upd-x{background:transparent;color:#D9CDB4;padding:6px 4px;font-size:14px}
 #offlineBadge{position:fixed;top:calc(8px + var(--sat));left:50%;transform:translateX(-50%);background:rgba(90,58,26,.92);color:#fff;font-size:11px;padding:4px 14px;border-radius:14px;z-index:2600;pointer-events:none;display:none}
 body.offline #offlineBadge{display:block}
-#viewBadge{position:fixed;top:calc(8px + var(--sat));left:50%;transform:translateX(-50%);background:rgba(196,112,58,.92);color:#fff;font-size:11px;font-family:inherit;font-weight:700;padding:6px 14px;border:0;border-radius:14px;z-index:2500;display:none;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.2)}
 .ctx-it.ctx-convert{color:var(--ok)}
 /* Context menu */
 #ctxMenu{display:none;position:fixed;z-index:5000;background:#fff;border:1px solid #C4B89A;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,.25);min-width:215px;max-width:min(300px,calc(100vw - 24px - env(safe-area-inset-left) - env(safe-area-inset-right)));max-height:calc(100vh - 24px - var(--sat) - var(--sab));overflow-y:auto;font-family:'Hiragino Sans','Meiryo',sans-serif}
@@ -815,8 +814,6 @@ body.embed #nextBar{display:none!important}
 #nextBar .nb-cmp{flex:none;width:36px;height:36px;border-radius:50%;border:none;background:#F2EEE7;font-size:17px;cursor:pointer}
 #nextBar .nb-cmp.on{background:var(--brand-soft)}
 #nextBar .nb-cmp[hidden]{display:none}
-body.viewonly #viewBadge{display:none!important}   /* 歩く人には「歩く人の見え方」の札は要らない（v132） */
-@media (max-width:768px){#viewBadge{top:calc(72px + var(--sat))}}   /* スマホでは上の帯（次のスポット）の下に出す（v153） */
 @media (min-width:769px){#nextBar{left:12px;right:auto;top:12px;width:380px}}
 /* 通知の箱（C3・v140） */
 #toastBox{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:9999;display:flex;flex-direction:column;gap:6px;align-items:center;width:max-content;max-width:calc(100vw - 24px);pointer-events:none}
@@ -1304,7 +1301,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
     <button class="hbtn hbtn-back" onclick="backToS1()"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M5 12l14 0" /> <path d="M5 12l6 6" /> <path d="M5 12l6 -6" /></svg><span>一覧</span></button>
     <span style="font-size:16px;flex-shrink:0;display:inline-flex;color:var(--brand)" title="Footpath Mapmaker"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M12 18.5l-3 -1.5l-6 3v-13l6 -3l6 3l6 -3v7.5" /> <path d="M9 4v13" /> <path d="M15 7v5.5" /> <path d="M21.121 20.121a3 3 0 1 0 -4.242 0c.418 .419 1.125 1.045 2.121 1.879c1.051 -.89 1.759 -1.516 2.121 -1.879" /> <path d="M19 18v.01" /></svg></span>
     <div id="cnDisp"></div>
-    <button class="hbtn" id="btnView" onclick="toggleViewMode()" title="歩く人の見え方&#10;ONの間はスポットをクリックで写真・解説を表示"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" /> <path d="M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6" /></svg><span id="btnViewTxt">歩く人の見え方</span></button>
+    <button class="hbtn" id="btnView" onclick="toggleViewMode()" title="閲覧モード（歩く人と同じ見え方）&#10;スポットを押すと写真・解説が出ます"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" /> <path d="M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6" /></svg><span id="btnViewTxt">閲覧モード</span></button>
     <button class="hbtn" id="btnMore" onclick="togglePcPop('popMore', this)" aria-expanded="false" aria-controls="popMore" title="その他&#10;JSON・座標・文字なし保存・操作ガイド・詳細"><svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg><span>その他</span></button>
     <button class="hbtn hbtn-save" onclick="saveCourse()" title="保存"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M6 4h10l4 4v10a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2" /> <path d="M10 14a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /> <path d="M14 4l0 4l-6 0l0 -4" /></svg><span>保存</span></button>
     <button class="hbtn hbtn-share" onclick="openShareSheet()" title="配る&#10;画像・配布シート・リンク・GPX">配る</button>
@@ -1430,12 +1427,12 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
         </div>
         <div id="modeHint" role="status" hidden></div>   <!-- v156：いまの道具の案内（スマホ） -->
         <div id="mobileRbtns">
-          <button class="mrb tap" id="mobileUndoBtn" onclick="undoLast()" disabled aria-label="取り消し"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14l-4 -4l4 -4" /> <path d="M5 10h11a4 4 0 1 1 0 8h-1" /></svg></button>
+          <button class="mrb next tap" id="mobileNextBtn" onclick="toggleFollowMode()" aria-label="次のスポットまでの距離" title="次のスポットまでの距離（現在地を追いかけます）" hidden><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l19 -9l-9 19l-2 -8z" /></svg></button>
+          <button class="mrb gps tap" onclick="gotoCurrentLocation()" aria-label="現在地" title="現在地へ"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12a3 3 0 1 0 6 0a3 3 0 1 0 -6 0" /> <path d="M4 12a8 8 0 1 0 16 0a8 8 0 1 0 -16 0" /> <path d="M12 2l0 2" /> <path d="M12 20l0 2" /> <path d="M20 12l2 0" /> <path d="M2 12l2 0" /></svg></button>
+          <button class="mrb tap find" id="mobileFindBtn" onclick="openFindSheet()" aria-label="発見を貼る" title="見つけたものを貼る" hidden><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h1a2 2 0 0 0 2 -2a1 1 0 0 1 1 -1h6a1 1 0 0 1 1 1a2 2 0 0 0 2 2h1a2 2 0 0 1 2 2v9a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-9a2 2 0 0 1 2 -2" /><path d="M9 13a3 3 0 1 0 6 0a3 3 0 0 0 -6 0" /></svg></button>
+          <button class="mrb mode tap" id="mobileModeBtn" onclick="toggleViewMode();_syncMobileMenu()" aria-label="閲覧モード" title="閲覧モードと編集モードを切り替える"></button>
+          <button class="mrb mt tap" id="mobileUndoBtn" onclick="undoLast()" disabled aria-label="取り消し"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14l-4 -4l4 -4" /> <path d="M5 10h11a4 4 0 1 1 0 8h-1" /></svg></button>
           <button class="mrb tap" id="mobileRedoBtn" onclick="redoAction()" disabled aria-label="やり直し"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14l4 -4l-4 -4" /> <path d="M19 10h-11a4 4 0 1 0 0 8h1" /></svg></button>
-          <button class="mrb gps mt tap" onclick="gotoCurrentLocation()" aria-label="現在地"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12a3 3 0 1 0 6 0a3 3 0 1 0 -6 0" /> <path d="M4 12a8 8 0 1 0 16 0a8 8 0 1 0 -16 0" /> <path d="M12 2l0 2" /> <path d="M12 20l0 2" /> <path d="M20 12l2 0" /> <path d="M2 12l2 0" /></svg></button>
-          <button class="mrb mt tap find" id="mobileFindBtn" onclick="openFindSheet()" aria-label="発見を貼る" hidden><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h1a2 2 0 0 0 2 -2a1 1 0 0 1 1 -1h6a1 1 0 0 1 1 1a2 2 0 0 0 2 2h1a2 2 0 0 1 2 2v9a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-9a2 2 0 0 1 2 -2" /><path d="M9 13a3 3 0 1 0 6 0a3 3 0 0 0 -6 0" /></svg></button>
-          <button class="mrb mt tap" onclick="leafMap&&leafMap.zoomIn()" aria-label="拡大"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5l0 14" /> <path d="M5 12l14 0" /></svg></button>
-          <button class="mrb tap" onclick="leafMap&&leafMap.zoomOut()" aria-label="縮小"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l14 0" /></svg></button>
         </div>
       </div>
       <!-- 最初の1回だけ出す使い方案内（スポット0個のとき） -->
@@ -1453,7 +1450,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
       <div id="walkTip">
         <div class="ft-ic">🚶</div>
         <div class="ft-t">この地図の使いかた</div>
-        <div class="ft-d">・○をタップすると、写真と解説が見られます<br>・スポットに近づくと、スタンプが付きます<br>・◎を押すと、いまの場所を追いかけて、次のスポットまでの距離が出ます（もう一度押すと止まります）<br>・田畑や私有地には入らない、ゴミは持ち帰る、動植物や農作物は採らない（心得）<br>・見つけたもの（植物・マンホールの蓋…）は 📷 で写真とひとことを貼れます。作者に送ると地図に載ることも</div>
+        <div class="ft-d">・○をタップすると、写真と解説が見られます<br>・スポットに近づくと、スタンプが付きます<br>・右の ➤ を押すと、いまの場所を追いかけて、次のスポットまでの距離が出ます（もう一度押すと止まります）<br>・田畑や私有地には入らない、ゴミは持ち帰る、動植物や農作物は採らない（心得）<br>・見つけたもの（植物・マンホールの蓋…）は 📷 で写真とひとことを貼れます。作者に送ると地図に載ることも</div>
         <button class="ft-b ghost" onclick="dismissWalkTip();openKokoroeSheet('view')">心得を読む</button>
         <button class="ft-b" onclick="dismissWalkTip()">わかった</button>
         <div class="ft-n">この案内は最初の1回だけ出ます</div>
@@ -1707,7 +1704,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
         <div class="mm-sec">歩くとき</div>
         <div class="mm-tog-wrap list">
           <div class="mm-tog" onclick="toggleFollowMode();_syncMobileMenu()" title="歩きながら地図が現在地に付いてきます（電池を使います）"><span class="mm-tog-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 11a1 1 0 1 0 2 0a1 1 0 0 0 -2 0" /> <path d="M12.5 8.5l-4.5 -1.5l-4 12l12 -4l-1.5 -4.5" /> <path d="M21 3l-6 18" /></svg></span><span class="mm-tog-l">現在地を追う</span><div class="mm-sw" id="mmSwFollow"></div></div>
-          <div class="mm-tog" onclick="toggleViewMode();_syncMobileMenu()" data-view-toggle="1"><span class="mm-tog-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" /> <path d="M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6" /></svg></span><span class="mm-tog-l">歩く人の見え方</span><div class="mm-sw" id="mmSwView"></div></div>
+          <div class="mm-tog" onclick="toggleViewMode();_syncMobileMenu()" data-view-toggle="1"><span class="mm-tog-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" /> <path d="M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6" /></svg></span><span class="mm-tog-l">閲覧モード</span><div class="mm-sw" id="mmSwView"></div></div>
         </div>
         <div class="mm-sec">地図の見せ方</div>
         <div class="mm-maplist">
@@ -1851,7 +1848,6 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
 
 <!-- View Mode Info Panel -->
 <div id="viewInfoPanel"></div>
-<button type="button" id="viewBadge" onclick="toggleViewMode()" aria-label="編集にもどる">👁 歩く人の見え方（押すと編集にもどる）</button>
 <div id="offlineBadge">📴 オフライン（保存した地図を表示中）</div>
 
 <!-- WPタイプピッカー -->
@@ -1953,7 +1949,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
     <div class="help-section">
       <h3>🚶 歩く人の画面でできること（配布リンク）</h3>
       <ul>
-        <li>○を押すと写真と解説。◎を押すと現在地を追いかけ、次のスポットまでの距離と向き、分岐の案内が出ます</li>
+        <li>○を押すと写真と解説。右の ➤ を押すと現在地を追いかけ、次のスポットまでの距離と向き、分岐の案内が出ます</li>
         <li>スポットに近づくとスタンプ。📷 で見つけたもの（発見）を貼り、作者に送れます</li>
         <li>ゴールに着くと記念の1枚（コース名・日付・スタンプ入り）を作れます。「心得」も読めます</li>
       </ul>
@@ -2836,6 +2832,7 @@ function _unzoomPage() {
 if (window.visualViewport) window.visualViewport.addEventListener('resize', () => { if (document.body && document.body.classList.contains('viewonly') || (typeof leafMap !== 'undefined' && leafMap)) _unzoomPage(); });
 window.addEventListener('DOMContentLoaded', () => {
   renderCourseList();
+  if (typeof _applyViewLock === 'function') _applyViewLock();   // v214：地図の右の「閲覧／編集」ボタンに絵を入れる
   // 配布リンクで開いた人のブラウザにサンプルを入れない（見に来ただけの人の保存領域を汚さない）
   if (!_viewParams().on) {
     ensureSampleCourse()                       // 初回のみサンプルを取り込む（失敗しても起動に影響しない）
@@ -3213,7 +3210,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v213';
+const APP_VERSION = 'v214';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -4621,12 +4618,10 @@ function toggleManualMode() {
 function toggleViewMode() {
   if (_moveWp) _moveCancel();          // v164
   viewMode = !viewMode;
-  if (viewMode && mode === 'via') setMode('wp');   // 歩く人の見え方では地図を動かせるように（v169）
+  if (viewMode && mode === 'via') setMode('wp');   // 閲覧モードでは地図を動かせるように（v169）
   _syncMapDrag();
   const btn = document.getElementById('btnView');
   if (btn) btn.classList.toggle('on', viewMode);
-  const vb = document.getElementById('viewBadge');
-  if (vb) vb.style.display = viewMode ? 'block' : 'none';
   if (viewMode) {
     _closeAllPopups('menu');   // 編集モーダル等を閉じる（メニューは保持）
   } else {
@@ -4638,21 +4633,26 @@ function toggleViewMode() {
   _applyViewLock();                                  // 編集の操作を隠し、印を動かせなくする
   redrawList();                                      // 一覧の並べ替え可否を作り直す
   showToast(viewMode
-    ? '👁 歩く人の見え方：スポットをタップすると写真・解説が出ます'
-    : '編集にもどりました：スポットをタップすると編集できます');
+    ? '閲覧モードにしました：スポットをタップすると写真・解説が出ます'
+    : '編集モードにもどりました：スポットをタップすると編集できます');
 }
 
 /* 閲覧中は編集の操作をすべて止める。CSS（body.viewing）で隠し、印は動かせなくする。
    toggleViewMode と、配布リンクの読み込み完了時（loadCourseData）から呼ぶ */
+const ICON_VIEW = '<svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" /><path d="M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6" /></svg>';   // 閲覧モードへ
+const ICON_EDIT = '<svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" /><path d="M13.5 6.5l4 4" /></svg>';   // 編集モードへ
 function _applyViewLock() {
   const on = !!viewMode;
   document.body.classList.toggle('viewing', on);
   wps.filter(w => w.type === 'node').forEach(x => { if (x.marker && x.marker.dragging) (on ? x.marker.dragging.disable() : x.marker.dragging.enable()); });   // スポット・通り道の点はもともと動かない（v164・v169）
   const t = document.getElementById('btnViewTxt');
-  if (t) t.textContent = on ? '編集にもどる' : '歩く人の見え方';
+  if (t) t.textContent = on ? '編集モード' : '閲覧モード';
   const b = document.getElementById('btnView');
-  if (b) { b.title = on ? '編集にもどる' : '歩く人の見え方\nONの間はスポットをクリックで写真・解説を表示';
-           b.setAttribute('aria-label', on ? '編集にもどる' : '歩く人の見え方'); }
+  if (b) { b.title = on ? '編集モードにもどる' : '閲覧モード（歩く人と同じ見え方）';
+           b.setAttribute('aria-label', on ? '編集モードにもどる' : '閲覧モード'); }
+  const mb2 = document.getElementById('mobileModeBtn');   // v214：地図の右の切り替えボタン
+  if (mb2) { mb2.innerHTML = on ? ICON_EDIT : ICON_VIEW;
+             mb2.setAttribute('aria-label', on ? '編集モードにもどる' : '閲覧モード'); mb2.classList.toggle('on', on); }
   renderNextBar();
 }
 
@@ -4775,7 +4775,7 @@ function renderNextBar() {
   const ci = gi ? null : _nextCueInfo(info ? (info.along != null ? info.along : null) : null);   // 分岐の案内が無いときだけ曲がり角（v167）
   _guidePassCheck();
   if (gi) { _guideShown[gi.vp.id] = true; _activeGuideId = gi.vp.id; } else _activeGuideId = null;
-  if (!info) { tx.textContent = _walkPos ? (here ? _spotLabel(here) + '　ゴールに着きました' : 'ゴールに着きました') : '◎を押すと、次のスポットまでの距離が出ます'; ar.style.visibility = _walkPos ? 'visible' : 'hidden'; ar.style.transform = '';
+  if (!info) { tx.textContent = _walkPos ? (here ? _spotLabel(here) + '　ゴールに着きました' : 'ゴールに着きました') : '右の ➤ を押すと、次のスポットまでの距離が出ます'; ar.style.visibility = _walkPos ? 'visible' : 'hidden'; ar.style.transform = '';
     if (_walkPos && !_goalToastShown) { _goalToastShown = true; showToast('ゴール！おつかれさまでした。帯を押すと記念の1枚を作れます'); }   // v147
     return; }
   tx.innerHTML = (here ? '<div class="nb-name"><b>' + escHtml(_spotLabel(here)) + '</b>　次：' + escHtml(info.label) + '</div>'
@@ -5029,7 +5029,7 @@ function _showGpsHere(lat, lng, accuracy){
   }
 }
 function _syncFollowBtn(){
-  document.querySelectorAll('.mrb.gps').forEach(b => b.classList.toggle('on', _followOn));
+  document.querySelectorAll('.mrb.next').forEach(b => b.classList.toggle('on', _followOn));   // v214：追いかけ中はこのボタンが光る
   const sw = document.getElementById('mmSwFollow');
   if (sw) sw.classList.toggle('on', _followOn);
 }
@@ -5073,7 +5073,6 @@ function toggleFollowMode(){
 function gotoCurrentLocation() {
   if (!navigator.geolocation) { showToast('この端末では位置情報を利用できません'); return; }
   if (!leafMap) return;
-  if (document.body.classList.contains('viewonly')) { toggleFollowMode(); return; }   // 歩く人は追いかける（v132）
   showToast('現在地を取得中...');
   navigator.geolocation.getCurrentPosition(
     function(pos) {
@@ -5412,7 +5411,7 @@ function deleteVp(id) {
    ============================================================ */
 /* ===== 場所を動かす（v164・Footpath に倣う）：印は引きずらない。編集画面の「場所を動かす」→ タップした所へ／地図をずらして「ここに置く」 =====
    ・動かす間は元の印を薄くし、画面の真ん中に同じ印を出す（地図をずらすと印は画面に固定されたまま）
-   ・他の操作（道具の切り替え・歩く人の見え方・別の画面を開く・Esc）で自動的にやめる。置いたら「取消」で戻せる */
+   ・他の操作（道具の切り替え・閲覧モード・別の画面を開く・Esc）で自動的にやめる。置いたら「取消」で戻せる */
 function startMoveSpot(){
   if (editId === null) return;
   const wp = wps.find(w => w.id === editId); if (!wp || !wp.marker) return;
@@ -7868,8 +7867,6 @@ function initViewMode() {
   document.body.classList.add('viewonly');
   document.body.classList.add('viewing');
   if (v.embed) document.body.classList.add('embed');   // ホームページ内に埋め込むときは地図だけ見せる
-  const vb = document.getElementById('viewBadge');
-  if (vb) vb.style.display = 'block';
 
   // Hide editing controls after s2 becomes visible
   setTimeout(async () => {
@@ -8175,7 +8172,7 @@ function toggleNoEdit(){
 /* ===== ゴールの1枚（v147・フットパス特化 F7）：ゴールで記念写真に コース名・日付・距離・スタンプ を焼き込む ===== */
 let _goalImg = null, _goalFile = null, _goalToastShown = false;
 function openGoalCard(){
-  if (!viewMode) { showToast('ゴールの記念写真は「歩く人の見え方」で作れます'); return; }
+  if (!viewMode) { showToast('ゴールの記念写真は「閲覧モード」で作れます'); return; }
   _goalImg = null; _goalFile = null; _goalRender();
   document.getElementById('goalScrim').style.display = 'block'; document.getElementById('goalSheet').style.display = 'block';
 }
@@ -8620,6 +8617,7 @@ function _syncFindUi(){
   const n = finds.length, on = !!viewMode;
   const b = document.getElementById('btnFind'); if (b) { b.hidden = !on; const sp = b.querySelector('span'); if (sp) sp.textContent = n ? '発見 ' + n : '発見'; }
   const mb = document.getElementById('mobileFindBtn'); if (mb) mb.hidden = !on;
+  const nb2 = document.getElementById('mobileNextBtn'); if (nb2) nb2.hidden = !on;   // v214：次のスポットまでの距離（閲覧モードのとき）
   const row = document.getElementById('mmFindsRow'); if (row) row.hidden = !on;
   const v = document.getElementById('mmFinds'); if (v) v.textContent = n + ' 件 ›';
   const gr = document.getElementById('mmGoalRow'); if (gr) gr.hidden = !on;   // ゴールの記念写真（v147）
@@ -8637,7 +8635,7 @@ function _syncFindUi(){
 }
 /* 貼る（シート） */
 function openFindSheet(){
-  if (!viewMode) { showToast('発見は「歩く人の見え方」のときに貼れます'); return; }
+  if (!viewMode) { showToast('発見は「閲覧モード」のときに貼れます'); return; }
   if (currentCourseId == null) { showToast('保存していないコースには貼れません'); return; }
   const fresh = _walkPos && (Date.now() - (_walkPos.at || 0)) < FIND_POS_FRESH_MS;
   _fEdit = {photos:[], where: fresh ? 'gps' : 'center', pos: fresh ? {lat:_walkPos.lat, lng:_walkPos.lng, acc:_walkPos.acc} : null};
@@ -10496,7 +10494,7 @@ function _libRender(list){
     + '<span class="lb-name">' + escHtml(c.name || '(名称未設定)') + '</span>'
     + '<span class="lb-sub">' + escHtml([c.area, c.by ? c.by + ' さん' : '', c.at || ''].filter(Boolean).join('・')) + '</span>'
     + '<span class="lb-tag' + (c.allowEdit === false ? ' ro' : '') + '">' + (c.allowEdit === false ? '見るだけ' : '直してもよい') + '</span></button>'
-    + (_boxIsMine(c) ? '<button type="button" class="lb-del tap" data-d="' + i + '" aria-label="自分が出したこのコースを消す">消す</button>' : '')
+    + (_boxIsMine(c) ? '<button type="button" class="lb-del tap" data-d="' + i + '" aria-label="自分が出したこのコースを削除">削除</button>' : '')
     + '</div>').join('');
   box.querySelectorAll('.lb-row').forEach(b => b.addEventListener('click', () => _libOpen(list[Number(b.getAttribute('data-i'))])));
   box.querySelectorAll('.lb-del').forEach(b => b.addEventListener('click', () => _libAskDelete(list[Number(b.getAttribute('data-d'))])));   // v212：出した本人だけ
@@ -10522,12 +10520,12 @@ function _libAskDelete(entry){
   if (!entry) return;
   const id = entry.id || entry.boxId;
   if (!id) { showToast('このコースは消せません'); return; }
-  if (!confirm('「' + (entry.name || '') + '」を みんなのコース から消します。\nよろしいですか？（自分が出したものだけ消せます）')) return;
-  showToast('消しています…');
+  if (!confirm('「' + (entry.name || '') + '」を みんなのコース から削除します。\nよろしいですか？（自分が出したものだけ削除できます）')) return;
+  showToast('削除しています…');
   _boxDelete(id).then(ok => {
-    if (!ok) { showToast('消せませんでした。電波の良いところでもう一度お試しください'); return; }
+    if (!ok) { showToast('削除できませんでした。電波の良いところでもう一度お試しください'); return; }
     _libCache = null;
-    showToast('消しました（置き場所に写ったぶんも、まもなく消えます）');
+    showToast('削除しました（置き場所に写ったぶんも、まもなく消えます）');
     openLibrarySheet();
   });
 }
