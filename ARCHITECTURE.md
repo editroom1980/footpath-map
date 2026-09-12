@@ -436,3 +436,8 @@ CONSTANTS(904) → STATE(968) → STORAGE(1015) → 版のお知らせ(1021) →
 ## 変更点の出し入れ（v178）
 - `_vpEditing()`（`mode==='via'` かつ編集中）が true の間だけ、通り道の点が見えて `dragging` が有効になる。切り替えは `_syncVpEdit()`（`setMode` から呼ぶ）→ 各点の `_syncVpIcon` と `_applyVpVis`。
 - 点を1つ作る道は `_makeVpOnRoute(lat, lng, snap)` の1本だけ（線のタップ `_viaTapAdd` と、線の引っぱり `_holdGrab` の両方がここを通る）。順番（`order`）はここで決めたものを後から変えない。
+
+## 配るリンク（v184）
+- 2通り：**リンクの中に入れる**（`#d=`／`#j=`・`_makeDataLink`／`_courseFromHash`・写真なし・置き場所不要）と、**ファイルを置く**（`?course=ファイル名.json`・写真つき・QRコードはこちら）。
+- `_viewParams()` が `location.hash` を見て `data` を返し、`initViewMode()` が最初に処理する。ハッシュはサーバに送られないので、静的配信でもそのまま動く。
+- リンクに入れる中身は `_courseForLink()`（写真と stickers を外し `shared:true` を付ける）。長さの上限の目安は `LINK_DATA_MAX`。

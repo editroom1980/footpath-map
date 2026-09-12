@@ -447,6 +447,11 @@ def static_checks(src):
     # --- v157: 番号の丸と種類の丸を横に並べる（オーナー指摘：iPhone で片方しか見えない）---
     chk('静的', '番号つきで種類がある地点：地図は「種類の丸＋右上に番号の小丸」、一覧・並べ替え・配布シート・カードは番号と種類を並べて出す',
         'class="wp-num"' in src and 'class="wp-dot cat"' in src and 'class="ro-badge cat"' in src and 'class="sh-cat"' in src and 'class="vip-dot vip-dot2"' in src and '_catBadge' not in src and 'wp-pair' not in src)
+    # --- v184: リンクにコースを入れて、そのまま配れるようにする（オーナー指摘「コピーしても開けない」）---
+    chk('静的', 'リンクの中にコースを入れて配れる（#d=／#j=）。写真は外す。配る画面の一番上に「かんたん：このリンクをそのまま配る」',
+        'function _makeDataLink' in src and 'function _courseFromHash' in src and 'function _courseForLink' in src and 'deflate-raw' in src
+        and "data: data, embed: p.get('embed') === '1', on: !!(file || id || data)" in src and 'id="shQuickCopy"' in src and 'id="shQuickSend"' in src
+        and 'const LINK_DATA_MAX = 60000;' in src and 'かんたん：このリンクをそのまま配る' in src)
     # --- v182: コース名は省略しない／取り込んだスポットからコースの情報を自動で書く ---
     chk('静的', 'コース名は省略せず折り返す（一覧・上の題名）。周辺の情報を取り込むと、空いている「コースの情報」に自動で書き込む',
         '.cc-name{' in src and 'white-space:normal;overflow-wrap:anywhere;word-break:normal}' in src and '-webkit-line-clamp:2' in src
@@ -1897,6 +1902,26 @@ def functional_checks(index_path):
             and pl.get('bigs') == ['ビュースポット', '史跡・記念碑', '飲食店・ショップ', '神社・寺院'] and pl.get('restHidden')
             and pl.get('restN', 0) >= 5 and pl.get('selVal') == 'parking' and pl.get('onChip') == '駐車場' and pl.get('savedType') == 'parking',
             str(pl)[:260])
+
+        # v184: リンクにコースを入れて配る：作る→読み戻す（写真は入らない）／壊れたリンクは断る
+        dl = page.evaluate("""async ()=>{ try{
+            const c = buildCurrentSaveData(); if (!c) return 'no course';
+            const url = await _makeDataLink(c);
+            const out = {made: /#(d|j)=[A-Za-z0-9\\-_]+$/.test(url), len: url.length, small: url.length < LINK_DATA_MAX};
+            const back = await _courseFromHash(url.slice(url.indexOf('#')));
+            out.round = !!back && back.name === c.name && back.wps.length === c.wps.length && back.shared === true
+                        && (back.wps || []).every(w => !w.photos || w.photos.length === 0)
+                        && JSON.stringify(Object.keys(back.routes || {}).sort()) === JSON.stringify(Object.keys(c.routes || {}).sort());
+            out.broken = (await _courseFromHash('#d=zzzz')) === null && (await _courseFromHash('#nope')) === null;
+            // 配布リンクとして開いたときの入口（_viewParams）がリンクの中身を見る
+            const keepHash = location.hash;
+            history.replaceState(null, '', url.slice(url.indexOf('#')));
+            const vp = _viewParams(); out.params = vp.on === true && !!vp.data;
+            history.replaceState(null, '', location.pathname + location.search + (keepHash || ''));
+            return out;
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        chk('機能', 'リンクにコースを入れて配る：作って読み戻せる（写真は入らない・道順は入る）／壊れたリンクは断る／入口が見分ける',
+            isinstance(dl, dict) and all(dl.get(k) for k in ('made', 'small', 'round', 'broken', 'params')), str(dl)[:220])
 
         # v183: 一覧の「削除」は必ず確認してから消す（やめる＝消えない／削除する＝消えて「元に戻す」が出る）
         dc = page.evaluate("""()=>{ try{

@@ -770,6 +770,9 @@ body.viewonly #viewBadge{display:none!important}   /* 歩く人には「歩く�
 #shareSheet .ss-n2{margin-left:8px;font-size:12px;color:var(--t-sub);font-weight:500}
 #shareSheet .ss-n2.warn{color:var(--brand)}
 /* 配布用リンクの画面（v150） */
+.sd-quick{border:1.5px solid var(--brand);border-radius:12px;padding:12px;margin-bottom:14px;background:#FFF9F2}   /* v184：すぐ配れるリンク */
+.sd-quick .sd-t{font-size:14px}
+.sd-hd{font-size:12px;font-weight:800;color:var(--t-sub);margin:0 0 8px 2px}
 .sd-step{display:flex;gap:10px;margin-bottom:14px}
 .sd-step>b{flex:0 0 24px;height:24px;border-radius:50%;background:var(--brand);color:#fff;font-size:13px;display:inline-flex;align-items:center;justify-content:center}
 .sd-step>div{flex:1;min-width:0}
@@ -1827,6 +1830,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
     <div class="help-section">
       <h3>💾 保存・配る</h3>
       <ul>
+        <li>「配る」→ <b>かんたん：このリンクをそのまま配る</b>。リンクの中にコースが入っているので、置き場所の用意は要りません（写真は入りません）</li>
         <li>保存は「保存」ボタンで行います（勝手には保存しません）。保存していない変更があると、ボタンが「保存」（濃い色）のままになります。一覧に戻るときにも「保存して戻る／保存せずに戻る」を確認します。この端末のブラウザに残ります</li>
         <li>「配る」→ 画像・配布シート（A4）・リンク・GPX の4つの出口と、配る前の確認（歩いた・私有地・分岐・注意…）が1枚にまとまっています</li>
         <li>「見た目 › 地図の色」で線と印の色を選べます。歩く人の画面と配布シートも同じ色になります</li>
@@ -3057,7 +3061,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v183';
+const APP_VERSION = 'v184';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -7519,7 +7523,8 @@ function _viewParams() {
   const p = new URLSearchParams(location.search);
   const file = _safeCourseFile(p.get('course'));
   const id   = p.get('view');
-  return { file: file, id: id, embed: p.get('embed') === '1', on: !!(file || id) };
+  const data = /^#(d|j)=[A-Za-z0-9\-_]+$/.test(location.hash || '') ? location.hash : null;   // v184：リンクの中にコースが入っている
+  return { file: file, id: id, data: data, embed: p.get('embed') === '1', on: !!(file || id || data) };
 }
 
 // 配布リンクで読めるのは「同じ場所に置いた .json」だけに限定する。
@@ -7591,6 +7596,12 @@ function initViewMode() {
   // Hide editing controls after s2 becomes visible
   setTimeout(async () => {
     if (!leafMap) initMap(); else leafMap.invalidateSize();
+    if (v.data) {                                   // ⓪ リンクの中にコースが入っている（v184：置き場所が要らない）
+      const data = await _courseFromHash(v.data);
+      if (!data) _showViewError('リンクからコースを読み取れませんでした。\nリンクが途中で切れていないか、最後までコピーされているかご確認ください。');
+      else { loadCourseData(data); maybeShowWalkTip(); }
+      return;
+    }
     if (v.file) {                                   // ① 配布リンク：同じ場所のJSONを読む（誰の端末でも開ける）
       const ok = await loadCourseFromFile(v.file);
       if (!ok) _showViewError('コースのファイルを読み込めませんでした。\nリンクが正しいか、ファイルが公開されているかご確認ください。');
@@ -9674,6 +9685,12 @@ function openShareDialog(course) {
       '<div style="background:#fff;border-radius:16px;max-width:440px;width:100%;padding:20px 18px;box-shadow:0 10px 40px rgba(0,0,0,.3);max-height:86vh;overflow-y:auto">'
       + '<div style="font-size:16px;font-weight:700;color:#4A2E0E;margin-bottom:3px">スマホで見てもらうリンクを作る</div>'
       + '<div id="shName" style="font-size:12px;color:#6A645E;margin-bottom:14px"></div>'
+      + '<div class="sd-quick"><div class="sd-t">かんたん：このリンクをそのまま配る</div>'
+      +   '<div class="sd-n" id="shQuickNote">リンクの中にコースが入っています。置き場所の用意は要りません。<b>写真は入りません</b>（写真も配るときは下の「写真も配る」へ）</div>'
+      +   '<div style="display:flex;gap:8px;margin-top:8px"><button id="shQuickCopy" class="sd-btn" style="flex:1">リンクをコピー</button>'
+      +   '<button id="shQuickSend" class="sd-btn ghost" style="flex:1" hidden>送る</button></div>'
+      +   '<button id="shQuickOpen" class="sd-btn ghost" style="margin-top:8px">このリンクを開いて確かめる</button></div>'
+      + '<div class="sd-hd">写真も配る（ファイルを置き場所に上げる）</div>'
       + '<div class="sd-step"><b>1</b><div><div class="sd-t">ファイルを書き出す</div>'
       +   '<div style="display:flex;align-items:center;gap:6px;margin:6px 0 8px"><input id="shFile" style="flex:1;min-width:0;border:1px solid #DED5C8;border-radius:8px;padding:9px 10px;font-size:14px" placeholder="course-01"><span style="font-size:13px;color:#6A645E">.json</span></div>'
       +   '<button id="shExport" class="sd-btn">このファイルを書き出す</button>'
@@ -9703,6 +9720,22 @@ function openShareDialog(course) {
       + 'title="' + escHtml(course.name || 'コース地図') + '"></iframe>';
   };
   ov.querySelector('#shName').textContent = course.name || '(名称未設定)';
+  // かんたんリンク（v184）：開いた時点で作っておく
+  let quick = '';
+  const qCopy = ov.querySelector('#shQuickCopy'), qSend = ov.querySelector('#shQuickSend'), qOpen = ov.querySelector('#shQuickOpen'), qNote = ov.querySelector('#shQuickNote');
+  _makeDataLink(course).then(u => {
+    quick = u;
+    if (u.length > LINK_DATA_MAX) qNote.innerHTML = 'このコースはリンクに入れるには大きすぎます（スポットが多い）。下の「写真も配る」の手順をお使いください。';
+    else qNote.innerHTML = 'リンクの中にコースが入っています（' + Math.round(u.length / 1024) + 'KB）。置き場所の用意は要りません。<b>写真は入りません</b>';
+  }).catch(() => { qNote.textContent = 'このリンクは作れませんでした（下の手順をお使いください）'; });
+  if (qSend) qSend.hidden = !(navigator.share);
+  if (qCopy) qCopy.onclick = () => {
+    if (!quick) return;
+    if (navigator.clipboard) navigator.clipboard.writeText(quick).then(() => showToast('🔗 リンクをコピーしました（そのまま送れます）'), () => showToast('コピーできませんでした'));
+    else showToast('コピーできませんでした');
+  };
+  if (qSend) qSend.onclick = async () => { if (!quick) return; try { await navigator.share({title: course.name || 'フットパスのコース', url: quick}); } catch(_) {} };
+  if (qOpen) qOpen.onclick = () => { if (quick) window.open(quick, '_blank'); };
   const gh = _ghUploadUrl(), ghBtn = ov.querySelector('#shGh'), ghNote = ov.querySelector('#shGhNote');   // GitHub Pages なら置き場所へ1回で行ける（v150）
   if (ghBtn) { ghBtn.hidden = !gh; ghBtn.onclick = () => window.open(gh, '_blank'); }
   if (ghNote && gh) ghNote.textContent = '開いた画面で「Add file › Upload files」→ 書き出したファイルを入れて「Commit changes」。1〜2分で公開され、下のリンクで開けます';
@@ -9773,6 +9806,56 @@ function _ghUploadUrlFor(hostname, pathname){
   return 'https://github.com/' + m[1] + '/' + seg[0] + '/upload/main';
 }
 function _ghUploadUrl(){ try { return _ghUploadUrlFor(location.hostname, location.pathname); } catch(_) { return null; } }
+/* ===== リンクにコースを丸ごと入れる（v184・オーナー指摘「リンクを配るをコピーしても開けない」）=====
+   これまでは「JSONファイルを書き出して、置き場所に上げてから」でないとリンクが開けなかった。
+   コースの中身を縮めてリンクの「#」の後ろに入れてしまえば、置き場所の用意なしで、その場で配れる。
+   ・写真は入らない（大きすぎる）。写真も配るときは今までどおりファイルを置く
+   ・「#」の後ろはサーバに送られないので、置き場所（GitHub Pages）の設定は何も要らない */
+const LINK_DATA_MAX = 60000;   // これを超えるリンクは長すぎるので勧めない（文字数）
+function _b64url(bytes){
+  let bin = ''; const CH = 0x8000;
+  for (let i = 0; i < bytes.length; i += CH) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + CH));
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+function _unb64url(str){
+  const b = atob(String(str).replace(/-/g, '+').replace(/_/g, '/'));
+  const out = new Uint8Array(b.length);
+  for (let i = 0; i < b.length; i++) out[i] = b.charCodeAt(i);
+  return out;
+}
+function _courseForLink(course){   // リンクに入れる中身（写真は外す）
+  const c = JSON.parse(JSON.stringify(course || {}));
+  (c.wps || []).forEach(w => { if (w && w.photos) w.photos = []; });
+  delete c.stickers;               // シールは写真が要るので外す
+  c.shared = true;                 // 配ったものの印（改変の可否に効く・v147）
+  return c;
+}
+async function _makeDataLink(course){
+  const raw = new TextEncoder().encode(JSON.stringify(_courseForLink(course)));
+  const base = _shareBaseUrl();
+  if (typeof CompressionStream !== 'undefined') {
+    try {
+      const blob = await new Response(new Blob([raw]).stream().pipeThrough(new CompressionStream('deflate-raw'))).blob();
+      return base + '#d=' + _b64url(new Uint8Array(await blob.arrayBuffer()));
+    } catch(_) {}
+  }
+  return base + '#j=' + _b64url(raw);   // 縮められない端末はそのまま入れる
+}
+async function _courseFromHash(hash){
+  const h = String(hash || '').replace(/^#/, '');
+  const m = /^(d|j)=([A-Za-z0-9\-_]+)$/.exec(h); if (!m) return null;
+  try {
+    const bytes = _unb64url(m[2]);
+    let text;
+    if (m[1] === 'd') {
+      if (typeof DecompressionStream === 'undefined') return null;
+      const blob = await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).blob();
+      text = await blob.text();
+    } else text = new TextDecoder().decode(bytes);
+    const data = JSON.parse(text);
+    return (data && data.name && Array.isArray(data.wps)) ? data : null;
+  } catch(_) { return null; }
+}
 function _shareBaseUrl() {
   return location.origin + location.pathname.replace(/[^/]*$/, '');
 }
