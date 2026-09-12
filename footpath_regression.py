@@ -447,6 +447,18 @@ def static_checks(src):
     # --- v157: 番号の丸と種類の丸を横に並べる（オーナー指摘：iPhone で片方しか見えない）---
     chk('静的', '番号つきで種類がある地点：地図は「種類の丸＋右上に番号の小丸」、一覧・並べ替え・印刷用シート・カードは番号と種類を並べて出す',
         'class="wp-num"' in src and 'class="wp-dot cat"' in src and 'class="ro-badge cat"' in src and 'class="sh-cat"' in src and 'class="vip-dot vip-dot2"' in src and '_catBadge' not in src and 'wp-pair' not in src)
+    # --- v225/v226: 見るだけ／編集できる・まわりの施設の取りこぼし・スタート／ゴールの役 ---
+    chk('静的', '公開の選択肢は「見るだけ／編集できる」', '<b>編集できる</b>' in src and '直してもよい' not in src
+        and "(c.allowEdit === false ? '見るだけ' : '編集できる')" in src)
+    chk('静的', 'まわりの施設は、名前の無い社寺・石碑・山頂なども拾う（名前はタグから作り、一覧では後ろに回す）',
+        'nwr["amenity"="place_of_worship"]' in src and 'nwr["historic"]' in src
+        and 'nwr["natural"~"^(peak|spring|waterfall|hot_spring|tree|cave_entrance|saddle)$"]' in src
+        and 'const NEARBY_NONAME_TAIL = true;' in src and 'noName: real ? undefined : 1' in src)
+    chk('静的', 'スタート／ゴールは「役」：印はその場所の種類、右上に緑S・赤G。同じ場所なら両方見えるようにずらす',
+        'function _roleOf' in src and 'function _isStart' in src and 'function _isGoal' in src and 'function _setRole' in src
+        and "const ROLE_COL = {start:'#1B8A3A', goal:'#D32F2F'};" in src and 'function _roleBadge' in src
+        and 'const SG_OVERLAP_M = 25;' in src and 'id="mRoleRow"' in src and 'wp-rolebox' in src
+        and "role:w.role||undefined}" in src)
     # --- v222/v223: はじめての案内（チュートリアル）とホーム画面への追加 ---
     chk('静的', 'はじめての案内：作る→出すまでを順に見せ、初回は自動、あとから何度でも開ける',
         'const TOUR = [' in src and 'function openTour' in src and 'function _tourFirstRun' in src
@@ -2298,6 +2310,41 @@ def functional_checks(index_path):
             isinstance(bx, dict) and all(bx.get(k) for k in ('oneBtn', 'idx', 'body', 'list', 'open', 'mine', 'heal', 'big', 'moved',
                                                             'phPut', 'phFlag', 'phGot', 'phSticker', 'dup', 'dup2', 'dup3',
                                                             'mineFlag', 'deleted', 'delMark', 'moved2')), str(bx)[:420])
+
+        # v226: スタート／ゴールの役（印はその場所の種類＋右上の S/G）
+        sg = page.evaluate("""()=>{ try{
+            const keepW = wps.slice(), out = {};
+            const mk = (t, dLat) => { idW++; const wp = {id:idW, type:t, name:t, desc:'', tel:'', dwell:0, fitBefore:true, fitAfter:true,
+              onRoute:true, lat:35.1 + dLat, lng:134.4, photos:[], labelDir:'auto', marker:null}; wps.push(wp); buildWpMarker(wp); return wp; };
+            const a = mk('parking', 0), b = mk('shrine', 0.00005), c = mk('view', 0.01);
+            // ① どのスポットにも役を付けられる
+            _setRole(a, 'start'); _setRole(b, 'goal');
+            out.roles = _isStart(a) && _isGoal(b) && !_hasRole(c);
+            refreshIcons();
+            const el = a.marker.getElement();
+            out.cat = !!el.querySelector('.wp-mk.hasnum > svg');                      // 丸の中は「駐車場」の絵
+            const bd = el.querySelector('.wp-num.wp-role');
+            out.badge = !!bd && bd.textContent === 'S' && /27, 138, 58|#1B8A3A/.test(bd.style.background || '');
+            const gb = b.marker.getElement().querySelector('.wp-num.wp-role');
+            out.goalBadge = !!gb && gb.textContent === 'G';
+            // ② 同じ場所ならずらして両方見える
+            const ra = a.marker.getElement().getBoundingClientRect(), rb = b.marker.getElement().getBoundingClientRect();
+            out.apart = Math.abs(ra.left - rb.left) > 4 || Math.abs(ra.top - rb.top) > 4;
+            // ③ 役は1つずつ（付け替えると前から外れる）
+            _setRole(c, 'start');
+            out.moved = _isStart(c) && !_isStart(a);
+            // ④ 同じ場所にスタートとゴール（両方）なら S と G が並ぶ
+            _setRole(c, 'both'); refreshIcons();
+            const box = c.marker.getElement().querySelectorAll('.wp-rolebox .wp-num');
+            out.both = box.length === 2 && box[0].textContent === 'S' && box[1].textContent === 'G';
+            // ⑤ 役のあるスポットは番号を持たない
+            out.noNum = !_isNumbered(c);
+            wps.forEach(w => { if (keepW.indexOf(w) < 0 && w.marker) leafMap.removeLayer(w.marker); });
+            wps = keepW; refreshIcons(); redrawList();
+            return out;
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        chk('機能', 'どのスポットにもスタート／ゴールの役を付けられ、印は種類の丸＋右上の緑S・赤G。同じ場所なら両方見える',
+            isinstance(sg, dict) and all(sg.get(k) for k in ('roles', 'cat', 'badge', 'goalBadge', 'apart', 'moved', 'both', 'noNum')), str(sg)[:220])
 
         # v222/v223: はじめての案内とホーム画面への追加
         tw = page.evaluate("""()=>{ try{

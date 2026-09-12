@@ -465,6 +465,14 @@ body.embed #s2, body.embed #mapArea, body.embed #mapWrap{height:100%!important;m
 .wp-mk svg,.wp-stk-badge svg,.wp-dot svg,.tc-dot svg,.vip-dot svg,.sh-lgm svg,.ro-badge svg,.nb-dot svg{display:block}
 .wp-more{position:absolute;right:-8px;bottom:-7px;min-width:18px;height:18px;padding:0 4px;border-radius:9px;background:#231C14;color:#fff;font-size:10px;font-weight:700;line-height:15px;text-align:center;border:1.5px solid #fff;box-sizing:border-box;font-family:inherit}
 .wp-num{position:absolute;right:-9px;top:-9px;border-radius:50%;color:#fff;font-weight:800;text-align:center;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4);font-family:inherit}
+.m-role{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-bottom:10px}
+.m-role-l{font-size:11px;font-weight:bold;color:var(--t-sub);width:100%}
+.m-role-b{min-height:36px;padding:0 11px;border:0.5px solid #E3DCD1;border-radius:10px;background:#FCFAF6;color:#4A2E0E;font-family:inherit;font-size:12.5px;font-weight:700;cursor:pointer}
+.m-role-b.on{color:#fff;border-color:transparent}
+.m-role-b.st.on{background:#1B8A3A}.m-role-b.gl.on{background:#D32F2F}.m-role-b.bo.on{background:linear-gradient(90deg,#1B8A3A 50%,#D32F2F 50%)}
+.m-role-b.on:not(.st):not(.gl):not(.bo){background:#6A645E}
+.wp-rolebox{position:absolute;right:-9px;top:-9px;display:flex;gap:1px}   /* v226：スタートとゴールが同じ場所のとき */
+.wp-rolebox .wp-num{position:static}
 .wp-mk.hasnum{overflow:visible}
 .wp-mk.hasnum .wp-visited{top:auto;bottom:-4px;right:-4px}   /* 番号の小丸と重ならないように下へ */
 .wp-dot.cat,.ro-badge.cat{width:18px;height:18px;margin-left:3px}   /* 一覧：番号の丸の横に種類の丸（v157） */
@@ -1846,6 +1854,12 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
       <label>種別</label><select id="mType"></select>
       <div id="mTypeChips"></div>   <!-- 種別の選び方（v128）：よく使う4つを大きく、残りは畳む。値は上の select に入れる -->
       <div id="mTypeHint" class="tc-hint" hidden></div>
+      <div class="m-role" id="mRoleRow"><span class="m-role-l">この場所の役</span>
+        <button type="button" class="m-role-b tap" data-role="" onclick="_mRolePick('')">なし</button>
+        <button type="button" class="m-role-b tap st" data-role="start" onclick="_mRolePick('start')">S スタート</button>
+        <button type="button" class="m-role-b tap gl" data-role="goal" onclick="_mRolePick('goal')">G ゴール</button>
+        <button type="button" class="m-role-b tap bo" data-role="both" onclick="_mRolePick('both')">S/G 両方</button>
+      </div>
       <label class="m-switch"><input type="checkbox" id="mOnRoute"><span><span class="m-sw-t">歩く順の番号をつける（道順に入れる）</span><small>外すと「立ち寄り先」になり、道順には入りません（印は種類の絵だけ）</small></span></label>
       <button type="button" class="m-move tap" id="mMove" onclick="startMoveSpot()"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4"/><path d="M12 18v4"/><path d="M2 12h4"/><path d="M18 12h4"/><circle cx="12" cy="12" r="4"/></svg><span>地図の上で場所を動かす</span><small>印は指で引きずっても動きません（v164）</small></button>   <!-- v164 -->
       <label>名前（地図に出ます）</label><input id="mName" placeholder="例：飯見の棚田">
@@ -1992,11 +2006,41 @@ function _typeSvg(type, px, color){
   return `<svg viewBox="0 0 24 24" width="${px}" height="${px}" aria-hidden="true" ${ic.fill ? `fill="${c}" stroke="${c}" stroke-width="1"` : `fill="none" stroke="${c}" stroke-width="2.2"`} stroke-linecap="round" stroke-linejoin="round">${ic.d}</svg>`;
 }
 function _onRouteOf(wp){ return wp.onRoute === true || ((wp.type === 'spot' || wp.type === 'course') && wp.onRoute !== false); }
-function _isNumbered(wp){ return !!wp && wp.type !== 'start' && wp.type !== 'goal' && wp.type !== 'node' && _onRouteOf(wp); }
+/* スタート／ゴールは「役」（v226・オーナー指示「印はその場所の種類を出し、右上に緑のS・赤のG」）。
+   ・`wp.role` に 'start' / 'goal' / 'both' を持たせる。どの種類のスポットにも付けられる
+   ・古いコースの `type:'start'|'goal'` もそのまま役として扱う（データは触らない＝壊れない） */
+function _roleOf(wp){
+  if (!wp) return '';
+  if (wp.role === 'start' || wp.role === 'goal' || wp.role === 'both') return wp.role;
+  if (wp.type === 'start') return 'start';
+  if (wp.type === 'goal') return 'goal';
+  return '';
+}
+function _isStart(wp){ const r = _roleOf(wp); return r === 'start' || r === 'both'; }
+function _isGoal(wp){ const r = _roleOf(wp); return r === 'goal' || r === 'both'; }
+function _hasRole(wp){ return !!_roleOf(wp); }
+function _setRole(wp, role){   // 役は1つずつ。付け替えると前の持ち主から外す
+  if (!wp) return;
+  if (role === 'start' || role === 'both') wps.forEach(w => { if (w !== wp && _isStart(w)) _clearRole(w, 'start'); });
+  if (role === 'goal'  || role === 'both') wps.forEach(w => { if (w !== wp && _isGoal(w))  _clearRole(w, 'goal'); });
+  if (wp.type === 'start' || wp.type === 'goal') wp.type = 'spot';   // 古い形は種類を「スポット」に直す
+  wp.role = role || undefined;
+}
+function _clearRole(wp, which){
+  const r = _roleOf(wp);
+  const left = (r === 'both') ? (which === 'start' ? 'goal' : 'start') : (r === which ? '' : r);
+  if (wp.type === 'start' || wp.type === 'goal') wp.type = 'spot';
+  wp.role = left || undefined;
+}
+function _isNumbered(wp){ return !!wp && !_hasRole(wp) && wp.type !== 'node' && _onRouteOf(wp); }
 /* 丸の中身：S／G／歩く順の数字／種類の絵。txt は文字だけの場面（帯・高低差の目盛り）用 */
 function _markInner(wp, px){
-  if (wp.type === 'start') return {html:'S', txt:'S', svg:false};
-  if (wp.type === 'goal')  return {html:'G', txt:'G', svg:false};
+  if (_hasRole(wp)) {   // v226：丸の中は「その場所の種類」。S/G は右上の小さな丸で出す
+    const svg = _typeSvg(wp.type, px);
+    if (svg) return {html:svg, txt:'', svg:true};
+    const r = _roleOf(wp);
+    return {html:_flagSvg(px), txt:(r === 'goal' ? 'G' : 'S'), svg:true};   // 種類が無ければ旗の絵
+  }
   if (_isNumbered(wp)) { const n = String(courseNum(wp) || '?'); return {html:n, txt:n, svg:false}; }
   const svg = _typeSvg(wp.type, px);
   return svg ? {html:svg, txt:'', svg:true} : {html:'●', txt:'', svg:false};
@@ -2015,7 +2059,26 @@ function _moreBadge(wp, px){   // 束ねた印（v159）。v168：印の大き�
   const b = Math.max(12, Math.round((px || 36) * 0.5));
   return `<span class="wp-more" style="min-width:${b}px;height:${b}px;line-height:${b - 3}px;font-size:${Math.max(8, Math.round(b * 0.56))}px;right:${-Math.round(b * 0.45)}px;bottom:${-Math.round(b * 0.4)}px">+${wp._clusterN - 1}</span>`;
 }
+const ROLE_COL = {start:'#1B8A3A', goal:'#D32F2F'};   // v226：スタート＝緑／ゴール＝赤
+const SG_OVERLAP_M = 25;   // v226：これ以内にスタートとゴールがあれば、重ならないようにずらす
+function _flagSvg(px){
+  const d = Math.max(10, Math.round(px || 14));
+  return '<svg viewBox="0 0 24 24" width="' + d + '" height="' + d + '" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21v-16"/><path d="M5 5l10 3l-3 4l3 4l-10 3"/></svg>';
+}
+/* 役の印（v226）：番号と同じ右上の位置。スタートとゴールが同じ場所なら S と G を並べて出す */
+function _roleBadge(wp, px){
+  const r = _roleOf(wp); if (!r) return '';
+  const h = Math.max(13, Math.round(px));
+  const one = (ch, col, w) => '<span class="wp-num wp-role" style="width:' + w + 'px;height:' + h + 'px;line-height:' + (h - 3)
+      + 'px;font-size:' + _wpFont(h, ch) + 'px;background:' + col + '">' + ch + '</span>';
+  if (r === 'both') {
+    return '<span class="wp-rolebox" style="height:' + h + 'px">'
+         + one('S', ROLE_COL.start, h) + one('G', ROLE_COL.goal, h) + '</span>';
+  }
+  return one(r === 'goal' ? 'G' : 'S', r === 'goal' ? ROLE_COL.goal : ROLE_COL.start, h);
+}
 function _numBadge(wp, px){
+  if (_hasRole(wp)) return _roleBadge(wp, px);   // v226：役があるときは番号の代わりに S/G
   if (!_isNumbered(wp) || !_hasCatIcon(wp)) return '';
   const n = String(courseNum(wp) || '?');
   return `<span class="wp-num" style="width:${px}px;height:${px}px;line-height:${px - 3}px;font-size:${_wpFont(px, n)}px;background:${_spotColor()}">${n}</span>`;
@@ -2065,6 +2128,7 @@ const NEARBY_WIKI       = 'https://ja.wikipedia.org/w/api.php';
 const SCRUB_WIN_M = 75, SCRUB_HOLD_MS = 3000, SCRUB_HOLD_START_MS = 220, SCRUB_MOVE_PX = 8, SCRUB_FLICK_PX = 12;   // v168：押さえてから／横に動かしてからなぞる、縦ならフリック     // 高低差のなぞり（v166）：勾配は前後 75m（計150m）の平均（標高データの粗さをならす）／指を離してから印を残す時間
 const GRADE_MID = 4, GRADE_STEEP = 8;              // 勾配の色分け（v166）%：やや急／急
 const GRADE_COL = {mid:'#D97706', steep:'#DC2626'};
+const NEARBY_NONAME_TAIL = true;   // v225：タグから作った呼び名（名前なし）の候補は一覧の後ろへ
 const NEARBY_TIMEOUT_MS = 20000, NEARBY_MAX = 300, NEARBY_DUP_M = 15, NEARBY_DESC_MAX = 160, NEARBY_KW_RADIUS = 10000, NEARBY_MERGE_M = 60;
 const KSJ_INDEX = 'data/ksj/index.json';   // 国土数値情報（国土交通省）を tools/ksj_convert.py で変換したもの（v162）
 const NEARBY_RADII      = [300, 1000, 2000, 5000];   // コース（スポット）からの距離の選択肢（v162：5km を追加）
@@ -3183,7 +3247,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 手描きの道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した手描きの道id（直前取り消し用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v224';
+const APP_VERSION = 'v226';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -3916,8 +3980,8 @@ function showWpTypePicker(lat, lng, e) {
     WT.filter(t => {
       if (t.v === 'node' || t.v === 'spot') return false;               // 「種類なし」は現在地から置く画面では「番号だけの地点」の行として別に出す（v162）
       // 既にスタート/ゴールがある場合は選択肢から除外（1つずつに制限）
-      if (t.v === 'start' && wps.some(w => w.type === 'start')) return false;
-      if (t.v === 'goal'  && wps.some(w => w.type === 'goal'))  return false;
+      if (t.v === 'start' && wps.some(_isStart)) return false;
+      if (t.v === 'goal'  && wps.some(_isGoal))  return false;
       return true;
     }).map(t => `<div class="ctx-it wpick" onclick="event.stopPropagation();addWpFromPicker('${t.v}')">${t.l}</div>`).join('');
   picker.innerHTML = picker.innerHTML.replace('</button>', '</button>') + '';
@@ -4016,12 +4080,21 @@ function wpIcon(wp, sz, anc) {
   }
   const t = WT.find(x=>x.v===wp.type)||WT[0];
   const m = _markInner(wp, Math.round(sz[0] * 0.6));          // S/G・歩く順の数字・種類の絵（v155）
+  /* v226：スタートとゴールが同じ場所にあると印が重なって片方しか見えない。
+     あとの方（ゴール）を少しだけ斜めにずらして、両方見えるようにする（データは動かさない＝表示だけ） */
+  if (_isGoal(wp) && !_isStart(wp)) {
+    const st = wps.find(w => w !== wp && _isStart(w));
+    if (st && haversine(st.lat, st.lng, wp.lat, wp.lng) <= SG_OVERLAP_M) {
+      const d = Math.max(6, Math.round(sz[0] * 0.42));
+      anc = [anc[0] - d, anc[1] - d];
+    }
+  }
   // 閲覧モードで訪問済みなら、○の右上に小さなチェックを付ける（スタンプラリー）
   const stamp = (viewMode && _visits && _visits[wp.id]) ? '<span class="wp-visited">✓</span>' : '';
-  if (_isNumbered(wp) && _hasCatIcon(wp) && !(_stickerOn() && wp.photos && wp.photos[0])) {   // 番号＋種類：種類の丸＋右上に番号の小丸（v158）
+  if (((_isNumbered(wp) && _hasCatIcon(wp)) || _hasRole(wp)) && !(_stickerOn() && wp.photos && wp.photos[0])) {   // 番号／役＋種類：種類の丸＋右上の小丸（v158・v226）
     const bsz = Math.max(14, Math.round(sz[0] * 0.55));   // 番号の小丸（v168：小さな印でも丸からはみ出しすぎない）
     return L.divIcon({className:'',
-      html:`<div data-wtype="${wp.type}" class="wp-mk svg hasnum" style="position:relative;width:${sz[0]}px;height:${sz[1]}px;border-radius:50%;background:${t.c};color:#fff;border:2.5px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.45);cursor:pointer">${_typeSvg(wp.type, Math.round(sz[0] * 0.6))}${_numBadge(wp, bsz)}${stamp}${_moreBadge(wp, sz[0])}</div>`,
+      html:`<div data-wtype="${wp.type}" class="wp-mk svg hasnum" style="position:relative;width:${sz[0]}px;height:${sz[1]}px;border-radius:50%;background:${t.c};color:#fff;border:2.5px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.45);cursor:pointer">${_hasRole(wp) ? m.html : _typeSvg(wp.type, Math.round(sz[0] * 0.6))}${_numBadge(wp, bsz)}${stamp}${_moreBadge(wp, sz[0])}</div>`,
       iconSize:sz, iconAnchor:anc});
   }
   if (_stickerOn() && wp.photos && wp.photos[0]) {                       // シール（v142）
@@ -4128,7 +4201,7 @@ function autoPlaceLabels(){
     const items = [];
     const blockers = [];                       // スポットの○（ラベルで隠さない）
     const placed = [];                         // 置いた名札（利用者が向きを決めたものは先に入れる）
-    const pri = w => w.type === 'start' ? 0 : w.type === 'goal' ? 1 : _isNumbered(w) ? 10 + (courseNum(w) || 9999) : 100000;
+    const pri = w => _isStart(w) ? 0 : _isGoal(w) ? 1 : _isNumbered(w) ? 10 + (courseNum(w) || 9999) : 100000;
     wps.forEach(wp => {
       if (!wp.marker || wp.type === 'node' || wp._clusterHidden) return;                     // 束ねて隠した印は名札も無い
       const p = leafMap.latLngToContainerPoint([wp.lat, wp.lng]);
@@ -4620,7 +4693,7 @@ function _fmtDistM(d) { return d >= 950 ? (d / 1000).toFixed(1) + 'km' : (d >= 1
 function _spotLabel(wp) {
   const t = WT.find(x => x.v === wp.type) || WT[0];
   const n = _isNumbered(wp) ? courseNum(wp) : null;
-  const mark = n ? (n >= 1 && n <= 20 ? String.fromCharCode(0x245F + n) : String(n)) : (wp.type === 'start' ? 'S' : wp.type === 'goal' ? 'G' : '');
+  const mark = n ? (n >= 1 && n <= 20 ? String.fromCharCode(0x245F + n) : String(n)) : (_isStart(wp) ? 'S' : _isGoal(wp) ? 'G' : '');
   return (mark ? mark + ' ' : '') + (wp.name || t.l).split('\n')[0];
 }
 function _spotsAlongRoute() {   // 往復で2回通るスポットは、進みごとに1つずつ（行きも帰りも「次」になる）
@@ -4651,12 +4724,12 @@ function _arrivedSpot() {
 /* 区間ごとの目安の分数（S→①、①→②…）。番号のついたコースポイントと出発・到着の間だけ（見どころは区間の単位にしない）。
    コース沿いの距離÷歩く速さ。登りと滞在は含めない（v138） */
 function _segmentMinutes() {
-  const spots = _spotsAlongRoute().filter(sp => sp.wp.type === 'start' || sp.wp.type === 'goal' || _isNumbered(sp.wp));
+  const spots = _spotsAlongRoute().filter(sp => _hasRole(sp.wp) || _isNumbered(sp.wp));
   const out = [];
   for (let i = 1; i < spots.length; i++) {
     const d = spots[i].along - spots[i-1].along;
     if (d < 20) continue;                                  // 同じ場所（往復の重なり等）は飛ばす
-    const mark = w => w.type === 'start' ? 'S' : w.type === 'goal' ? 'G' : (() => { const n = courseNum(w) || 0; return (n >= 1 && n <= 20) ? String.fromCharCode(0x245F + n) : String(n || '?'); })();
+    const mark = w => _isStart(w) ? 'S' : _isGoal(w) ? 'G' : (() => { const n = courseNum(w) || 0; return (n >= 1 && n <= 20) ? String.fromCharCode(0x245F + n) : String(n || '?'); })();
     out.push({from: mark(spots[i-1].wp), to: mark(spots[i].wp), distM: Math.round(d), min: Math.max(1, Math.round((d / 1000) / _walkSpeed() * 60))});
   }
   return out;
@@ -5903,8 +5976,8 @@ function removeLines() {
 
 function buildStraightCoords() {
   const rw      = routeWps();
-  const startWp = wps.find(w => w.type === 'start');
-  const goalWp  = wps.find(w => w.type === 'goal');
+  const startWp = wps.find(_isStart);
+  const goalWp  = wps.find(_isGoal);
   const c = [];
   // スタートがrouteWpsに含まれない場合のみ先頭に追加
   if (startWp && rw.length > 0 && rw[0].id !== startWp.id) {
@@ -6210,7 +6283,7 @@ async function doRouting() {
 
       // ── start→① のルートを前に結合（startがrouteWpsに未含有の場合のみ）──
       const rw_      = routeWps();
-      const startWp  = wps.find(w => w.type === 'start');
+      const startWp  = wps.find(_isStart);
       const firstRw  = rw_[0];
       let startCoords = [];
       if (startWp && firstRw && startWp.id !== firstRw.id) {
@@ -6223,7 +6296,7 @@ async function doRouting() {
       }
 
       // ── lastWP→goal のルートを後ろに結合（goalがrouteWpsに未含有の場合のみ）──
-      const goalWp   = wps.find(w => w.type === 'goal');
+      const goalWp   = wps.find(_isGoal);
       const lastRw   = rw_[rw_.length - 1];
       let goalCoords = [];
       if (goalWp && lastRw && goalWp.id !== lastRw.id) {
@@ -6355,7 +6428,7 @@ function _routesInUse() {
   // 出発点／到着点がルートの外にあるとき、doRouting はルートの端とつなぐ区間も経路サーバに聞く。
   // その2区間も同梱しないと、共有リンクを開いたときにそこだけサーバを呼んでしまう（doRouting と同じ条件）
   if (rw.length) {
-    const startWp = wps.find(w => w.type === 'start'), goalWp = wps.find(w => w.type === 'goal');
+    const startWp = wps.find(_isStart), goalWp = wps.find(_isGoal);
     const pairs = [];
     if (startWp && startWp.id !== rw[0].id) pairs.push([startWp, rw[0]]);
     if (goalWp && goalWp.id !== rw[rw.length - 1].id) pairs.push([rw[rw.length - 1], goalWp]);
@@ -6898,6 +6971,7 @@ function openModal(id) {
   document.getElementById('mDwell').value   = wp.dwell || 0;
   const _onRouteDefault = _onRouteOf(wp);   // v155：種類に関係なく「道順に入っているか」
   document.getElementById('mOnRoute').checked = _onRouteDefault;
+  _mRoleSet(_roleOf(wp) || '');
   document.getElementById('mFitBefore').checked = (wp.fitBefore !== false);
   document.getElementById('mFitAfter').checked  = (wp.fitAfter  !== false);
   document.getElementById('mLabelDir').value    = wp.labelDir  || 'auto';
@@ -6914,6 +6988,13 @@ function closeModal() {
   editId = null;
 }
 
+/* この場所の役（v226）：スタート／ゴール／両方／なし。役は1つずつなので、付け替えると前の持ち主から外れる */
+let _mRole = '';
+function _mRolePick(r){ _mRoleSet(_mRole === r ? '' : r); }
+function _mRoleSet(r){
+  _mRole = r || '';
+  document.querySelectorAll('#mRoleRow .m-role-b').forEach(b => b.classList.toggle('on', (b.getAttribute('data-role') || '') === _mRole));
+}
 function saveModal() {
   if (editId===null) return;
   const wp = wps.find(w=>w.id===editId);
@@ -6931,6 +7012,7 @@ function saveModal() {
   wp.fitAfter  = document.getElementById('mFitAfter').checked;
   wp.labelDir  = document.getElementById('mLabelDir').value;
   wp.onRoute   = document.getElementById('mOnRoute').checked;
+  if (_mRole !== (_roleOf(wp) || '')) { _setRole(wp, _mRole); if (_mRole) wp.onRoute = true; }   // v226：役を付けたら道順にも入れる
   wp.photos    = [..._modalPhotos];
   if (wp.marker) wp.marker.setIcon(wpIcon(wp));
   updateTooltip(wp);
@@ -6976,7 +7058,7 @@ const TOUR = [
   {ic:'✏️', t:'4. 道順を整える', d:'スポットを2つ以上置くと、道なりに赤い線が引かれます。<br>・<b>ルート調整</b>…線をつまんで通したい道へ動かす<br>・<b>手描き</b>…指でなぞってそのとおりに引く<br>・<b>道を足す</b>…地図に無いあぜ道などを描き足す'},
   {ic:'📝', t:'5. コースの情報を書く', d:'メニューの <b>「コースのことを書く」</b> から、アクセス・トイレ・駐車場・見どころ・歩く人の心得を書けます。<br>「まわりの施設を探す」で取り込むと、トイレや駐車場は自動で書き込まれます。'},
   {ic:'💾', t:'6. 保存する', d:'右上の <b>「保存」</b> を押すと、この端末に保存されます（勝手には保存しません）。<br>一覧に戻るときも「保存しますか？」と確認します。'},
-  {ic:'📖', t:'7. みんなのマップに出す', d:'<b>「配る」→「みんなのマップに出す」</b>。<br>出す人の名前と、見た人にできること（<b>見るだけ</b>／<b>直してもよい</b>）を選んで <b>「出す」</b> を押すだけ。<br>登録も合言葉もいりません。押した瞬間に全員の一覧に並びます。'},
+  {ic:'📖', t:'7. みんなのマップに出す', d:'<b>「配る」→「みんなのマップに出す」</b>。<br>出す人の名前と、見た人にできること（<b>見るだけ</b>／<b>編集できる</b>）を選んで <b>「出す」</b> を押すだけ。<br>登録も合言葉もいりません。押した瞬間に全員の一覧に並びます。'},
   {ic:'🔗', t:'8. 歩く人に渡す', d:'「配る」からは、ほかにも<br>・<b>共有リンク</b>…LINE やメールでそのまま送れます<br>・<b>印刷用シート</b>…A4 で刷って配れます<br>・<b>画像</b>…地図の絵だけ保存<br><br>お疲れさまでした。さっそく作ってみましょう。'}
 ];
 let _tourI = 0;
@@ -7655,7 +7737,7 @@ function _magnetSvg(){ return '<svg viewBox="0 0 24 24" width="15" height="15" f
    ============================================================ */
 function _makeSnapshot() {
   return {
-    wps: wps.map(w=>({id:w.id,type:w.type,name:w.name,desc:w.desc,tel:w.tel,dwell:w.dwell||0,fitBefore:w.fitBefore!==false,fitAfter:w.fitAfter!==false,onRoute:w.onRoute!==undefined?w.onRoute!==false:(w.type==='course'),lat:w.lat,lng:w.lng,labelDir:w.labelDir||'auto',got:w.got?1:undefined})),
+    wps: wps.map(w=>({id:w.id,type:w.type,name:w.name,desc:w.desc,tel:w.tel,dwell:w.dwell||0,fitBefore:w.fitBefore!==false,fitAfter:w.fitAfter!==false,onRoute:w.onRoute!==undefined?w.onRoute!==false:(w.type==='course'),lat:w.lat,lng:w.lng,labelDir:w.labelDir||'auto',got:w.got?1:undefined,role:w.role||undefined})),
     vps: vps.map(v=>({id:v.id,segAfter:v.segAfter,fitBefore:v.fitBefore!==false,fitAfter:v.fitAfter!==false,lat:v.lat,lng:v.lng,order:v.order||0,guide:v.guide?JSON.parse(JSON.stringify(v.guide)):undefined})),
     idW, idV,
     customPaths: customPaths.map(p=>({id:p.id, pts:(p.pts||[]).map(pt=>pt.slice())})),
@@ -8201,13 +8283,13 @@ function _declutter(){
   };
   list.forEach(w => { if (w._clusterHidden || w._clusterN > 1) { const n = w._clusterN; w._clusterN = 0; w._clusterIds = null; show(w, true); if (n > 1) w.marker.setIcon(wpIcon(w)); } });
   // 優先順：S・G → 歩く順の番号（小さい順）→ 種類だけの地点
-  const pri = w => w.type === 'start' ? 0 : w.type === 'goal' ? 1 : _isNumbered(w) ? 10 + (courseNum(w) || 9999) : 100000;
+  const pri = w => _isStart(w) ? 0 : _isGoal(w) ? 1 : _isNumbered(w) ? 10 + (courseNum(w) || 9999) : 100000;
   const base = _wpSize()[0];
   const sizeOf = w => (_stickerOn() && w.photos && w.photos[0] && _stickerOf(w.photos[0])) ? _stickerSize()[0] : base;
   const leaders = [];
   list.slice().sort((a, b) => pri(a) - pri(b)).forEach(w => {
     const pt = leafMap.latLngToLayerPoint([w.lat, w.lng]), sw = sizeOf(w);
-    const isSG = w.type === 'start' || w.type === 'goal';
+    const isSG = _hasRole(w);
     const near = leaders.find(l => l.pt.distanceTo(pt) < ((l.size + sw) / 2) * DECL_OVERLAP);
     if (near && !isSG) { near.n++; near.ids.push(w.id); show(w, false); }   // S・G は必ず出す。束ねた中身は覚えておく（v189）
     else leaders.push({w, pt, n: 1, size: sw, ids: [w.id]});
@@ -8336,7 +8418,7 @@ function reverseCourse(){
   const rw = routeWps(); if (rw.length < 2) { showToast('スポットが2つ以上あるときに使えます'); return; }
   saveSnapshot();
   wps.reverse();
-  const st = wps.find(w => w.type === 'start'), gl = wps.find(w => w.type === 'goal');   // 両端の役を入れ替える
+  const st = wps.find(_isStart), gl = wps.find(_isGoal);   // 両端の役を入れ替える
   if (st) st.type = 'goal'; if (gl) gl.type = 'start';
   vps.forEach(v => { const i = rw.findIndex(w => w.id === v.segAfter); const B = i >= 0 ? rw[i + 1] : null; if (B) v.segAfter = B.id; v.order = -(v.order || 0); });   // 区間 A→B は B→A に
   clearCache(); redrawStraight(); scheduleRouting(); refreshIcons(); redrawList(); wps.forEach(w => updateTooltip(w)); updateDistanceAndTime();
@@ -8347,7 +8429,7 @@ function loopCourse(){
   const first = rw[0], last = rw[rw.length - 1];
   if (haversine(first.lat, first.lng, last.lat, last.lng) < 30) { showToast('もう出発点に戻る周回になっています'); return; }
   saveSnapshot();
-  const gl = wps.find(w => w.type === 'goal'); if (gl) gl.type = 'spot';
+  const gl = wps.find(_isGoal); if (gl) _clearRole(gl, 'goal');
   idW++;
   const wp = {id:idW, type:'goal', name:'', desc:'', tel:'', dwell:0, fitBefore:true, fitAfter:true, onRoute:true, lat:first.lat, lng:first.lng, photos:[], labelDir:'auto', marker:null};
   wps.push(wp); buildWpMarker(wp);
@@ -8468,8 +8550,9 @@ function _nbDefaultName(kind, tags){
   const a = tags.amenity || '';
   if (kind === 'toilet') return 'トイレ'; if (kind === 'parking') return '駐車場'; if (kind === 'bus') return (tags.railway === 'station' ? '駅' : 'バス停');
   if (kind === 'shrine') return tags.religion === 'buddhist' ? '寺院' : (tags.religion === 'shinto' ? '神社' : '神社・寺院');
-  if (kind === 'view') return '展望'; if (kind === 'hist') return _nbWord(tags.historic) || '史跡';
-  return _nbWord(a) || _nbWord(tags.shop) || '';
+  if (kind === 'view') return '展望'; if (kind === 'hist') return _nbWord(tags.historic) || _nbWord(tags.tourism) || _nbWord(tags.man_made) || '史跡';
+  if (kind === 'park') return _nbWord(tags.natural) || _nbWord(tags.leisure) || '自然・公園';   // v225：山頂・滝・湧き水・大木など
+  return _nbWord(a) || _nbWord(tags.shop) || _nbWord(tags.tourism) || '';
 }
 function _nbDesc(kind, tags){
   const parts = [];
@@ -8496,6 +8579,14 @@ async function _nbFetchOsm(bb, kw){   // v162：名前のあるものを全部�
   const named = kw ? 'nwr["name"~"' + kw.replace(/["\\]/g, '') + '",i](' + box + ');'
                    : 'nwr["name"]["highway"!~"."]["waterway"!~"."]["boundary"!~"."]["route"!~"."]["landuse"!~"."]["power"!~"."]["place"!~"."]["railway"!~"^(rail|narrow_gauge|abandoned|disused|light_rail|subway|tram)$"]["natural"!~"^(water|wood|scrub|grassland|coastline|bay|strait)$"]["type"!~"^(route|boundary|waterway)$"](' + box + ');'
                      + 'nwr["amenity"~"^(toilets|parking|drinking_water|shelter)$"](' + box + ');nwr["highway"="bus_stop"](' + box + ');'
+                     /* v225（オーナー報告「神社や寺がほとんど入ってこない」）：田舎では名前の付いていない社寺・石碑・山頂が多い。
+                        名前が無くても役に立つものは、名前の条件を外して拾う（名前はタグから「神社」「祠」などを作る） */
+                     + 'nwr["amenity"="place_of_worship"](' + box + ');'
+                     + 'nwr["historic"](' + box + ');'
+                     + 'nwr["tourism"~"^(attraction|viewpoint|artwork|museum|picnic_site|information)$"](' + box + ');'
+                     + 'nwr["natural"~"^(peak|spring|waterfall|hot_spring|tree|cave_entrance|saddle)$"](' + box + ');'
+                     + 'nwr["man_made"~"^(tower|lighthouse|watermill|windmill|water_well|monitoring_station)$"](' + box + ');'
+                     + 'nwr["leisure"~"^(park|garden|nature_reserve)$"](' + box + ');'
                      + (_nbKinds().has('place') ? 'nwr["place"~"^(hamlet|village|neighbourhood|locality|quarter|suburb|isolated_dwelling)$"](' + box + ');' : '');
   const q = '[out:json][timeout:20];(' + named + ');out center tags 800;';
   let lastErr = null;
@@ -8506,8 +8597,9 @@ async function _nbFetchOsm(bb, kw){   // v162：名前のあるものを全部�
         const tags = el.tags || {}, lat = el.lat != null ? el.lat : (el.center || {}).lat, lng = el.lon != null ? el.lon : (el.center || {}).lon;
         const kind = _nbKindOf(tags); if (lat == null || lng == null || !kind) return null;
         if (!kw && !_nbKinds().has(kind)) return null;
-        const name = tags.name || tags['name:ja'] || _nbDefaultName(kind, tags); if (!name) return null;
-        return {id:'osm' + el.type + el.id, kind, type:(NEARBY_KINDS.find(k => k.k === kind) || {}).t || 'other', name, desc:_nbDesc(kind, tags), tel:tags.phone || tags['contact:phone'] || '', lat, lng, src:'OpenStreetMap'};
+        const real = tags.name || tags['name:ja'] || '';
+        const name = real || _nbDefaultName(kind, tags); if (!name) return null;
+        return {id:'osm' + el.type + el.id, kind, type:(NEARBY_KINDS.find(k => k.k === kind) || {}).t || 'other', name, desc:_nbDesc(kind, tags), tel:tags.phone || tags['contact:phone'] || '', lat, lng, src:'OpenStreetMap', noName: real ? undefined : 1};
       }).filter(Boolean);
     } catch(e) { lastErr = e; }
   }
@@ -8571,7 +8663,9 @@ async function nearbySearch(){
   else { try { nom = await _nbFetchNominatim(kw, bb); } catch(e) {} }
   const all = osm.concat(ksj, wiki, nom).map(c => Object.assign(c, {dist: Math.round(_nbDistToCourse(c.lat, c.lng))})).filter(c => c.dist <= radius && !_nbIsDup(c));
   const kept = [];                                         // 同じ名前が 60m 以内に2つ（OSM と公的データ）なら先のものだけ
-  all.sort((a, b) => a.dist - b.dist).forEach(c => { if (!kept.some(k => k.name === c.name && haversine(k.lat, k.lng, c.lat, c.lng) <= NEARBY_MERGE_M)) kept.push(c); });
+  /* v225：名前のあるものを先に、タグから作った呼び名（名前なし）はそのあとに。どちらも近い順 */
+  all.sort((a, b) => (NEARBY_NONAME_TAIL ? ((a.noName ? 1 : 0) - (b.noName ? 1 : 0)) : 0) || a.dist - b.dist)
+     .forEach(c => { if (!kept.some(k => k.name === c.name && haversine(k.lat, k.lng, c.lat, c.lng) <= NEARBY_MERGE_M)) kept.push(c); });
   _nb.cands = kept.slice(0, NEARBY_MAX);
   _nb.busy = false;
   _nbSetStatus((errs.length ? '⚠️ ' + errs.join('・') + ' から取得できませんでした（通信できる場所で試してください）。' : '') + (_nb.cands.length ? _nb.cands.length + ' 件見つかりました。追加するものを選んでください（地図の薄い○も押せます）' : (errs.length ? '' : (kw ? 'その名前は周り 10km に見つかりませんでした' : 'この範囲には見つかりませんでした。距離を広げるか、種類を増やしてください'))));
@@ -9639,7 +9733,7 @@ function buildCurrentSaveData() {
     origin:   courseInfo.origin || undefined,          // 作者の印（v220）。取り込んでも消さない
     center:  leafMap ? {lat:leafMap.getCenter().lat, lng:leafMap.getCenter().lng} : null,
     zoom:    leafMap ? leafMap.getZoom() : 14,
-    wps:     wps.map(w=>({id:w.id,type:w.type,name:w.name,desc:w.desc,tel:w.tel,dwell:w.dwell||0,fitBefore:w.fitBefore!==false,fitAfter:w.fitAfter!==false,onRoute:w.onRoute!==undefined?w.onRoute!==false:(w.type==='course'),lat:w.lat,lng:w.lng,labelDir:w.labelDir||'auto',photos:w.photos||[],got:w.got?1:undefined})),
+    wps:     wps.map(w=>({id:w.id,type:w.type,name:w.name,desc:w.desc,tel:w.tel,dwell:w.dwell||0,fitBefore:w.fitBefore!==false,fitAfter:w.fitAfter!==false,onRoute:w.onRoute!==undefined?w.onRoute!==false:(w.type==='course'),lat:w.lat,lng:w.lng,labelDir:w.labelDir||'auto',photos:w.photos||[],got:w.got?1:undefined,role:w.role||undefined})),
     vps:     vps.map(v=>({id:v.id,segAfter:v.segAfter,fitBefore:v.fitBefore!==false,fitAfter:v.fitAfter!==false,lat:v.lat,lng:v.lng,order:v.order||0,guide:v.guide||undefined})),   // guide＝分岐・注意の案内（v141）
     customRoads: customRoads.map(r=>({id:r.id,name:r.name,coords:r.coords})),
     customPaths: (customPaths||[]).map(p=>({id:p.id, pts:(p.pts||[]).map(pt=>pt.slice())})),
@@ -10657,7 +10751,7 @@ function _libRender(list){
   box.innerHTML = list.map((c, i) => '<div class="lb-item"><button type="button" class="lb-row tap" data-i="' + i + '">'
     + '<span class="lb-name">' + escHtml(c.name || '(名称未設定)') + '</span>'
     + '<span class="lb-sub">' + escHtml([c.area, c.by ? c.by + ' さん' : '', c.at || ''].filter(Boolean).join('・')) + '</span>'
-    + '<span class="lb-tag' + (c.allowEdit === false ? ' ro' : '') + '">' + (c.allowEdit === false ? '見るだけ' : '直してもよい') + '</span></button>'
+    + '<span class="lb-tag' + (c.allowEdit === false ? ' ro' : '') + '">' + (c.allowEdit === false ? '見るだけ' : '編集できる') + '</span></button>'
     + (_boxIsMine(c) ? '<button type="button" class="lb-del tap" data-d="' + i + '" aria-label="自分が出したこのコースを削除">削除</button>' : '')
     + '</div>').join('');
   box.querySelectorAll('.lb-row').forEach(b => b.addEventListener('click', () => _libOpen(list[Number(b.getAttribute('data-i'))])));
@@ -10782,7 +10876,7 @@ function openPublishSheet(course){
       + '<label class="pb-l" for="pubBy">出す人の名前（任意）</label><input class="s1-input" id="pubBy" placeholder="例：波賀町の会" maxlength="24">'
       + '<div class="pb-l">見た人にできること</div>'
       + '<button type="button" class="pb-opt tap" data-edit="1"><b>見るだけ</b><small>歩く画面で見てもらう（自分のコースとして直すのは断る）</small></button>'
-      + '<button type="button" class="pb-opt tap" data-edit="2"><b>直してもよい</b><small>気に入った人が自分のコースに取り込んで、作り変えてよい</small></button>'
+      + '<button type="button" class="pb-opt tap" data-edit="2"><b>編集できる</b><small>気に入った人が自分のコースに取り込んで、作り変えてよい</small></button>'
       + '<div class="pb-n" id="pubPh" hidden></div>'
       + '<div class="pb-n" id="pubNote"></div>'
       + '<button type="button" class="pb-go tap" id="pubGo">出す</button>'
