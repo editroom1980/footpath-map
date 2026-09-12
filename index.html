@@ -2280,6 +2280,7 @@ const LS = {
   boxMine:     'fp_box_mine',     // みんなの箱に自分が出したコース（一覧が消えても戻せるように・v199）
   ozTip:       'fp_oz_tip',       // 片手の拡大縮小の案内を見たか（1回だけ出す・v206）
   boxOwn:      'fp_box_own',      // みんなのマップに自分が出したもの（消せるのは出した本人だけ・v212）
+  devId:       'fp_dev_id',       // この端末の印（作者の見分け・v220）。名前も個人情報も入らない乱数
   walkSpeed:   'fp_walkspeed',    // 歩く速さの段階（WALK_SPEEDS の添字）
   shareLinks:  'fp_sharelinks',   // コースIDごとの共有リンク（印刷用シートのQRに使う）
   visits:      'fp_visits',       // スタンプ（コースIDごと・訪れたスポットと時刻）
@@ -3234,7 +3235,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 手描きの道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した手描きの道id（直前取り消し用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v219';
+const APP_VERSION = 'v220';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -9595,6 +9596,7 @@ function buildCurrentSaveData() {
     theme:    courseInfo.theme || undefined,            // 地図の色（v145）。標準のときは書かない
     check:    _courseCheckClean(),                      // 配る前の確認の✓（手で付けるものだけ・v146）
     noEdit:   courseInfo.noEdit ? true : undefined,     // 他の人による改変を断る（配布ファイルにだけ効く・v147）
+    origin:   courseInfo.origin || undefined,          // 作者の印（v220）。取り込んでも消さない
     center:  leafMap ? {lat:leafMap.getCenter().lat, lng:leafMap.getCenter().lng} : null,
     zoom:    leafMap ? leafMap.getZoom() : 14,
     wps:     wps.map(w=>({id:w.id,type:w.type,name:w.name,desc:w.desc,tel:w.tel,dwell:w.dwell||0,fitBefore:w.fitBefore!==false,fitAfter:w.fitAfter!==false,onRoute:w.onRoute!==undefined?w.onRoute!==false:(w.type==='course'),lat:w.lat,lng:w.lng,labelDir:w.labelDir||'auto',photos:w.photos||[],got:w.got?1:undefined})),
@@ -9711,7 +9713,7 @@ function _fitCourseToScreen(data){
 }
 function loadCourseData(data) {
   _scDismissed = false;    // 開き直したらはじめかたを出し直せる（v165）
-  courseInfo = {name:data.name, area:data.area, start:data.start||'', goal:data.goal||'', kokoroe:data.kokoroe||'', info:(data.info && typeof data.info === 'object') ? Object.assign({}, data.info) : {}, stickers: data.stickers === true, theme:(data.theme && typeof data.theme === 'object') ? Object.assign({}, data.theme) : null, check:(data.check && typeof data.check === 'object') ? Object.assign({}, data.check) : {}, noEdit: data.noEdit === true, icon: data.icon || undefined};
+  courseInfo = {name:data.name, area:data.area, start:data.start||'', goal:data.goal||'', kokoroe:data.kokoroe||'', info:(data.info && typeof data.info === 'object') ? Object.assign({}, data.info) : {}, stickers: data.stickers === true, theme:(data.theme && typeof data.theme === 'object') ? Object.assign({}, data.theme) : null, check:(data.check && typeof data.check === 'object') ? Object.assign({}, data.check) : {}, noEdit: data.noEdit === true, icon: data.icon || undefined, origin: (data.origin && data.origin.oid) ? data.origin : undefined};
   applyTheme(courseInfo.theme, {quiet:true});   // 印と線を作る前に色を決める（v145）
   currentCourseId = data.id;
   _dirty = false;             // 読み込み直後は未保存の変更なし
@@ -10527,7 +10529,7 @@ async function _boxPublish(entry, data, photos){
     entry.ph = ok ? 1 : undefined;
     _boxPhSent = ok;
   }
-  if (!(await _boxWrite(cfg, 'c', entry.id, {d: data}))) return {ok: false, why: 'write'};   // 先に中身。一覧に載る＝必ず開ける
+  if (!(await _boxWrite(cfg, 'c', entry.id, {d: data, k: _pubKind}))) return {ok: false, why: 'write'};   // 先に中身。一覧に載る＝必ず開ける
   let ok;
   if (cfg.kind === 'firebase') ok = await _boxWrite(cfg, 'row', entry.id, entry);
   else { const cur = await _boxList(); ok = await _boxWrite(cfg, 'idx', null, {courses: _boxNorm([entry].concat(cur))}); }
@@ -10569,7 +10571,7 @@ async function _boxDelSet(){   // 消した印の一覧（保存先に残って�
 async function _boxOpen(entry){
   const cfg = await _boxCfg(); if (!cfg) return null;
   const j = await _boxRead(cfg, 'c', entry.id);
-  return (j && typeof j.d === 'string') ? j.d : null;
+  return (j && typeof j.d === 'string') ? {d: j.d, k: j.k === 'j' ? 'j' : 'd'} : null;   // v220：形（縮めたか）も返す
 }
 function _boxNewId(){ return new Date().toISOString().slice(0, 10).replace(/-/g, '') + '-' + Math.random().toString(36).slice(2, 8); }
 /* 箱 → 保存先へ写す（v203）。GitHub の定期実行が遅れても、作者がアプリを開けば写る（同じことを2つの道でやる）。
@@ -10581,9 +10583,10 @@ async function _boxMirror(list){
   const rows = (list || []).filter(e => e && e.box).slice(0, BOX_MIRROR_MAX);
   const done = [];
   for (const e of rows) {
-    const d = await _boxOpen(e); if (!d) continue;
+    const got = await _boxOpen(e); if (!got) continue;
     const body = {name: e.name || '', area: e.area || '', by: e.by || '', at: e.at || '',
-                  allowEdit: e.allowEdit !== false, from: 'box', cid: e.cid || undefined, ts: e.ts || undefined, d: d};
+                  allowEdit: e.allowEdit !== false, from: 'box', cid: e.cid || undefined, ts: e.ts || undefined,
+                  oid: e.oid || undefined, k: got.k === 'j' ? 'j' : undefined, d: got.d};
     if (e.ph) {
       const pj = await _boxRead(cfg, 'ph', e.id);
       if (pj && pj.p) {
@@ -10629,7 +10632,8 @@ async function importOpenedCourse(){
   showToast('取り込んでいます…');
   data.id = Date.now();
   data.savedAt = new Date().toISOString();
-  data.shared = undefined; data.noEdit = undefined;      // 自分のコースになるので配布の印は外す
+  data.shared = undefined; data.noEdit = undefined;      // 配布の印は外す（自分の端末で直せるように）
+  /* v220：作者の印（origin）は**残す**。他人が作ったコースを、取り込んだ人が自分名義で出せないようにするため */
   try { await _stashPhotos([data]); } catch(_) {}        // 写真は IndexedDB へ
   const courses = getCourses(); courses.push(data);
   if (!setCourses(courses)) { showToast('保存できませんでした（保存容量がいっぱいです）'); return; }
@@ -10687,15 +10691,16 @@ async function _applySharePhotos(){
 async function _libOpenBox(entry){   // v199：箱のコースは、中身を取りに行ってから開く
   showToast('開いています…');
   const cfg = await _boxCfg();
-  const d = await _boxOpen(entry);
-  if (!d) { showToast('このコースは開けませんでした（もう一度お試しください）'); return; }
+  const got = await _boxOpen(entry);
+  if (!got) { showToast('このコースは開けませんでした（もう一度お試しください）'); return; }
   _sharePhSet(entry.ph && cfg ? _boxUrl(cfg, 'ph', entry.id) : '');   // v202：写真はあとから
-  _goShare('#d=' + d);
+  _goShare('#' + got.k + '=' + got.d);
 }
 function _libOpen(entry){
   if (!entry) return;
   if (entry.box) { _libOpenBox(entry); return; }   // v199：みんなの箱
   if (entry.ph && typeof entry.ph === 'string') _sharePhSet(entry.ph);   // v202：保存先に写したコースの写真
+  if (entry.d && entry.k === 'j') { _goShare('#j=' + entry.d); return; }   // v220：縮めていない形
   if (entry.file) { location.href = _shareBaseUrl() + '?course=' + encodeURIComponent(entry.file); return; }   // v196：置いたファイルをそのまま開く（写真も出る）
   if (!entry.d) { showToast('このコースは開けませんでした'); return; }
   _goShare('#d=' + entry.d);   // 配るリンクと同じ入口で開く（v201：# だけの移動でも必ず開き直す）
@@ -10793,6 +10798,14 @@ function _pubSyncButtons(){
   const note = sh.querySelector('#pubNote'), go = sh.querySelector('#pubGo'), send = sh.querySelector('#pubSend');
   const setup = sh.querySelector('#pubSetup'), forget = sh.querySelector('#pubForget'), file = sh.querySelector('#pubFile');
   const ownerToggle = sh.querySelector('#pubOwnerToggle'), owner = sh.querySelector('#pubOwner');
+  const deny = _pubDeny(_pubCourse);   // v220：他人が公開したコースは、どの道からも出せない
+  if (deny) {
+    note.innerHTML = '<b>このコースは' + escHtml(deny.by ? '「' + deny.by + '」さん' : 'ほかの人') + 'が公開したものです。</b><br>'
+      + '直して使うことはできますが、<b>自分のコースとしては出せません</b>。'
+      + '直したものを載せたいときは、作ったご本人にお伝えください。';
+    go.hidden = true; send.hidden = true; ownerToggle.hidden = true; owner.hidden = true; setup.hidden = true; forget.hidden = true; file.hidden = true;
+    return;
+  }
   if (_boxOn) {   // v199：みんなの箱＝誰でも・ボタンひとつ・すぐ反映
     note.textContent = '「出す」を押すと、すぐに「みんなのマップを見る」に並びます。登録も合言葉もいりません（写真は入りません）。あとで自動的に保存先へ保存され、ずっと残ります。';
     go.hidden = false; go.textContent = '出す'; send.hidden = true;
@@ -10813,7 +10826,30 @@ function _pubSyncButtons(){
 }
 /* 出す前に写真を用意して、「何枚つくか」をその場で見せる（v207・オーナー報告「写真が表示されない」）。
    0枚なら理由まで出す＝押す前に分かる。 */
-let _boxOn = false, _pubPh = null;
+let _boxOn = false, _pubPh = null, _pubKind = 'd';
+/* 作者の印（v220・オーナー指示「他人のマップを自分名義で再投稿できないように」）。
+   ・出すときに origin＝{oid:'<端末の印>:<コース番号>', by:'出した人の名前', at:'日付'} を中身に入れる
+   ・取り込んだ側は origin を**消さずに持ち続ける**（v212 の取り込みで消していたのが穴だった）
+   ・origin が自分の端末のものでなければ、出す道はすべて閉じる（アプリ側＋写し取り側の二重の網） */
+function _devId(){
+  try {
+    let v = localStorage.getItem(LS.devId);
+    if (!v) { v = 'd' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); localStorage.setItem(LS.devId, v); }
+    return v;
+  } catch(_) { return 'd0'; }
+}
+function _originFor(course, by){   // このコースの作者の印（すでに他人の印があればそれを尊重する）
+  const org = (courseInfo && courseInfo.origin) || (course && course.origin);
+  if (org && org.oid) return org;
+  return {oid: _devId() + ':' + String((course && course.id) || ''), by: String(by || '').slice(0, 24), at: new Date().toISOString().slice(0, 10)};
+}
+function _isMineOrigin(org){ return !org || !org.oid || String(org.oid).indexOf(_devId() + ':') === 0; }
+/* 出してよいか。だめなら理由（作者名）を返す */
+function _pubDeny(course){
+  const org = (courseInfo && courseInfo.origin) || (course && course.origin);
+  if (_isMineOrigin(org)) return null;
+  return {by: (org && org.by) || '', at: (org && org.at) || ''};
+}
 async function _pubPreparePhotos(course){
   _pubPh = null;
   const el = document.getElementById('pubPh'); if (el) { el.textContent = '写真を調べています…'; el.hidden = false; }
@@ -10830,6 +10866,8 @@ async function _pubPreparePhotos(course){
 /* 箱に出す（v199）。押すのは1回。作者の端末（合言葉あり）なら、保存先にも同時に残す＝消えない。 */
 async function _pubOut(){
   const r = _pubReady(); if (!r) return;
+  const deny = _pubDeny(r.c);
+  if (deny) { showToast('このコースは' + (deny.by ? '「' + deny.by + '」さん' : 'ほかの人') + 'が公開したものです。自分のコースとしては出せません'); return; }
   const go = document.getElementById('pubGo'); if (go) { go.disabled = true; go.textContent = '出しています…'; }
   const by = ((document.getElementById('pubBy') || {}).value || '').trim();
   const entry = {id: _boxNewId(), name: r.c.name || '(名称未設定)', area: r.c.area || '', by: by,
@@ -10838,6 +10876,7 @@ async function _pubOut(){
   let sp = _pubPh;                                             // v207：出す画面を開いたときに用意済みなら、それを使う
   if (!sp) { if (go) go.textContent = '写真を用意しています…'; try { sp = await _sharePhotos(r.c); } catch(_) { sp = null; } }
   if (go) go.textContent = (sp && sp.count) ? ('写真' + sp.count + '枚を送っています…') : '出しています…';
+  entry.oid = _originFor(r.c, by).oid;   // v220：作者の印（写し取り側でも見分ける）
   const res = await _boxPublish(entry, _pubData, sp ? sp.photos : null);
   if (res.ok && _ghToken() && _ghRepo()) { try { await _ghPutFile(r.file, r.body, 'みんなのマップ: ' + (r.c.name || '')); } catch(_) {} }   // 作者の端末なら保存先にも残す
   if (go) { go.disabled = false; go.textContent = '出す'; }
@@ -10854,6 +10893,7 @@ async function _pubOut(){
 }
 async function _pubSend(){   // 作者に送る（LINE・メールなど）。中身はリンク1本
   const r = _pubReady(); if (!r) return;
+  if (_pubDeny(r.c)) { showToast('ほかの人が公開したコースは、みんなのマップに載せられません'); return; }
   const by = ((document.getElementById('pubBy') || {}).value || '').trim();
   const link = _shareBaseUrl() + '#d=' + _pubData;
   const text = ['みんなのマップに載せてください。',
@@ -10892,9 +10932,11 @@ function _pubPickEdit(allow){
 }
 async function _pubPrepare(){   // v192：出す中身を先に作っておく（押した瞬間に窓を開けるようにするため）
   const c = _pubCourse; if (!c) { _pubData = ''; return; }
+  const _by0 = ((document.getElementById('pubBy') || {}).value || '').trim();
   const go = document.getElementById('pubGo'); if (go) { go.disabled = true; go.textContent = '準備中…'; }
   try {
-    const url = await _makeDataLink(c, {allowEdit: _pubAllowEdit});
+    const url = await _makeDataLink(c, {allowEdit: _pubAllowEdit, origin: _originFor(c, _by0)});   // v220：作者の印を入れる
+    _pubKind = url.charAt(url.indexOf('#') + 1);   // v220：'d'＝縮めたもの／'j'＝そのまま（縮められない端末）
     _pubData = url.slice(url.indexOf('#') + 3);
   } catch(_) { _pubData = ''; }
   if (go) { go.disabled = !_pubData; go.textContent = '出す'; }
@@ -10919,6 +10961,7 @@ function _pubReady(){
 }
 async function _pubGo(copyOnly){
   const r = _pubReady(); if (!r) return;
+  if (_pubDeny(r.c)) { showToast('ほかの人が公開したコースは、自分のコースとしては出せません'); return; }
   if (navigator.clipboard) { try { navigator.clipboard.writeText(r.body); } catch(_) {} }
   if (copyOnly) { closePublishSheet(); showToast('出す内容をコピーしました。library フォルダに新しいファイルとして貼り付けてください'); return; }
   const go = document.getElementById('pubGo'); if (go) { go.disabled = true; go.textContent = '出しています…'; }
@@ -10932,6 +10975,7 @@ async function _pubGo(copyOnly){
 }
 function _pubByFile(){   // 合言葉を使わない道：ファイルを保存してから、保存先のアップロード画面を開く
   const r = _pubReady(); if (!r) return;
+  if (_pubDeny(r.c)) { showToast('ほかの人が公開したコースは、みんなのマップに載せられません'); return; }
   const name = r.file.split('/').pop();
   try {
     const blob = new Blob([r.body], {type:'application/json'});
@@ -10979,6 +11023,7 @@ function _unb64url(str){
 }
 function _courseForLink(course, opts){   // リンクに入れる中身（写真は外す）
   const c = JSON.parse(JSON.stringify(course || {}));
+  if (opts && opts.origin) c.origin = opts.origin;   // v220：作者の印（取り込んだ人が自分名義で出せないように）
   (c.wps || []).forEach(w => { if (w && w.photos) w.photos = []; });
   // v205：シールの設定は残す（写真は箱の別の場所から届く。写真が無ければ今までどおり○の印になる）
   c.shared = true;                 // 配ったものの印（改変の可否に効く・v147）

@@ -10,12 +10,15 @@
 ・1回に写すのは MAX_PER_RUN 件まで／1件 MAX_BYTES まで（荒らし対策）
 ・箱の一覧は「書き戻す直前にもう一度読む」＝実行中に出された新しいコースを消さない
 """
+import base64
+import hashlib
 import json
 import os
 import re
 import sys
 import time
 import urllib.request
+import zlib
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BOX_FILE = os.path.join(ROOT, 'box.json')
@@ -24,6 +27,55 @@ MAX_PER_RUN = 30          # 1回に写す件数の上限
 MAX_BYTES = 400 * 1024    # コース1件の中身の上限
 TIMEOUT = 20
 ID_OK = re.compile(r'^[A-Za-z0-9-]{4,40}$')
+
+
+def _course_from_d(d, kind='d'):
+    """配る中身（#d= / #j=）をコースの中身に戻す（v220：中身の指紋を取るため）"""
+    try:
+        raw = str(d).replace('-', '+').replace('_', '/')
+        raw += '=' * (-len(raw) % 4)
+        b = base64.b64decode(raw)
+        if kind != 'j':
+            b = zlib.decompress(b, -15)
+        return json.loads(b.decode('utf-8'))
+    except Exception:
+        return None
+
+
+def _fingerprint(c):
+    """コースの指紋＝スポットの座標（小数4桁）を並べたもののハッシュ。
+    同じコースを別の人が出し直しても同じ値になるので、名義だけ変えた再投稿を見つけられる。"""
+    pts = []
+    for w in ((c or {}).get('wps') or []):
+        try:
+            pts.append('%.4f,%.4f' % (float(w['lat']), float(w['lng'])))
+        except Exception:
+            pass
+    if len(pts) < 2:
+        return ''
+    pts.sort()
+    return hashlib.sha1('|'.join(pts).encode('utf-8')).hexdigest()[:16]
+
+
+def _known():
+    """library/ にすでにあるコースの {指紋: 作者の印}（v220）"""
+    out = {}
+    if not os.path.isdir(LIB_DIR):
+        return out
+    for name in os.listdir(LIB_DIR):
+        if not name.lower().endswith('.json') or name.endswith('-photos.json'):
+            continue
+        try:
+            with open(os.path.join(LIB_DIR, name), encoding='utf-8') as f:
+                j = json.load(f)
+        except Exception:
+            continue
+        fp = j.get('fp')
+        if not fp and j.get('d'):
+            fp = _fingerprint(_course_from_d(j.get('d'), j.get('k') or 'd'))
+        if fp:
+            out.setdefault(fp, j.get('oid') or '')
+    return out
 
 
 def _http(url, data=None, ctype='text/plain'):
@@ -136,6 +188,7 @@ def main():
         print('箱は空です（消した印の処理:', swept, '件）')
         return 0
     os.makedirs(LIB_DIR, exist_ok=True)
+    known = _known()          # v220：すでに載っているコースの指紋
     done, kept, bad = [], [], []
     for row in rows:
         if len(done) >= MAX_PER_RUN:
@@ -157,9 +210,20 @@ def main():
             print('とばす（中身が無いか大きすぎる）:', cid)
             kept.append(row)
             continue
+        kind = (body or {}).get('k') or 'd'
+        # v220：他人が出したコースを、名義だけ変えて出し直すのを止める（中身の指紋で見分ける）
+        course = _course_from_d(d, kind)
+        fp = _fingerprint(course)
+        oid = str(row.get('oid') or ((course or {}).get('origin') or {}).get('oid') or '')
+        if fp and fp in known and known[fp] and oid and known[fp] != oid:
+            print('載せません（同じコースを別の人が出しています）:', cid, name[:20])
+            bad.append(cid)
+            continue
         out = {'name': name[:80], 'area': str(row.get('area') or '')[:40],
                'by': str(row.get('by') or '')[:24], 'at': str(row.get('at') or '')[:10],
-               'allowEdit': row.get('allowEdit') is not False, 'from': 'box', 'd': d}
+               'allowEdit': row.get('allowEdit') is not False, 'from': 'box',
+               'oid': oid or None, 'fp': fp or None, 'k': (kind if kind == 'j' else None), 'd': d}
+        out = {k: v for k, v in out.items() if v is not None}
         if row.get('cid'):                                  # v204：同じコースの出し直しを見分ける印
             out['cid'] = str(row['cid'])[:24]
             out['ts'] = str(row.get('ts') or '')[:24]
@@ -175,6 +239,8 @@ def main():
         with open(path, 'w', encoding='utf-8') as f:
             json.dump(out, f, ensure_ascii=False, indent=1)
         print('写しました:', path)
+        if fp:
+            known[fp] = oid
         done.append(cid)
     if not done and not bad:
         print('新しく写したものはありません')

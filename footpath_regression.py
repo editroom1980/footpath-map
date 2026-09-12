@@ -447,6 +447,15 @@ def static_checks(src):
     # --- v157: 番号の丸と種類の丸を横に並べる（オーナー指摘：iPhone で片方しか見えない）---
     chk('静的', '番号つきで種類がある地点：地図は「種類の丸＋右上に番号の小丸」、一覧・並べ替え・印刷用シート・カードは番号と種類を並べて出す',
         'class="wp-num"' in src and 'class="wp-dot cat"' in src and 'class="ro-badge cat"' in src and 'class="sh-cat"' in src and 'class="vip-dot vip-dot2"' in src and '_catBadge' not in src and 'wp-pair' not in src)
+    # --- v220: 他人が公開したコースを、自分名義で出し直せないようにする ---
+    chk('静的', '作者の印（origin）を配る中身に入れ、取り込んでも消さない。自分の端末の印でなければ出す道を全部閉じる',
+        'function _devId' in src and 'function _originFor' in src and 'function _pubDeny' in src
+        and 'if (opts && opts.origin) c.origin = opts.origin;' in src
+        and 'origin:   courseInfo.origin || undefined,' in src
+        and 'origin: (data.origin && data.origin.oid) ? data.origin : undefined' in src
+        and '作者の印（origin）は**残す**' in src
+        and src.count('_pubDeny(') >= 5 and '自分のコースとしては出せません' in src
+        and "devId:       'fp_dev_id'" in src)
     # --- v217: 取り込んだスポットを一覧で選んで削除（近い順・遠いものが下）---
     chk('静的', 'スポットを整理：全部のスポットを近い順（遠いものほど下）に出し、まとめて選んで削除できる',
         'function openGotSheet' in src and 'function _gotSpots' in src and 'function _gotDelete' in src and 'function _gotPick' in src
@@ -524,7 +533,7 @@ def static_checks(src):
         and '_libRender(fresh ? _libCache.list : null);' in src)
     # --- v201: 一覧から開くとき、# だけの移動では読み込み直されない（オーナー報告「箱に上げたコースが開かない」）---
     chk('静的', 'みんなのマップを押したときは _goShare で開く（同じ場所なら # を書いてから読み込み直す）。location.href に直接 # を入れない',
-        'function _shareGoPlan' in src and 'function _goShare' in src and "_goShare('#d=' + d);" in src
+        'function _shareGoPlan' in src and 'function _goShare' in src and "_goShare('#' + got.k + '=' + got.d);" in src
         and "_goShare('#d=' + entry.d);" in src and 'location.reload();' in src
         and "location.href = _shareBaseUrl() + '#d=" not in src)
     # --- v200: 箱に出たコースを自動で GitHub へ写し、以降は保存先のぶんを読む ---
@@ -538,7 +547,9 @@ def static_checks(src):
         and "'box-' + cid + '.json'" in _mir and 'MAX_PER_RUN' in _mir and 'MAX_BYTES' in _mir
         and '_read_json(_url(cfg, \'idx\'))' in _mir
         and "out['ph'] = 'library/box-' + cid + '-photos.json'" in _mir   # v202：写真も一緒に写す
-        and 'def _sweep_deleted' in _mir and "'box-' + cid + '-photos.json'" in _mir)   # v212：本人が消したものは library からも消す
+        and 'def _sweep_deleted' in _mir and "'box-' + cid + '-photos.json'" in _mir   # v212：本人が消したものは library からも消す
+        and 'def _fingerprint' in _mir and 'def _course_from_d' in _mir and 'def _known' in _mir
+        and '載せません（同じコースを別の人が出しています）' in _mir and "'fp': fp or None" in _mir)   # v220：名義だけ変えた再投稿を止める
     # 写し取りの道具を、にせの箱（通信を差し替え）で実際に動かす
     _mv = {}
     if _mir:
@@ -628,7 +639,7 @@ def static_checks(src):
     # --- v190: 一覧に出す絵を名前と一緒に変えられる／一覧のボタンの間隔をそろえる ---
     chk('静的', 'コースの名前の画面で「一覧に出す絵」を選べる（コースの写真から／その場で選ぶ／地図の絵に戻す）。保存データに icon が入る',
         'id="rnIconPrev"' in src and 'id="rnIconPick"' in src and 'id="rnIconFile"' in src and 'id="rnIconClear"' in src and 'function _rnIconInit' in src
-        and 'icon:     courseInfo.icon || undefined,' in src and 'icon: data.icon || undefined};' in src and 'const photo = c.icon || (_pw ? _pw.photos[0] : null);' in src
+        and 'icon:     courseInfo.icon || undefined,' in src and 'icon: data.icon || undefined,' in src and 'const photo = c.icon || (_pw ? _pw.photos[0] : null);' in src
         and 'function _courseThumbSvg' in src and '.s1-import{' in src and 'cursor:pointer;margin-top:8px}' in src)
     # --- v189: 重なって「+n」になった印から、中身を選んで開ける（オーナー指摘）---
     chk('静的', '束ねた印を押すと中身の一覧が出て選べる（寄るだけではない）。束ねた中身は _clusterIds に覚える',
@@ -2215,7 +2226,7 @@ def functional_checks(index_path):
             out.body = typeof JSON.parse(store[idxKey + '-' + id] || '{}').d === 'string';
             const list = await _boxList();
             out.list = list.length === 1 && list[0].id === id && list[0].box === true;
-            out.open = (await _boxOpen(list[0])) === JSON.parse(store[idxKey + '-' + id]).d;   // 押したら中身が取れる
+            out.open = (await _boxOpen(list[0])).d === JSON.parse(store[idxKey + '-' + id]).d;   // 押したら中身が取れる
             out.mine = (JSON.parse(localStorage.getItem(LS.boxMine) || '[]')[0] || {}).id === id;
             // v202: 写真は別の場所に置き、一覧には印だけ。開いたあとから貼る
             const phKey = idxKey + '-' + id + '-ph';
@@ -2280,6 +2291,38 @@ def functional_checks(index_path):
             isinstance(bx, dict) and all(bx.get(k) for k in ('oneBtn', 'idx', 'body', 'list', 'open', 'mine', 'heal', 'big', 'moved',
                                                             'phPut', 'phFlag', 'phGot', 'phSticker', 'dup', 'dup2', 'dup3',
                                                             'mineFlag', 'deleted', 'delMark', 'moved2')), str(bx)[:420])
+
+        # v220: 他人のコースは自分名義で出せない（作者の印）
+        og = page.evaluate("""()=>{ try{
+            const keepInfo = JSON.parse(JSON.stringify({o: courseInfo.origin || null}));
+            const out = {};
+            const mine = {id: 991220, name:'自分のコース', wps:[{id:1,type:'spot',lat:35.1,lng:134.4}]};
+            // ① 自分のコース＝出せる
+            courseInfo.origin = undefined;
+            out.mineOk = _pubDeny(mine) === null;
+            const org = _originFor(mine, 'わたし');
+            out.oid = org.oid.indexOf(_devId() + ':') === 0 && org.by === 'わたし';
+            // ② 配る中身に作者の印が入る
+            const link = _courseForLink(mine, {allowEdit: true, origin: org});
+            out.inLink = link.origin && link.origin.oid === org.oid;
+            // ③ 他人の印が付いていたら、どの道からも出せない
+            courseInfo.origin = {oid: 'dXXXX:123', by: '山内', at: '2026-09-13'};
+            const deny = _pubDeny(mine);
+            out.denied = !!deny && deny.by === '山内';
+            out.notMine = _isMineOrigin({oid: 'dXXXX:123'}) === false && _isMineOrigin({oid: _devId() + ':9'}) === true;
+            // ④ 出す画面は理由を出してボタンを閉じる
+            _pubCourse = mine; _boxOn = true;
+            openPublishSheet(mine);
+            _pubSyncButtons();
+            out.sheet = document.getElementById('pubGo').hidden === true && document.getElementById('pubSend').hidden === true
+                        && /自分のコースとしては出せません/.test(document.getElementById('pubNote').textContent);
+            closePublishSheet(); _boxOn = false;
+            courseInfo.origin = keepInfo.o || undefined;
+            document.querySelectorAll('#toastBox .toast').forEach(e => e.remove());
+            return out;
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        chk('機能', '他人が公開したコースは、取り込んでも自分名義で出せない（作者の印が残り、出す画面が理由を出して閉じる）',
+            isinstance(og, dict) and all(og.get(k) for k in ('mineOk', 'oid', 'inLink', 'denied', 'notMine', 'sheet')), str(og)[:220])
 
         # v217: 取り込んだスポットの整理：近い順に並び、選んだものだけ消え、取り消しで戻る
         gs = page.evaluate("""async ()=>{ try{
