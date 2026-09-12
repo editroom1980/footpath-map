@@ -448,10 +448,12 @@ def static_checks(src):
     chk('静的', '番号つきで種類がある地点：地図は「種類の丸＋右上に番号の小丸」、一覧・並べ替え・印刷用シート・カードは番号と種類を並べて出す',
         'class="wp-num"' in src and 'class="wp-dot cat"' in src and 'class="ro-badge cat"' in src and 'class="sh-cat"' in src and 'class="vip-dot vip-dot2"' in src and '_catBadge' not in src and 'wp-pair' not in src)
     # --- v217: 取り込んだスポットを一覧で選んで削除（近い順・遠いものが下）---
-    chk('静的', '取り込んだスポットの整理：一覧で選んで削除でき、地図の真ん中から近い順（遠いものほど下）',
-        'function openGotSheet' in src and 'function _gotSpots' in src and 'function _gotDelete' in src
-        and 'sort((a, b) => a.d - b.d)' in src and 'id="mmGotRow"' in src and '取り込んだスポットを整理' in src
-        and 'got:1, marker:null' in src and 'got:w.got?1:undefined' in src and '遠いものほど下' in src)
+    chk('静的', 'スポットを整理：全部のスポットを近い順（遠いものほど下）に出し、まとめて選んで削除できる',
+        'function openGotSheet' in src and 'function _gotSpots' in src and 'function _gotDelete' in src and 'function _gotPick' in src
+        and 'sort((a, b) => a.d - b.d)' in src and 'id="mmGotRow"' in src and 'スポットを整理' in src
+        and 'got:1, marker:null' in src and 'got:w.got?1:undefined' in src and '遠いものほど下' in src
+        and "data-pick=\"500\"" in src and "data-pick=\"1000\"" in src and "data-pick=\"off\"" in src and "data-pick=\"got\"" in src
+        and "return wps.filter(w => w && w.type !== 'node'); }" in src and '道順が引き直されます' in src)
     # --- v214: 言い方を「閲覧モード／編集モード」に統一・地図の右のボタンを整理 ---
     chk('静的', '「歩く人の見え方」をやめて「閲覧モード／編集モード」に統一。上の札は廃止。みんなのマップは「削除」',
         '歩く人の見え方' not in src and 'viewBadge' not in src and "'編集モード' : '閲覧モード'" in src
@@ -743,7 +745,7 @@ def static_checks(src):
         and "t:'other'}" not in src.split('const NEARBY_KINDS = [')[1].split('];')[0] and "P04:'hospital'" in src and "['bus',     ['駅','バス停','停留所']]" in src
         and all(src.count(k + ":'#") >= 4 for k in ('bus', 'hospital', 'facility', 'place')) and src.index("['hospital',[") < src.index("['shrine',  ["))
     # --- v156: スマホにも「いまの道具の案内」---
-    chk('静的', 'スマホでも、なぞる・通り道・道を描く を選んでいる間は上に一言の案内（ふだんは出さない・歩く人には出さない）',
+    chk('静的', 'スマホでも、なぞる・通り道・道を出す を選んでいる間は上に一言の案内（ふだんは出さない・歩く人には出さない）',
         'id="modeHint"' in src and 'function _syncModeHint' in src and 'body.viewing #modeHint,body.viewonly #modeHint{display:none!important}' in src)
     # --- v155: 番号と種類の分離・漢字の印をやめて絵に（オーナー指示）---
     chk('静的', '種類の絵（TYPE_ICON）があり、漢字の印（学・公・碑・WC）は無い。旧 course は spot に読み替える',
@@ -792,7 +794,7 @@ def static_checks(src):
     chk('静的', '保存ボタンは状態表示（保存済み／保存中…／保存できず）。一覧に戻るときは必ず確認（v170）',
         "st === 'saved' ? '保存済み' : st === 'saving' ? '保存中…'" in src and '_askSaveBack();                               // v170' in src and '.hbtn-save.is-saved{' in src
         and 'id="sbSave"' in src and 'id="sbNoSave"' in src and 'id="sbCancel"' in src)
-    chk('静的', 'スマホの下の道具は スポット・なぞる・ルート調整・道を描く の4つ（文字つき・この順・v169）。詳細に重複させない（v154・オーナー指摘）',
+    chk('静的', 'スマホの下の道具は スポット・なぞる・ルート調整・道を出す の4つ（文字つき・この順・v169）。詳細に重複させない（v154・オーナー指摘）',
         src.index('id="mobileWpBtn"') < src.index('id="mobileDrawBtn"') < src.index('id="mobileViaBtn"') < src.index('id="mobileCustomBtn"') and src.count('class="mob-mode ') == 4 and src.count('class="mob-mode-l"') == 4 and 'id="mobileViaBtn" class="mob-mode tap" onclick="setMode(\'via\')"' in src
         and 'id="mobileCustomBtn" class="mob-mode tap" onclick="toggleCustomMode()"' in src and src.count('id="mobileViaBtn"') == 1)
     chk('静的', 'スポットの編集は 種別→名前→写真→説明 の順で、2行目・電話・滞在・道順・名札の位置は「くわしい設定」に畳む',
@@ -925,7 +927,7 @@ def static_checks(src):
               "文字なし保存": 'saveMapNoText()'}
     _missing = [f"{k}(PC)" for k, v in _feats.items() if v not in _pc] + [f"{k}(スマホ)" for k, v in _feats.items() if v not in _mob]
     chk('静的', '機種だけで使えない機能が0（圏外用に保存・現在地追従はスマホ専用でよい）', not _missing, str(_missing)[:200])
-    chk('静的', 'PCの左の道具に「なぞる」「道を描く」、下に「現在地」、左の欄に「並べ替え」がある',
+    chk('静的', 'PCの左の道具に「なぞる」「道を出す」、下に「現在地」、左の欄に「並べ替え」がある',
         'id="btnDraw" onclick="setMode(\'draw\')"' in src and 'id="btnCustom" onclick="toggleCustomMode()"' in src
         and 'id="btnGps" onclick="gotoCurrentLocation()"' in src and 'class="wp-ro-btn drag-hint" onclick="openReorderSheet()"' in src)
     chk('静的', '高低差の詳細は最初の1回で開く（実際の表示で判定）', "var isOpen = getComputedStyle(panel).display !== 'none';" in src)
@@ -2289,11 +2291,15 @@ def functional_checks(index_path):
             const out = {};
             openGotSheet(); await new Promise(r => setTimeout(r, 300));
             const names = [...document.querySelectorAll('#gotList .gs-name')].map(e => e.childNodes[0].textContent);
-            out.order = names.join(',') === 'ちかい,まんなか,とおい';
+            out.order = names.filter(n => ['ちかい','まんなか','とおい'].indexOf(n) >= 0).join(',') === 'ちかい,まんなか,とおい';   // 近い順（全部のスポットの中でも順番は保たれる）
             out.shown = document.getElementById('gotSheet').classList.contains('show');
-            const cbs = [...document.querySelectorAll('#gotList input[type=checkbox]')];
-            cbs[2].checked = true; cbs[2].dispatchEvent(new Event('change'));
+            const cbFar = [...document.querySelectorAll('#gotList .gs-row')].find(r => r.querySelector('.gs-name').childNodes[0].textContent === 'とおい').querySelector('input');
+            cbFar.checked = true; cbFar.dispatchEvent(new Event('change'));
             out.btn = document.getElementById('gotDel').textContent === '選んだ 1 件を削除';
+            _gotPick('1000'); out.far = _gsSel.has(far) && !_gsSel.has(near);   // 1km以上には「とおい」が入り「ちかい」は入らない
+            _gotPick('all');  out.all = _gsSel.size >= 3;
+            _gotPick('none'); out.none = _gsSel.size === 0;
+            _gsSel = new Set([far]); _gotRender();
             const keepConfirm = window.confirm; window.confirm = () => true;
             _gotDelete(); await new Promise(r => setTimeout(r, 200));
             window.confirm = keepConfirm;
@@ -2307,7 +2313,7 @@ def functional_checks(index_path):
             return out;
           }catch(e){ return 'ERR:'+e.message; } }""")
         chk('機能', '取り込んだスポットの整理：近い順に並び、選んだものだけ削除、取り消しで戻る',
-            isinstance(gs, dict) and all(gs.get(k) for k in ('order', 'shown', 'btn', 'deleted', 'undone')), str(gs)[:200])
+            isinstance(gs, dict) and all(gs.get(k) for k in ('order', 'shown', 'btn', 'far', 'all', 'none', 'deleted', 'undone')), str(gs)[:220])
 
         # v206: 片手の拡大縮小：ダブルタップして押したまま下＝拡大／上＝縮小。1回タップだけでは変わらない
         oz = page.evaluate("""()=>{ try{
@@ -2585,7 +2591,7 @@ def functional_checks(index_path):
             and du.get('pending') and du.get('afterUndo') == 'ABC' and du.get('toastGone') and du.get('pendingAfter') is False and du.get('sameData')
             and du.get('afterFinal') == 'BC' and du.get('toastGone2') and du.get('noResurrect') == 'BC', str(du)[:260])
 
-        # v131: PC で なぞる／道を描く／現在地／並べ替え画面 が動き、高低差は1回で開く。スマホの帯は展開すると詳細（4つの数字）
+        # v131: PC で なぞる／道を出す／現在地／並べ替え画面 が動き、高低差は1回で開く。スマホの帯は展開すると詳細（4つの数字）
         page.set_viewport_size({'width': 1024, 'height': 700})
         pa = page.evaluate("""()=>{ try{
             leafMap.invalidateSize();
@@ -2621,7 +2627,7 @@ def functional_checks(index_path):
             _setElevExpanded(false); _elevData = keepE;
             return {n, ok: /最高/.test(txt) && /最低/.test(txt) && /上り/.test(txt) && /下り/.test(txt), svgH: Math.round(svgH)};
           }catch(e){ return 'ERR:'+e.message; } }""")
-        chk('機能', 'PC：なぞる・道を描く・現在地・並べ替え画面が動き、高低差は1回で開く',
+        chk('機能', 'PC：なぞる・道を出す・現在地・並べ替え画面が動き、高低差は1回で開く',
             isinstance(pa, dict) and pa.get('draw') and pa.get('drawOff') and pa.get('custom') and pa.get('customOff') and pa.get('gps')
             and pa.get('reorder') and pa.get('elevOnce') and '手描きの道を使う' in pa.get('moreRows', []) and '手描きの道に合わせる' in pa.get('moreRows', []),
             str(pa)[:260])
