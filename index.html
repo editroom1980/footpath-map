@@ -727,6 +727,23 @@ body.viewonly #firstTip,body.embed #firstTip{display:none!important}
 #libSheet .lb-n{font-size:11.5px;color:var(--t-sub);line-height:1.7;margin-bottom:10px}
 #libSheet .lb-row{display:block;width:100%;text-align:left;border:0.5px solid #EDE7DC;border-radius:12px;background:#FCFAF6;padding:10px 12px;margin-bottom:8px;font-family:inherit;cursor:pointer}
 /* 自分が出したコースだけに出る「消す」（v212） */
+/* 取り込んだスポットの整理（v217） */
+#gotSheet{position:fixed;inset:0;z-index:5200;display:none;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.35)}
+#gotSheet.show{display:flex}
+#gotSheet .gs-box{background:#fff;width:100%;max-width:520px;max-height:82vh;border-radius:16px 16px 0 0;padding:14px 14px calc(14px + var(--sab));display:flex;flex-direction:column;gap:8px}
+#gotSheet .gs-hd{display:flex;align-items:center;gap:8px}
+#gotSheet .gs-t{font-size:16px;font-weight:800;color:#4A2E0E;flex:1}
+#gotSheet .gs-x{width:32px;height:32px;border:0;border-radius:50%;background:#F1ECE3;color:#6A645E;font-size:14px;cursor:pointer}
+#gotSheet .gs-n{font-size:12px;color:#6A645E;line-height:1.5}
+#gotSheet #gotList{overflow-y:auto;flex:1;-webkit-overflow-scrolling:touch}
+#gotSheet .gs-row{display:flex;align-items:center;gap:9px;padding:9px 6px;border-bottom:0.5px solid #F0EAE0;font-size:13.5px;color:#2C2620;cursor:pointer}
+#gotSheet .gs-row input{width:19px;height:19px;flex-shrink:0;accent-color:var(--brand)}
+#gotSheet .gs-dot{width:11px;height:11px;border-radius:50%;flex-shrink:0}
+#gotSheet .gs-name{flex:1;min-width:0;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#gotSheet .gs-name small{display:block;font-weight:600;font-size:11px;color:#9b948c}
+#gotSheet .gs-d{flex-shrink:0;font-size:12px;color:#6A645E;font-variant-numeric:tabular-nums}
+#gotSheet .gs-foot{display:flex;gap:8px;align-items:center}
+#gotSheet .gs-foot .ds-btn{flex:1}
 #libSheet .lb-item{display:flex;align-items:stretch;gap:6px}
 #libSheet .lb-item .lb-row{flex:1;min-width:0}
 #libSheet .lb-del{flex-shrink:0;margin-bottom:8px;padding:0 12px;border:0.5px solid #E8C9C9;border-radius:12px;background:#FDF3F3;color:#B3261E;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer}
@@ -1309,6 +1326,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
     <div class="pc-pop" id="popMore" role="menu">
       <button class="pp-row ed" onclick="closePcPops();openRenameSheet()" title="このコースの名前とエリアを変える">コースの名前を変える</button>
       <button class="pp-row ed" onclick="closePcPops();openNearbySheet()" title="OpenStreetMap と Wikipedia から、コースの周りのお店・史跡・学校などを候補にして選んで置く">まわりの施設を探す（お店・史跡・学校…）</button>
+      <button class="pp-row ed" onclick="closePcPops();openGotSheet()" title="まわりの施設から取り込んだスポットを、近い順の一覧で選んで削除する">取り込んだスポットを整理</button>
       <button class="pp-row ed" onclick="closePcPops();reverseCourse()" title="スポットの順番を逆にして、スタートとゴールを入れ替える">逆回りにする</button>
       <button class="pp-row ed" onclick="closePcPops();loopCourse()" title="出発点にゴールを置いて、帰りの道順を自動で引く">出発点に戻る周回にする</button>
       <button class="pp-row ed" onclick="closePcPops();openFixRouteSheet()" title="区間ごとに、道なりに引き直す（手直しの点を消す）／まっすぐ結ぶ">ルートを引き直す（道なり・まっすぐ・消す）</button>
@@ -1692,6 +1710,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
           <div class="mm-map" onclick="closeMobileMenu();openRenameSheet()" data-edit="1"><span class="mm-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l10.5-10.5a2.828 2.828 0 1 0-4-4L4 16v4"/><path d="M13.5 6.5l4 4"/></svg></span><span class="mm-map-l">コースの名前を変える</span><span class="mm-v" id="mmName">›</span></div>
           <div class="mm-map" onclick="closeMobileMenu();openFixRouteSheet()" data-edit="1"><span class="mm-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8.1 8.1 0 0 0 -15.5 -2m-.5 -4v4h4"/><path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4"/></svg></span><span class="mm-map-l">ルートを引き直す</span><span class="mm-v">›</span></div>
           <div class="mm-map" onclick="closeMobileMenu();openReorderSheet()" data-edit="1"><span class="mm-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 6h9"/><path d="M11 12h9"/><path d="M12 18h8"/><path d="M4 16a2 2 0 1 1 4 0c0 .6-.5 1-1 1.5L4 20h4"/><path d="M6 10V4L4 6"/></svg></span><span class="mm-map-l">順番・逆回り・周回</span><span class="mm-v" id="mmReorderN">›</span></div>
+          <div class="mm-map" onclick="closeMobileMenu();openGotSheet()" data-edit="1" id="mmGotRow"><span class="mm-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M10 11h10"/><path d="M10 15h10"/><path d="M4 11h2"/><path d="M4 15h2"/></svg></span><span class="mm-map-l">取り込んだスポットを整理</span><span class="mm-v">›</span></div>
           <div class="mm-map" onclick="closeMobileMenu();openNearbySheet()" data-edit="1"><span class="mm-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7"/><path d="M21 21l-6-6"/></svg></span><span class="mm-map-l">まわりの施設を探す</span><span class="mm-v">›</span></div>
           <div class="mm-map" onclick="closeMobileMenu();saveMapOffline()" title="このコースの範囲の地図を端末に保存します（圏外でも表示できます）"><span class="mm-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/><path d="M7 11l5 5 5-5"/><path d="M12 4v12"/></svg></span><span class="mm-map-l">圏外用に保存</span><span class="mm-v">›</span></div>
           <div class="mm-map" onclick="closeMobileMenu();importOpenedCourse()" id="mmGetRow" hidden><span class="mm-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12"/><path d="M7 11l5 5 5-5"/><path d="M4 20h16"/></svg></span><span class="mm-map-l">このコースを自分のコースに追加</span><span class="mm-v">›</span></div>
@@ -3210,7 +3229,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 手描きの道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した手描きの道id（直前取り消し用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v216';
+const APP_VERSION = 'v217';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -7578,7 +7597,7 @@ function _magnetSvg(){ return '<svg viewBox="0 0 24 24" width="15" height="15" f
    ============================================================ */
 function _makeSnapshot() {
   return {
-    wps: wps.map(w=>({id:w.id,type:w.type,name:w.name,desc:w.desc,tel:w.tel,dwell:w.dwell||0,fitBefore:w.fitBefore!==false,fitAfter:w.fitAfter!==false,onRoute:w.onRoute!==undefined?w.onRoute!==false:(w.type==='course'),lat:w.lat,lng:w.lng,labelDir:w.labelDir||'auto'})),
+    wps: wps.map(w=>({id:w.id,type:w.type,name:w.name,desc:w.desc,tel:w.tel,dwell:w.dwell||0,fitBefore:w.fitBefore!==false,fitAfter:w.fitAfter!==false,onRoute:w.onRoute!==undefined?w.onRoute!==false:(w.type==='course'),lat:w.lat,lng:w.lng,labelDir:w.labelDir||'auto',got:w.got?1:undefined})),
     vps: vps.map(v=>({id:v.id,segAfter:v.segAfter,fitBefore:v.fitBefore!==false,fitAfter:v.fitAfter!==false,lat:v.lat,lng:v.lng,order:v.order||0,guide:v.guide?JSON.parse(JSON.stringify(v.guide)):undefined})),
     idW, idV,
     customPaths: customPaths.map(p=>({id:p.id, pts:(p.pts||[]).map(pt=>pt.slice())})),
@@ -8539,9 +8558,86 @@ function _addSpotsBulk(items){   // 道順に入れないスポットをまと�
   if (!items.length) return 0;
   if (!_boundsAnchor) _setAnchor(items[0].lat, items[0].lng, false);
   saveSnapshot();
-  items.forEach(it => { idW++; const wp = {id:idW, type:it.type || 'other', name:String(it.name || '').slice(0, 60), desc:it.desc || '', tel:it.tel || '', dwell:0, fitBefore:true, fitAfter:true, onRoute:false, lat:it.lat, lng:it.lng, photos:[], labelDir:'auto', marker:null}; wps.push(wp); buildWpMarker(wp); });
+  items.forEach(it => { idW++; const wp = {id:idW, type:it.type || 'other', name:String(it.name || '').slice(0, 60), desc:it.desc || '', tel:it.tel || '', dwell:0, fitBefore:true, fitAfter:true, onRoute:false, lat:it.lat, lng:it.lng, photos:[], labelDir:'auto', got:1, marker:null}; wps.push(wp); buildWpMarker(wp); });   // v217：got＝まわりの施設から取り込んだ印
   redrawList(); refreshIcons(); if (typeof scheduleAutoLabels === 'function') scheduleAutoLabels();
   return items.length;
+}
+/* 取り込んだスポットの整理（v217・オーナー指示「一覧で選んで削除／マップから遠いほど下」）。
+   ・対象＝まわりの施設から取り込んだスポット（got の印。印の無い古いコースは、道順に入れていない＋説明に出典があるもの）
+   ・並びは**地図の真ん中から近い順**（遠いものほど下）
+   ・選んで削除は1回の「取り消し」で全部戻る */
+function _gotSpots(){
+  return wps.filter(w => w && w.type !== 'node' && (w.got || (w.onRoute === false && /出典/.test(String(w.desc || '')))));
+}
+function _gotDist(w){
+  if (!leafMap) return 0;
+  const c = leafMap.getCenter();
+  return _distM([c.lat, c.lng], [w.lat, w.lng]);
+}
+let _gsSel = new Set();
+function openGotSheet(){
+  if (viewMode) { showToast('編集モードでお使いください'); return; }
+  const list = _gotSpots();
+  if (!list.length) { showToast('取り込んだスポットはありません'); return; }
+  let sh = document.getElementById('gotSheet');
+  if (!sh) {
+    sh = document.createElement('div'); sh.id = 'gotSheet';
+    sh.innerHTML = '<div class="gs-box"><div class="gs-hd"><div class="gs-t">取り込んだスポット</div>'
+      + '<button type="button" class="gs-x tap" aria-label="閉じる">✕</button></div>'
+      + '<div class="gs-n" id="gotNote"></div><div id="gotList"></div>'
+      + '<div class="gs-foot"><button type="button" class="f-ghost tap" id="gotAll">全部選ぶ／外す</button>'
+      + '<button type="button" class="ds-btn" id="gotDel" disabled>選んだものを削除</button></div></div>';
+    document.body.appendChild(sh);
+    sh.addEventListener('click', e => { if (e.target === sh) closeGotSheet(); });
+    sh.querySelector('.gs-x').addEventListener('click', closeGotSheet);
+    sh.querySelector('#gotAll').addEventListener('click', () => {
+      const all = _gotSpots(); _gsSel = new Set(_gsSel.size < all.length ? all.map(w => w.id) : []); _gotRender();
+    });
+    sh.querySelector('#gotDel').addEventListener('click', _gotDelete);
+  }
+  _gsSel = new Set();
+  _gotRender();
+  sh.classList.add('show');
+}
+function closeGotSheet(){ const sh = document.getElementById('gotSheet'); if (sh) sh.classList.remove('show'); }
+function _gotRender(){
+  const box = document.getElementById('gotList'), note = document.getElementById('gotNote'); if (!box) return;
+  const list = _gotSpots().map(w => ({w: w, d: _gotDist(w)})).sort((a, b) => a.d - b.d);   // 近い順（遠いものが下）
+  note.textContent = 'まわりの施設から取り込んだ ' + list.length + ' 件です。地図の真ん中から近い順に並んでいます（遠いものほど下）。';
+  box.innerHTML = list.map(it => {
+    const w = it.w, t = WT.find(x => x.v === w.type) || WT[0];
+    return '<label class="gs-row"><input type="checkbox" data-id="' + w.id + '"' + (_gsSel.has(w.id) ? ' checked' : '') + '>'
+      + '<span class="gs-dot" style="background:' + t.c + '"></span>'
+      + '<span class="gs-name">' + escHtml((w.name || t.l).split('\n')[0]) + '<small>' + escHtml(t.l) + '</small></span>'
+      + '<span class="gs-d">' + _fmtDistM(it.d) + '</span></label>';
+  }).join('');
+  box.querySelectorAll('input[type=checkbox]').forEach(cb => cb.addEventListener('change', () => {
+    const id = Number(cb.getAttribute('data-id'));
+    if (cb.checked) _gsSel.add(id); else _gsSel.delete(id);
+    _gotSync();
+  }));
+  _gotSync();
+}
+function _gotSync(){
+  const b = document.getElementById('gotDel'); if (!b) return;
+  b.disabled = !_gsSel.size;
+  b.textContent = _gsSel.size ? ('選んだ ' + _gsSel.size + ' 件を削除') : '選んだものを削除';
+}
+function _gotDelete(){
+  const ids = [..._gsSel]; if (!ids.length) return;
+  if (!confirm(ids.length + ' 件のスポットを削除します。よろしいですか？（「取り消し」で戻せます）')) return;
+  saveSnapshot();
+  ids.forEach(id => {
+    vps.filter(v => v.segAfter === id).forEach(v => { if (v.marker) leafMap.removeLayer(v.marker); });
+    vps = vps.filter(v => v.segAfter !== id);
+    const wp = wps.find(w => w.id === id);
+    if (wp && wp.marker) leafMap.removeLayer(wp.marker);
+  });
+  wps = wps.filter(w => ids.indexOf(w.id) < 0);
+  _gsSel = new Set();
+  clearCache(); redrawStraight(); scheduleRouting(); refreshIcons(); redrawList(); _markDirty();
+  showToast(ids.length + ' 件を削除しました（「取り消し」で戻せます）');
+  if (_gotSpots().length) _gotRender(); else closeGotSheet();
 }
 function addNearbySelected(){
   const items = _nb.cands.filter(c => _nb.sel.has(c.id)); if (!items.length) return;
@@ -9476,7 +9572,7 @@ function buildCurrentSaveData() {
     noEdit:   courseInfo.noEdit ? true : undefined,     // 他の人による改変を断る（配布ファイルにだけ効く・v147）
     center:  leafMap ? {lat:leafMap.getCenter().lat, lng:leafMap.getCenter().lng} : null,
     zoom:    leafMap ? leafMap.getZoom() : 14,
-    wps:     wps.map(w=>({id:w.id,type:w.type,name:w.name,desc:w.desc,tel:w.tel,dwell:w.dwell||0,fitBefore:w.fitBefore!==false,fitAfter:w.fitAfter!==false,onRoute:w.onRoute!==undefined?w.onRoute!==false:(w.type==='course'),lat:w.lat,lng:w.lng,labelDir:w.labelDir||'auto',photos:w.photos||[]})),
+    wps:     wps.map(w=>({id:w.id,type:w.type,name:w.name,desc:w.desc,tel:w.tel,dwell:w.dwell||0,fitBefore:w.fitBefore!==false,fitAfter:w.fitAfter!==false,onRoute:w.onRoute!==undefined?w.onRoute!==false:(w.type==='course'),lat:w.lat,lng:w.lng,labelDir:w.labelDir||'auto',photos:w.photos||[],got:w.got?1:undefined})),
     vps:     vps.map(v=>({id:v.id,segAfter:v.segAfter,fitBefore:v.fitBefore!==false,fitAfter:v.fitAfter!==false,lat:v.lat,lng:v.lng,order:v.order||0,guide:v.guide||undefined})),   // guide＝分岐・注意の案内（v141）
     customRoads: customRoads.map(r=>({id:r.id,name:r.name,coords:r.coords})),
     customPaths: (customPaths||[]).map(p=>({id:p.id, pts:(p.pts||[]).map(pt=>pt.slice())})),

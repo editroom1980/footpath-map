@@ -447,6 +447,11 @@ def static_checks(src):
     # --- v157: 番号の丸と種類の丸を横に並べる（オーナー指摘：iPhone で片方しか見えない）---
     chk('静的', '番号つきで種類がある地点：地図は「種類の丸＋右上に番号の小丸」、一覧・並べ替え・印刷用シート・カードは番号と種類を並べて出す',
         'class="wp-num"' in src and 'class="wp-dot cat"' in src and 'class="ro-badge cat"' in src and 'class="sh-cat"' in src and 'class="vip-dot vip-dot2"' in src and '_catBadge' not in src and 'wp-pair' not in src)
+    # --- v217: 取り込んだスポットを一覧で選んで削除（近い順・遠いものが下）---
+    chk('静的', '取り込んだスポットの整理：一覧で選んで削除でき、地図の真ん中から近い順（遠いものほど下）',
+        'function openGotSheet' in src and 'function _gotSpots' in src and 'function _gotDelete' in src
+        and 'sort((a, b) => a.d - b.d)' in src and 'id="mmGotRow"' in src and '取り込んだスポットを整理' in src
+        and 'got:1, marker:null' in src and 'got:w.got?1:undefined' in src and '遠いものほど下' in src)
     # --- v214: 言い方を「閲覧モード／編集モード」に統一・地図の右のボタンを整理 ---
     chk('静的', '「歩く人の見え方」をやめて「閲覧モード／編集モード」に統一。上の札は廃止。みんなのマップは「削除」',
         '歩く人の見え方' not in src and 'viewBadge' not in src and "'編集モード' : '閲覧モード'" in src
@@ -2035,7 +2040,7 @@ def functional_checks(index_path):
             isinstance(pc3, dict) and pc3.get('noText') == [] and pc3.get('dup') == [] and pc3.get('nBtn', 0) >= 8
             and pc3.get('hdrH', 99) <= 60 and pc3.get('railIn') and pc3.get('hint') == 'クリックでスポットを追加（スマホは長押し）'
             and pc3.get('popMapOpen') and pc3.get('bm') == 'gsi_photo' and pc3.get('pill') == '航空写真'
-            and pc3.get('legendOpen') and pc3.get('legendRows', 0) >= 2 and pc3.get('moreOpen') and pc3.get('moreRows') == 13
+            and pc3.get('legendOpen') and pc3.get('legendRows', 0) >= 2 and pc3.get('moreOpen') and pc3.get('moreRows') == 14
             and pc3.get('manualFlip') and pc3.get('hintVia') == 'ルート調整：茶色い点を動かす／赤い線をクリックで点を足す（地図は固定）'
             and pc3.get('viewHidden') and pc3.get('viewBack') and pc3.get('closedAll'), str(pc3)[:300])
 
@@ -2273,6 +2278,36 @@ def functional_checks(index_path):
             isinstance(bx, dict) and all(bx.get(k) for k in ('oneBtn', 'idx', 'body', 'list', 'open', 'mine', 'heal', 'big', 'moved',
                                                             'phPut', 'phFlag', 'phGot', 'phSticker', 'dup', 'dup2', 'dup3',
                                                             'mineFlag', 'deleted', 'delMark', 'moved2')), str(bx)[:420])
+
+        # v217: 取り込んだスポットの整理：近い順に並び、選んだものだけ消え、取り消しで戻る
+        gs = page.evaluate("""async ()=>{ try{
+            const keepW = wps.slice(), keepDirty = _dirty, c = leafMap.getCenter();
+            const mk = (n, dLat) => { idW++; const wp = {id:idW, type:'shop', name:n, desc:'', tel:'', dwell:0,
+              fitBefore:true, fitAfter:true, onRoute:false, lat:c.lat + dLat, lng:c.lng, photos:[], labelDir:'auto', got:1, marker:null};
+              wps.push(wp); buildWpMarker(wp); return wp.id; };
+            const far = mk('とおい', 0.02), near = mk('ちかい', 0.002), mid = mk('まんなか', 0.008);
+            const out = {};
+            openGotSheet(); await new Promise(r => setTimeout(r, 300));
+            const names = [...document.querySelectorAll('#gotList .gs-name')].map(e => e.childNodes[0].textContent);
+            out.order = names.join(',') === 'ちかい,まんなか,とおい';
+            out.shown = document.getElementById('gotSheet').classList.contains('show');
+            const cbs = [...document.querySelectorAll('#gotList input[type=checkbox]')];
+            cbs[2].checked = true; cbs[2].dispatchEvent(new Event('change'));
+            out.btn = document.getElementById('gotDel').textContent === '選んだ 1 件を削除';
+            const keepConfirm = window.confirm; window.confirm = () => true;
+            _gotDelete(); await new Promise(r => setTimeout(r, 200));
+            window.confirm = keepConfirm;
+            out.deleted = !wps.some(w => w.id === far) && wps.some(w => w.id === near) && wps.some(w => w.id === mid);
+            undoLast(); await new Promise(r => setTimeout(r, 250));
+            out.undone = wps.some(w => w.id === far);
+            closeGotSheet();
+            wps.forEach(w => { if (keepW.indexOf(w) < 0 && w.marker) leafMap.removeLayer(w.marker); });
+            wps = keepW; _dirty = keepDirty; refreshIcons(); redrawList();
+            document.querySelectorAll('#toastBox .toast').forEach(e => e.remove());
+            return out;
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        chk('機能', '取り込んだスポットの整理：近い順に並び、選んだものだけ削除、取り消しで戻る',
+            isinstance(gs, dict) and all(gs.get(k) for k in ('order', 'shown', 'btn', 'deleted', 'undone')), str(gs)[:200])
 
         # v206: 片手の拡大縮小：ダブルタップして押したまま下＝拡大／上＝縮小。1回タップだけでは変わらない
         oz = page.evaluate("""()=>{ try{
