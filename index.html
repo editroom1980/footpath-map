@@ -3207,7 +3207,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v207';
+const APP_VERSION = 'v208';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -10449,6 +10449,9 @@ async function _applySharePhotos(){
     let n = 0;
     wps.forEach(w => { const a = p[String(w.id)]; if (Array.isArray(a) && a.length) { w.photos = a.slice(0, SHARE_PH_PER_SPOT); n += w.photos.length; } });
     if (!n) return;
+    /* v208（オーナー報告「みんなのコースで写真が表示されない」）：配られたコースに写真が届いたら、
+       作った人がシールを切っていても**歩く人の画面では写真を地図に出す**。押さなくても写真が見える。 */
+    if (viewMode && courseInfo && !courseInfo.stickers) courseInfo.stickers = true;
     if (typeof refreshIcons === 'function') refreshIcons();   // v205：写真が届いたら、地図の印もシールに変える
     const panel = document.getElementById('viewInfoPanel');
     if (panel && panel.classList.contains('show') && _viewInfoId != null) showViewInfo(_viewInfoId);   // 開いているカードは作り直す

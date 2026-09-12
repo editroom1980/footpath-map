@@ -447,6 +447,9 @@ def static_checks(src):
     # --- v157: 番号の丸と種類の丸を横に並べる（オーナー指摘：iPhone で片方しか見えない）---
     chk('静的', '番号つきで種類がある地点：地図は「種類の丸＋右上に番号の小丸」、一覧・並べ替え・配布シート・カードは番号と種類を並べて出す',
         'class="wp-num"' in src and 'class="wp-dot cat"' in src and 'class="ro-badge cat"' in src and 'class="sh-cat"' in src and 'class="vip-dot vip-dot2"' in src and '_catBadge' not in src and 'wp-pair' not in src)
+    # --- v208: 配られたコースは、写真が届いたら地図にも出す（押さなくても見える） ---
+    chk('静的', '歩く人の画面では、写真が届いた時点でシールを出す（作った人が切っていても）',
+        'if (viewMode && courseInfo && !courseInfo.stickers) courseInfo.stickers = true;' in src)
     # --- v207: 写真が届かない原因を見えるようにする／iPhone の拡大鏡を止める ---
     chk('静的', '出す前に「写真◯枚も一緒に出します」を見せ、届かなければ小さくしてやり直し、結果も知らせる。地図では文字選択と長押しメニューを切る（拡大鏡が出ない）',
         'function _pubPreparePhotos' in src and 'id="pubPh"' in src and '📷 写真 ' in src
@@ -2185,8 +2188,11 @@ def functional_checks(index_path):
             out.phPut = !!store[phKey] && Array.isArray(phBody.p && phBody.p['1']) && phBody.p['1'][0].indexOf('data:image/jpeg') === 0;
             out.phFlag = idx.courses[0].ph === 1 && list[0].ph === 1;
             const keepWps = wps.slice(); wps.length = 0; wps.push({id: 1, type:'spot', name:'あ', photos: []});
+            const keepStick = courseInfo.stickers, keepView = viewMode; courseInfo.stickers = false; viewMode = true;
             _sharePhSet(phKey); await _applySharePhotos();
             out.phGot = Array.isArray(wps[0].photos) && wps[0].photos.length === 1 && _sharePhTake() === '';
+            out.phSticker = keepStick === false && courseInfo.stickers === true;   // v208：歩く人の画面では写真を地図にも出す
+            courseInfo.stickers = keepStick; viewMode = keepView;
             wps.length = 0; keepWps.forEach(w => wps.push(w));
             store[idxKey] = '{"courses":[]}';
             out.heal = (await _boxList()).length === 1;                                    // 一覧を消されても自分のぶんは戻る
@@ -2219,7 +2225,7 @@ def functional_checks(index_path):
           }catch(e){ return 'ERR:'+e.message; } }""")
         chk('機能', 'みんなの箱：合言葉なしで「出す」1つ。中身と一覧の両方を書き、すぐ並び、押すと中身が取れる。一覧が消えても自分のぶんは戻る。写し終わったら置き場所のぶんだけ出す',
             isinstance(bx, dict) and all(bx.get(k) for k in ('oneBtn', 'idx', 'body', 'list', 'open', 'mine', 'heal', 'big', 'moved',
-                                                            'phPut', 'phFlag', 'phGot', 'dup')), str(bx)[:340])
+                                                            'phPut', 'phFlag', 'phGot', 'phSticker', 'dup')), str(bx)[:360])
 
         # v206: 片手の拡大縮小：ダブルタップして押したまま下＝拡大／上＝縮小。1回タップだけでは変わらない
         oz = page.evaluate("""()=>{ try{
