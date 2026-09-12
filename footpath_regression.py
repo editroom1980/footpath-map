@@ -447,6 +447,10 @@ def static_checks(src):
     # --- v157: 番号の丸と種類の丸を横に並べる（オーナー指摘：iPhone で片方しか見えない）---
     chk('静的', '番号つきで種類がある地点：地図は「種類の丸＋右上に番号の小丸」、一覧・並べ替え・配布シート・カードは番号と種類を並べて出す',
         'class="wp-num"' in src and 'class="wp-dot cat"' in src and 'class="ro-badge cat"' in src and 'class="sh-cat"' in src and 'class="vip-dot vip-dot2"' in src and '_catBadge' not in src and 'wp-pair' not in src)
+    # --- v185: みんなのコース（ライブラリ）---
+    chk('静的', 'みんなのコース：library.json を読んで一覧に出し、押すと配るリンクと同じ入口で開く。出す1行をコピーする道もある',
+        "const LIBRARY_URL = 'library.json';" in src and 'function openLibrarySheet' in src and 'function _libRender' in src and 'function _libOpen' in src
+        and 'function _libHowTo' in src and 'function _ghEditUrlFor' in src and 'onclick="openLibrarySheet()"' in src and "sh.id = 'libSheet'" in src and '#libSheet .lb-row{' in src)
     # --- v184: リンクにコースを入れて、そのまま配れるようにする（オーナー指摘「コピーしても開けない」）---
     chk('静的', 'リンクの中にコースを入れて配れる（#d=／#j=）。写真は外す。配る画面の一番上に「かんたん：このリンクをそのまま配る」',
         'function _makeDataLink' in src and 'function _courseFromHash' in src and 'function _courseForLink' in src and 'deflate-raw' in src
@@ -1902,6 +1906,35 @@ def functional_checks(index_path):
             and pl.get('bigs') == ['ビュースポット', '史跡・記念碑', '飲食店・ショップ', '神社・寺院'] and pl.get('restHidden')
             and pl.get('restN', 0) >= 5 and pl.get('selVal') == 'parking' and pl.get('onChip') == '駐車場' and pl.get('savedType') == 'parking',
             str(pl)[:260])
+
+        # v185: みんなのコース：library.json を読んで並べる／押すと #d= のリンクで開く／空でも壊れない
+        lb = page.evaluate("""async ()=>{ try{
+            const keepFetch = window.fetch, keepHref = location.href;
+            const c = buildCurrentSaveData(); const u = await _makeDataLink(c); const d = u.slice(u.indexOf('#') + 3);
+            window.fetch = async (url, opt) => { const s = String(url);
+              if (s.indexOf('library.json') >= 0) return new Response(JSON.stringify({courses:[{name:'みんなの検査コース', area:'宍粟市', by:'たろう', at:'2026-09-12', d: d}]}), {status:200});
+              return keepFetch(url, opt); };
+            await openLibrarySheet(); await new Promise(r => setTimeout(r, 300));
+            const sh = document.getElementById('libSheet');
+            const rows = sh.querySelectorAll('.lb-row');
+            const out = {shown: sh.classList.contains('show'), one: rows.length === 1,
+                         name: rows.length ? rows[0].querySelector('.lb-name').textContent === 'みんなの検査コース' : false,
+                         sub: rows.length ? rows[0].querySelector('.lb-sub').textContent.indexOf('たろう さん') >= 0 : false};
+            // 押すと配るリンクで開く（実際には飛ばさず、行き先だけ確かめる）
+            let went = ''; const keepOpen = _libOpen;
+            window._libOpen = e => { went = _shareBaseUrl() + '#d=' + e.d; };
+            window._libOpen({d: d}); out.opens = went.indexOf('#d=') > 0 && (await _courseFromHash(went.slice(went.indexOf('#')))).name === c.name;
+            window._libOpen = keepOpen;
+            // 空のとき・読めないときも壊れない
+            window.fetch = async (url, opt) => { const s = String(url); if (s.indexOf('library.json') >= 0) return new Response('nope', {status:404}); return keepFetch(url, opt); };
+            await openLibrarySheet(); await new Promise(r => setTimeout(r, 300));
+            out.empty = sh.querySelectorAll('.lb-row').length === 0 && document.getElementById('libNote').textContent.indexOf('まだ1件') >= 0;
+            sh.classList.remove('show'); window.fetch = keepFetch;
+            document.querySelectorAll('#toastBox .toast').forEach(e => e.remove());
+            return out;
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        chk('機能', 'みんなのコース：library.json を読んで並べ、押すと配るリンクで開く。読めないときも案内を出して壊れない',
+            isinstance(lb, dict) and all(lb.get(k) for k in ('shown', 'one', 'name', 'sub', 'opens', 'empty')), str(lb)[:240])
 
         # v184: リンクにコースを入れて配る：作る→読み戻す（写真は入らない）／壊れたリンクは断る
         dl = page.evaluate("""async ()=>{ try{

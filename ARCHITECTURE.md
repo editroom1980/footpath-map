@@ -441,3 +441,8 @@ CONSTANTS(904) → STATE(968) → STORAGE(1015) → 版のお知らせ(1021) →
 - 2通り：**リンクの中に入れる**（`#d=`／`#j=`・`_makeDataLink`／`_courseFromHash`・写真なし・置き場所不要）と、**ファイルを置く**（`?course=ファイル名.json`・写真つき・QRコードはこちら）。
 - `_viewParams()` が `location.hash` を見て `data` を返し、`initViewMode()` が最初に処理する。ハッシュはサーバに送られないので、静的配信でもそのまま動く。
 - リンクに入れる中身は `_courseForLink()`（写真と stickers を外し `shared:true` を付ける）。長さの上限の目安は `LINK_DATA_MAX`。
+
+## みんなのコース（v185）
+- サーバ無し。アプリと同じ場所の `library.json`（`LIBRARY_URL`）を `fetch` して並べるだけ。1件は `{name, area, by, at, d}` で、`d` は v184 のリンクの中身（写真なし・deflate＋base64url）。
+- 開くときは `location.href = _shareBaseUrl() + '#d=' + d`＝配るリンクと同じ入口を通す（読み込みの道を1本にする）。
+- 出すときは `_libHowTo()` が1行を組み立ててクリップボードへ入れ、`_ghEditUrl(LIBRARY_URL)`（GitHub の編集画面）を開く。人手で貼り付けて保存する運用。

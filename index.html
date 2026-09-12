@@ -656,6 +656,21 @@ body.viewonly #firstTip,body.embed #firstTip{display:none!important}
 @media (min-width:769px){#kokoroeSheet{left:50%;right:auto;bottom:auto;top:50%;transform:translate(-50%,-50%);width:480px;max-width:calc(100vw - 32px);border-radius:16px;padding:18px 20px 20px}#kokoroeSheet .ds-dh{display:none}}
 #infoSheet .ci-auto{width:100%;margin-top:4px;min-height:var(--tap);border:1.5px solid #D4C4A8;border-radius:11px;background:#FAF6EE;color:#4A2E0E;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer}
 /* コース名を変えるシート（v180）。心得と同じ見た目 */
+/* みんなのコース（v185） */
+.s1-lib{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;min-height:var(--tap);margin:0 0 10px;border:1.5px solid #D4C4A8;border-radius:12px;background:#FAF6EE;color:#4A2E0E;font-family:inherit;font-size:13.5px;font-weight:700;cursor:pointer}
+.s1-lib .svgi{width:18px;height:18px;color:var(--brand)}
+#libSheet{display:none;position:fixed;inset:0;z-index:6000;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.45)}
+#libSheet.show{display:flex}
+#libSheet .lb-box{background:#fff;width:100%;max-width:520px;border-radius:18px 18px 0 0;padding:12px 16px calc(16px + var(--sab));max-height:82vh;overflow-y:auto}
+#libSheet .lb-hd{display:flex;align-items:center;gap:10px;margin-bottom:4px}
+#libSheet .lb-t{flex:1;font-size:17px;font-weight:800;color:#231C14}
+#libSheet .lb-x{width:36px;height:36px;border:none;border-radius:50%;background:#F2EEE7;color:#8A8077;font-size:15px;cursor:pointer}
+#libSheet .lb-n{font-size:11.5px;color:var(--t-sub);line-height:1.7;margin-bottom:10px}
+#libSheet .lb-row{display:block;width:100%;text-align:left;border:0.5px solid #EDE7DC;border-radius:12px;background:#FCFAF6;padding:10px 12px;margin-bottom:8px;font-family:inherit;cursor:pointer}
+#libSheet .lb-name{display:block;font-size:14.5px;font-weight:800;color:#231C14;line-height:1.35;overflow-wrap:anywhere}
+#libSheet .lb-sub{display:block;font-size:11.5px;color:var(--t-sub);margin-top:2px}
+#libSheet .lb-add{width:100%;min-height:var(--tap);border:1.5px solid #D4C4A8;border-radius:12px;background:#FAF6EE;color:#4A2E0E;font-family:inherit;font-size:13.5px;font-weight:700;cursor:pointer;margin-top:4px}
+@media (min-width:769px){#libSheet{align-items:center}#libSheet .lb-box{border-radius:16px;max-height:80vh}}
 /* コースを消す前の確認（v183） */
 #delCourseDlg{display:none;position:fixed;inset:0;z-index:6000;align-items:center;justify-content:center;background:rgba(0,0,0,.45);padding:24px}
 #delCourseDlg.show{display:flex}
@@ -1175,6 +1190,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
       <svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v4a1 1 0 0 0 1 1h4" /> <path d="M5 13v-8a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2h-5.5m-9.5 -2h7m-3 -3l3 3l-3 3" /></svg>ファイルから読み込む（コース・GPX・発見）
       <input type="file" accept=".json,.gpx,application/gpx+xml" style="display:none" onchange="importCourseFromFile(this)">
     </label>
+    <button class="s1-lib tap" onclick="openLibrarySheet()"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V6a2 2 0 0 1 2-2h5v15H6a2 2 0 0 0-2 2z"/><path d="M20 19V6a2 2 0 0 0-2-2h-5v15h5a2 2 0 0 1 2 2z"/></svg>みんなのコースを見る</button>
     <div class="s1-tools">
       <button class="s1-tool" onclick="exportAllCourses()" title="保存されている全コースを1つのファイルに書き出します">すべて書き出す<br>（バックアップ）</button>
       <label class="s1-tool" title="バックアップファイルからコースを戻します">バックアップ<br>から復元<input type="file" accept=".json" style="display:none" onchange="importBackupFile(this)"></label>
@@ -1831,6 +1847,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
       <h3>💾 保存・配る</h3>
       <ul>
         <li>「配る」→ <b>かんたん：このリンクをそのまま配る</b>。リンクの中にコースが入っているので、置き場所の用意は要りません（写真は入りません）</li>
+        <li>一覧の<b>「みんなのコースを見る」</b>：みんなが出したコースが並びます。自分のコースを出すときは「配る」→「みんなのコースに出す」（1行をコピーして、開いた画面に貼り付けて保存）</li>
         <li>保存は「保存」ボタンで行います（勝手には保存しません）。保存していない変更があると、ボタンが「保存」（濃い色）のままになります。一覧に戻るときにも「保存して戻る／保存せずに戻る」を確認します。この端末のブラウザに残ります</li>
         <li>「配る」→ 画像・配布シート（A4）・リンク・GPX の4つの出口と、配る前の確認（歩いた・私有地・分岐・注意…）が1枚にまとまっています</li>
         <li>「見た目 › 地図の色」で線と印の色を選べます。歩く人の画面と配布シートも同じ色になります</li>
@@ -3061,7 +3078,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v184';
+const APP_VERSION = 'v185';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -9705,6 +9722,7 @@ function openShareDialog(course) {
       +   '<div class="sd-n" style="margin:6px 0">市のホームページなどに、この地図をそのまま置けます。下のコードをコピーして貼り付けてください。</div>'
       +   '<textarea id="shEmbed" readonly rows="3" style="width:100%;border:1px solid #DED5C8;border-radius:8px;padding:8px 10px;font-size:11px;background:#F9F7F4;font-family:ui-monospace,monospace;resize:vertical;margin-bottom:8px"></textarea>'
       +   '<button id="shCopyEmbed" class="sd-btn ghost" style="width:100%">埋め込みコードをコピー</button></details>'
+      + '<button id="shLib" class="sd-btn ghost" style="width:100%;margin-top:10px" hidden>みんなのコースに出す（ライブラリ）</button>'
       + '<button id="shClose" class="sd-btn ghost" style="width:100%;margin-top:12px;background:#F5F1EA;color:#6A645E">閉じる</button>'
       + '</div>';
     document.body.appendChild(ov);
@@ -9759,6 +9777,8 @@ function openShareDialog(course) {
   ov.querySelector('#shPreview').onclick = () => {
     window.open(location.origin + location.pathname + '?view=' + encodeURIComponent(course.id), '_blank');
   };
+  const libBtn = ov.querySelector('#shLib');
+  if (libBtn) { libBtn.hidden = !_ghEditUrl(LIBRARY_URL); libBtn.onclick = () => { ov.style.display = 'none'; _libHowTo(); }; }
   ov.querySelector('#shClose').onclick = () => { ov.style.display = 'none'; };
   ov.style.display = 'flex';
 }
@@ -9806,11 +9826,72 @@ function _ghUploadUrlFor(hostname, pathname){
   return 'https://github.com/' + m[1] + '/' + seg[0] + '/upload/main';
 }
 function _ghUploadUrl(){ try { return _ghUploadUrlFor(location.hostname, location.pathname); } catch(_) { return null; } }
+function _ghEditUrlFor(hostname, pathname, file){   // v185：ライブラリのファイルを直に開いて書き足す
+  const up = _ghUploadUrlFor(hostname, pathname); if (!up) return null;
+  return up.replace(/\/upload\/main$/, '/edit/main/' + file);
+}
+function _ghEditUrl(file){ try { return _ghEditUrlFor(location.hostname, location.pathname, file); } catch(_) { return null; } }
+/* ===== みんなのコース（v185・オーナー指示「全員が共有して見に行けるライブラリ」）=====
+   サーバは使わない。アプリと同じ場所の library.json を読むだけ。1件は {name, area, by, at, d}。
+   d はリンクに入れるのと同じ中身（写真なし・圧縮）。配りたい人は「出す用の1行」をコピーして、
+   ライブラリのファイル（GitHub）に貼り付ければ、みんなの一覧に並ぶ */
+let _lib = null;   // 読み込んだライブラリ（{courses:[...]}）
+async function openLibrarySheet(){
+  let sh = document.getElementById('libSheet');
+  if (!sh) {
+    sh = document.createElement('div'); sh.id = 'libSheet';
+    sh.innerHTML = '<div class="lb-box"><div class="lb-hd"><div class="lb-t">みんなのコース</div>'
+      + '<button type="button" class="lb-x tap" aria-label="閉じる">✕</button></div>'
+      + '<div class="lb-n" id="libNote">読み込んでいます…</div><div id="libList"></div>'
+      + '<button type="button" class="lb-add tap" id="libAdd" hidden>ここに自分のコースを出す</button></div>';
+    document.body.appendChild(sh);
+    sh.addEventListener('click', e => { if (e.target === sh) sh.classList.remove('show'); });
+    sh.querySelector('.lb-x').addEventListener('click', () => sh.classList.remove('show'));
+    sh.querySelector('#libAdd').addEventListener('click', () => { sh.classList.remove('show'); _libHowTo(); });
+  }
+  sh.classList.add('show');
+  document.getElementById('libAdd').hidden = !_ghEditUrl(LIBRARY_URL);
+  _libRender(null);
+  try {
+    const res = await fetch(LIBRARY_URL + '?t=' + Date.now(), {cache:'no-store'});
+    if (!res.ok) throw new Error('http ' + res.status);
+    const j = await res.json();
+    _lib = (j && Array.isArray(j.courses)) ? j : {courses: []};
+    _libRender(_lib.courses);
+  } catch(_) { _libRender([]); }
+}
+function _libRender(list){
+  const box = document.getElementById('libList'), note = document.getElementById('libNote'); if (!box) return;
+  if (list === null) { note.textContent = '読み込んでいます…'; box.innerHTML = ''; return; }
+  if (!list.length) { note.textContent = 'まだ1件も出ていません。下の「ここに自分のコースを出す」から出せます（作った人が出すと、ここに並びます）。'; box.innerHTML = ''; return; }
+  note.textContent = 'みんなが出したコースです。押すと、その場で歩く人の画面が開きます（写真は入っていません）。';
+  box.innerHTML = list.map((c, i) => '<button type="button" class="lb-row tap" data-i="' + i + '">'
+    + '<span class="lb-name">' + escHtml(c.name || '(名称未設定)') + '</span>'
+    + '<span class="lb-sub">' + escHtml([c.area, c.by ? c.by + ' さん' : '', c.at || ''].filter(Boolean).join('・')) + '</span></button>').join('');
+  box.querySelectorAll('.lb-row').forEach(b => b.addEventListener('click', () => _libOpen(list[Number(b.getAttribute('data-i'))])));
+}
+function _libOpen(entry){
+  if (!entry || !entry.d) { showToast('このコースは開けませんでした'); return; }
+  location.href = _shareBaseUrl() + '#d=' + entry.d;   // 配るリンクと同じ入口で開く
+}
+async function _libHowTo(){
+  const list = getCourses();
+  if (!list.length) { showToast('先にコースを作ってください'); return; }
+  const c = (currentCourseId != null && list.find(x => x.id === currentCourseId)) || list[0];
+  const url = await _makeDataLink(c);
+  const d = url.slice(url.indexOf('#') + 3);
+  const line = JSON.stringify({name: c.name || '', area: c.area || '', by: '', at: new Date().toISOString().slice(0, 10), d: d});
+  if (navigator.clipboard) { try { await navigator.clipboard.writeText(line); } catch(_) {} }
+  const gh = _ghEditUrl(LIBRARY_URL);
+  showToast('「' + (c.name || 'コース') + '」を出す1行をコピーしました。開いた画面の courses の中に貼り付けて保存してください');
+  if (gh) setTimeout(() => window.open(gh, '_blank'), 400);
+}
 /* ===== リンクにコースを丸ごと入れる（v184・オーナー指摘「リンクを配るをコピーしても開けない」）=====
    これまでは「JSONファイルを書き出して、置き場所に上げてから」でないとリンクが開けなかった。
    コースの中身を縮めてリンクの「#」の後ろに入れてしまえば、置き場所の用意なしで、その場で配れる。
    ・写真は入らない（大きすぎる）。写真も配るときは今までどおりファイルを置く
    ・「#」の後ろはサーバに送られないので、置き場所（GitHub Pages）の設定は何も要らない */
+const LIBRARY_URL = 'library.json';   // みんなのコース（v185）。アプリと同じ場所に置く1つのファイル。中身は {courses:[{name, area, by, at, d}]}
 const LINK_DATA_MAX = 60000;   // これを超えるリンクは長すぎるので勧めない（文字数）
 function _b64url(bytes){
   let bin = ''; const CH = 0x8000;
