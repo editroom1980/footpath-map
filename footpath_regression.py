@@ -447,6 +447,11 @@ def static_checks(src):
     # --- v157: 番号の丸と種類の丸を横に並べる（オーナー指摘：iPhone で片方しか見えない）---
     chk('静的', '番号つきで種類がある地点：地図は「種類の丸＋右上に番号の小丸」、一覧・並べ替え・配布シート・カードは番号と種類を並べて出す',
         'class="wp-num"' in src and 'class="wp-dot cat"' in src and 'class="ro-badge cat"' in src and 'class="sh-cat"' in src and 'class="vip-dot vip-dot2"' in src and '_catBadge' not in src and 'wp-pair' not in src)
+    # --- v189: 重なって「+n」になった印から、中身を選んで開ける（オーナー指摘）---
+    chk('静的', '束ねた印を押すと中身の一覧が出て選べる（寄るだけではない）。束ねた中身は _clusterIds に覚える',
+        'function openClusterPicker' in src and 'function _openSpotFromCluster' in src and '_clusterIds' in src
+        and 'if (wp._clusterN > 1) { openClusterPicker(wp); return; }' in src and "sh.id = 'clusterSheet'" in src
+        and '#clusterSheet .cl-row{' in src and 'leafMap.setView(wp.marker.getLatLng(), Math.min(leafMap.getMaxZoom() || 19, leafMap.getZoom() + 2))' in src)
     # --- v187: 現在地の印がスポットを隠さない／現在地から置くのは長押しだけ（オーナー指摘）---
     chk('静的', '広がる輪は指を受けない（pointer-events:none）。現在地の印はスポットより下（zIndexOffset:300）。開くのは長押し（GPS_HOLD_MS）だけでタップでは開かない',
         'pointer-events:none;animation:mePulse' in src and 'zIndexOffset:300' in src and 'const GPS_HOLD_MS = 550;' in src
@@ -651,8 +656,8 @@ def static_checks(src):
     chk('静的', '写真は長辺1024px・1スポット12枚まで。シールは96px角、46px以内で束ねる',
         'const PHOTO_MAX_PX = 1024, PHOTO_QUALITY = 0.66, PHOTO_MAX_PER_SPOT = 12;' in src and 'const STICKER_PX = 96, STICKER_QUALITY = 0.72, STICKER_CLUSTER_PX = 46;' in src
         and 'const MAX = PHOTO_MAX_PX;' in src and 'PHOTO_MAX_PER_SPOT - _modalPhotos.length' in src)
-    chk('静的', 'シールは wpIcon の枝で描き、名札の位置はシールの大きさに合わせ、束ねた印を押すと寄る',
-        'class="wp-sticker" data-sticker="1"' in src and '_wpIconSize(wp)[1] / 2 + 4' in src and 'if (wp._clusterN > 1) { leafMap.setView(' in src
+    chk('静的', 'シールは wpIcon の枝で描き、名札の位置はシールの大きさに合わせ、束ねた印を押すと中身から選べる（v189）',
+        'class="wp-sticker" data-sticker="1"' in src and '_wpIconSize(wp)[1] / 2 + 4' in src and 'if (wp._clusterN > 1) { openClusterPicker(wp); return; }' in src
         and '      _declutter();\n' in src)   # v159→v173: ズームの処理は _applyViewUpdate の中の _declutter にまとめた
     chk('静的', 'シールの ON/OFF はコースに保存され（stickers）、PC・スマホの「地図の見せ方」に行がある',
         'stickers: courseInfo.stickers ? true : undefined' in src and 'stickers: data.stickers === true' in src and 'id="btnStickers"' in src and 'id="mmSwStickers"' in src)
@@ -1919,6 +1924,39 @@ def functional_checks(index_path):
             and pl.get('bigs') == ['ビュースポット', '史跡・記念碑', '飲食店・ショップ', '神社・寺院'] and pl.get('restHidden')
             and pl.get('restN', 0) >= 5 and pl.get('selVal') == 'parking' and pl.get('onChip') == '駐車場' and pl.get('savedType') == 'parking',
             str(pl)[:260])
+
+        # v189: 重なった印（+n）：押すと中身の一覧が出て、選ぶとその設定が開く（寄っても離れない位置でも開ける）
+        cp = page.evaluate("""async ()=>{ try{
+            const keepU = undoStack.length, keepD = _dirty, keepV = viewMode, keepW = wps.slice(), keepZ = leafMap.getZoom(), keepC = leafMap.getCenter(); viewMode = false;
+            closeModal(); closeClusterPicker();
+            const c = leafMap.getCenter(); leafMap.setView(c, 17, {animate:false}); await new Promise(r => setTimeout(r, 200));
+            // まったく同じ場所に3つ置く（いくら寄せても離れない）
+            const made = [];
+            ['ひとつめ', 'ふたつめ', 'みっつめ'].forEach((nm, i) => { idW++;
+              const w = {id:idW, type:'shop', name:nm, desc:'', tel:'', dwell:0, fitBefore:true, fitAfter:true, onRoute:false, lat:c.lat, lng:c.lng, photos:[], labelDir:'auto', marker:null};
+              wps.push(w); buildWpMarker(w); made.push(w); });
+            _declutter();
+            const lead = made.find(w => w._clusterN > 1);
+            const out = {clustered: !!lead && lead._clusterN === 3, ids: !!lead && (lead._clusterIds || []).length === 3};
+            if (lead) lead.marker.fire('click', {latlng: L.latLng(c.lat, c.lng), originalEvent: {}});
+            await new Promise(r => setTimeout(r, 150));
+            const sh = document.getElementById('clusterSheet');
+            out.sheet = !!sh && sh.classList.contains('show') && sh.querySelectorAll('.cl-row').length === 3;
+            out.title = !!sh && sh.querySelector('.cl-t').textContent.indexOf('3 件') >= 0;
+            // 2つめを選ぶと、その設定が開く
+            const rows = sh.querySelectorAll('.cl-row'); const wantId = rows[1].getAttribute('data-id');
+            rows[1].click(); await new Promise(r => setTimeout(r, 150));
+            out.opened = document.getElementById('mOver').classList.contains('show') && String(editId) === String(wantId) && !sh.classList.contains('show');
+            closeModal();
+            made.forEach(w => { if (w.marker) { try { leafMap.removeLayer(w.marker); } catch(_) {} } });
+            wps.length = 0; keepW.forEach(w => wps.push(w));
+            _declutter(); leafMap.setView(keepC, keepZ, {animate:false});
+            undoStack.length = keepU; _dirty = keepD; viewMode = keepV;
+            document.querySelectorAll('#toastBox .toast').forEach(e => e.remove());
+            return out;
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        chk('機能', '重なった印：押すと中身が一覧で出て（3件）、選んだスポットの設定が開く',
+            isinstance(cp, dict) and all(cp.get(k) for k in ('clustered', 'ids', 'sheet', 'title', 'opened')), str(cp)[:220])
 
         # v187: 現在地の印：輪は指を受けない／スポットより下／長押しで「現在地に置く」が開き、タップでは開かない
         gp = page.evaluate("""async ()=>{ try{

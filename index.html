@@ -661,6 +661,20 @@ body.viewonly #firstTip,body.embed #firstTip{display:none!important}
 .ova-seg .ova-l{font-size:11px;color:var(--t-sub);font-weight:700}
 .ova-seg button{flex:1;min-height:34px;border:1px solid #D4C4A8;border-radius:8px;background:#FAF6EE;color:#4A2E0E;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer}
 .ova-seg button.on{background:var(--brand);color:#fff;border-color:var(--brand)}
+/* 重なった印から選ぶ（v189） */
+#clusterSheet{display:none;position:fixed;inset:0;z-index:5200;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.42)}
+#clusterSheet.show{display:flex}
+#clusterSheet .cl-box{background:#fff;width:100%;max-width:520px;border-radius:18px 18px 0 0;padding:12px 16px calc(16px + var(--sab));max-height:72vh;overflow-y:auto}
+#clusterSheet .cl-hd{display:flex;align-items:center;gap:10px}
+#clusterSheet .cl-t{flex:1;font-size:16px;font-weight:800;color:#231C14}
+#clusterSheet .cl-x{width:36px;height:36px;border:none;border-radius:50%;background:#F2EEE7;color:#8A8077;font-size:15px;cursor:pointer}
+#clusterSheet .cl-n{font-size:11.5px;color:var(--t-sub);margin:4px 0 10px;line-height:1.6}
+#clusterSheet .cl-row{display:flex;align-items:center;gap:10px;width:100%;text-align:left;border:0.5px solid #EDE7DC;border-radius:12px;background:#FCFAF6;padding:9px 12px;margin-bottom:8px;font-family:inherit;cursor:pointer;min-height:var(--tap)}
+#clusterSheet .cl-dot{width:26px;height:26px;border-radius:50%;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex:none}
+#clusterSheet .cl-name{flex:1;min-width:0;font-size:14px;font-weight:700;color:#231C14;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#clusterSheet .cl-cat{font-size:11px;color:var(--t-sub);flex:none}
+#clusterSheet .cl-zoom{width:100%;min-height:var(--tap);border:1.5px solid #D4C4A8;border-radius:12px;background:#FAF6EE;color:#4A2E0E;font-family:inherit;font-size:13.5px;font-weight:700;cursor:pointer}
+@media (min-width:769px){#clusterSheet{align-items:center}#clusterSheet .cl-box{border-radius:16px}}
 /* みんなのコース（v185） */
 .s1-lib{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;min-height:var(--tap);margin:0 0 10px;border:1.5px solid #D4C4A8;border-radius:12px;background:#FAF6EE;color:#4A2E0E;font-family:inherit;font-size:13.5px;font-weight:700;cursor:pointer}
 .s1-lib .svgi{width:18px;height:18px;color:var(--brand)}
@@ -1831,6 +1845,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
         <li>PC：地図をクリック → その場に置かれます（番号は自動・道順も自動）</li>
         <li>いまいる場所に置くときは、青い<b>現在地の印を長押し</b>（タップでは開きません）。印に重なったスポットも、スポットのほうが手前なので押せます</li>
         <li>○をクリック／タップ → 種類・名前・写真・説明を直します（電話・滞在時間などは「くわしい設定」。削除もここ）</li>
+        <li>近くに重なって「+1」などが付いた印を押すと、<b>重なっているスポットの一覧</b>が出ます。開きたいものを選べます（「地図を寄せて広げる」も同じ画面から）</li>
         <li>左の一覧（PC）や「スポットの並べ替え」（スマホ）で順番を変えると、道順も付いてきます</li>
         <li>「周辺の情報を取り込む」（PC：その他／スマホ：メニュー）で、お店・史跡・学校などを地図から探して置けます</li>
       </ul>
@@ -3127,7 +3142,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v188';
+const APP_VERSION = 'v189';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -3987,7 +4002,7 @@ function buildWpMarker(wp) {
   m.on('dragend', () => { const _s=_snapCustom(m.getLatLng().lat, m.getLatLng().lng); wp.lat=_s[0]; wp.lng=_s[1]; m.setLatLng(_s); clearCache(); scheduleRouting(); });
   m.on('click', e => {
     L.DomEvent.stopPropagation(e);
-    if (wp._clusterN > 1) { leafMap.setView(m.getLatLng(), Math.min(leafMap.getMaxZoom() || 19, leafMap.getZoom() + 2)); return; }   // 束ねたシールは寄って開く（v142）
+    if (wp._clusterN > 1) { openClusterPicker(wp); return; }   // 束ねた印：中身から選ぶ（v189。寄っても離れない位置だと開けなかった）
     if (viewMode) { showViewInfo(wp.id); return; }
     if (wp.type === 'node') {
       const oe = e.originalEvent || {};
@@ -5533,6 +5548,42 @@ function _holdEnd(cx, cy){
   }
   setTimeout(() => { lineDragging = false; }, 50);   // 直後の click を拾わない
 }
+/* 重なって束ねた印（「+n」）を押したとき（v189・オーナー指摘「近接して +1 が出ていると開けない」）。
+   これまでは地図を寄せるだけだったので、同じ場所にあるスポットは何度寄せても開けなかった。
+   中身を一覧で出して、選んだものを開く。ついでに「地図を寄せて広げる」も置く */
+function openClusterPicker(wp){
+  const ids = (wp && wp._clusterIds && wp._clusterIds.length) ? wp._clusterIds : [wp && wp.id];
+  const list = ids.map(id => wps.find(w => w && w.id === id)).filter(Boolean);
+  if (list.length < 2) { if (list[0]) _openSpotFromCluster(list[0].id); return; }
+  let sh = document.getElementById('clusterSheet');
+  if (!sh) {
+    sh = document.createElement('div'); sh.id = 'clusterSheet';
+    sh.innerHTML = '<div class="cl-box"><div class="cl-hd"><div class="cl-t"></div><button type="button" class="cl-x tap" aria-label="閉じる">✕</button></div>'
+      + '<div class="cl-n">同じあたりに重なっています。開きたいものを選んでください。</div><div id="clusterList"></div>'
+      + '<button type="button" class="cl-zoom tap">地図を寄せて広げる</button></div>';
+    document.body.appendChild(sh);
+    sh.addEventListener('click', e => { if (e.target === sh) closeClusterPicker(); });
+    sh.querySelector('.cl-x').addEventListener('click', closeClusterPicker);
+  }
+  sh.querySelector('.cl-t').textContent = 'ここに ' + list.length + ' 件あります';
+  sh.querySelector('#clusterList').innerHTML = list.map(w => {
+    const t = WT.find(x => x.v === w.type) || WT[0];
+    const nm = (w.name || '').split('\n')[0].trim() || t.l;
+    return '<button type="button" class="cl-row tap" data-id="' + escHtml(String(w.id)) + '">'
+      + '<span class="cl-dot" style="background:' + (_isNumbered(w) ? _spotColor() : t.c) + '">' + _wpMarkHtml(w, 13) + '</span>'
+      + '<span class="cl-name">' + escHtml(nm) + '</span><span class="cl-cat">' + escHtml(t.l) + '</span></button>';
+  }).join('');
+  sh.querySelectorAll('.cl-row').forEach(b => b.addEventListener('click', () => _openSpotFromCluster(b.getAttribute('data-id'))));
+  const zb = sh.querySelector('.cl-zoom');
+  zb.onclick = () => { closeClusterPicker(); if (leafMap && wp.marker) leafMap.setView(wp.marker.getLatLng(), Math.min(leafMap.getMaxZoom() || 19, leafMap.getZoom() + 2)); };
+  sh.classList.add('show');
+}
+function closeClusterPicker(){ const sh = document.getElementById('clusterSheet'); if (sh) sh.classList.remove('show'); }
+function _openSpotFromCluster(id){
+  closeClusterPicker();
+  const wp = wps.find(w => String(w.id) === String(id)); if (!wp) return;
+  if (viewMode) showViewInfo(wp.id); else openModal(wp.id);
+}
 function addWpLongPress(wp) {
   const el = wp.marker ? wp.marker.getElement() : null;
   if (!el) return;
@@ -6712,6 +6763,7 @@ function _buildTypeOptions(wp) {
 
 // 全ての設定ウィンドウ/ポップアップを閉じる（排他制御用）
 function _closeAllPopups(except) {
+  if (typeof closeClusterPicker === 'function') closeClusterPicker();   // v189
   if (_moveWp) _moveCancel();          // 場所を動かす途中なら、やめる（v164）
   if (_wpAdd) _closeAddWp();           // スポットを置く確認の途中なら、やめる（v171）
   if (except !== 'modal'  && typeof closeModal       === 'function') { const m=document.getElementById('mOver'); if (m && m.classList.contains('show')) closeModal(); }
@@ -7897,7 +7949,7 @@ function _declutter(){
     const el = w.marker.getElement(); if (el) { el.style.opacity = on ? '' : '0'; el.style.pointerEvents = on ? '' : 'none'; }
     w._clusterHidden = !on; _syncLabelVis(w);
   };
-  list.forEach(w => { if (w._clusterHidden || w._clusterN > 1) { const n = w._clusterN; w._clusterN = 0; show(w, true); if (n > 1) w.marker.setIcon(wpIcon(w)); } });
+  list.forEach(w => { if (w._clusterHidden || w._clusterN > 1) { const n = w._clusterN; w._clusterN = 0; w._clusterIds = null; show(w, true); if (n > 1) w.marker.setIcon(wpIcon(w)); } });
   // 優先順：S・G → 歩く順の番号（小さい順）→ 種類だけの地点
   const pri = w => w.type === 'start' ? 0 : w.type === 'goal' ? 1 : _isNumbered(w) ? 10 + (courseNum(w) || 9999) : 100000;
   const base = _wpSize()[0];
@@ -7907,10 +7959,10 @@ function _declutter(){
     const pt = leafMap.latLngToLayerPoint([w.lat, w.lng]), sw = sizeOf(w);
     const isSG = w.type === 'start' || w.type === 'goal';
     const near = leaders.find(l => l.pt.distanceTo(pt) < ((l.size + sw) / 2) * DECL_OVERLAP);
-    if (near && !isSG) { near.n++; show(w, false); }            // S・G は必ず出す
-    else leaders.push({w, pt, n: 1, size: sw});
+    if (near && !isSG) { near.n++; near.ids.push(w.id); show(w, false); }   // S・G は必ず出す。束ねた中身は覚えておく（v189）
+    else leaders.push({w, pt, n: 1, size: sw, ids: [w.id]});
   });
-  leaders.forEach(l => { if (l.n > 1) { l.w._clusterN = l.n; l.w.marker.setIcon(wpIcon(l.w)); } });
+  leaders.forEach(l => { if (l.n > 1) { l.w._clusterN = l.n; l.w._clusterIds = l.ids.slice(); l.w.marker.setIcon(wpIcon(l.w)); } });
   vps.forEach(vp => _applyVpVis(vp, z));
 }
 function _clusterStickers(){ _declutter(); }   // 旧名（呼び出し側は据え置き）
