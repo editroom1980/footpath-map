@@ -745,7 +745,7 @@ def static_checks(src):
         and "t:'other'}" not in src.split('const NEARBY_KINDS = [')[1].split('];')[0] and "P04:'hospital'" in src and "['bus',     ['駅','バス停','停留所']]" in src
         and all(src.count(k + ":'#") >= 4 for k in ('bus', 'hospital', 'facility', 'place')) and src.index("['hospital',[") < src.index("['shrine',  ["))
     # --- v156: スマホにも「いまの道具の案内」---
-    chk('静的', 'スマホでも、なぞる・通り道・道を出す を選んでいる間は上に一言の案内（ふだんは出さない・歩く人には出さない）',
+    chk('静的', 'スマホでも、なぞる・通り道・道を足す を選んでいる間は上に一言の案内（ふだんは出さない・歩く人には出さない）',
         'id="modeHint"' in src and 'function _syncModeHint' in src and 'body.viewing #modeHint,body.viewonly #modeHint{display:none!important}' in src)
     # --- v155: 番号と種類の分離・漢字の印をやめて絵に（オーナー指示）---
     chk('静的', '種類の絵（TYPE_ICON）があり、漢字の印（学・公・碑・WC）は無い。旧 course は spot に読み替える',
@@ -794,7 +794,7 @@ def static_checks(src):
     chk('静的', '保存ボタンは状態表示（保存済み／保存中…／保存できず）。一覧に戻るときは必ず確認（v170）',
         "st === 'saved' ? '保存済み' : st === 'saving' ? '保存中…'" in src and '_askSaveBack();                               // v170' in src and '.hbtn-save.is-saved{' in src
         and 'id="sbSave"' in src and 'id="sbNoSave"' in src and 'id="sbCancel"' in src)
-    chk('静的', 'スマホの下の道具は スポット・なぞる・ルート調整・道を出す の4つ（文字つき・この順・v169）。詳細に重複させない（v154・オーナー指摘）',
+    chk('静的', 'スマホの下の道具は スポット・なぞる・ルート調整・道を足す の4つ（文字つき・この順・v169）。詳細に重複させない（v154・オーナー指摘）',
         src.index('id="mobileWpBtn"') < src.index('id="mobileDrawBtn"') < src.index('id="mobileViaBtn"') < src.index('id="mobileCustomBtn"') and src.count('class="mob-mode ') == 4 and src.count('class="mob-mode-l"') == 4 and 'id="mobileViaBtn" class="mob-mode tap" onclick="setMode(\'via\')"' in src
         and 'id="mobileCustomBtn" class="mob-mode tap" onclick="toggleCustomMode()"' in src and src.count('id="mobileViaBtn"') == 1)
     chk('静的', 'スポットの編集は 種別→名前→写真→説明 の順で、2行目・電話・滞在・道順・名札の位置は「くわしい設定」に畳む',
@@ -927,7 +927,7 @@ def static_checks(src):
               "文字なし保存": 'saveMapNoText()'}
     _missing = [f"{k}(PC)" for k, v in _feats.items() if v not in _pc] + [f"{k}(スマホ)" for k, v in _feats.items() if v not in _mob]
     chk('静的', '機種だけで使えない機能が0（圏外用に保存・現在地追従はスマホ専用でよい）', not _missing, str(_missing)[:200])
-    chk('静的', 'PCの左の道具に「なぞる」「道を出す」、下に「現在地」、左の欄に「並べ替え」がある',
+    chk('静的', 'PCの左の道具に「なぞる」「道を足す」、下に「現在地」、左の欄に「並べ替え」がある',
         'id="btnDraw" onclick="setMode(\'draw\')"' in src and 'id="btnCustom" onclick="toggleCustomMode()"' in src
         and 'id="btnGps" onclick="gotoCurrentLocation()"' in src and 'class="wp-ro-btn drag-hint" onclick="openReorderSheet()"' in src)
     chk('静的', '高低差の詳細は最初の1回で開く（実際の表示で判定）', "var isOpen = getComputedStyle(panel).display !== 'none';" in src)
@@ -2591,7 +2591,7 @@ def functional_checks(index_path):
             and du.get('pending') and du.get('afterUndo') == 'ABC' and du.get('toastGone') and du.get('pendingAfter') is False and du.get('sameData')
             and du.get('afterFinal') == 'BC' and du.get('toastGone2') and du.get('noResurrect') == 'BC', str(du)[:260])
 
-        # v131: PC で なぞる／道を出す／現在地／並べ替え画面 が動き、高低差は1回で開く。スマホの帯は展開すると詳細（4つの数字）
+        # v131: PC で なぞる／道を足す／現在地／並べ替え画面 が動き、高低差は1回で開く。スマホの帯は展開すると詳細（4つの数字）
         page.set_viewport_size({'width': 1024, 'height': 700})
         pa = page.evaluate("""()=>{ try{
             leafMap.invalidateSize();
@@ -2627,7 +2627,7 @@ def functional_checks(index_path):
             _setElevExpanded(false); _elevData = keepE;
             return {n, ok: /最高/.test(txt) && /最低/.test(txt) && /上り/.test(txt) && /下り/.test(txt), svgH: Math.round(svgH)};
           }catch(e){ return 'ERR:'+e.message; } }""")
-        chk('機能', 'PC：なぞる・道を出す・現在地・並べ替え画面が動き、高低差は1回で開く',
+        chk('機能', 'PC：なぞる・道を足す・現在地・並べ替え画面が動き、高低差は1回で開く',
             isinstance(pa, dict) and pa.get('draw') and pa.get('drawOff') and pa.get('custom') and pa.get('customOff') and pa.get('gps')
             and pa.get('reorder') and pa.get('elevOnce') and '手描きの道を使う' in pa.get('moreRows', []) and '手描きの道に合わせる' in pa.get('moreRows', []),
             str(pa)[:260])

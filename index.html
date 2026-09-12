@@ -1398,7 +1398,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
         <div id="tbar">
           <button class="rl-btn ed on" id="btnWp" onclick="setMode('wp')" title="クリックでスポットをコースに追加"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M9 11a3 3 0 1 0 6 0a3 3 0 0 0 -6 0" /> <path d="M17.657 16.657l-4.243 4.243a2 2 0 0 1 -2.827 0l-4.244 -4.243a8 8 0 1 1 11.314 0" /></svg><span>スポット</span></button>
           <button class="rl-btn ed" id="btnDraw" onclick="setMode('draw')" title="指でなぞって描く&#10;地図をドラッグしてなぞると、そのとおりにコースが引かれます"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 19a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" /> <path d="M19 7a2 2 0 1 0 0 -4a2 2 0 0 0 0 4" /> <path d="M11 19h5.5a3.5 3.5 0 0 0 0 -7h-8a3.5 3.5 0 0 1 0 -7h4.5" /></svg><span>手描き</span></button>
-          <button class="rl-btn ed" id="btnCustom" onclick="toggleCustomMode()" title="手描きの道&#10;地図に無い道をなぞって描く（終わりは完了ボタン）"><svg class="svgi" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4"/><path d="M13.5 6.5l4 4"/></svg><span>道を出す</span></button>
+          <button class="rl-btn ed" id="btnCustom" onclick="toggleCustomMode()" title="手描きの道&#10;地図に無い道をなぞって描く（終わりは完了ボタン）"><svg class="svgi" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4"/><path d="M13.5 6.5l4 4"/></svg><span>道を足す</span></button>
           <button class="rl-btn ed" id="btnVia" onclick="setMode('via')" title="ルート調整：調整点をつまんで動かす／線をタップで点を足す（この間は地図が固定されます）"><svg class="svgi" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /> <path d="M4 6l8 0" /> <path d="M16 6l4 0" /> <path d="M6 12a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /> <path d="M4 12l2 0" /> <path d="M10 12l10 0" /> <path d="M15 18a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /> <path d="M4 18l11 0" /> <path d="M19 18l1 0" /></svg><span>ルート調整</span></button>
           <button class="rl-btn ed on" id="btnMagnet" onclick="toggleManualMode();_syncPcPops()" title="道に吸い付く／吸い付かない&#10;地図に無い道（畦道・山道）を通したいときは OFF"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 13v-8a2 2 0 0 1 2 -2h1a2 2 0 0 1 2 2v8a2 2 0 0 0 6 0v-8a2 2 0 0 1 2 -2h1a2 2 0 0 1 2 2v8a8 8 0 0 1 -16 0"/><path d="M4 8h5"/><path d="M15 8h4"/></svg><span>吸い付く</span></button>
           <div class="rl-div ed"></div>
@@ -1486,7 +1486,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
           <button id="mobileWpBtn" class="mob-mode on tap" onclick="setMode('wp')" aria-label="スポット"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11a3 3 0 1 0 6 0a3 3 0 0 0 -6 0" /> <path d="M17.657 16.657l-4.243 4.243a2 2 0 0 1 -2.827 0l-4.244 -4.243a8 8 0 1 1 11.314 0" /></svg><span class="mob-mode-l">スポット</span></button>
           <button id="mobileDrawBtn" class="mob-mode tap" onclick="setMode('draw')" aria-label="指でなぞって描く"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 19a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" /> <path d="M19 7a2 2 0 1 0 0 -4a2 2 0 0 0 0 4" /> <path d="M11 19h5.5a3.5 3.5 0 0 0 0 -7h-8a3.5 3.5 0 0 1 0 -7h4.5" /></svg><span class="mob-mode-l">手描き</span></button>
           <button id="mobileViaBtn" class="mob-mode tap" onclick="setMode('via')" aria-label="ルート調整"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18c4 0 5-12 9-12s5 12 9 12"/><circle cx="12" cy="12" r="2.5" fill="currentColor"/></svg><span class="mob-mode-l">ルート調整</span></button>
-          <button id="mobileCustomBtn" class="mob-mode tap" onclick="toggleCustomMode()" aria-label="手描きの道"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4"/><path d="M13.5 6.5l4 4"/></svg><span class="mob-mode-l">道を出す</span></button>
+          <button id="mobileCustomBtn" class="mob-mode tap" onclick="toggleCustomMode()" aria-label="手描きの道"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4"/><path d="M13.5 6.5l4 4"/></svg><span class="mob-mode-l">道を足す</span></button>
         </div>
         <div class="mob-sdiv"></div>
         <div class="mob-stats">
@@ -3234,7 +3234,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 手描きの道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した手描きの道id（直前取り消し用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v218';
+const APP_VERSION = 'v219';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -3406,7 +3406,7 @@ function startDrawPath(){
   _customTraceMode=true;
   enterDrawMode();           // 既存のなぞり捕捉を流用
   _showDrawBar(true);
-  showToast('道を出す：指でなぞる（何本でも）→ 終了');
+  showToast('道を足す：指でなぞる（何本でも）→ 終了');
 }
 function finishCustomTrace(){ if(_customMode_) toggleCustomMode(); }
 function undoLastCustom(){
@@ -3580,7 +3580,7 @@ function toggleCustomMode(){
     showToast('手描きの道：なぞって描く／長押しで削除');
   } else {
     _activeHandle=null; _customTraceMode=false; exitDrawMode(); _setMarkersClickable(true); _showDrawBar(false); _renderCustom();
-    showToast('道を出すのを終了しました');
+    showToast('道を足すのを終了しました');
   }
   _syncCustomMenu(); _syncModeHint();
 }
@@ -7588,7 +7588,7 @@ function setMode(m) {
 function _syncModeHint(){
   const el = document.getElementById('modeHint'); if (!el) return;
   let t = '';
-  if (_customMode_) t = '道を出す：地図に無い道をなぞって描きます';
+  if (_customMode_) t = '道を足す：地図に無い道をなぞって描きます';
   else if (mode === 'draw') t = '手描き：指でなぞって道順を引く';
   else if (mode === 'via') t = 'ルート調整：点を動かす';
   el.hidden = !t;
