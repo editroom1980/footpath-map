@@ -56,7 +56,7 @@
 { id, name, area, desc, center, zoom,
   wps:[{id,type,name,desc,tel,dwell,fitBefore,fitAfter,onRoute,lat,lng,labelDir,photos[]}],
   vps:[{id,segAfter,fitBefore,fitAfter,lat,lng,order}],
-  customPaths:[{id,pts:[[lat,lng],…]}],      // 手描きの道（手描きの道）
+  customPaths:[{id,pts:[[lat,lng],…]}],      // 手描きの道
   routes:{ "lng,lat;lng,lat": [[lat,lng],…] }, // 区間ごとの道順（v119）。読み込み時に segCache へ戻す
   elevs: { "lat,lng": m },                     // 点ごとの標高（v127）。読み込み時に elevCache へ戻す。routes と共に計算後に静かに書き足される
   kokoroe: "この地域からのお願い",              // 歩く人の心得の地域の追記（v137）。標準の文は KOKOROE 定数
@@ -118,8 +118,8 @@
 
 8. **版数は3か所そろえる**（10章）。
 
-16. **画面の語と内部名は別**（v130）。画面は「スポット／調整点／手描きの道／指でなぞって描く／道に沿わせない／
-    手描きの道に合わせる／歩く人の見え方」、コードと保存データは `wps/vps/customRoads/draw/manualMode/_snapOn_/viewMode` のまま。
+16. **画面の語と内部名は別**（v130）。画面は「スポット／調整点／手描きの道／手描き／道なりに引く／
+    手描きの道に合わせる／閲覧モード」、コードと保存データは `wps/vps/customRoads/draw/manualMode/_snapOn_/viewMode` のまま。
     文言を足すときは画面の語を使い、内部名・キーは変えない（対応表は HANDOFF 2章）。
 15. **種別の選び方は select（隠す）＋チップ**（v128）。`saveModal` は `#mType.value` を読むだけ、`_buildTypeOptions(wp)` が
     選べる種類を select に入れ、`_renderTypeChips()` はそれを読んで描く。種類の制限（スタート／ゴールは両端だけ）を
