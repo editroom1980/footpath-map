@@ -447,14 +447,19 @@ def static_checks(src):
     # --- v157: 番号の丸と種類の丸を横に並べる（オーナー指摘：iPhone で片方しか見えない）---
     chk('静的', '番号つきで種類がある地点：地図は「種類の丸＋右上に番号の小丸」、一覧・並べ替え・配布シート・カードは番号と種類を並べて出す',
         'class="wp-num"' in src and 'class="wp-dot cat"' in src and 'class="ro-badge cat"' in src and 'class="sh-cat"' in src and 'class="vip-dot vip-dot2"' in src and '_catBadge' not in src and 'wp-pair' not in src)
+    # --- v193: 置き場所へ直接出す（合言葉を1回だけ登録）。GitHub の画面まかせをやめた ---
+    chk('静的', '出すのはアプリから直接（GitHub の contents API に PUT）。合言葉はこの端末だけに残し、送り先は GitHub だけ。合言葉を使わない「ファイルで出す」もある',
+        'function _ghPutFile' in src and 'function _ghToken' in src and 'function _ghSetToken' in src and "ghToken:     'fp_gh_token'" in src
+        and "'Authorization':'Bearer ' + t" in src and 'function _pubByFile' in src and 'id="pubTokenSave"' in src and 'id="pubForget"' in src
+        and 'function _ghNewFileUrl' not in src and src.count('api.github.com') == 2)
     # --- v192: 「配る」から出せる／iPhone でも窓が開く／出すコースを選べる ---
     chk('静的', '配るの画面に「みんなのコースに出す」がある。出すは押したその場で窓を開く（setTimeout では開かない）。出すコースを選べる',
         'data-share="pub"' in src and 'closeShareSheet();openPublishSheet()' in src and 'function _pubPrepare' in src and 'let _pubCourse = null, _pubData' in src
-        and "const w = window.open(gh, '_blank');" in src and 'setTimeout(() => window.open(gh' not in src
+        and 'setTimeout(() => window.open(gh' not in src
         and 'id="pubSwitch"' in src and 'function _pubShowPicker' in src)
     # --- v191: みんなのコースに「ボタンひとつ」で出す＋見た人にできること ---
-    chk('静的', '出す画面（名前・見た人にできること・出す）。押すと中身まで入れた置き場所の画面を開く。一覧は library フォルダも読む',
-        'function openPublishSheet' in src and 'function _pubGo' in src and 'function _ghNewFileUrl' in src and 'function _libLoad' in src and 'function _ghRepo' in src
+    chk('静的', '出す画面（名前・見た人にできること・出す）。一覧は library フォルダも読む',
+        'function openPublishSheet' in src and 'function _pubGo' in src and 'function _libLoad' in src and 'function _ghRepo' in src
         and "sh.id = 'pubSheet'" in src and 'data-edit="2"' in src and 'allowEdit: _pubAllowEdit' in src
         and "if (opts && typeof opts.allowEdit === 'boolean') c.noEdit = opts.allowEdit ? undefined : true;" in src
         and 'api.github.com/repos/' in src and "pubBy:       'fp_pub_by'" in src)
@@ -1969,8 +1974,22 @@ def functional_checks(index_path):
             out.free = j2.allowEdit === true && !!back2 && !back2.noEdit && _isLockedShare(back2) === false;
             // ③ 置き場所の画面の URL（GitHub Pages のときだけ）
             out.picker = !!document.getElementById('pubSwitch') && !!document.getElementById('pubPick');
-            out.ghUrl = (_ghNewFileUrl('library/a.json', '{}') || '').indexOf('/new/main?filename=library%2Fa.json&value=') > 0
-                        || _ghNewFileUrl('library/a.json', '{}') === null;   // ローカル検証では null でよい
+            // 合言葉を登録して「出す」→ 置き場所へ PUT される（通信は差し替えて確かめる）
+            const keepTok = _ghToken(); _ghSetToken('test-token');
+            const keepRepo2 = window._ghRepo; window._ghRepo = () => ({user:'editroom1980', repo:'footpath-map'});
+            let put = null;
+            window.fetch = async (u, o) => { const s3 = String(u);
+              if (s3.indexOf('api.github.com') >= 0 && o && o.method === 'PUT') { put = {url:s3, auth:(o.headers||{}).Authorization, body: JSON.parse(o.body)}; return new Response('{}', {status:201}); }
+              return keepFetch(u, o); };
+            openPublishSheet(c); await new Promise(r => setTimeout(r, 600));
+            out.goShown = document.getElementById('pubGo').hidden === false && document.getElementById('pubSetup').hidden === true;
+            await _pubGo(false); await new Promise(r => setTimeout(r, 200));
+            out.put = !!put && /\/contents\/library\/\d{8}-.*\.json$/.test(put.url) && put.auth === 'Bearer test-token'
+                      && typeof put.body.content === 'string' && JSON.parse(decodeURIComponent(escape(atob(put.body.content)))).name === c.name;
+            // 合言葉が無ければ登録の案内が出る
+            _ghSetToken(''); openPublishSheet(c); await new Promise(r => setTimeout(r, 400));
+            out.setup = document.getElementById('pubSetup').hidden === false && document.getElementById('pubGo').hidden === true;
+            _ghSetToken(keepTok); window._ghRepo = keepRepo2;
             Object.defineProperty(navigator, 'clipboard', {configurable:true, value: keepCb});
             // ④ 一覧は library フォルダ（GitHub API）も読む
             window.fetch = async (u, o) => { const s2 = String(u);
@@ -1988,7 +2007,7 @@ def functional_checks(index_path):
             return out;
           }catch(e){ return 'ERR:'+e.message; } }""")
         chk('機能', 'みんなのコースに出す：名前と「見た人にできること」を選んで1回で出せる。見るだけ＝取り込みを断る印が入る。一覧は library フォルダも読む',
-            isinstance(pb, dict) and all(pb.get(k) for k in ('shown', 'name', 'opts', 'picked', 'body', 'locked', 'free', 'picker', 'ghUrl', 'folder')), str(pb)[:280])
+            isinstance(pb, dict) and all(pb.get(k) for k in ('shown', 'name', 'opts', 'picked', 'body', 'locked', 'free', 'picker', 'goShown', 'put', 'setup', 'folder')), str(pb)[:300])
 
         # v190: 一覧に出す絵：写真から選ぶ→保存される／地図の絵に戻す→消える／一覧のアイコンに出る
         ic = page.evaluate("""async ()=>{ try{

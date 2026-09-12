@@ -681,6 +681,10 @@ body.viewonly #firstTip,body.embed #firstTip{display:none!important}
 #pubSheet .pb-pick-n{display:block;font-size:14px;font-weight:800;color:#231C14;overflow-wrap:anywhere}
 #pubSheet .pb-pick-s{display:block;font-size:11px;color:var(--t-sub);margin-top:1px}
 #pubSheet .pb-go[disabled]{opacity:.5}
+#pubSheet .pb-setup{border:1.5px solid #E3DCD1;border-radius:12px;padding:10px 12px;margin:4px 0 10px;background:#FCFAF6}
+#pubSheet .pb-setup .pb-l{margin-top:0}
+#pubSheet .pb-setup .pb-copy{margin-bottom:8px}
+#pubSheet .pb-copy{margin-top:8px}
 #pubSheet .pb-l{display:block;font-size:11px;font-weight:700;color:var(--t-sub);margin:10px 0 5px 2px}
 #pubSheet .s1-input{margin-bottom:4px}
 #pubSheet .pb-opt{display:block;width:100%;text-align:left;border:1.5px solid #E3DCD1;border-radius:12px;background:#fff;padding:10px 12px;margin-bottom:8px;font-family:inherit;cursor:pointer;min-height:var(--tap)}
@@ -1925,7 +1929,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
       <h3>💾 保存・配る</h3>
       <ul>
         <li>「配る」→ <b>かんたん：このリンクをそのまま配る</b>。リンクの中にコースが入っているので、置き場所の用意は要りません（写真は入りません）</li>
-        <li>一覧の<b>「みんなのコースを見る」</b>：みんなが出したコースが並びます。自分のコースを出すときは「配る」→「みんなのコースに出す」→ 名前と「見た人にできること」を選んで<b>「出す」</b>。開いた画面で緑の「Commit changes」を押すだけです</li>
+        <li>一覧の<b>「みんなのコースを見る」</b>：みんなが出したコースが並びます。自分のコースを出すときは「配る」→「みんなのコースに出す」→ 名前と「見た人にできること」を選んで<b>「出す」</b>。はじめの1回だけ、置き場所の合言葉（GitHub のアクセストークン）を登録します（この端末の中だけに残ります）。合言葉を使わない「ファイルで出す」もあります</li>
         <li>保存は「保存」ボタンで行います（勝手には保存しません）。保存していない変更があると、ボタンが「保存」（濃い色）のままになります。一覧に戻るときにも「保存して戻る／保存せずに戻る」を確認します。この端末のブラウザに残ります</li>
         <li>「配る」→ 画像・配布シート（A4）・リンク・GPX の4つの出口と、配る前の確認（歩いた・私有地・分岐・注意…）が1枚にまとまっています</li>
         <li>「見た目 › 地図の色」で線と印の色を選べます。歩く人の画面と配布シートも同じ色になります</li>
@@ -2239,6 +2243,7 @@ const LS = {
   wpSize:      'fp_wpsize',       // スポット○の大きさ段階（WP_SIZES の添字）
   ovAlpha:     'fp_ovalpha',      // 航空写真に重ねる地図の濃さ（OVERLAY_ALPHAS の添字・v188）
   pubBy:       'fp_pub_by',       // みんなのコースに出すときの名前（前回の入力を覚える・v191）
+  ghToken:     'fp_gh_token',     // 置き場所（GitHub）の合言葉。この端末にだけ残す（v193）
   walkSpeed:   'fp_walkspeed',    // 歩く速さの段階（WALK_SPEEDS の添字）
   shareLinks:  'fp_sharelinks',   // コースIDごとの配布リンク（配布シートのQRに使う）
   visits:      'fp_visits',       // スタンプ（コースIDごと・訪れたスポットと時刻）
@@ -3192,7 +3197,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v192';
+const APP_VERSION = 'v193';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -10054,11 +10059,30 @@ function _ghEditUrlFor(hostname, pathname, file){   // v185：ライブラリの
   return up.replace(/\/upload\/main$/, '/edit/main/' + file);
 }
 function _ghEditUrl(file){ try { return _ghEditUrlFor(location.hostname, location.pathname, file); } catch(_) { return null; } }
-function _ghNewFileUrl(file, value){   // v191：中身まで入れた「新しいファイル」の画面（押すのは Commit だけ）
-  const up = _ghUploadUrl(); if (!up) return null;
-  const base = up.replace(/\/upload\/main$/, '/new/main');
-  const u = base + '?filename=' + encodeURIComponent(file) + (value ? '&value=' + encodeURIComponent(value) : '');
-  return u.length > 30000 ? null : u;   // 長すぎるときは手で貼ってもらう
+/* 置き場所（GitHub）へ直接置く（v193・オーナー指摘「GitHub の画面がエラーになる」）。
+   v191〜192 は「新しいファイルの画面に中身を入れて開く」方式だったが、中身が大きいと GitHub 側が
+   Whoops（エラー）になって使えなかった。合言葉（アクセストークン）を1回だけ登録してもらい、
+   アプリから直接ファイルを置く。合言葉はこの端末の中だけに残し、送り先は GitHub だけ */
+function _ghToken(){ try { return localStorage.getItem(LS.ghToken) || ''; } catch(_) { return ''; } }
+function _ghSetToken(v){ try { if (v) localStorage.setItem(LS.ghToken, v); else localStorage.removeItem(LS.ghToken); } catch(_) {} }
+function _b64utf8(str){
+  const bytes = new TextEncoder().encode(str);
+  let bin = ''; const CH = 0x8000;
+  for (let i = 0; i < bytes.length; i += CH) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + CH));
+  return btoa(bin);
+}
+async function _ghPutFile(path, text, message){
+  const t = _ghToken(); if (!t) return {ok:false, why:'token'};
+  const r = _ghRepo(); if (!r) return {ok:false, why:'repo'};
+  try {
+    const res = await fetch('https://api.github.com/repos/' + r.user + '/' + r.repo + '/contents/' + path, {
+      method:'PUT',
+      headers:{'Authorization':'Bearer ' + t, 'Accept':'application/vnd.github+json', 'Content-Type':'application/json'},
+      body: JSON.stringify({message: message || ('add ' + path), content: _b64utf8(text)})
+    });
+    if (res.ok) return {ok:true};
+    return {ok:false, why: res.status === 401 || res.status === 403 ? 'auth' : (res.status === 404 ? 'notfound' : 'http' + res.status)};
+  } catch(_) { return {ok:false, why:'network'}; }
 }
 /* ===== みんなのコース（v185・オーナー指示「全員が共有して見に行けるライブラリ」）=====
    サーバは使わない。アプリと同じ場所の library.json を読むだけ。1件は {name, area, by, at, d}。
@@ -10156,13 +10180,32 @@ function openPublishSheet(course){
       + '<button type="button" class="pb-opt tap" data-edit="2"><b>直してもよい</b><small>気に入った人が自分のコースに取り込んで、作り変えてよい</small></button>'
       + '<div class="pb-n" id="pubNote"></div>'
       + '<button type="button" class="pb-go tap" id="pubGo">出す</button>'
-      + '<button type="button" class="pb-copy tap" id="pubCopy">出す内容をコピーする（手で貼るとき）</button></div>';
+      + '<div class="pb-setup" id="pubSetup" hidden>'
+      +   '<div class="pb-l">はじめの1回だけ：置き場所の合言葉</div>'
+      +   '<div class="pb-n">GitHub の「合言葉（アクセストークン）」を1回だけ登録すると、次からは「出す」を押すだけで出せます。合言葉は<b>この端末の中だけ</b>に残り、送り先は GitHub だけです。</div>'
+      +   '<button type="button" class="pb-copy tap" id="pubTokenNew">合言葉を作る画面を開く</button>'
+      +   '<div class="pb-n">開いた画面で「Repository access → Only select repositories → このリポジトリ」、「Permissions → Repository permissions → Contents → Read and write」を選んで作ります。</div>'
+      +   '<input class="s1-input" id="pubToken" type="password" placeholder="github_pat_… を貼り付け" autocomplete="off">'
+      +   '<button type="button" class="pb-go tap" id="pubTokenSave">この合言葉を覚える</button>'
+      + '</div>'
+      + '<button type="button" class="pb-copy tap" id="pubFile">ファイルで出す（合言葉を使わない）</button>'
+      + '<button type="button" class="pb-copy tap" id="pubCopy">出す内容をコピーする</button>'
+      + '<button type="button" class="pb-copy tap" id="pubForget" hidden>この端末から合言葉を消す</button></div>';
     document.body.appendChild(sh);
     sh.addEventListener('click', e => { if (e.target === sh) closePublishSheet(); });
     sh.querySelector('.pb-x').addEventListener('click', closePublishSheet);
     sh.querySelectorAll('.pb-opt').forEach(b => b.addEventListener('click', () => _pubPickEdit(b.getAttribute('data-edit') === '2')));
     sh.querySelector('#pubGo').addEventListener('click', () => _pubGo(false));
     sh.querySelector('#pubSwitch').addEventListener('click', () => _pubShowPicker());
+    sh.querySelector('#pubFile').addEventListener('click', () => _pubByFile());
+    sh.querySelector('#pubTokenNew').addEventListener('click', () => { const r = _ghRepo(); window.open(r ? ('https://github.com/settings/personal-access-tokens/new') : 'https://github.com/settings/tokens', '_blank'); });
+    sh.querySelector('#pubTokenSave').addEventListener('click', () => {
+      const v = (document.getElementById('pubToken').value || '').trim();
+      if (!v) { showToast('合言葉を貼り付けてください'); return; }
+      _ghSetToken(v); document.getElementById('pubToken').value = '';
+      _pubSyncButtons(); showToast('合言葉を覚えました。「出す」を押すと、そのまま出せます');
+    });
+    sh.querySelector('#pubForget').addEventListener('click', () => { _ghSetToken(''); _pubSyncButtons(); showToast('この端末から合言葉を消しました'); });
     sh.querySelector('#pubCopy').addEventListener('click', () => _pubGo(true));
   }
   const pick = sh.querySelector('#pubPick'); if (pick) { pick.hidden = true; }
@@ -10175,11 +10218,25 @@ function openPublishSheet(course){
   const by = sh.querySelector('#pubBy'); if (by && !by.value) { try { by.value = localStorage.getItem(LS.pubBy) || ''; } catch(_) {} }
   _pubPickEdit(!(c.noEdit === true));
   _pubPrepare();   // v192：中身を先に作っておく
-  const gh = _ghNewFileUrl('x.json', '');
-  sh.querySelector('#pubNote').textContent = gh ? '「出す」を押すと置き場所の画面が開きます。中身は入った状態なので、緑の「Commit changes」を押すだけです（1〜2分でみんなの一覧に並びます）。'
-                                               : 'この置き場所では自動で開けません。「出す内容をコピーする」を押して、library フォルダに新しいファイルとして貼り付けてください。';
-  sh.querySelector('#pubGo').hidden = !gh;
+  _pubSyncButtons();
   sh.classList.add('show');
+}
+function _pubSyncButtons(){   // v193：合言葉があるかどうかで出し方を切り替える
+  const sh = document.getElementById('pubSheet'); if (!sh) return;
+  const repo = _ghRepo(), tok = _ghToken();
+  const note = sh.querySelector('#pubNote'), go = sh.querySelector('#pubGo'), setup = sh.querySelector('#pubSetup'), forget = sh.querySelector('#pubForget'), file = sh.querySelector('#pubFile');
+  if (!repo) {
+    note.textContent = 'この置き場所では自動で出せません。「出す内容をコピーする」か「ファイルで出す」で、library フォルダに置いてください。';
+    go.hidden = true; setup.hidden = true; forget.hidden = true; file.hidden = false; return;
+  }
+  file.hidden = false;
+  if (tok) {
+    note.textContent = '「出す」を押すと、その場でみんなの一覧に並びます（1〜2分）。合言葉はこの端末の中だけに入っています。';
+    go.hidden = false; go.textContent = '出す'; setup.hidden = true; forget.hidden = false;
+  } else {
+    note.textContent = 'はじめの1回だけ、下の合言葉を登録してください。次からは「出す」を押すだけです。';
+    go.hidden = true; setup.hidden = false; forget.hidden = true;
+  }
 }
 function closePublishSheet(){ const sh = document.getElementById('pubSheet'); if (sh) sh.classList.remove('show'); _pubCourse = null; _pubData = ''; }
 function _pubShowPicker(){   // v192：作ったコースの中から選ぶ
@@ -10221,21 +10278,42 @@ function _pubBody(c, by){
   return JSON.stringify({name: c.name || '', area: c.area || '', by: by, at: new Date().toISOString().slice(0, 10),
                          allowEdit: _pubAllowEdit, d: _pubData || ''}, null, 1);
 }
-function _pubGo(copyOnly){
-  const c = _pubCourse; if (!c) return;
+function _pubFileName(c){
+  return 'library/' + new Date().toISOString().slice(0, 10).replace(/-/g, '') + '-' + _pubSlug(c.name) + '-' + Math.random().toString(36).slice(2, 6) + '.json';
+}
+function _pubReady(){
+  const c = _pubCourse; if (!c) return null;
   const by = ((document.getElementById('pubBy') || {}).value || '').trim();
   try { localStorage.setItem(LS.pubBy, by); } catch(_) {}
-  if (!_pubData) { showToast('準備中です。数秒おいてもう一度押してください'); return; }
-  const body = _pubBody(c, by);
-  const file = 'library/' + new Date().toISOString().slice(0, 10).replace(/-/g, '') + '-' + _pubSlug(c.name) + '-' + Math.random().toString(36).slice(2, 6) + '.json';
-  if (navigator.clipboard) { try { navigator.clipboard.writeText(body); } catch(_) {} }
-  const gh = _ghNewFileUrl(file, body);
-  if (copyOnly || !gh) { closePublishSheet(); showToast('出す内容をコピーしました。library フォルダに新しいファイルとして貼り付けてください'); return; }
-  // iPhone は「押した流れ」から外れると新しい窓を開けない。押したその場で開く（だめなら同じ画面で開く）
-  const w = window.open(gh, '_blank');
+  if (!_pubData) { showToast('準備中です。数秒おいてもう一度押してください'); return null; }
+  return {c, body: _pubBody(c, by), file: _pubFileName(c)};
+}
+async function _pubGo(copyOnly){
+  const r = _pubReady(); if (!r) return;
+  if (navigator.clipboard) { try { navigator.clipboard.writeText(r.body); } catch(_) {} }
+  if (copyOnly) { closePublishSheet(); showToast('出す内容をコピーしました。library フォルダに新しいファイルとして貼り付けてください'); return; }
+  const go = document.getElementById('pubGo'); if (go) { go.disabled = true; go.textContent = '出しています…'; }
+  const res = await _ghPutFile(r.file, r.body, 'みんなのコース: ' + (r.c.name || ''));
+  if (go) { go.disabled = false; go.textContent = '出す'; }
+  if (res.ok) { closePublishSheet(); showToast('出しました。「みんなのコースを見る」に並びます（1〜2分）'); return; }
+  if (res.why === 'auth') { showToast('合言葉が違うか、書き込みの許可がありません。合言葉を作り直して登録してください'); _ghSetToken(''); _pubSyncButtons(); return; }
+  if (res.why === 'notfound') { showToast('置き場所が見つかりません（リポジトリ名をご確認ください）'); return; }
+  if (res.why === 'token') { _pubSyncButtons(); showToast('はじめに合言葉を登録してください'); return; }
+  showToast('出せませんでした（' + (res.why || '') + '）。「ファイルで出す」もお試しください');
+}
+function _pubByFile(){   // 合言葉を使わない道：ファイルを保存してから、置き場所のアップロード画面を開く
+  const r = _pubReady(); if (!r) return;
+  const name = r.file.split('/').pop();
+  try {
+    const blob = new Blob([r.body], {type:'application/json'});
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name;
+    document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  } catch(_) { showToast('ファイルを作れませんでした'); return; }
+  const up = _ghUploadUrl();
   closePublishSheet();
-  if (!w) { showToast('置き場所の画面へ移ります（緑の Commit changes を押してください）'); location.href = gh; return; }
-  showToast('置き場所の画面を開きました。緑の「Commit changes」を押すと、みんなの一覧に並びます');
+  if (!up) { showToast('「' + name + '」を保存しました。置き場所の library フォルダに入れてください'); return; }
+  showToast('「' + name + '」を保存しました。開いた画面で library フォルダに入れて Commit してください');
+  window.open(up, '_blank');
 }
 function _libHowTo(){ openPublishSheet(); }   // 旧名（呼び出し側は据え置き）
 /* ===== リンクにコースを丸ごと入れる（v184・オーナー指摘「リンクを配るをコピーしても開けない」）=====

@@ -449,5 +449,5 @@ CONSTANTS(904) → STATE(968) → STORAGE(1015) → 版のお知らせ(1021) →
 
 ## みんなのコース（v185→v191）
 - 一覧：`_libLoad()` が ① 置き場所が GitHub Pages なら GitHub の一覧 API で `library/` のファイル名を取り、中身は**同じ場所（`library/<名>.json`）**から読む ② だめなら `library.json`（`{courses:[…]}`）。どちらも 1 件は `{name, area, by, at, allowEdit, d}`。
-- 出す：`openPublishSheet()` →（名前・見た人にできること）→ `_pubGo()` が中身を作り、`_ghNewFileUrl(file, body)`（`/new/main?filename=…&value=…`）を開く。URL が 30,000 文字を超えるときは null を返し、コピーして手で貼る道に落とす。
+- 出す：`openPublishSheet()` →（名前・見た人にできること）→ `_pubGo()` が `_ghPutFile(path, text, message)` で **GitHub の contents API に PUT**（v193）。合言葉は `LS.ghToken`（この端末のみ）。GitHub の `/new/main?value=…` 方式は中身が大きいと GitHub 側がエラーになるので**使わない**。合言葉を使わない道は `_pubByFile()`（ファイル保存＋アップロード画面）とコピー。
 - 「見るだけ」は `_courseForLink(course, {allowEdit:false})` が `noEdit:true` を入れる＝受け取った側の `_isLockedShare` が効く。
