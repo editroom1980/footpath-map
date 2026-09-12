@@ -447,6 +447,10 @@ def static_checks(src):
     # --- v157: 番号の丸と種類の丸を横に並べる（オーナー指摘：iPhone で片方しか見えない）---
     chk('静的', '番号つきで種類がある地点：地図は「種類の丸＋右上に番号の小丸」、一覧・並べ替え・配布シート・カードは番号と種類を並べて出す',
         'class="wp-num"' in src and 'class="wp-dot cat"' in src and 'class="ro-badge cat"' in src and 'class="sh-cat"' in src and 'class="vip-dot vip-dot2"' in src and '_catBadge' not in src and 'wp-pair' not in src)
+    # --- v195: 置き場所を持たない人は「作者に送って載せてもらう」／受け取った作者はそのまま載せる ---
+    chk('静的', '合言葉が無い人には「作者に送って載せてもらう」が主役。置き場所を持っている人の設定は畳む。受け取ったリンクは歩く人の画面のメニューから載せられる',
+        'id="pubSend"' in src and 'function _pubSend' in src and 'id="pubOwnerToggle"' in src and 'id="pubOwner"' in src
+        and 'id="mmPubRow"' in src and 'openPublishSheet(buildCurrentSaveData())' in src and '_ghToken() && _ghRepo() && courseInfo' in src)
     # --- v194: 合言葉の作り方を、GitHub の画面の順番どおりに出す ---
     chk('静的', '合言葉の作り方が番号つきで出る（Token name・Expiration・Only select repositories・Contents: Read and write・Generate token・貼り付け）',
         'class="pb-steps"' in src and 'Token name' in src and 'Expiration' in src and 'Only select repositories' in src
@@ -1992,7 +1996,8 @@ def functional_checks(index_path):
                       && typeof put.body.content === 'string' && JSON.parse(decodeURIComponent(escape(atob(put.body.content)))).name === c.name;
             // 合言葉が無ければ登録の案内が出る
             _ghSetToken(''); openPublishSheet(c); await new Promise(r => setTimeout(r, 400));
-            out.setup = document.getElementById('pubSetup').hidden === false && document.getElementById('pubGo').hidden === true;
+            out.setup = document.getElementById('pubSend').hidden === false && document.getElementById('pubGo').hidden === true
+                        && document.getElementById('pubOwnerToggle').hidden === false;   // v195：合言葉が無ければ「作者に送る」が主役
             _ghSetToken(keepTok); window._ghRepo = keepRepo2;
             Object.defineProperty(navigator, 'clipboard', {configurable:true, value: keepCb});
             // ④ 一覧は library フォルダ（GitHub API）も読む

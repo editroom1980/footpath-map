@@ -381,7 +381,7 @@ body.embed #s2, body.embed #mapArea, body.embed #mapWrap{height:100%!important;m
 /* 発見（v143） */
 .wp-sticker.find{border-color:#E8F5E9}
 .find-dot{border-radius:50%;color:#fff;font-weight:bold;text-align:center;border:2.5px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.45);cursor:pointer}
-#mobileFindBtn[hidden],#btnFind[hidden],#mmFindsRow[hidden],#btnGoal[hidden],#mmGoalRow[hidden],#mmKokoroeRow[hidden],#mmInfoRow[hidden]{display:none!important}
+#mobileFindBtn[hidden],#btnFind[hidden],#mmFindsRow[hidden],#btnGoal[hidden],#mmGoalRow[hidden],#mmKokoroeRow[hidden],#mmInfoRow[hidden],#mmPubRow[hidden]{display:none!important}
 /* スポットの編集：くわしい設定（v148） */
 .m-more{border:1px solid #E6DCCB;border-radius:10px;padding:0 10px;margin:4px 0 10px;background:#FCFAF6}
 .m-switch{display:flex!important;align-items:center;gap:10px;background:#FCFAF6;border:1px solid #E6DCCB;border-radius:10px;padding:8px 10px;margin:6px 0 10px;cursor:pointer;font-weight:normal!important}
@@ -1691,6 +1691,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
           <div class="mm-map" onclick="closeMobileMenu();openReorderSheet()" data-edit="1"><span class="mm-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 6h9"/><path d="M11 12h9"/><path d="M12 18h8"/><path d="M4 16a2 2 0 1 1 4 0c0 .6-.5 1-1 1.5L4 20h4"/><path d="M6 10V4L4 6"/></svg></span><span class="mm-map-l">順番・逆回り・周回</span><span class="mm-v" id="mmReorderN">›</span></div>
           <div class="mm-map" onclick="closeMobileMenu();openNearbySheet()" data-edit="1"><span class="mm-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7"/><path d="M21 21l-6-6"/></svg></span><span class="mm-map-l">周辺の情報を取り込む</span><span class="mm-v">›</span></div>
           <div class="mm-map" onclick="closeMobileMenu();saveMapOffline()" title="このコースの範囲の地図を端末に保存します（圏外でも表示できます）"><span class="mm-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/><path d="M7 11l5 5 5-5"/><path d="M12 4v12"/></svg></span><span class="mm-map-l">地図を持ち歩く</span><span class="mm-v">›</span></div>
+          <div class="mm-map" onclick="closeMobileMenu();openPublishSheet(buildCurrentSaveData())" id="mmPubRow" hidden><span class="mm-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V6a2 2 0 0 1 2-2h5v15H6a2 2 0 0 0-2 2z"/><path d="M20 19V6a2 2 0 0 0-2-2h-5v15h5a2 2 0 0 1 2 2z"/></svg></span><span class="mm-map-l">このコースをみんなのコースに出す</span><span class="mm-v">›</span></div>
           <div class="mm-map" onclick="closeMobileMenu();openKokoroeSheet('view')" id="mmKokoroeRow" hidden><span class="mm-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19.5 12.6L12 20l-7.5-7.4a5 5 0 1 1 7.5-6.6 5 5 0 1 1 7.5 6.6"/></svg></span><span class="mm-map-l">歩く人の心得</span><span class="mm-v" id="mmKokoroe">›</span></div>
           <div class="mm-map" onclick="closeMobileMenu();openFindsSheet()" id="mmFindsRow" hidden><span class="mm-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h1a2 2 0 0 0 2-2 1 1 0 0 1 1-1h6a1 1 0 0 1 1 1 2 2 0 0 0 2 2h1a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2"/><circle cx="12" cy="13" r="3"/></svg></span><span class="mm-map-l">見つけたもの</span><span class="mm-v" id="mmFinds">0 件 ›</span></div>
           <div class="mm-map" onclick="closeMobileMenu();openGoalCard()" id="mmGoalRow" hidden><span class="mm-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V5"/><path d="M5 5h14l-3 4 3 4H5"/></svg></span><span class="mm-map-l">ゴールの記念写真</span><span class="mm-v">›</span></div>
@@ -1932,7 +1933,9 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
       <h3>💾 保存・配る</h3>
       <ul>
         <li>「配る」→ <b>かんたん：このリンクをそのまま配る</b>。リンクの中にコースが入っているので、置き場所の用意は要りません（写真は入りません）</li>
-        <li>一覧の<b>「みんなのコースを見る」</b>：みんなが出したコースが並びます。自分のコースを出すときは「配る」→「みんなのコースに出す」→ 名前と「見た人にできること」を選んで<b>「出す」</b>。はじめの1回だけ、置き場所の合言葉（GitHub のアクセストークン）を登録します（この端末の中だけに残ります）。合言葉を使わない「ファイルで出す」もあります</li>
+        <li>一覧の<b>「みんなのコースを見る」</b>：みんなが出したコースが並びます</li>
+        <li><b>自分のコースを載せてもらう</b>（ふつうの人）：「配る」→「みんなのコースに出す」→ 名前と「見た人にできること」を選んで<b>「作者に送って載せてもらう」</b>。LINE やメールでリンクが送れます</li>
+        <li><b>置き場所を持っている人</b>（このアプリを公開している人）：同じ画面で「置き場所を持っている人」→ 合言葉を1回登録すると、以後は<b>「出す」</b>だけで載ります。送られてきたリンクを開いたときは、メニューの「このコースをみんなのコースに出す」でそのまま載せられます</li>
         <li>保存は「保存」ボタンで行います（勝手には保存しません）。保存していない変更があると、ボタンが「保存」（濃い色）のままになります。一覧に戻るときにも「保存して戻る／保存せずに戻る」を確認します。この端末のブラウザに残ります</li>
         <li>「配る」→ 画像・配布シート（A4）・リンク・GPX の4つの出口と、配る前の確認（歩いた・私有地・分岐・注意…）が1枚にまとまっています</li>
         <li>「見た目 › 地図の色」で線と印の色を選べます。歩く人の画面と配布シートも同じ色になります</li>
@@ -3200,7 +3203,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 細道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した細道id（直前取消用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v194';
+const APP_VERSION = 'v195';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -8559,6 +8562,7 @@ function _syncFindUi(){
   const gr = document.getElementById('mmGoalRow'); if (gr) gr.hidden = !on;   // ゴールの記念写真（v147）
   const kr = document.getElementById('mmKokoroeRow'); if (kr) kr.hidden = !on;   // 歩く人だけに出す行（作る人は「コースのことを書く」の中・v152）
   const ir = document.getElementById('mmInfoRow'); if (ir) ir.hidden = !on;
+  const pr = document.getElementById('mmPubRow'); if (pr) pr.hidden = !(on && _ghToken() && _ghRepo() && courseInfo && courseInfo.name);   // v195：受け取ったリンクを、そのまま一覧に載せる（置き場所を持っている人だけ）
   const gb = document.getElementById('btnGoal'); if (gb) gb.hidden = !on;
 }
 /* 貼る（シート） */
@@ -10183,6 +10187,9 @@ function openPublishSheet(course){
       + '<button type="button" class="pb-opt tap" data-edit="2"><b>直してもよい</b><small>気に入った人が自分のコースに取り込んで、作り変えてよい</small></button>'
       + '<div class="pb-n" id="pubNote"></div>'
       + '<button type="button" class="pb-go tap" id="pubGo">出す</button>'
+      + '<button type="button" class="pb-go tap" id="pubSend" hidden>作者に送って載せてもらう</button>'
+      + '<button type="button" class="pb-copy tap" id="pubOwnerToggle" hidden>置き場所を持っている人（自分で載せる）</button>'
+      + '<div id="pubOwner" hidden>'
       + '<div class="pb-setup" id="pubSetup" hidden>'
       +   '<div class="pb-l">はじめの1回だけ：置き場所の合言葉</div>'
       +   '<div class="pb-n">GitHub の「合言葉（アクセストークン）」を1回だけ登録すると、次からは「出す」を押すだけで出せます。合言葉は<b>この端末の中だけ</b>に残り、送り先は GitHub だけです。</div>'
@@ -10201,7 +10208,8 @@ function openPublishSheet(course){
       + '</div>'
       + '<button type="button" class="pb-copy tap" id="pubFile">ファイルで出す（合言葉を使わない）</button>'
       + '<button type="button" class="pb-copy tap" id="pubCopy">出す内容をコピーする</button>'
-      + '<button type="button" class="pb-copy tap" id="pubForget" hidden>この端末から合言葉を消す</button></div>';
+      + '<button type="button" class="pb-copy tap" id="pubForget" hidden>この端末から合言葉を消す</button>'
+      + '</div></div>';
     document.body.appendChild(sh);
     sh.addEventListener('click', e => { if (e.target === sh) closePublishSheet(); });
     sh.querySelector('.pb-x').addEventListener('click', closePublishSheet);
@@ -10209,6 +10217,10 @@ function openPublishSheet(course){
     sh.querySelector('#pubGo').addEventListener('click', () => _pubGo(false));
     sh.querySelector('#pubSwitch').addEventListener('click', () => _pubShowPicker());
     sh.querySelector('#pubFile').addEventListener('click', () => _pubByFile());
+    sh.querySelector('#pubSend').addEventListener('click', () => _pubSend());
+    sh.querySelector('#pubOwnerToggle').addEventListener('click', () => {
+      const box = sh.querySelector('#pubOwner'); box.hidden = !box.hidden;
+    });
     sh.querySelector('#pubTokenNew').addEventListener('click', () => { const r = _ghRepo(); window.open(r ? ('https://github.com/settings/personal-access-tokens/new') : 'https://github.com/settings/tokens', '_blank'); });
     sh.querySelector('#pubTokenSave').addEventListener('click', () => {
       const v = (document.getElementById('pubToken').value || '').trim();
@@ -10233,22 +10245,42 @@ function openPublishSheet(course){
   _pubSyncButtons();
   sh.classList.add('show');
 }
-function _pubSyncButtons(){   // v193：合言葉があるかどうかで出し方を切り替える
+/* 出し方の出し分け（v195・オーナーの問い「他の人はどうするんだ」）。
+   ・置き場所を持っている人（合言葉あり）＝そのまま「出す」で載る
+   ・持っていない人（ふつうの利用者）＝「作者に送って載せてもらう」。送るのはコースが丸ごと入ったリンク
+     受け取った作者は、そのリンクを開いて「みんなのコースに出す」を押すだけ（v195） */
+function _pubSyncButtons(){
   const sh = document.getElementById('pubSheet'); if (!sh) return;
   const repo = _ghRepo(), tok = _ghToken();
-  const note = sh.querySelector('#pubNote'), go = sh.querySelector('#pubGo'), setup = sh.querySelector('#pubSetup'), forget = sh.querySelector('#pubForget'), file = sh.querySelector('#pubFile');
-  if (!repo) {
-    note.textContent = 'この置き場所では自動で出せません。「出す内容をコピーする」か「ファイルで出す」で、library フォルダに置いてください。';
-    go.hidden = true; setup.hidden = true; forget.hidden = true; file.hidden = false; return;
-  }
-  file.hidden = false;
-  if (tok) {
+  const note = sh.querySelector('#pubNote'), go = sh.querySelector('#pubGo'), send = sh.querySelector('#pubSend');
+  const setup = sh.querySelector('#pubSetup'), forget = sh.querySelector('#pubForget'), file = sh.querySelector('#pubFile');
+  const ownerToggle = sh.querySelector('#pubOwnerToggle'), owner = sh.querySelector('#pubOwner');
+  if (tok && repo) {   // 置き場所を持っている人
     note.textContent = '「出す」を押すと、その場でみんなの一覧に並びます（1〜2分）。合言葉はこの端末の中だけに入っています。';
-    go.hidden = false; go.textContent = '出す'; setup.hidden = true; forget.hidden = false;
-  } else {
-    note.textContent = 'はじめの1回だけ、下の合言葉を登録してください。次からは「出す」を押すだけです。';
-    go.hidden = true; setup.hidden = false; forget.hidden = true;
+    go.hidden = false; go.textContent = '出す'; send.hidden = true;
+    ownerToggle.hidden = true; owner.hidden = false; setup.hidden = true; forget.hidden = false; file.hidden = false;
+    return;
   }
+  // ふつうの利用者：作者に送る
+  note.textContent = '作者に送ると、みんなの一覧に載せてもらえます。送るのは「コースが丸ごと入ったリンク」です（写真は入りません）。';
+  go.hidden = true; send.hidden = false;
+  ownerToggle.hidden = false; owner.hidden = true;
+  setup.hidden = !repo; forget.hidden = true; file.hidden = false;
+}
+async function _pubSend(){   // 作者に送る（LINE・メールなど）。中身はリンク1本
+  const r = _pubReady(); if (!r) return;
+  const by = ((document.getElementById('pubBy') || {}).value || '').trim();
+  const link = _shareBaseUrl() + '#d=' + _pubData;
+  const text = ['みんなのコースに載せてください。',
+                'コース名：' + (r.c.name || ''),
+                (r.c.area ? 'エリア：' + r.c.area : ''),
+                (by ? '出す人：' + by : ''),
+                '見た人にできること：' + (_pubAllowEdit ? '直してもよい' : '見るだけ'),
+                '', link].filter(Boolean).join('\n');
+  closePublishSheet();
+  if (navigator.share) { try { await navigator.share({title: r.c.name || 'フットパスのコース', text: text}); return; } catch(_) {} }
+  if (navigator.clipboard) { try { await navigator.clipboard.writeText(text); showToast('送る文をコピーしました。LINE やメールに貼って作者に送ってください'); return; } catch(_) {} }
+  showToast('送る文を作れませんでした');
 }
 function closePublishSheet(){ const sh = document.getElementById('pubSheet'); if (sh) sh.classList.remove('show'); _pubCourse = null; _pubData = ''; }
 function _pubShowPicker(){   // v192：作ったコースの中から選ぶ
