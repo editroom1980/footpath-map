@@ -1675,7 +1675,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
       <div id="nearbySheet" class="fsh nb" role="dialog" aria-label="まわりの施設を探す">
         <div class="ds-dh"></div>
         <div class="ds-t">まわりの施設を探す</div>
-        <div class="ds-n">OpenStreetMap・国土数値情報（国土交通省の公的データ：学校・役場・公民館・郵便局・警察・病院・文化財・公園・バス停）・Wikipedia から、コースの周りにあるものを探します（Google の情報は規約で使えません）。選んだものだけが、道順に入らないスポットになります。</div>
+        <div class="ds-n">OpenStreetMap・国土数値情報（国土交通省の公的データ：学校・役場・公民館・郵便局・警察・病院・文化財・公園・バス停）・<b>地理院地図Vector（国土地理院：地図記号の神社・寺院と、地図に書かれた名前）</b>・Wikidata・Wikipedia から、コースの周りにあるものを探します（Google の情報は規約で使えません）。選んだものだけが、道順に入らないスポットになります。</div>
         <label class="kk-l" for="nbKw">名前で探す（任意）</label>
         <div class="nb-kw"><input type="text" id="nbKw" placeholder="例：〇〇神社、〇〇公民館、〇〇商店" onkeydown="if(event.key==='Enter'){nearbySearch();}"><button type="button" class="f-ghost tap" onclick="document.getElementById('nbKw').value='';">消す</button></div>
         <div class="ds-n" style="margin:4px 0 8px">名前を入れると周り 10km から名前で探します（種類は問いません）。空欄なら下の距離と種類で探します。</div>
@@ -2201,6 +2201,32 @@ const NEARBY_KINDS = [                                // 画面の並び。t＝�
   {k:'wiki',     l:'Wikipedia の記事',      t:'history'},
 ];
 const NEARBY_KIND_DEFAULT_OFF = ['bus', 'place'];    // 最初は外しておく種類
+/* 地理院地図Vector（国土地理院）＝国が出している地図そのもの。紙の地図と同じ「地図記号」と「注記（地図に書かれた名前）」が入る。
+   オーナー指摘「寺がたくさんあるのに全く出てこない」への答え（v238）。OpenStreetMap に無い社寺がここには入っている。
+   Google マップのデータは規約で使えないので、こちらを読む。出典の表示が条件（国土地理院コンテンツ利用規約）。
+   タイルは z16 まで（z17 は空）。CORS 可。 */
+const GSI_VT_URL = 'https://cyberjapandata.gsi.go.jp/xyz/experimental_bvmap/16/{x}/{y}.pbf';
+const GSI_VT_Z = 16;            // このタイルが用意されている一番細かい段階
+const GSI_VT_MAX_TILES = 12;    // 一度に読む枚数の上限（1枚 約80KB）。多いときはコースの真ん中から
+const GSI_VT_LABEL_M = 150;     // 記号に名前を結びつけるときの近さ(m)
+/* 地図記号（symbol レイヤの ftCode）。実地で確かめた2つだけを使う：
+   丹波篠山で ft3231 は OpenStreetMap の神社と 30m 以内で一致、ft3232 は寺と一致した（名前は付いていない） */
+const GSI_FT = {3231:{t:'shrine', l:'神社'}, 3232:{t:'shrine', l:'寺院'}};
+/* 注記（label レイヤの annoCtg）＝地図に書かれている名前の種類。実際のタイルで確かめたもの
+   661 松原八幡神社／662 本能寺・興福寺／681 南円堂／531 開化天皇陵／532 興福寺旧境内／511 東京タワー
+   534・870 公園／673 文化会館／880 官公署／881 市役所／882 保健所／883 警察／884 消防／885 学校
+   886 病院／887 郵便局／888 会社／889 博物館／890 福祉施設／422 駅 */
+const GSI_ANNO = {661:'shrine', 662:'shrine', 681:'shrine', 531:'history', 532:'history', 511:'view',
+  534:'park', 870:'park', 820:'park', 673:'hall', 880:'hall', 881:'hall', 882:'hospital', 883:'hall',
+  884:'hall', 885:'school', 886:'hospital', 887:'hall', 888:'facility', 889:'hall', 890:'facility', 422:'bus'};
+/* Wikidata（みんなで作る事典のデータ版・CC0＝自由に使える）。名前つきの神社・寺・城・博物館・公園を取る（v238） */
+const WIKIDATA_SPARQL = 'https://query.wikidata.org/sparql';
+const WIKIDATA_TYPES = 'wd:Q845945 wd:Q1370598 wd:Q16970 wd:Q23413 wd:Q33506 wd:Q22698 wd:Q3947';   // 神社・寺院（日本）・教会・城・博物館・公園・灯台
+const NEARBY_NAME_M = 150;      // 名前の無い社寺を、近くの名前つきと同じ場所とみなす距離(m)
+/* 種類の決め直し（_nbRefine ②）をしてよいのは、もともと種類があやふやな候補だけ（v238）。
+   例：Wikipedia はぜんぶ「史跡」で来るので名前で見分ける。逆に国土数値情報の「郵便局」を
+   名前（山崎郵便局）から公園に変えてしまうような取りちがえを防ぐ。 */
+const NEARBY_WEAK_TYPES = ['history', 'facility', 'other'];
 /* 地図の色（テーマ・v145・構想「色を自由に」）。コースに保存され、歩く人の画面・印刷用シート・地図画像も同じ色になる。
    組み合わせ（preset）＝道順の線の色＋印の色。線の色・点線／実線・太さは個別にも変えられる */
 const THEMES = [
@@ -2229,19 +2255,34 @@ const NAME_TYPE_HINTS = [
   ['hospital',['病院','医院','クリニック','診療所','歯科','薬局']],   // v163：「院」が寺院に取られる前に見る
   ['shrine',  ['神社','神宮','大社','八幡','稲荷','天満宮','寺','院','観音','地蔵','不動','大師','祠','堂','宮']],
   ['school',  ['小学校','中学校','高校','高等学校','学校','幼稚園','保育','こども園','大学']],
-  ['hall',    ['公民館','集会所','会館','役場','市役所','支所','図書館','交流館','センター']],
+  ['hall',    ['公民館','集会所','会館','役場','市役所','支所','図書館','交流館','センター','警察署','交番','駐在所','消防署','郵便局']],   // v238：警察・消防・郵便局も
   ['toilet',  ['トイレ','便所','お手洗い','WC']],
   ['parking', ['駐車場','パーキング']],
   ['view',    ['展望','見晴','眺め','絶景','ビュー']],
   ['conveni', ['コンビニ','セブン-イレブン','セブンイレブン','ローソン','ファミリーマート','ミニストップ','デイリーヤマザキ','ポプラ']],
   ['food',    ['食堂','レストラン','カフェ','喫茶','居酒屋','そば','うどん','ラーメン','焼肉','寿司','鮨','定食','ピザ','バル','パン工房']],
-  ['history', ['城跡','古墳','遺跡','史跡','記念碑','石碑','一里塚','道標','資料館','博物館','旧跡','跡','碑','塚']],
-  ['shop',    ['道の駅','直売','カフェ','喫茶','食堂','そば','うどん','ラーメン','パン','ベーカリー','市場','売店','商店','スーパー','コンビニ','レストラン','店']],
-  ['park',    ['公園','広場','棚田','湧水','滝','池','湖','川','森','林','峠','桜','花','庭園','山']],
+  ['history', ['城跡','城址','古墳','遺跡','史跡','記念碑','石碑','一里塚','道標','資料館','博物館','旧跡','跡','碑','塚','城']],   // v238：「〇〇城」も史跡に
+  ['shop',    ['道の駅','直売','カフェ','喫茶','食堂','そば','うどん','ラーメン','パン','ベーカリー','市場','売店','商店','スーパー','コンビニ','レストラン','ショッピングセンター','店']],
+  /* v238：「山」「川」を名前の途中で拾うと、山崎町・山崎インターチェンジまで公園になってしまう。
+     終わりが「山」「川」「岳」のときだけ自然の地名とみなす */
+  ['park',    ['公園','広場','棚田','湧水','滝','池','湖','森','林','峠','桜','庭園', /山$/, /川$/, /岳$/, /原$/]],
   ['facility',['ホテル','旅館','民宿','会社','工場','事務所','営業所','工房','体育館','球場','プール','ゴルフ場']],   // v163
   ['bus',     ['駅','バス停','停留所']],   // v163：「道の駅」は上の shop が先に拾う
 ];
-function _guessType(name){ const n = String(name || ''); if (!n.trim()) return null; for (const [t, ks] of NAME_TYPE_HINTS) if (ks.some(k => n.indexOf(k) >= 0)) return t; return null; }   // 編集画面で大きく出す「よく使う4つ」（オーナー指定・v129）。残りは畳む
+/* 名前から種類を見分ける。v238：「いちばん長く当てはまった言葉」を採る。
+   「道の駅」が「駅」に、「ショッピングセンター」が「センター」に負けないようにするため。
+   同じ長さなら NAME_TYPE_HINTS の上にあるほうを採る。正規表現は 3 文字ぶんの重みで見る。 */
+function _guessType(name){
+  const n = String(name || ''); if (!n.trim()) return null;
+  let best = null, bl = 0;
+  for (const [t, ks] of NAME_TYPE_HINTS) for (const k of ks) {
+    const re = (k instanceof RegExp), hit = re ? k.test(n) : n.indexOf(k) >= 0;
+    if (!hit) continue;
+    const len = re ? 3 : k.length;
+    if (len > bl) { bl = len; best = t; }
+  }
+  return best;
+}   // 編集画面で大きく出す「よく使う4つ」（オーナー指定・v129）。残りは畳む
 const LINE_STYLE = {color:'#E84040', weight:4, dashArray:'8,5', opacity:.9, lineJoin:'round', lineCap:'round', smoothFactor:0};
 const DBL_GAP_PX = 2;        // 往復で重なる区間：2本の線の間隔(px)
 const ROUTE_CASING_ADD = 3;  // ルート線の白いふちの太さ（赤い線に足すpx）。表示専用
@@ -3301,7 +3342,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 手描きの道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した手描きの道id（直前取り消し用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v237';
+const APP_VERSION = 'v238';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -8762,10 +8803,13 @@ function resetThemeSheet(){ if (!_thEdit) return; _thEdit = {preset:'std', route
    候補は地図に薄い○で出す（押すと選択）。追加は「道順に入らないスポット」としてまとめて置き、1回の取り消しで全部戻る */
 let _nb = {radius: 1000, kinds: null, cands: [], sel: new Set(), busy: false};
 let _nbLayer = null;
-async function _fetchJsonTimeout(url, opts, ms){
+async function _fetchTimeout(url, opts, ms){   // v238：地図タイル（JSONではないもの）にも使う
   const ctrl = new AbortController(); const t = setTimeout(() => ctrl.abort(), ms || NEARBY_TIMEOUT_MS);
-  try { const res = await fetch(url, Object.assign({signal: ctrl.signal}, opts || {})); if (!res.ok) throw new Error('HTTP ' + res.status); return await res.json(); }
+  try { return await fetch(url, Object.assign({signal: ctrl.signal}, opts || {})); }
   finally { clearTimeout(t); }
+}
+async function _fetchJsonTimeout(url, opts, ms){
+  const res = await _fetchTimeout(url, opts, ms); if (!res.ok) throw new Error('HTTP ' + res.status); return await res.json();
 }
 function _nbKinds(){ if (!_nb.kinds) _nb.kinds = new Set(NEARBY_KINDS.filter(k => !NEARBY_KIND_DEFAULT_OFF.includes(k.k)).map(k => k.k)); return _nb.kinds; }
 function _nbAnchorBounds(){
@@ -8803,7 +8847,7 @@ function _nbKindOf(tags){   // OpenStreetMap のタグ → この画面の種類
       || (tags.building && tags.name)) return 'facility';
   return null;
 }
-const _NB_WORDS = {restaurant:'飲食店', cafe:'カフェ', fast_food:'軽食', pub:'居酒屋・パブ', bar:'バー', ice_cream:'アイス', food_court:'フードコート', toilets:'トイレ', parking:'駐車場', school:'学校', kindergarten:'幼稚園・保育園', college:'専門学校', university:'大学', community_centre:'公民館・集会所', townhall:'役場', library:'図書館', social_facility:'福祉施設', viewpoint:'展望', attraction:'観光名所', museum:'博物館・資料館', artwork:'アート', information:'案内所', picnic_site:'休憩地', park:'公園', garden:'庭園', playground:'遊び場', nature_reserve:'自然保護区', spring:'湧き水', peak:'山頂', waterfall:'滝', hot_spring:'温泉', bus_stop:'バス停', station:'駅', monument:'記念碑', memorial:'碑・慰霊碑', castle:'城跡', ruins:'遺跡', archaeological_site:'遺跡', wayside_shrine:'祠', wayside_cross:'道標', tomb:'墓・古墳', boundary_stone:'境界石', building:'歴史的建物', shinto:'神社', buddhist:'寺院', christian:'教会',
+const _NB_WORDS = {restaurant:'飲食店', cafe:'カフェ', fast_food:'軽食', pub:'居酒屋・パブ', bar:'バー', ice_cream:'アイス', food_court:'フードコート', toilets:'トイレ', parking:'駐車場', school:'学校', kindergarten:'幼稚園・保育園', college:'専門学校', university:'大学', community_centre:'公民館・集会所', townhall:'役場', library:'図書館', social_facility:'福祉施設', viewpoint:'展望', attraction:'観光名所', museum:'博物館・資料館', artwork:'アート', information:'案内所', picnic_site:'休憩地', park:'公園', garden:'庭園', playground:'遊び場', nature_reserve:'自然保護区', spring:'湧き水', peak:'山頂', waterfall:'滝', hot_spring:'温泉', tree:'大木', cave_entrance:'洞窟', saddle:'峠', tower:'塔', lighthouse:'灯台', watermill:'水車小屋', windmill:'風車', water_well:'井戸', monitoring_station:'観測所', shelter:'あずまや', drinking_water:'水飲み場', marketplace:'市場', vending_machine:'自動販売機', bus_stop:'バス停', station:'駅', monument:'記念碑', memorial:'碑・慰霊碑', castle:'城跡', ruins:'遺跡', archaeological_site:'遺跡', wayside_shrine:'祠', wayside_cross:'道標', tomb:'墓・古墳', boundary_stone:'境界石', building:'歴史的建物', shinto:'神社', buddhist:'寺院', christian:'教会',
   // shop=* の主なもの（無いものは英語のまま出す）
   hairdresser:'理容・美容室', convenience:'コンビニ', supermarket:'スーパー', bakery:'パン屋', electronics:'電器店', clothes:'衣料品店', furniture:'家具店', hardware:'金物・日用品店', florist:'花屋', greengrocer:'青果店', butcher:'精肉店', seafood:'鮮魚店', confectionery:'菓子店', alcohol:'酒屋', kiosk:'売店', gift:'土産・雑貨', books:'本屋', pharmacy:'薬局', chemist:'薬局', car_repair:'自動車整備', car:'自動車販売', bicycle:'自転車店', farm:'農産物直売', general:'よろず屋', variety_store:'雑貨店', doityourself:'ホームセンター', tea:'お茶屋', rice:'米屋', tobacco:'たばこ店', laundry:'クリーニング', dry_cleaning:'クリーニング', optician:'メガネ店', jewelry:'宝飾店', sports:'スポーツ用品店', stationery:'文具店', toys:'玩具店', pet:'ペット用品', garden_centre:'園芸店', agrarian:'農業資材', craft:'工芸', deli:'惣菜', beverages:'飲料', newsagent:'新聞・雑誌', mobile_phone:'携帯電話店', computer:'パソコン店', wine:'ワイン', watches:'時計店', boutique:'ブティック', mall:'ショッピングセンター', department_store:'百貨店', fuel:'ガソリンスタンド', massage:'マッサージ', beauty:'美容サロン', fishing:'釣具店', charcoal:'木炭', outdoor:'アウトドア用品'};
 function _nbWord(v){ return _NB_WORDS[v] || v || ''; }
@@ -8835,19 +8879,151 @@ function _nbRefine(list){
   const out = [];
   list.forEach(c => {
     if (c.src !== 'OpenStreetMap' && NEARBY_EVENT_RE.test(c.name || '')) return;        // ①
-    if (c.src !== 'OpenStreetMap' || c.noName) {                                        // ②
+    /* ② v238：種類が「あやふやな候補」だけ名前で見分ける。
+       もともと確かな種類（国土数値情報の郵便局・地理院地図の注記）は触らない */
+    if (c.noName || (c.src !== 'OpenStreetMap' && NEARBY_WEAK_TYPES.includes(c.type))) {
       const g = _guessType(c.name);
       if (g) { c.type = g; const k = NEARBY_KINDS.find(x => x.t === g); if (k) c.kind = k.k; }
     }
     out.push(c);
   });
   const named = out.filter(c => !c.noName && c.type === 'shrine');
+  const drop = new Set();
   out.forEach(c => {                                                                    // ③
     if (!c.noName || c.type !== 'shrine') return;
-    const near = named.find(n => haversine(n.lat, n.lng, c.lat, c.lng) <= 150);
-    if (near) { c.name = near.name; c.noName = undefined; c.borrowed = 1; c.desc = (c.desc || '') + '\n（名前は近くの「' + near.name + '」から）'; }
+    if (named.some(n => haversine(n.lat, n.lng, c.lat, c.lng) <= NEARBY_NAME_M && !_nbSubNg(c.name, n.name))) drop.add(c);
+  });
+  return out.filter(c => !drop.has(c));
+}
+/* 神社と寺を取りちがえない（v238）。名前から「社」か「寺」かを見る */
+function _nbSub(name){
+  const n = String(name || '');
+  if (/(寺|院|庵|坊|大師|観音|不動|地蔵|塔)/.test(n)) return 't';
+  if (/(神社|神宮|大社|八幡|稲荷|天満|明神|宮|社|祠|鳥居)/.test(n)) return 'j';
+  return '';
+}
+function _nbSubNg(a, b){ const x = _nbSub(a), y = _nbSub(b); return !!(x && y && x !== y); }
+/* ===== 地理院地図Vector（国土地理院）を読む（v238）=====
+   地図タイルの中身は Mapbox Vector Tile（protobuf）という形式。部品を足したくないので、必要な所だけ自分で読む。
+   使うのは点の記号（symbol）と注記（label）だけ。 */
+function _mvtVarint(b, p){ let r = 0, s = 0, x; do { x = b[p.i++]; r += (x & 0x7f) * Math.pow(2, s); s += 7; } while (x & 0x80); return r; }
+function _mvtZig(n){ return (n % 2) ? -((n + 1) / 2) : (n / 2); }
+function* _mvtFields(b, start, end){
+  const p = {i: start};
+  while (p.i < end) {
+    const key = _mvtVarint(b, p), wt = key & 7, fn = Math.floor(key / 8);
+    if (wt === 0) yield [fn, 'v', _mvtVarint(b, p)];
+    else if (wt === 2) { const ln = _mvtVarint(b, p); yield [fn, 'b', b.subarray(p.i, p.i + ln)]; p.i += ln; }
+    else if (wt === 5) { p.i += 4; yield [fn, 'f', 0]; }
+    else if (wt === 1) { p.i += 8; yield [fn, 'd', 0]; }
+    else return;
+  }
+}
+function _mvtParse(buf, tx, ty, want){
+  const b = (buf instanceof Uint8Array) ? buf : new Uint8Array(buf), out = [], dec = new TextDecoder('utf-8'), n = Math.pow(2, GSI_VT_Z);
+  for (const [fn, t, v] of _mvtFields(b, 0, b.length)) {
+    if (fn !== 3 || t !== 'b') continue;                       // 3 = レイヤ
+    let name = '', extent = 4096; const keys = [], vals = [], feats = [];
+    for (const [f2, t2, v2] of _mvtFields(v, 0, v.length)) {
+      if (f2 === 1 && t2 === 'b') name = dec.decode(v2);       // レイヤ名
+      else if (f2 === 3 && t2 === 'b') keys.push(dec.decode(v2));
+      else if (f2 === 4 && t2 === 'b') {                       // 値（文字か数字）
+        let val = null;
+        for (const [f3, t3, v3] of _mvtFields(v2, 0, v2.length)) {
+          if (f3 === 1 && t3 === 'b') val = dec.decode(v3);
+          else if (t3 === 'v') val = (f3 === 6) ? _mvtZig(v3) : v3;
+        }
+        vals.push(val);
+      }
+      else if (f2 === 5 && t2 === 'v') extent = v2 || 4096;
+      else if (f2 === 2 && t2 === 'b') feats.push(v2);
+    }
+    if (want.indexOf(name) < 0) continue;
+    for (const ft of feats) {
+      const tags = []; let gtype = 0, geom = null;
+      for (const [f3, t3, v3] of _mvtFields(ft, 0, ft.length)) {
+        if (f3 === 2 && t3 === 'b') { const q = {i: 0}; while (q.i < v3.length) tags.push(_mvtVarint(v3, q)); }
+        else if (f3 === 3 && t3 === 'v') gtype = v3;
+        else if (f3 === 4 && t3 === 'b') geom = v3;
+      }
+      if (gtype !== 1 || !geom || geom.length < 3) continue;   // 点だけ
+      const q = {i: 0}; _mvtVarint(geom, q);
+      const dx = _mvtZig(_mvtVarint(geom, q)), dy = _mvtZig(_mvtVarint(geom, q));
+      const lng = (tx + dx / extent) / n * 360 - 180;
+      const ly = Math.PI * (1 - 2 * (ty + dy / extent) / n);
+      const lat = 180 / Math.PI * Math.atan(Math.sinh(ly));
+      if (!isFinite(lat) || !isFinite(lng)) continue;
+      const props = {};
+      for (let a = 0; a + 1 < tags.length; a += 2) { const k = keys[tags[a]]; if (k != null) props[k] = vals[tags[a + 1]]; }
+      out.push({layer: name, props: props, lat: lat, lng: lng});
+    }
+  }
+  return out;
+}
+function _gsiTiles(bb){
+  const n = Math.pow(2, GSI_VT_Z);
+  const xOf = lng => Math.floor((lng + 180) / 360 * n);
+  const yOf = lat => Math.floor((1 - Math.log(Math.tan(lat * Math.PI / 180) + 1 / Math.cos(lat * Math.PI / 180)) / Math.PI) / 2 * n);
+  const x0 = xOf(bb.w), x1 = xOf(bb.e), y0 = yOf(bb.n), y1 = yOf(bb.s), list = [];
+  for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) list.push([x, y]);
+  if (list.length <= GSI_VT_MAX_TILES) return list;
+  const cx = xOf(bb.c.lng), cy = yOf(bb.c.lat);                 // 多すぎるときはコースの真ん中に近い順
+  return list.sort((a, b) => (Math.abs(a[0] - cx) + Math.abs(a[1] - cy)) - (Math.abs(b[0] - cx) + Math.abs(b[1] - cy))).slice(0, GSI_VT_MAX_TILES);
+}
+async function _nbFetchGsiVt(bb){
+  const kinds = _nbKinds();
+  const syms = [], labels = [], seen = new Set(), out = [];
+  await Promise.all(_gsiTiles(bb).map(async tile => {
+    const x = tile[0], y = tile[1];
+    let items = [];
+    try {
+      const r = await _fetchTimeout(GSI_VT_URL.replace('{x}', x).replace('{y}', y), {}, NEARBY_TIMEOUT_MS);
+      if (!r.ok) return;
+      items = _mvtParse(await r.arrayBuffer(), x, y, ['symbol', 'label']);
+    } catch(_) { return; }
+    items.forEach(it => {
+      const key = it.layer + it.lat.toFixed(5) + ',' + it.lng.toFixed(5) + (it.props.ftCode || '') + (it.props.knj || '');
+      if (seen.has(key)) return; seen.add(key);                 // 隣り合うタイルは端が重なるので、同じものを1つに
+      if (it.layer === 'symbol') syms.push(it); else if (it.props && it.props.knj) labels.push(it);
+    });
+  }));
+  const push = (t, name, lat, lng, note, noName) => {
+    const k = (NEARBY_KINDS.find(x => x.t === t) || {}).k; if (!k || !kinds.has(k)) return;
+    out.push({id:'gsi' + out.length + '-' + lat.toFixed(5) + ',' + lng.toFixed(5), kind:k, type:t, name:name,
+              desc:(note ? note + '\n' : '') + '（情報：国土地理院「地理院地図Vector」）', tel:'', lat:lat, lng:lng, src:'地理院地図', noName:noName});
+  };
+  labels.forEach(it => {                                        // 注記＝地図に書かれている名前
+    const t = GSI_ANNO[Number(it.props.annoCtg)]; if (!t) return;
+    push(t, String(it.props.knj), it.lat, it.lng, '');
+  });
+  syms.forEach(it => {                                          // 記号＝名前は付いていないが位置が正しい
+    const f = GSI_FT[Number(it.props.ftCode)]; if (!f) return;
+    let name = '', best = GSI_VT_LABEL_M;
+    labels.forEach(l => {                                       // 近くの注記が社寺の名前なら、それを使う
+      if (GSI_ANNO[Number(l.props.annoCtg)] !== f.t) return;
+      const nm = String(l.props.knj || ''); if (_nbSubNg(f.l, nm)) return;
+      const d = haversine(l.lat, l.lng, it.lat, it.lng); if (d < best) { best = d; name = nm; }
+    });
+    push(f.t, name || f.l, it.lat, it.lng, name ? '' : f.l + '（地図記号。名前は地図に書かれていません）', name ? undefined : 1);
   });
   return out;
+}
+/* Wikidata（CC0）：名前つきの神社・寺・城・博物館などを、コースの周りから（v238） */
+async function _nbFetchWikidata(bb){
+  const q = 'SELECT ?item ?itemLabel ?lat ?lon WHERE {'
+    + ' SERVICE wikibase:around { ?item wdt:P625 ?loc . bd:serviceParam wikibase:center "Point(' + bb.c.lng.toFixed(5) + ' ' + bb.c.lat.toFixed(5) + ')"^^geo:wktLiteral .'
+    + ' bd:serviceParam wikibase:radius "' + Math.max(1, Math.min(10, Math.ceil(bb.radius / 1000))) + '" . }'
+    + ' ?item wdt:P31 ?type . VALUES ?type { ' + WIKIDATA_TYPES + ' }'
+    + ' ?item p:P625 ?st . ?st psv:P625 ?node . ?node wikibase:geoLatitude ?lat ; wikibase:geoLongitude ?lon .'
+    + ' SERVICE wikibase:label { bd:serviceParam wikibase:language "ja,en" . } } LIMIT 80';
+  const j = await _fetchJsonTimeout(WIKIDATA_SPARQL + '?format=json&query=' + encodeURIComponent(q));
+  return (((j.results || {}).bindings) || []).map((b, i) => {
+    const name = ((b.itemLabel || {}).value || '').trim();
+    if (!name || /^Q\d+$/.test(name)) return null;             // 名前が付いていないものは出さない
+    const t = _guessType(name) || 'history', k = (NEARBY_KINDS.find(x => x.t === t) || {}).k || 'hist';
+    return {id:'wd' + i + '-' + name, kind:k, type:t, name:name, desc:'（情報：Wikidata・CC0）', tel:'',
+            lat:Number((b.lat || {}).value), lng:Number((b.lon || {}).value), src:'Wikidata'};
+  }).filter(c => c && isFinite(c.lat) && isFinite(c.lng) && _nbKinds().has(c.kind));
 }
 function _nbBbox(){ return _nbBboxFor(_nb.radius); }
 function _nbBboxFor(radius){
@@ -8927,7 +9103,9 @@ async function _nbFetchWiki(bb){
     const ids = pages.slice(i, i + 20).map(pg => pg.pageid).join('%7C');
     try { const e = await _fetchJsonTimeout(NEARBY_WIKI + '?action=query&prop=extracts&exintro=1&explaintext=1&exsentences=2&exlimit=20&pageids=' + ids + '&format=json&origin=*'); Object.values((e.query || {}).pages || {}).forEach(pg => { ex[pg.pageid] = pg.extract || ''; }); } catch(_) {}
   }
-  return pages.map(pg => ({id:'wiki' + pg.pageid, kind:'wiki', type:'history', name:pg.title, desc:((ex[pg.pageid] || '').slice(0, NEARBY_DESC_MAX) + '\n（Wikipedia「' + pg.title + '」より）').trim(), tel:'', lat:pg.lat, lng:pg.lon, src:'Wikipedia'}));
+  /* v238：Wikipedia の記事を一律「史跡」にしない（オーナー指摘「宍粟市立山崎東中学校やウイング神姫が史跡アイコン」）。
+     名前から見分けがつかないものは「その他の施設」にする（分からないものを史跡と言わない） */
+  return pages.map(pg => ({id:'wiki' + pg.pageid, kind:'wiki', type:_guessType(pg.title) || 'facility', name:pg.title, desc:((ex[pg.pageid] || '').slice(0, NEARBY_DESC_MAX) + '\n（Wikipedia「' + pg.title + '」より）').trim(), tel:'', lat:pg.lat, lng:pg.lon, src:'Wikipedia'}));
 }
 function _nbIsDup(c){ return wps.some(w => w.type !== 'node' && haversine(c.lat, c.lng, w.lat, w.lng) <= NEARBY_DUP_M && ((w.name || '').split('\n')[0] === c.name || haversine(c.lat, c.lng, w.lat, w.lng) <= 5)); }
 async function nearbySearch(){
@@ -8937,14 +9115,22 @@ async function nearbySearch(){
   if (!kw && !_nbKinds().size) { showToast('種類を1つ以上選んでください'); return; }
   const radius = kw ? NEARBY_KW_RADIUS : _nb.radius;
   const bb = kw ? _nbBboxFor(radius) : bb0;
-  _nb.busy = true; _nb.cands = []; _nb.sel = new Set(); _nbRenderList(); _nbSetStatus(kw ? '「' + kw + '」を探しています…（周り 10km・OpenStreetMap・国土数値情報）' : '探しています…（OpenStreetMap・国土数値情報' + (_nbKinds().has('wiki') ? '・Wikipedia' : '') + '）');
+  _nb.busy = true; _nb.cands = []; _nb.sel = new Set(); _nbRenderList(); _nbSetStatus(kw ? '「' + kw + '」を探しています…（周り 10km・OpenStreetMap・国土数値情報）' : '探しています…（OpenStreetMap・国土数値情報・地理院地図・Wikidata' + (_nbKinds().has('wiki') ? '・Wikipedia' : '') + '）');
   const errs = [];
-  let osm = [], wiki = [], ksj = [], nom = [];
+  let osm = [], wiki = [], ksj = [], nom = [], gsi = [], wd = [];
   try { osm = await _nbFetchOsm(bb, kw); } catch(e) { errs.push('OpenStreetMap'); }
   try { ksj = await _nbFetchKsj(bb, kw); } catch(e) { errs.push('国土数値情報'); }
-  if (!kw) { try { wiki = await _nbFetchWiki(bb); } catch(e) { errs.push('Wikipedia'); } }
+  if (!kw) {
+    /* v238：寺・神社の取りこぼしを埋める。国土地理院の地図記号と注記＋Wikidata を足す */
+    const r3 = await Promise.all([
+      _nbFetchWiki(bb).catch(() => { errs.push('Wikipedia'); return []; }),
+      _nbFetchGsiVt(bb).catch(() => { errs.push('地理院地図'); return []; }),
+      _nbFetchWikidata(bb).catch(() => [])
+    ]);
+    wiki = r3[0]; gsi = r3[1]; wd = r3[2];
+  }
   else { try { nom = await _nbFetchNominatim(kw, bb); } catch(e) {} }
-  let all = osm.concat(ksj, wiki, nom).map(c => Object.assign(c, {dist: Math.round(_nbDistToCourse(c.lat, c.lng))})).filter(c => c.dist <= radius && !_nbIsDup(c));
+  let all = osm.concat(ksj, wiki, nom, gsi, wd).map(c => Object.assign(c, {dist: Math.round(_nbDistToCourse(c.lat, c.lng))})).filter(c => c.dist <= radius && !_nbIsDup(c));
   all = _nbRefine(all);   // v236：行事を外し、名前から種類を直し、名前の無い社寺に近くの名前を引き継ぐ
   const kept = [];                                         // 同じ名前が 60m 以内に2つ（OSM と公的データ）なら先のものだけ
   /* v225：名前のあるものを先に、タグから作った呼び名（名前なし）はそのあとに。どちらも近い順 */

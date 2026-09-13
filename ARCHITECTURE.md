@@ -67,7 +67,7 @@
   check: { walked:true, private:true },  // 配る前の確認の手の✓（v146）。無ければ書かない
   noEdit: true,                        // 他の人による改変を断る（v147）。配布ファイル（shared:true）にだけ効く。無ければ書かない
   shared: true,                        // 「リンクを作る」で書き出した配布ファイルの印（v147）。保存データには入れない
-  // まわりの施設（v144）は OpenStreetMap（Overpass）と Wikipedia だけ。Google Places/Maps の情報は規約で使えない（載せない・取りに行かない）
+  // まわりの施設（v144）の出どころは OpenStreetMap・国土数値情報・地理院地図Vector・Wikidata・Wikipedia（v238）。Google Places/Maps の情報は規約で使えない（載せない・取りに行かない）
   // 発見（v143）はコースの保存データには入らない。端末の LS.finds = { [courseId]: [{id, lat, lng, word, by, at, photos[]}] }。送るファイルは {fpFinds:1, courseId, courseName, finds:[…写真は実体]}
   maxWpId, maxVpNum, savedAt, version }
 ```
@@ -396,7 +396,15 @@ CONSTANTS(904) → STATE(968) → STORAGE(1015) → 版のお知らせ(1021) →
 - OpenStreetMap（Overpass）：`nwr["name"]` に除外条件を付けた1本の問い合わせ＋名前の無い実用物。種類分けは `_nbKindOf(tags)`。
 - 国土数値情報：`data/ksj/index.json`（県コード・範囲・入っているデータ）→ `data/ksj/<pref>/<code>.json`（`items:[[lat,lng,name,sub],…]`）。`KSJ_KIND` で種類へ。変換は `tools/ksj_convert.py`。
 - Wikipedia geosearch、名前検索時は Nominatim（bounded）。Google は使わない。
-- 種類の対応（v163）：`NEARBY_KINDS[].t` がこのアプリの種類。まわりの施設で拾える種類（お店・神社・史跡・展望・公園・学校・公民館・病院・施設・トイレ・駐車場・バス停・地名・Wikipedia）は全部 `WT` に対応する種類がある。**取り込んだものを `other` に落とさない**（オーナー指示）。名前から種類を推定する `NAME_TYPE_HINTS` は先勝ちなので、「病院」（院＝寺院より先）「道の駅」（駅＝バス停より先）の順序に注意。
+- **地理院地図Vector（国土地理院・v238）**：`GSI_VT_URL` の z16 タイル（Mapbox Vector Tile＝protobuf）を `_mvtParse` で自前解読（**外部ライブラリを増やさない**。点の記号と注記だけ・`symbol`／`label` レイヤのみ）。
+  - `GSI_FT`＝地図記号（`ftCode 3231 神社` / `3232 寺院`。実地で OSM の shinto/buddhist と 30m 以内で一致することを確認済み）。名前は無いが**位置が正確**で、OSM に寺が 0 件の地域でも拾える。
+  - `GSI_ANNO`＝注記の種類（`annoCtg`。661 神社／662・681 寺院／531・532 史跡／511 塔／534・870・820 公園／673 文化施設／880・881 役所／882 保健所／883 警察／884 消防／885 学校／886 病院／887 郵便局／888 会社／889 博物館／890 福祉／422 駅）。**地名（210・220・800）は施設ではないので採らない**。
+  - 記号は `GSI_VT_LABEL_M`（150m）以内の**種類の合う注記**から名前をもらう。社と寺の取りちがえは `_nbSubNg` で止める。
+  - タイルは 1 回 `GSI_VT_MAX_TILES`（12枚）まで。**出典「国土地理院『地理院地図Vector』」を説明に必ず入れる**（利用規約の条件）。z17 は空なので上げない。
+- **Wikidata（CC0・v238）**：`WIKIDATA_SPARQL` に `wikibase:around`＋`VALUES ?type`（`WIKIDATA_TYPES`）。名前つきの社寺・城・博物館・公園・灯台。出典「Wikidata・CC0」。
+- 候補の手直しは `_nbRefine`（v236→v238）：①祭り・行事を外す（`NEARBY_EVENT_RE`）②**出どころがあやふやなものだけ**種類を決め直す（`NEARBY_WEAK_TYPES`。国土数値情報の郵便局や地理院地図の注記は触らない）③名前の無い社寺は `NEARBY_NAME_M`（150m）以内の名前つきと**同じ場所とみなして 1 件にまとめる**。
+- 種類の対応（v163）：`NEARBY_KINDS[].t` がこのアプリの種類。まわりの施設で拾える種類（飲食店・コンビニ・お店・神社・史跡・展望・公園・学校・公民館・病院・施設・トイレ・駐車場・バス停・地名・Wikipedia）は全部 `WT` に対応する種類がある。**取り込んだものを `other` に落とさない**（オーナー指示）。
+- 名前から種類を見分ける `_guessType`／`NAME_TYPE_HINTS` は **v238 から「いちばん長く当てはまった言葉」が勝つ**（同じ長さなら表の上が勝つ）。「道の駅」＞「駅」、「ショッピングセンター」＞「センター」。**名前の途中で拾うと危ない語（山・川・岳）は `/山$/` のように終わりで見る**（山崎町・山崎インターチェンジが公園にならないように）。語を足すときはこの2点を守る。
 
 ## 印は勝手に動かない（v164）
 - スポットの Leaflet マーカーは `draggable: wp.type === 'node'`。**node 以外を draggable にしない**（`_applyViewLock`／`_unlockAllMarkers` も node だけ戻す）。

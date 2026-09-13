@@ -447,6 +447,26 @@ def static_checks(src):
     # --- v157: 番号の丸と種類の丸を横に並べる（オーナー指摘：iPhone で片方しか見えない）---
     chk('静的', '番号つきで種類がある地点：地図は「種類の丸＋右上に番号の小丸」、一覧・並べ替え・印刷用シート・カードは番号と種類を並べて出す',
         'class="wp-num"' in src and 'class="wp-dot cat"' in src and 'class="ro-badge cat"' in src and 'class="sh-cat"' in src and 'class="vip-dot vip-dot2"' in src and '_catBadge' not in src and 'wp-pair' not in src)
+    # --- v238: 寺・神社を国の地図（地理院地図Vector）と Wikidata から取り込む ---
+    chk('静的', 'まわりの施設に「地理院地図Vector（国土地理院）」と「Wikidata」を足し、出どころを画面に書いている',
+        "const GSI_VT_URL = 'https://cyberjapandata.gsi.go.jp/xyz/experimental_bvmap/16/{x}/{y}.pbf'" in src
+        and 'const GSI_FT = {3231:' in src and "3232:{t:'shrine', l:'寺院'}" in src and 'const GSI_ANNO = {661:' in src
+        and "const WIKIDATA_SPARQL = 'https://query.wikidata.org/sparql'" in src
+        and 'function _mvtParse' in src and 'function _gsiTiles' in src and 'async function _nbFetchGsiVt' in src and 'async function _nbFetchWikidata' in src
+        and '地理院地図Vector（国土地理院：地図記号の神社・寺院と、地図に書かれた名前）' in src
+        and '（情報：国土地理院「地理院地図Vector」）' in src and "'（情報：Wikidata・CC0）'" in src
+        and 'Google の情報は規約で使えません' in src)
+    chk('静的', '種類の見分けは「いちばん長く当てはまった言葉」。あやふやな出どころだけ種類を決め直す',
+        "const NEARBY_WEAK_TYPES = ['history', 'facility', 'other']" in src
+        and 'const len = re ? 3 : k.length;' in src and 'if (len > bl) { bl = len; best = t; }' in src
+        and "if (c.noName || (c.src !== 'OpenStreetMap' && NEARBY_WEAK_TYPES.includes(c.type))) {" in src
+        and "type:_guessType(pg.title) || 'facility'" in src
+        and '/山$/, /川$/, /岳$/' in src and "'ショッピングセンター'" in src and "'警察署','交番','駐在所','消防署','郵便局'" in src)
+    chk('静的', '名前の無い社寺は、近くの名前つき（社は社・寺は寺）と同じ場所とみなしてひとつにする',
+        'function _nbSub(name)' in src and 'function _nbSubNg(a, b)' in src
+        and 'const NEARBY_NAME_M = 150;' in src
+        and 'if (named.some(n => haversine(n.lat, n.lng, c.lat, c.lng) <= NEARBY_NAME_M && !_nbSubNg(c.name, n.name))) drop.add(c);' in src
+        and 'return out.filter(c => !drop.has(c));' in src)
     # --- v237: 案内の終盤を、初めての人の道すじどおりに（保存→一覧→みんなのマップ）---
     chk('静的', '案内は 保存 → 一覧にもどる → みんなのマップが見える所まで送ってから説明する',
         "{scr:'map', sel:'.mob-back', t:'⑨ 一覧にもどります'" in src and "{scr:'list', sel:'.s1-lib', t:'⑪ みんなのマップ'" in src
@@ -3450,6 +3470,63 @@ def functional_checks(index_path):
           }catch(e){ return 'ERR:'+e.message; } }""")
         chk('機能', 'まわりの施設：候補（距離・重複を除外）→地図の薄い○→選んで追加（種別・説明・出典）→1回で取り消し',
             isinstance(nb, dict) and all(nb.get(k) for k in ('found', 'v162', 'v163', 'dup', 'layer', 'listed', 'btn', 'added', 'bus', 'closed', 'keyword', 'undone')), str(nb)[:600])
+
+        # v238: 地理院地図Vector（地図記号の神社・寺院＋地図に書かれた名前）と Wikidata
+        gs = page.evaluate("""async ()=>{ const keepFetch = window.fetch; try{
+            // --- 小さなベクトルタイルを組み立てる（本物と同じ形式）---
+            const vi = n => { const o = []; n = Math.floor(n); do { let b = n % 128; n = Math.floor(n / 128); if (n) b += 128; o.push(b); } while (n); return o; };
+            const tag = (fn, wt) => vi(fn * 8 + wt);
+            const blk = (fn, arr) => tag(fn, 2).concat(vi(arr.length), arr);
+            const utf = t => [...new TextEncoder().encode(t)];
+            const zz = n => n < 0 ? (-n * 2 - 1) : (n * 2);
+            const pt = (tags, px, py) => blk(2, tag(2, 2).concat(vi(tags.length), tags).concat(tag(3, 0), vi(1)).concat(blk(4, [9].concat(vi(zz(px)), vi(zz(py))))));
+            const layer = (name, keys, vals, feats) => blk(3, blk(1, utf(name))
+                .concat(...feats).concat(...keys.map(k => blk(3, utf(k))))
+                .concat(...vals.map(v => blk(4, typeof v === 'string' ? blk(1, utf(v)) : tag(4, 0).concat(vi(v)))))
+                .concat(tag(5, 0), vi(4096)).concat(tag(15, 0), vi(2)));
+            // symbol: keys[0]=ftCode  vals[0]=3232(寺院) vals[1]=3231(神社)
+            const sym = layer('symbol', ['ftCode'], [3232, 3231], [pt([0, 0], 2048, 2048), pt([0, 1], 3900, 3900)]);
+            // label: keys[0]=annoCtg keys[1]=knj  vals: 662/800/'検査寺'/'検査町山田'
+            const lab = layer('label', ['annoCtg', 'knj'], [662, 800, '検査寺', '検査町山田'],
+                              [pt([0, 0, 1, 2], 2060, 2060), pt([0, 1, 1, 3], 2100, 2100)]);
+            const body = new Uint8Array(sym.concat(lab));
+            const c = {lat: 35.0, lng: 134.5};
+            const bb = {s: c.lat - 0.002, n: c.lat + 0.002, w: c.lng - 0.002, e: c.lng + 0.002, c: c, radius: 400};
+            const tiles = _gsiTiles(bb), tx = tiles[0][0], ty = tiles[0][1];
+            const out = {tiles: tiles.length >= 1 && tiles.length <= GSI_VT_MAX_TILES};
+            window.fetch = async (url, opts) => { const u = String(url);
+              if (u.indexOf('experimental_bvmap') >= 0) return (u.indexOf('/' + tx + '/' + ty + '.pbf') >= 0)
+                ? new Response(body, {status:200}) : new Response('', {status:404});
+              if (u.indexOf('query.wikidata.org') >= 0) return new Response(JSON.stringify({results:{bindings:[
+                  {itemLabel:{value:'検査八幡神社'}, lat:{value:String(c.lat + 0.0004)}, lon:{value:String(c.lng)}},
+                  {itemLabel:{value:'Q999'},        lat:{value:String(c.lat)},          lon:{value:String(c.lng)}}]}}), {status:200});
+              return keepFetch(url, opts); };
+            const g = await _nbFetchGsiVt(bb);
+            const by = n => g.filter(x => x.name === n);
+            out.tera = by('検査寺').length >= 1 && by('検査寺').every(x => x.type === 'shrine' && x.src === '地理院地図' && x.desc.indexOf('国土地理院') >= 0);
+            out.borrow = by('検査寺').length === 2;                       // 注記そのものと、名前をもらった地図記号
+            out.jinja = by('神社').length === 1 && by('神社')[0].noName === 1;   // 遠い記号は名前をもらわない
+            out.noPlace = !g.some(x => x.name === '検査町山田');           // 地名は施設にしない
+            const wd = await _nbFetchWikidata(bb);
+            out.wikidata = wd.length === 1 && wd[0].name === '検査八幡神社' && wd[0].type === 'shrine' && wd[0].src === 'Wikidata';
+            window.fetch = keepFetch;
+            // 名前の無い社寺は、近くの名前つきとひとつにまとめる（社と寺は取りちがえない）
+            const mk = (name, lat, noName, src) => ({id:name + lat, kind:'shrine', type:'shrine', name:name, lat:lat, lng:c.lng, src:src || '地理院地図', noName:noName});
+            const r = _nbRefine([mk('検査八幡神社', c.lat, 0, 'OpenStreetMap'), mk('神社', c.lat + 0.0005, 1), mk('寺院', c.lat + 0.0005, 1), mk('神社', c.lat + 0.01, 1)]);
+            out.merge = r.length === 3 && r.some(x => x.name === '検査八幡神社') && r.some(x => x.name === '寺院') && r.filter(x => x.name === '神社').length === 1;
+            // 種類の見分け：いちばん長い言葉が勝つ／出どころが確かなものは変えない
+            out.guess = _guessType('道の駅みなみ波賀') === 'shop' && _guessType('咲ランドショッピングセンター') === 'shop'
+                        && _guessType('山崎インターチェンジ (兵庫県)') === null && _guessType('山崎町 (兵庫県)') === null
+                        && _guessType('聖山城') === 'history' && _guessType('最上山') === 'park' && _guessType('赤波川') === 'park'
+                        && _guessType('宍粟警察署') === 'hall' && _guessType('播磨山崎郵便局') === 'hall'
+                        && _guessType('寺院') === 'shrine' && _guessType('神社') === 'shrine';
+            const keep = _nbRefine([{id:'k', kind:'hall', type:'hall', name:'播磨山崎郵便局', lat:c.lat, lng:c.lng, src:'国土数値情報'}]);
+            out.keepType = keep[0].type === 'hall';
+            out.event = _nbRefine([{id:'e', kind:'hist', type:'history', name:'さつき祭り', lat:c.lat, lng:c.lng, src:'国土数値情報'}]).length === 0;
+            return out;
+          }catch(e){ window.fetch = keepFetch; return 'ERR:'+e.message; } }""")
+        chk('機能', 'まわりの施設：地理院地図の地図記号（神社・寺院）と注記の名前、Wikidata、名前の引き継ぎ、種類の見分け',
+            isinstance(gs, dict) and all(gs.get(k) for k in ('tiles', 'tera', 'borrow', 'jinja', 'noPlace', 'wikidata', 'merge', 'guess', 'keepType', 'event')), str(gs)[:400])
 
         # v166: 高低差グラフのなぞり：距離→標高・勾配・位置、帯をなぞると見出し・地図の印・縦線、離すと消える、勾配の面
         scr = page.evaluate("""async ()=>{ try{
