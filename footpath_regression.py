@@ -448,10 +448,14 @@ def static_checks(src):
     chk('静的', '番号つきで種類がある地点：地図は「種類の丸＋右上に番号の小丸」、一覧・並べ替え・印刷用シート・カードは番号と種類を並べて出す',
         'class="wp-num"' in src and 'class="wp-dot cat"' in src and 'class="ro-badge cat"' in src and 'class="sh-cat"' in src and 'class="vip-dot vip-dot2"' in src and '_catBadge' not in src and 'wp-pair' not in src)
     # --- v232: 案内はいまの画面に合わせる（出ている窓を説明する）---
-    chk('静的', '案内は画面に出ている窓に合わせて段を選ぶ（どれから始めますか／まわりの施設／スタート地点／スポットの編集）',
-        'function _gdFits' in src and '④ どれから始めますか' in src and 'タップして置く' in src and '指でなぞって描く' in src
-        and 'まわりの施設を探します' in src and 'スタート地点を決めます' in src and '名前・写真・説明を書きます' in src
-        and "GUIDE.forEach(g => { delete g._seen; delete g._nudged; });" in src)
+    chk('静的', '案内はいま出ている画面で段を選ぶ（どれから始めますか／まわりの施設／スタート地点／スポットの編集／配る／出す）',
+        'function _gdScreen' in src and 'function _gdFirstFor' in src and '④ どれから始めますか' in src
+        and "{scr:'nearby'" in src and "{scr:'start'" in src and "{scr:'spot'" in src and "{scr:'share'" in src and "{scr:'pub'" in src
+        and "if (_vis('#pubSheet.show')) return 'pub';" in src)
+    chk('静的', '案内の吹き出しは画面の上か下に貼り付く帯（真ん中に浮かせない）。大きな窓は枠で囲まない',
+        "#guideWrap .gd-tip{position:fixed;left:8px;right:8px;bottom:calc(8px + var(--sab))" in src
+        and '#guideWrap .gd-tip.top{top:calc(8px + var(--sat));bottom:auto}' in src
+        and "hole.classList.toggle('plain'" in src and "tip.classList.toggle('top', mid > H * 0.55);" in src)
     # --- v230: 案内の枠を角丸のまま暗くする／フリックで進む・戻る ---
     chk('静的', '案内の暗幕は「丸い穴＋大きな影」1枚（四隅が明るく残らない）。押してほしいボタンは押すまで進まない（1回うながしたら進める）',
         '.gd-hole{position:fixed;border-radius:16px' in src and '0 0 0 9999px rgba(20,14,6,.55)' in src
@@ -475,9 +479,7 @@ def static_checks(src):
         and "w.id = 'guideWrap'" in src and 'class="gd-hole" id="gdHole"' in src
         and 'id="gdNext"' in src and 'id="gdSkip"' in src and 'id="gdQuit"' in src
         and 'onclick="startGuide()"' in src and 'setInterval(_gdTick, 300)' in src
-        and 'function _gdFits' in src and 'grab:1' in src   # v232：いま出ている窓に合わせて案内する
-        and "when:() => _vis('#firstTip')" in src and '④ どれから始めますか' in src
-        and "when:() => _vis('#nearbySheet')" in src and "when:() => _vis('#startPickSheet.show')" in src)
+        and 'function _gdFits' in src and 'function _gdScreen' in src)
     # --- v227: 取り込みのあと、まずスタート地点を決める ---
     chk('静的', '取り込みが終わったら「まず、スタート地点を決めましょう」を出す（近い順に選ぶ・あとで決めるも可・メニューからも開ける）',
         'function openStartPick' in src and 'function _startPickGo' in src and 'まず、スタート地点を決めましょう' in src
@@ -2358,7 +2360,8 @@ def functional_checks(index_path):
             ft.style.display = 'block';                       // 「どれから始めますか」が出た
             await new Promise(r => setTimeout(r, 450));
             out.grabbed = /どれから始めますか/.test(document.getElementById('gdT').textContent);
-            out.three = /タップして置く/.test(document.getElementById('gdD').textContent)
+            out.bar = getComputedStyle(document.querySelector('#guideWrap .gd-tip')).left === '8px';   // v233：帯で出る
+            out.three = /長押しして置く/.test(document.getElementById('gdD').textContent)
                         && /指でなぞって描く/.test(document.getElementById('gdD').textContent)
                         && /まわりの施設を探す/.test(document.getElementById('gdD').textContent);
             ft.style.display = 'none';                        // 閉じたら次の段へ
@@ -2371,7 +2374,7 @@ def functional_checks(index_path):
             return out;
           }catch(e){ return 'ERR:'+e.message; } }""")
         chk('機能', '画面に「どれから始めますか」が出たら、その3つの入口を説明する段に切り替わる',
-            isinstance(gs2, dict) and all(gs2.get(k) for k in ('notStep1', 'grabbed', 'three', 'moved')), str(gs2)[:200])
+            isinstance(gs2, dict) and all(gs2.get(k) for k in ('notStep1', 'grabbed', 'three', 'moved', 'bar')), str(gs2)[:200])
 
         # v230: 押すまで進まない／フリックで進む・戻る
         gf = page.evaluate("""async ()=>{ try{

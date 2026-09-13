@@ -754,10 +754,14 @@ body.viewonly #firstTip,body.embed #firstTip{display:none!important}
   box-shadow:0 0 0 3px rgba(196,112,58,.95), 0 0 0 9999px rgba(20,14,6,.55);
   pointer-events:none;transition:all .12s ease-out}
 #guideWrap .gd-hole.full{border:0;border-radius:0;box-shadow:0 0 0 9999px rgba(20,14,6,.55)}
-#guideWrap .gd-tip{position:fixed;max-width:min(420px,calc(100vw - 24px));background:#fff;border-radius:14px;padding:13px 14px;box-shadow:0 10px 30px rgba(0,0,0,.32);pointer-events:auto}
+#guideWrap .gd-hole.plain{border:0;box-shadow:0 0 0 9999px rgba(20,14,6,.42)}   /* v233：大きな窓は枠で囲まない */
+/* v233：吹き出しは「画面の上か下に貼り付く帯」。真ん中に浮かせない＝操作するものを隠さない */
+#guideWrap .gd-tip{position:fixed;left:8px;right:8px;bottom:calc(8px + var(--sab));background:#fff;border-radius:16px;
+  padding:12px 14px;box-shadow:0 8px 28px rgba(0,0,0,.3);pointer-events:auto;max-height:42vh;overflow-y:auto}
+#guideWrap .gd-tip.top{top:calc(8px + var(--sat));bottom:auto}
 #guideWrap .gd-step{font-size:11px;font-weight:800;color:#fff;background:var(--brand);border-radius:9px;padding:2px 8px;display:inline-block;margin-bottom:5px}
-#guideWrap .gd-t{font-size:15.5px;font-weight:800;color:#3E2A0E;line-height:1.45;margin-bottom:4px}
-#guideWrap .gd-d{font-size:13px;color:#4A443E;line-height:1.7}
+#guideWrap .gd-t{font-size:15px;font-weight:800;color:#3E2A0E;line-height:1.4;margin-bottom:3px}
+#guideWrap .gd-d{font-size:12.5px;color:#4A443E;line-height:1.65}
 #guideWrap .gd-foot{display:flex;gap:7px;margin-top:11px;align-items:center}
 #guideWrap .gd-foot button{min-height:40px;padding:0 14px;border:0;border-radius:10px;font-family:inherit;font-size:13.5px;font-weight:800;cursor:pointer}
 #guideWrap .gd-next{background:var(--brand-grad);color:#fff;flex:1}
@@ -3286,7 +3290,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 手描きの道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した手描きの道id（直前取り消し用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v232';
+const APP_VERSION = 'v233';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -7122,43 +7126,46 @@ function _onSwipe(el, onLeft, onRight){
   el.addEventListener('pointercancel', () => { id = null; }, {passive:true});
 }
 const GUIDE = [
-  {sel:'.s1-fab', when:() => _vis('#s1'), t:'① コースを作りましょう', d:'まず「新しいコースを作成」を押します。',
+  {scr:'list', sel:'.s1-fab', t:'① コースを作りましょう', d:'「新しいコースを作成」を押します。',
    done:() => _vis('#newCourseSheet.show'), must:'「新しいコースを作成」を押してください'},
-  {sel:'#s1Name', when:() => _vis('#newCourseSheet.show'), t:'② 名前をつけます',
-   d:'例：飯見の棚田おにぎりウォーク<br>エリアは空欄でもかまいません（現在地になります）。', done:() => (document.getElementById('s1Name') || {}).value},
-  {sel:'#s1Btn', when:() => _vis('#newCourseSheet.show'), t:'③ 地図を開きます', d:'「作成してマップへ」を押すと、地図の画面になります。',
+  {scr:'new', sel:'#s1Name', t:'② 名前をつけます', d:'例：飯見の棚田おにぎりウォーク（エリアは空欄でも大丈夫）',
+   done:() => (document.getElementById('s1Name') || {}).value},
+  {scr:'new', sel:'#s1Btn', t:'③ 地図を開きます', d:'「作成してマップへ」を押します。',
    done:() => _vis('#s2') && !_vis('#newCourseSheet.show'), must:'「作成してマップへ」を押してください'},
-  /* まっさらな地図で出る「どれから始めますか」。いま画面に出ているものを説明する（v232・オーナー指摘） */
-  {sel:'#firstTip', when:() => _vis('#firstTip'), grab:1, t:'④ どれから始めますか', d:
-   '<b>タップして置く</b>…地図を長押しして、スポットを1つずつ置きます<br>'
-   + '<b>指でなぞって描く</b>…歩く道を指でなぞると、そのとおりにコースになります<br>'
-   + '<b>まわりの施設を探す</b>…お店・神社・史跡・バス停などをまとめて置きます<br><br>'
-   + 'どれを選んでも、あとから他のやり方もできます。', done:() => !_vis('#firstTip')},
-  /* まわりの施設を探すを選んだとき */
-  {sel:'#nearbySheet', when:() => _vis('#nearbySheet'), grab:1, t:'まわりの施設を探します', d:
-   '<b>距離</b>と<b>種類</b>を選んで <b>「探す」</b>。<br>見つかったものから、置きたいものに✓を付けて <b>「選んだ ○ 件を追加」</b>。<br>'
-   + '（多すぎたら、あとで「スポットを整理」でまとめて消せます）', done:() => !_vis('#nearbySheet')},
-  /* 取り込みのあとに出る「スタート地点を決める」 */
-  {sel:'#startPickSheet', when:() => _vis('#startPickSheet.show'), grab:1, t:'スタート地点を決めます', d:
-   '歩きはじめる場所を選びます。駐車場やバス停が便利です。<br>近い順に並んでいます。あとから変えられます。', done:() => !_vis('#startPickSheet.show')},
-  /* 地図の上での置き方 */
-  {sel:'#map', when:() => _vis('#s2') && !_vis('#firstTip'), big:1, t:'⑤ スポットを置きます',
-   d:'地図を<b>長押し</b>すると「ここにスポットを追加しますか？」と出ます。<br>歩く順に入れるなら「コースに入れる」、目印だけなら「立ち寄り先にする」。',
+  {scr:'first', sel:'#firstTip', t:'④ どれから始めますか', d:
+   '<b>地図を長押しして置く</b>…1つずつ置く<br><b>指でなぞって描く</b>…なぞった道がコースに<br><b>まわりの施設を探す</b>…お店・神社・バス停などをまとめて<br>どれでも、あとから他のやり方もできます。'},
+  {scr:'nearby', sel:null, t:'まわりの施設を探します', d:
+   '<b>距離</b>と<b>種類</b>を選んで <b>「探す」</b> → 置きたいものに✓ → <b>「選んだ ○ 件を追加」</b>。<br>多すぎたら、あとで「スポットを整理」でまとめて消せます。'},
+  {scr:'start', sel:null, t:'スタート地点を決めます', d:'歩きはじめる場所を選びます（駐車場やバス停が便利）。近い順に並んでいます。あとから変えられます。'},
+  {scr:'spot', sel:null, t:'名前・写真・説明を書きます', d:
+   '<b>種別</b>で見た目が変わります。<b>この場所の役</b>でスタート／ゴールにできます。書いたら「保存」。'},
+  {scr:'map', sel:'#map', big:1, t:'⑤ スポットを置きます', d:
+   '地図を<b>長押し</b>→「コースに入れる」（歩く順に入る）か「立ち寄り先にする」（目印だけ）。',
    done:() => wps.filter(w => w && w.type !== 'node').length > 0},
-  {sel:'#mOver', when:() => _vis('#mOver.show'), grab:1, t:'名前・写真・説明を書きます', d:
-   '<b>種別</b>で見た目が変わり、<b>この場所の役</b>でスタート／ゴールにできます。<br>写真は歩く人のカードにシールのように貼られます。書いたら <b>「保存」</b>。',
-   done:() => !_vis('#mOver.show')},
-  {sel:'#mobileWpBtn', when:() => _vis('#s2') && !_vis('#firstTip'), t:'⑥ 道具の使い分け', d:
-   '・<b>スポット</b>…目印を置く<br>・<b>手描き</b>…指でなぞって道順を引く<br>・<b>ルート調整</b>…引かれた線を動かす<br>・<b>道を足す</b>…地図に無い道を描く'},
-  {sel:'#map', when:() => _vis('#s2') && !_vis('#firstTip'), big:1, t:'⑦ もう1つ置くと道順が引かれます',
-   d:'2つ目のスポットを置くと、道なりに赤い線が引かれます。<br>○を押すと、名前・写真・説明を書けます。',
+  {scr:'map', sel:'#mobileWpBtn', t:'⑥ 下の道具', d:
+   '<b>スポット</b>＝置く／<b>手描き</b>＝なぞって引く／<b>ルート調整</b>＝線を動かす／<b>道を足す</b>＝地図に無い道'},
+  {scr:'map', sel:'#map', big:1, t:'⑦ 2つ目を置くと道順が引かれます', d:'○を押すと、名前・写真・説明を書けます。',
    done:() => wps.filter(w => w && w.type !== 'node' && _onRouteOf(w)).length > 1},
-  {sel:'.mob-save', when:() => _vis('#s2'), t:'⑧ 保存します', d:'勝手には保存しません。<b>「保存」</b>を押してこの端末に残します。', done:() => !_dirty},
-  {sel:'.mob-share', when:() => _vis('#s2'), t:'⑨ 配ります', d:'「配る」から、<b>みんなのマップに出す</b>・共有リンク・印刷用シート・画像が選べます。', done:() => _vis('#shareSheet')},
-  {sel:'[data-share="pub"]', when:() => _vis('#shareSheet'), grab:1, t:'⑩ みんなのマップに出す',
-   d:'名前と「見た人にできること（見るだけ／編集できる）」を選んで <b>「出す」</b> を押すだけ。<br>登録も合言葉もいりません。押した瞬間に全員の一覧に並びます。', done:() => _vis('#pubSheet.show')},
-  {sel:null, t:'これでひと通りです', d:'あとは歩きながら写真を足したり、道順を直したりできます。<br>この案内は、一覧の <b>「はじめての方へ」</b> からいつでも見られます。'}
+  {scr:'map', sel:'.mob-save', t:'⑧ 保存します', d:'勝手には保存しません。「保存」を押してこの端末に残します。', done:() => !_dirty},
+  {scr:'map', sel:'.mob-share', t:'⑨ 配ります', d:'「配る」から みんなのマップ・共有リンク・印刷用シート・画像。', done:() => _vis('#shareSheet')},
+  {scr:'share', sel:'[data-share="pub"]', t:'⑩ みんなのマップに出す', d:'押すと、名前と「見た人にできること」を選ぶ画面になります。',
+   done:() => _vis('#pubSheet.show')},
+  {scr:'pub', sel:null, t:'名前と公開の仕方を選んで「出す」', d:
+   '<b>見るだけ</b>／<b>編集できる</b> を選んで <b>「出す」</b>。登録も合言葉もいりません。押した瞬間に全員の一覧に並びます。'},
+  {scr:'map', sel:null, last:1, t:'これでひと通りです', d:'この案内は、一覧の「はじめての方へ」からいつでも見られます。'}
 ];
+/* いま出ている画面（上にあるものほど優先） */
+function _gdScreen(){
+  if (_vis('#pubSheet.show')) return 'pub';
+  if (_vis('#mOver.show')) return 'spot';
+  if (_vis('#startPickSheet.show')) return 'start';
+  if (_vis('#nearbySheet')) return 'nearby';
+  if (_vis('#shareSheet')) return 'share';
+  if (_vis('#firstTip')) return 'first';
+  if (_vis('#newCourseSheet.show')) return 'new';
+  if (_vis('#s2')) return 'map';
+  return 'list';
+}
 let _gdI = -1, _gdTimer = null;
 function _vis(sel){ const e = document.querySelector(sel); return !!e && e.getBoundingClientRect().width > 0 && getComputedStyle(e).display !== 'none'; }
 function startGuide(){
@@ -7178,10 +7185,10 @@ function startGuide(){
     _onSwipe(w.querySelector('.gd-tip'), _gdNext, _gdBack);   // v230：左へフリックで次、右へ戻る
   }
   try { localStorage.setItem(LS.tourSeen, '1'); } catch(_) {}
-  GUIDE.forEach(g => { delete g._seen; delete g._nudged; });   // v232：開き直したら最初から
+  GUIDE.forEach(g => { delete g._nudged; });   // 開き直したら最初から
   w.classList.add('on');
-  let first = 0; while (first < GUIDE.length - 1 && !_gdFits(first)) first++;   // いまの画面に合う段から始める
-  _gdGo(first);
+  const first = _gdFirstFor(_gdScreen(), 0);   // いまの画面に合う段から始める
+  _gdGo(first < 0 ? 0 : first);
   if (_gdTimer) clearInterval(_gdTimer);
   _gdTimer = setInterval(_gdTick, 300);   // 位置の追従と「できた？」の見張り
 }
@@ -7206,7 +7213,6 @@ function _gdGo(i){
   if (i >= GUIDE.length) { stopGuide(); showToast('お疲れさまでした。いつでも「はじめての方へ」から見られます'); return; }
   _gdI = i;
   const g = GUIDE[i];
-  g._seen = 1;   // v232：一度出した「窓の説明」は割り込まない
   document.getElementById('gdStep').textContent = (i + 1) + ' / ' + GUIDE.length;
   document.getElementById('gdT').innerHTML = g.t;
   document.getElementById('gdD').innerHTML = g.d;
@@ -7227,46 +7233,42 @@ function _gdPlace(){
   const w = document.getElementById('guideWrap'); if (!w || !w.classList.contains('on')) return;
   const r = _gdRect(), W = innerWidth, H = innerHeight;
   const hole = w.querySelector('#gdHole'), tip = w.querySelector('.gd-tip');
-  if (!r) {                                   // 対象が無い段は、画面全体を暗くして真ん中に出す
-    hole.classList.add('full');
-    hole.style.left = '0px'; hole.style.top = '0px'; hole.style.width = W + 'px'; hole.style.height = '0px';
-    tip.style.left = Math.round((W - Math.min(420, W - 24)) / 2) + 'px';
-    tip.style.top = Math.round(H / 2 - 90) + 'px';
+  if (!r) {                                   // 対象を囲まない段（窓そのものの説明など）＝暗くせず帯だけ
+    hole.classList.add('full'); hole.classList.remove('plain');
+    hole.style.left = '0px'; hole.style.top = '0px'; hole.style.width = '0px'; hole.style.height = '0px';
+    hole.style.boxShadow = 'none';
+    tip.classList.remove('top');              // 窓は上から出るので、帯は下に置く
     return;
   }
+  hole.style.boxShadow = '';
   hole.classList.remove('full');
+  hole.classList.toggle('plain', (r.width * r.height) > (W * H * 0.45));   // 大きな窓は枠で囲まない（囲んでも意味がない）
   hole.style.left = r.left + 'px'; hole.style.top = r.top + 'px';
   hole.style.width = r.width + 'px'; hole.style.height = r.height + 'px';
-  const th = tip.offsetHeight || 150, tw = Math.min(420, W - 24);
-  let ty = r.top + r.height + 12;
-  if (ty + th > H - 10) ty = r.top - th - 12;
-  if (ty < 10) ty = Math.max(10, Math.min(H - th - 10, r.top + r.height + 12));
-  tip.style.left = Math.round(Math.max(12, Math.min(W - tw - 12, r.left + r.width / 2 - tw / 2))) + 'px';
-  tip.style.top = Math.round(ty) + 'px';
+  /* 帯は、対象にかからない側（上か下）に貼る */
+  const mid = r.top + r.height / 2;
+  tip.classList.toggle('top', mid > H * 0.55);
 }
-/* いまの画面に合う段か（v232・オーナー指摘「画面に出ているものを案内しろ」） */
-function _gdFits(i){
-  const g = GUIDE[i]; if (!g) return false;
-  try { return !g.when || !!g.when(); } catch(_) { return true; }
+/* いまの画面に合う段か（v233：画面の種類で判定する） */
+function _gdFits(i){ const g = GUIDE[i]; return !!g && g.scr === _gdScreen(); }
+function _gdFirstFor(scr, from){
+  for (let j = (from || 0); j < GUIDE.length; j++) if (GUIDE[j].scr === scr) return j;
+  for (let j = 0; j < GUIDE.length; j++) if (GUIDE[j].scr === scr) return j;
+  return -1;
 }
 function _gdTick(){
   const w = document.getElementById('guideWrap'); if (!w || !w.classList.contains('on')) return;
   const g = GUIDE[_gdI]; if (!g) return;
-  /* ① 画面に出た窓の説明（grab）があれば、そちらへ割り込む（1回だけ） */
-  for (let j = 0; j < GUIDE.length; j++) {
-    const x = GUIDE[j];
-    if (x.grab && !x._seen && j !== _gdI && _gdFits(j)) { _gdGo(j); return; }
+  /* ① 画面が変わったら、その画面の案内へ（必ず合わせる） */
+  const scr = _gdScreen();
+  if (g.scr !== scr) {
+    const j = _gdFirstFor(scr, (GUIDE[_gdI] && GUIDE[_gdI].scr === 'map') ? _gdI : 0);
+    if (j >= 0) { _gdGo(j); return; }
   }
-  /* ② いまの段が画面に合っていなければ、合う段へ移る */
-  if (!_gdFits(_gdI) || (g.sel && !document.querySelector(g.sel))) {
-    for (let j = _gdI + 1; j < GUIDE.length; j++) if (_gdFits(j)) { _gdGo(j); return; }
-    for (let j = _gdI - 1; j >= 0; j--) if (_gdFits(j)) { _gdGo(j); return; }
-    return;
-  }
-  /* ③ できたら次へ */
+  /* ② できたら次へ（同じ画面の中だけ進む） */
   let ok = false;
   try { ok = !!(g.done && g.done()); } catch(_) {}
-  if (ok) { _gdGo(_gdI + 1); return; }
+  if (ok && GUIDE[_gdI + 1] && GUIDE[_gdI + 1].scr === scr) { _gdGo(_gdI + 1); return; }
   _gdPlace();
 }
 addEventListener('resize', () => _gdPlace());
