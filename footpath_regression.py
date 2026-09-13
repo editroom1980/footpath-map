@@ -455,7 +455,8 @@ def static_checks(src):
     chk('静的', '案内の吹き出しは画面の上か下に貼り付く帯（真ん中に浮かせない）。大きな窓は枠で囲まない',
         "#guideWrap .gd-tip{position:fixed;left:8px;right:8px;bottom:calc(8px + var(--sab))" in src
         and '#guideWrap .gd-tip.top{top:calc(8px + var(--sat));bottom:auto}' in src
-        and "hole.classList.toggle('plain'" in src and "tip.classList.toggle('top', mid > H * 0.55);" in src)
+        and "hole.classList.toggle('plain'" in src and "tip.classList.toggle('top', mid > H * 0.45);" in src
+        and "tip.classList.add('top');" in src)   # v234：窓の説明は上の帯（下のボタンを隠さない）
     # --- v230: 案内の枠を角丸のまま暗くする／フリックで進む・戻る ---
     chk('静的', '案内の暗幕は「丸い穴＋大きな影」1枚（四隅が明るく残らない）。押してほしいボタンは押すまで進まない（1回うながしたら進める）',
         '.gd-hole{position:fixed;border-radius:16px' in src and '0 0 0 9999px rgba(20,14,6,.55)' in src
@@ -2360,7 +2361,8 @@ def functional_checks(index_path):
             ft.style.display = 'block';                       // 「どれから始めますか」が出た
             await new Promise(r => setTimeout(r, 450));
             out.grabbed = /どれから始めますか/.test(document.getElementById('gdT').textContent);
-            out.bar = getComputedStyle(document.querySelector('#guideWrap .gd-tip')).left === '8px';   // v233：帯で出る
+            const _tipEl = document.querySelector('#guideWrap .gd-tip');
+            out.bar = getComputedStyle(_tipEl).left === '8px' && _tipEl.classList.contains('top');   // v233/v234：上の帯で出る
             out.three = /長押しして置く/.test(document.getElementById('gdD').textContent)
                         && /指でなぞって描く/.test(document.getElementById('gdD').textContent)
                         && /まわりの施設を探す/.test(document.getElementById('gdD').textContent);

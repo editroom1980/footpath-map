@@ -3290,7 +3290,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 手描きの道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した手描きの道id（直前取り消し用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v233';
+const APP_VERSION = 'v234';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -7237,7 +7237,7 @@ function _gdPlace(){
     hole.classList.add('full'); hole.classList.remove('plain');
     hole.style.left = '0px'; hole.style.top = '0px'; hole.style.width = '0px'; hole.style.height = '0px';
     hole.style.boxShadow = 'none';
-    tip.classList.remove('top');              // 窓は上から出るので、帯は下に置く
+    tip.classList.add('top');                 // v234：窓は下から出て、押すボタンも下にある＝帯は上に置く
     return;
   }
   hole.style.boxShadow = '';
@@ -7247,7 +7247,7 @@ function _gdPlace(){
   hole.style.width = r.width + 'px'; hole.style.height = r.height + 'px';
   /* 帯は、対象にかからない側（上か下）に貼る */
   const mid = r.top + r.height / 2;
-  tip.classList.toggle('top', mid > H * 0.55);
+  tip.classList.toggle('top', mid > H * 0.45);   // v234：対象が真ん中より下なら帯は上（押すものを隠さない）
 }
 /* いまの画面に合う段か（v233：画面の種類で判定する） */
 function _gdFits(i){ const g = GUIDE[i]; return !!g && g.scr === _gdScreen(); }
