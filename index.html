@@ -3290,7 +3290,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 手描きの道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した手描きの道id（直前取り消し用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v234';
+const APP_VERSION = 'v235';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -7166,7 +7166,7 @@ function _gdScreen(){
   if (_vis('#s2')) return 'map';
   return 'list';
 }
-let _gdI = -1, _gdTimer = null;
+let _gdI = -1, _gdTimer = null, _gdScrLast = '', _gdLast = {};   // v235：画面が変わったときだけ切り替える／その画面で最後に見た段を覚える
 function _vis(sel){ const e = document.querySelector(sel); return !!e && e.getBoundingClientRect().width > 0 && getComputedStyle(e).display !== 'none'; }
 function startGuide(){
   closeTour();
@@ -7186,6 +7186,7 @@ function startGuide(){
   }
   try { localStorage.setItem(LS.tourSeen, '1'); } catch(_) {}
   GUIDE.forEach(g => { delete g._nudged; });   // 開き直したら最初から
+  _gdScrLast = _gdScreen(); _gdLast = {};
   w.classList.add('on');
   const first = _gdFirstFor(_gdScreen(), 0);   // いまの画面に合う段から始める
   _gdGo(first < 0 ? 0 : first);
@@ -7213,6 +7214,7 @@ function _gdGo(i){
   if (i >= GUIDE.length) { stopGuide(); showToast('お疲れさまでした。いつでも「はじめての方へ」から見られます'); return; }
   _gdI = i;
   const g = GUIDE[i];
+  if (g.scr) _gdLast[g.scr] = i;   // v235：その画面で最後に見た段
   document.getElementById('gdStep').textContent = (i + 1) + ' / ' + GUIDE.length;
   document.getElementById('gdT').innerHTML = g.t;
   document.getElementById('gdD').innerHTML = g.d;
@@ -7259,11 +7261,17 @@ function _gdFirstFor(scr, from){
 function _gdTick(){
   const w = document.getElementById('guideWrap'); if (!w || !w.classList.contains('on')) return;
   const g = GUIDE[_gdI]; if (!g) return;
-  /* ① 画面が変わったら、その画面の案内へ（必ず合わせる） */
+  /* ① 画面が**変わったとき**だけ、その画面の案内へ移る（v235・オーナー報告「9〜12でループする」）。
+     毎回引き戻すと、「次へ」で先の画面の段に進んだ瞬間に戻され、行ったり来たりになっていた。
+     戻るときは、その画面で最後に見ていた段から続ける（最初の段まで巻き戻さない） */
   const scr = _gdScreen();
-  if (g.scr !== scr) {
-    const j = _gdFirstFor(scr, (GUIDE[_gdI] && GUIDE[_gdI].scr === 'map') ? _gdI : 0);
-    if (j >= 0) { _gdGo(j); return; }
+  if (scr !== _gdScrLast) {
+    _gdScrLast = scr;
+    if (g.scr !== scr) {
+      const first = _gdFirstFor(scr, 0);
+      const j = Math.max(first, (_gdLast[scr] != null ? _gdLast[scr] : -1));
+      if (j >= 0) { _gdGo(j); return; }
+    }
   }
   /* ② できたら次へ（同じ画面の中だけ進む） */
   let ok = false;

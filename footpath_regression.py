@@ -447,6 +447,10 @@ def static_checks(src):
     # --- v157: 番号の丸と種類の丸を横に並べる（オーナー指摘：iPhone で片方しか見えない）---
     chk('静的', '番号つきで種類がある地点：地図は「種類の丸＋右上に番号の小丸」、一覧・並べ替え・印刷用シート・カードは番号と種類を並べて出す',
         'class="wp-num"' in src and 'class="wp-dot cat"' in src and 'class="ro-badge cat"' in src and 'class="sh-cat"' in src and 'class="vip-dot vip-dot2"' in src and '_catBadge' not in src and 'wp-pair' not in src)
+    # --- v235: 案内が行ったり来たりしない（オーナー報告「9〜12でループする」）---
+    chk('静的', '案内は画面が変わったときだけ切り替え、その画面で最後に見た段から続ける（手で進めた段を引き戻さない）',
+        'let _gdI = -1, _gdTimer = null, _gdScrLast' in src and 'if (scr !== _gdScrLast) {' in src
+        and 'if (g.scr) _gdLast[g.scr] = i;' in src and '_gdScrLast = _gdScreen(); _gdLast = {};' in src)
     # --- v232: 案内はいまの画面に合わせる（出ている窓を説明する）---
     chk('静的', '案内はいま出ている画面で段を選ぶ（どれから始めますか／まわりの施設／スタート地点／スポットの編集／配る／出す）',
         'function _gdScreen' in src and 'function _gdFirstFor' in src and '④ どれから始めますか' in src
@@ -2350,6 +2354,26 @@ def functional_checks(index_path):
             isinstance(bx, dict) and all(bx.get(k) for k in ('oneBtn', 'idx', 'body', 'list', 'open', 'mine', 'heal', 'big', 'moved',
                                                             'phPut', 'phFlag', 'phGot', 'phSticker', 'dup', 'dup2', 'dup3',
                                                             'mineFlag', 'deleted', 'delMark', 'moved2')), str(bx)[:420])
+
+        # v235: 「次へ」を押し続けても案内が戻らない
+        gl = page.evaluate("""async ()=>{ try{
+            const out = {}, keepS1 = document.getElementById('s1').style.display, keepS2 = document.getElementById('s2').style.display;
+            document.getElementById('s1').style.display = 'none'; document.getElementById('s2').style.display = 'flex';
+            startGuide(); await new Promise(r => setTimeout(r, 400));
+            out.start = GUIDE[_gdI].scr === 'map';
+            // 地図の画面のまま「次へ」を何度も押しても、前の段に戻らない（v235）
+            const seen = [];
+            for (let k = 0; k < 4; k++) { document.getElementById('gdSkip').click(); await new Promise(r => setTimeout(r, 350)); seen.push(_gdI); }
+            out.noLoop = seen.every((v, i) => v >= 0 && (i === 0 || v > seen[i - 1]));   // 必ず前へ進む（戻らない・止まらない）
+            out.moved = seen[seen.length - 1] > seen[0];
+            out.seen = seen.join(',');
+            stopGuide();
+            document.getElementById('s1').style.display = keepS1; document.getElementById('s2').style.display = keepS2;
+            document.querySelectorAll('#toastBox .toast').forEach(e => e.remove());
+            return out;
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        chk('機能', '案内は「次へ」で先へ進み、前の段に戻らない（9〜12のループが起きない）',
+            isinstance(gl, dict) and gl.get('start') and gl.get('noLoop') and gl.get('moved'), str(gl)[:200])
 
         # v232: 画面に出た窓に合わせて案内する
         gs2 = page.evaluate("""async ()=>{ try{
