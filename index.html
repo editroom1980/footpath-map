@@ -3062,8 +3062,26 @@ async function backToS1() {
   if (!_dirty) { _doBackToS1(); return; }
   _askSaveBack();                               // v170：勝手に保存せず、ここで必ず確認する
 }
+/* 共有リンク（みんなのマップ）で開いたあと、自分のコース一覧にもどるとき（v240）。
+   オーナー報告「みんなのマップを見た後、自分の保存済みコースに入ると閲覧モードのままで、
+   アプリを起動し直すまで編集モードに戻れない」。原因は2つ：
+     ① body の viewonly／viewing が付いたままで、編集の道具も「編集モードにもどる」ボタンも消えていた
+     ② URL に #d=… が残っていて、アプリが「いまも共有リンクで開いている」と思い続けていた
+   自分の一覧にもどった時点で、どちらも片づける。 */
+function _leaveShareView(){
+  if (!viewMode && !document.body.classList.contains('viewonly')) return;
+  document.body.classList.remove('viewonly', 'viewing', 'embed');
+  viewMode = false;
+  try {
+    const u = new URL(location.href);
+    ['course', 'view', 'embed'].forEach(k => u.searchParams.delete(k));
+    history.replaceState(null, '', u.pathname + (u.search || ''));   // #d=… を消す（読み込み直しはしない）
+  } catch(_) {}
+  try { _applyViewLock(); } catch(_) {}
+}
 function _doBackToS1() {
   if (_followOn) stopFollowMode(true);   // 地図画面を離れたら追従を止める（電池のため）
+  _leaveShareView();          // v240：共有リンクの見え方を引きずらない
   _dirty = false;             // 保存/破棄をダイアログで選んだあと＝以降は確認不要
   setTimeout(showUpdateBarIfPending, 300);   // 一覧に戻ったら新版の案内を出す
   _closeAllSheets();          // v239：開いていた窓を全部閉じる（戻ったときに残さない）
@@ -3349,7 +3367,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 手描きの道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した手描きの道id（直前取り消し用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v239';
+const APP_VERSION = 'v240';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -7380,6 +7398,15 @@ function _gdFirstFor(scr, from){
   for (let j = 0; j < GUIDE.length; j++) if (GUIDE[j].scr === scr) return j;
   return -1;
 }
+/* 土台の画面（窓ではない）。ここへは前に進むだけ＝行ったり来たりにならない。
+   窓（どれから始めますか・まわりの施設・スタート地点・スポット編集・みんなのマップ・出す…）は、
+   ユーザーが自分で開いたものなので、順番に関係なくその窓の説明を出す。v240 */
+const GD_BASE_SCR = ['list', 'map'];
+/* その画面の「まだ通っていない次の段」だけを探す（後ろは見ない）。v240 */
+function _gdNextFor(scr, from){
+  for (let j = Math.max(0, from); j < GUIDE.length; j++) if (GUIDE[j].scr === scr) return j;
+  return -1;
+}
 function _gdTick(){
   const w = document.getElementById('guideWrap'); if (!w || !w.classList.contains('on')) return;
   const g = GUIDE[_gdI]; if (!g) return;
@@ -7389,9 +7416,13 @@ function _gdTick(){
   const scr = _gdScreen();
   if (scr !== _gdScrLast) {
     _gdScrLast = scr;
+    /* v240（オーナー報告「保存してもとの一覧に戻ったら、また 1/17 からやり直しになった」）：
+       ここで『その画面の最初の段』に戻していたため、地図から一覧へもどると①まで巻き戻っていた。
+       案内は前へ進むだけにする＝**その画面の、まだ通っていない次の段**へ。
+       先に無ければ何もしない（うしろへ戻さない＝行ったり来たりにならない。v235 の再発防止）。 */
     if (g.scr !== scr) {
-      const first = _gdFirstFor(scr, 0);
-      const j = Math.max(first, (_gdLast[scr] != null ? _gdLast[scr] : -1));
+      let j = _gdNextFor(scr, _gdI + 1);
+      if (j < 0 && GD_BASE_SCR.indexOf(scr) < 0) j = _gdFirstFor(scr, 0);   // 窓は順番に関係なく説明する
       if (j >= 0) { _gdGo(j); return; }
     }
   }

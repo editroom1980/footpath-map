@@ -447,6 +447,20 @@ def static_checks(src):
     # --- v157: 番号の丸と種類の丸を横に並べる（オーナー指摘：iPhone で片方しか見えない）---
     chk('静的', '番号つきで種類がある地点：地図は「種類の丸＋右上に番号の小丸」、一覧・並べ替え・印刷用シート・カードは番号と種類を並べて出す',
         'class="wp-num"' in src and 'class="wp-dot cat"' in src and 'class="ro-badge cat"' in src and 'class="sh-cat"' in src and 'class="vip-dot vip-dot2"' in src and '_catBadge' not in src and 'wp-pair' not in src)
+    # --- v240: みんなのマップを見たあと、自分のコースが閲覧モードのままにならない ---
+    chk('静的', '共有リンクの見え方（viewonly・#d=）は、自分のコース一覧にもどった時点で片づける',
+        'function _leaveShareView' in src
+        and "document.body.classList.remove('viewonly', 'viewing', 'embed');" in src
+        and "['course', 'view', 'embed'].forEach(k => u.searchParams.delete(k));" in src
+        and "history.replaceState(null, '', u.pathname + (u.search || ''));" in src
+        and '_leaveShareView();          // v240' in src)
+    # --- v240: 画面を移っても案内が巻き戻らない ---
+    chk('静的', '画面が変わったら「その画面の、まだ通っていない次の段」へ進む（最初の段に戻さない・うしろへ戻さない）',
+        'function _gdNextFor' in src
+        and 'let j = _gdNextFor(scr, _gdI + 1);' in src and "const GD_BASE_SCR = ['list', 'map'];" in src
+        and "if (j < 0 && GD_BASE_SCR.indexOf(scr) < 0) j = _gdFirstFor(scr, 0);" in src
+        and 'const first = _gdFirstFor(scr, 0);' not in src          # v240：これが 1/17 への巻き戻しの原因だった
+        and 'const j = Math.max(first,' not in src)
     # --- v239: 案内と画面の食い違い／前の画面の残りを断つ ---
     _gi = src.index('const GUIDE = [')
     _guide_src = src[_gi:src.index('];', _gi)]
@@ -2431,6 +2445,72 @@ def functional_checks(index_path):
           }catch(e){ return 'ERR:'+e.message; } }""")
         chk('機能', '案内に一覧の段があり、みんなのマップの段では対象が画面の中に入るまで送る',
             isinstance(gv, dict) and all(gv.get(k) for k in ('listSteps', 'scrolled', 'title')), str(gv)[:200])
+
+        # v240: みんなのマップ（共有リンク）を見たあと、自分のコースに入っても編集モードに戻れる（オーナー報告）
+        lv2 = page.evaluate("""async ()=>{ try{
+            const out = {}, keepView = viewMode, keepHash = location.hash, keepS1 = document.getElementById('s1').style.display, keepS2 = document.getElementById('s2').style.display;
+            /* 共有リンクで開いた直後と同じ状態を作る（initViewMode がするのと同じこと） */
+            const cs = getCourses(); const c = cs[0];
+            const link = await _makeDataLink(c, {allowEdit: true});
+            history.replaceState(null, '', location.pathname + location.search + link.slice(link.indexOf('#')));
+            viewMode = true; document.body.classList.add('viewonly'); document.body.classList.add('viewing');
+            _applyViewLock();
+            out.locked = _viewParams().on === true && document.body.classList.contains('viewonly')
+                      && getComputedStyle(document.getElementById('mobileEditBack')).display === 'none';   // 戻るボタンも消えている
+            /* 自分のコース一覧にもどる */
+            document.getElementById('s1').style.display = 'none'; document.getElementById('s2').style.display = 'flex';
+            _dirty = false; _doBackToS1();
+            out.cleared = viewMode === false && !document.body.classList.contains('viewonly')
+                       && !document.body.classList.contains('viewing') && location.hash === '' && _viewParams().on === false;
+            /* 自分のコースを開くと、編集の道具が出ている */
+            loadCourseData(c); await new Promise(r => setTimeout(r, 400));
+            const w = q => { const e = document.querySelector(q); return e ? e.getBoundingClientRect().width : 0; };
+            out.editable = viewMode === false && w('.mob-save') > 8 && w('.mob-modes') > 8;
+            /* 共有リンクで開いている最中は、閲覧モードのままにする（お客さん向けの見え方を壊さない） */
+            history.replaceState(null, '', location.pathname + location.search + link.slice(link.indexOf('#')));
+            viewMode = true; _resetTools();
+            out.keepsShare = viewMode === true;
+            viewMode = false;
+            history.replaceState(null, '', location.pathname + location.search + (keepHash || ''));
+            viewMode = keepView; _applyViewLock();
+            document.getElementById('s1').style.display = keepS1; document.getElementById('s2').style.display = keepS2;
+            document.querySelectorAll('#toastBox .toast').forEach(e => e.remove());
+            return out;
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        chk('機能', 'みんなのマップを見たあと自分のコースに入ると編集モードにもどる（共有リンクで開いている最中はそのまま）',
+            isinstance(lv2, dict) and all(lv2.get(k) for k in ('locked', 'cleared', 'editable', 'keepsShare')), str(lv2)[:250])
+
+        # v240: 保存して一覧にもどっても、案内が①に巻き戻らない（オーナー報告）
+        gb = page.evaluate("""async ()=>{ try{
+            const out = {}, keepS1 = document.getElementById('s1').style.display, keepS2 = document.getElementById('s2').style.display;
+            const toMap  = () => { document.getElementById('s1').style.display = 'none'; document.getElementById('s2').style.display = 'flex'; };
+            const toList = () => { document.getElementById('s2').style.display = 'none'; document.getElementById('s1').style.display = 'flex'; };
+            const iBack = GUIDE.findIndex(g => g.sel === '.mob-back');        // ⑨ 一覧にもどります（地図）
+            const iList = GUIDE.findIndex(g => g.sel === '#courseList');      // ⑩ 作ったコースはここに並びます（一覧）
+            toMap(); closeNewCourseSheet();
+            startGuide(); await new Promise(r => setTimeout(r, 400));
+            _gdGo(iBack); await new Promise(r => setTimeout(r, 300));
+            out.onMap = _gdI === iBack;
+            toList(); await new Promise(r => setTimeout(r, 700));
+            out.next = _gdI === iList;                 // ①ではなく⑩へ（v240 の直し）
+            out.notFirst = _gdI !== 0;
+            /* 先へ進む段が無い画面へ移っても、うしろへは戻さない（行ったり来たりの再発防止） */
+            const at = _gdI;
+            toMap(); await new Promise(r => setTimeout(r, 700));
+            out.noBack = _gdI === at;
+            toList(); await new Promise(r => setTimeout(r, 700));
+            out.stable = _gdI === at;
+            /* 地図の途中で一覧にもどったときも、①ではなく一覧の次の段へ */
+            _gdGo(GUIDE.findIndex(g => g.sel === '#mobileWpBtn')); toMap(); await new Promise(r => setTimeout(r, 700));
+            toList(); await new Promise(r => setTimeout(r, 700));
+            out.early = _gdI === iList;
+            stopGuide();
+            document.getElementById('s1').style.display = keepS1; document.getElementById('s2').style.display = keepS2;
+            document.querySelectorAll('#toastBox .toast').forEach(e => e.remove());
+            return out;
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        chk('機能', '保存して一覧にもどっても案内は①に巻き戻らず、その画面の次の段へ進む（うしろへは戻さない）',
+            isinstance(gb, dict) and all(gb.get(k) for k in ('onMap', 'next', 'notFirst', 'noBack', 'stable', 'early')), str(gb)[:250])
 
         # v235: 「次へ」を押し続けても案内が戻らない
         gl = page.evaluate("""async ()=>{ try{
