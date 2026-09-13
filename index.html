@@ -3286,7 +3286,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 手描きの道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した手描きの道id（直前取り消し用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v230';
+const APP_VERSION = 'v231';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -7375,7 +7375,7 @@ function _a2FirstRun(){   // 初回だけ、そっと出す（配るリンクで
   setTimeout(() => {
     if (_a2Standalone()) return;
     if (document.getElementById('s1').style.display === 'none') return;
-    if (document.getElementById('tourSheet') && document.getElementById('tourSheet').classList.contains('show')) return;   // 使い方の案内が出ている間は譲る
+    if (document.querySelector('#tourSheet.show, #guideWrap.on')) return;   // 使い方の案内が出ている間は譲る（v231：さわりながらの案内も）
     openA2hs();
   }, wait);
 }

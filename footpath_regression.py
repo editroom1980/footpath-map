@@ -496,6 +496,7 @@ def static_checks(src):
         "window.addEventListener('beforeinstallprompt'" in src and 'function _a2Go' in src and 'function openA2hs' in src
         and 'function _a2Standalone' in src and 'function _a2Apple' in src and 'function _a2InApp' in src and 'function _a2Pc' in src
         and 'const A2HS_WAIT_MS = 25000;' in src and 'ホーム画面に追加する' in src and "_a2Open('ios')" not in src
+        and "document.querySelector('#tourSheet.show, #guideWrap.on')" in src   # v231：案内が出ている間は出さない
         and "_a2Open(_a2Apple() ? 'ios' : 'android')" in src)
     # --- v221: みんなのマップから開いたコースには、一覧の情報から作者の印を付ける ---
     chk('静的', 'v220 より前に出されたコース（中身に印が無いもの）でも、一覧の作者を印にして再投稿を止める',
