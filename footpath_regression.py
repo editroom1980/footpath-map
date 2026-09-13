@@ -447,6 +447,18 @@ def static_checks(src):
     # --- v157: 番号の丸と種類の丸を横に並べる（オーナー指摘：iPhone で片方しか見えない）---
     chk('静的', '番号つきで種類がある地点：地図は「種類の丸＋右上に番号の小丸」、一覧・並べ替え・印刷用シート・カードは番号と種類を並べて出す',
         'class="wp-num"' in src and 'class="wp-dot cat"' in src and 'class="ro-badge cat"' in src and 'class="sh-cat"' in src and 'class="vip-dot vip-dot2"' in src and '_catBadge' not in src and 'wp-pair' not in src)
+    # --- v229: シートのボタンの高さをそろえる（オーナー指摘「やたらと縦幅の細いボタンがある」）---
+    chk('静的', 'シートのボタンは指で押せる高さ（--tap）にそろえる',
+        '.f-ghost{border:none;background:#F2EEE7;border-radius:10px;min-height:var(--tap)' in src
+        and '#startPickSheet .gs-foot .ds-btn{flex:1;min-height:var(--tap)' in src
+        and '#gotSheet .gs-foot .ds-btn{flex:1;min-height:var(--tap)' in src
+        and '.m-role-b{min-height:42px' in src and '#libSheet .lb-del{flex-shrink:0;margin-bottom:8px;min-height:var(--tap)' in src)
+    # --- v228: さわりながら覚える案内（実際の操作をしながら吹き出しで案内）---
+    chk('静的', 'さわりながら覚える案内：対象の部品だけ押せる（4枚の幕）・操作すると次へ進む・とばす／やめるがある',
+        'const GUIDE = [' in src and 'function startGuide' in src and 'function _gdTick' in src and 'function _gdPlace' in src
+        and "w.id = 'guideWrap'" in src and 'class="gd-dim"' in src and 'id="gdRing"' in src
+        and 'id="gdNext"' in src and 'id="gdSkip"' in src and 'id="gdQuit"' in src
+        and 'onclick="startGuide()"' in src and 'setInterval(_gdTick, 300)' in src)
     # --- v227: 取り込みのあと、まずスタート地点を決める ---
     chk('静的', '取り込みが終わったら「まず、スタート地点を決めましょう」を出す（近い順に選ぶ・あとで決めるも可・メニューからも開ける）',
         'function openStartPick' in src and 'function _startPickGo' in src and 'まず、スタート地点を決めましょう' in src
@@ -467,7 +479,7 @@ def static_checks(src):
     # --- v222/v223: はじめての案内（チュートリアル）とホーム画面への追加 ---
     chk('静的', 'はじめての案内：作る→出すまでを順に見せ、初回は自動、あとから何度でも開ける',
         'const TOUR = [' in src and 'function openTour' in src and 'function _tourFirstRun' in src
-        and "tourSeen:    'fp_tour_seen'" in src and 'はじめての方へ（使い方を順番に見る）' in src
+        and "tourSeen:    'fp_tour_seen'" in src and 'はじめての方へ（さわりながら覚える）' in src
         and 'みんなのマップに出す' in src and "sh.id = 'tourSheet'" in src)
     chk('静的', 'ホーム画面に追加：Android はボタン1つ（beforeinstallprompt）、iPhone は手順、アプリ内ブラウザとパソコンは別の案内',
         "window.addEventListener('beforeinstallprompt'" in src and 'function _a2Go' in src and 'function openA2hs' in src
@@ -1013,7 +1025,7 @@ def static_checks(src):
         'id="btnBaseMap"' in src and 'id="btnLegend"' in src and 'id="pcLegendBody"' in src and src.count('#popMap [data-bm]') >= 1
         and '<div id="pcBl"><button class="pc-pill" id="btnGps"' in src and 'id="btnElev" onclick="toggleElevPanel()"' in src)
     chk('静的', 'その他＝JSON・座標・文字なし・操作ガイド・詳細（道なりに引く）・すべて削除。調整点を表示は無い（v169）',
-        all(x in src for x in ['closePcPops();exportCourse()', 'closePcPops();openTour()',
+        all(x in src for x in ['closePcPops();exportCourse()', 'closePcPops();startGuide()',
                                 'closePcPops();clearAll()', 'id="btnManual"']) and 'id="btnToggleVia"' not in src
         and 'exportRouteCoords' not in src and 'saveMapNoText' not in src and 'openHelp()' not in src)
     chk('静的', '16個一列のツールバーは無い（cycleBaseMap／cycleLabelSize のボタンが無い）',
@@ -2315,6 +2327,34 @@ def functional_checks(index_path):
             isinstance(bx, dict) and all(bx.get(k) for k in ('oneBtn', 'idx', 'body', 'list', 'open', 'mine', 'heal', 'big', 'moved',
                                                             'phPut', 'phFlag', 'phGot', 'phSticker', 'dup', 'dup2', 'dup3',
                                                             'mineFlag', 'deleted', 'delMark', 'moved2')), str(bx)[:420])
+
+        # v228: さわりながら覚える案内
+        gd = page.evaluate("""async ()=>{ try{
+            const out = {}, keepS1 = document.getElementById('s1').style.display, keepS2 = document.getElementById('s2').style.display;
+            document.getElementById('s2').style.display = 'none'; document.getElementById('s1').style.display = 'flex';
+            closeNewCourseSheet();   // 検査中に開いたままのことがある（開いていると①の対象に重なる）
+            startGuide(); await new Promise(r => setTimeout(r, 250));
+            const w = document.getElementById('guideWrap');
+            out.on = w.classList.contains('on');
+            out.step1 = document.getElementById('gdStep').textContent === '1 / ' + GUIDE.length && /コースを作りましょう/.test(document.getElementById('gdT').textContent);
+            // 対象（新しいコースを作成）の上には幕がかかっていない＝そのまま押せる
+            const fab = document.querySelector('.s1-fab').getBoundingClientRect();
+            const hit = document.elementFromPoint(Math.round(fab.left + fab.width/2), Math.round(fab.top + fab.height/2));
+            out.clickable = !!hit && !!hit.closest('.s1-fab');
+            // 次へ・とばすで進む
+            document.getElementById('gdNext').click();
+            out.step2 = document.getElementById('gdStep').textContent === '2 / ' + GUIDE.length;
+            document.getElementById('gdSkip').click();
+            out.step3 = document.getElementById('gdStep').textContent === '3 / ' + GUIDE.length;
+            // やめるで閉じる
+            document.getElementById('gdQuit').click();
+            out.quit = !w.classList.contains('on');
+            document.getElementById('s1').style.display = keepS1; document.getElementById('s2').style.display = keepS2;
+            document.querySelectorAll('#toastBox .toast').forEach(e => e.remove());
+            return out;
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        chk('機能', 'さわりながら覚える案内：対象はそのまま押せて、次へ・とばす・やめるが動く',
+            isinstance(gd, dict) and all(gd.get(k) for k in ('on', 'step1', 'clickable', 'step2', 'step3', 'quit')), str(gd)[:200])
 
         # v227: 取り込みのあと、まずスタート地点を決める
         sp2 = page.evaluate("""async ()=>{ try{

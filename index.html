@@ -407,7 +407,7 @@ body.embed #s2, body.embed #mapArea, body.embed #mapWrap{height:100%!important;m
 .f-photo img{width:120px;height:90px;object-fit:cover;border-radius:10px;border:1px solid #D4C4A8}
 .f-photo.goal img{width:100%;height:auto;max-height:52vh;object-fit:contain;border-radius:12px}
 .f-pick{flex:1;min-width:120px;border:1.5px dashed #9CCC65;background:#F1F8E9;color:#2E7D32;border-radius:12px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;min-height:var(--tap);display:inline-flex;align-items:center;justify-content:center;gap:6px}
-.f-ghost{border:none;background:#F2EEE7;border-radius:10px;padding:8px 12px;font-family:inherit;font-size:13px;cursor:pointer;color:#3D3835}
+.f-ghost{border:none;background:#F2EEE7;border-radius:10px;min-height:var(--tap);padding:0 14px;font-family:inherit;font-size:13.5px;font-weight:700;cursor:pointer;color:#3D3835}   /* v229：他のボタンと高さをそろえる */
 .f-where{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:12px;font-size:12.5px;color:var(--t-sub);background:#F9F7F4;border-radius:10px;padding:8px 10px}
 .fl-n{font-size:12px;font-weight:700;color:#2E7D32;background:#E8F5E9;border-radius:10px;padding:2px 8px}
 .fl-list{display:flex;flex-direction:column;gap:6px;max-height:44vh;overflow-y:auto}
@@ -467,7 +467,7 @@ body.embed #s2, body.embed #mapArea, body.embed #mapWrap{height:100%!important;m
 .wp-num{position:absolute;right:-9px;top:-9px;border-radius:50%;color:#fff;font-weight:800;text-align:center;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4);font-family:inherit}
 .m-role{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-bottom:10px}
 .m-role-l{font-size:11px;font-weight:bold;color:var(--t-sub);width:100%}
-.m-role-b{min-height:36px;padding:0 11px;border:0.5px solid #E3DCD1;border-radius:10px;background:#FCFAF6;color:#4A2E0E;font-family:inherit;font-size:12.5px;font-weight:700;cursor:pointer}
+.m-role-b{min-height:42px;padding:0 13px;border:0.5px solid #E3DCD1;border-radius:10px;background:#FCFAF6;color:#4A2E0E;font-family:inherit;font-size:12.5px;font-weight:700;cursor:pointer}
 .m-role-b.on{color:#fff;border-color:transparent}
 .m-role-b.st.on{background:#1B8A3A}.m-role-b.gl.on{background:#D32F2F}.m-role-b.bo.on{background:linear-gradient(90deg,#1B8A3A 50%,#D32F2F 50%)}
 .m-role-b.on:not(.st):not(.gl):not(.bo){background:#6A645E}
@@ -745,6 +745,21 @@ body.viewonly #firstTip,body.embed #firstTip{display:none!important}
 #a2hsSheet .tr-foot button{flex:1;min-height:46px;border:0;border-radius:12px;font-family:inherit;font-size:15px;font-weight:800;cursor:pointer}
 #a2hsSheet .tr-back{background:#F1ECE3;color:#4A2E0E}
 #a2hsSheet .tr-next{background:var(--brand-grad);color:#fff}
+/* さわりながら覚える案内（v228）：まわりを暗くして、その部品だけ押せるようにする。
+   穴を開けるのではなく「上下左右の4枚の幕」で囲む＝対象はそのまま押せる（作りが単純で壊れにくい） */
+#guideWrap{position:fixed;inset:0;z-index:5800;display:none;pointer-events:none}
+#guideWrap.on{display:block}
+#guideWrap .gd-dim{position:fixed;background:rgba(20,14,6,.55);pointer-events:auto;transition:all .12s ease-out}
+#guideWrap .gd-ring{position:fixed;border:2.5px solid #fff;border-radius:14px;box-shadow:0 0 0 3px rgba(196,112,58,.9),0 6px 22px rgba(0,0,0,.35);pointer-events:none;transition:all .12s ease-out}
+#guideWrap .gd-tip{position:fixed;max-width:min(420px,calc(100vw - 24px));background:#fff;border-radius:14px;padding:13px 14px;box-shadow:0 10px 30px rgba(0,0,0,.32);pointer-events:auto}
+#guideWrap .gd-step{font-size:11px;font-weight:800;color:#fff;background:var(--brand);border-radius:9px;padding:2px 8px;display:inline-block;margin-bottom:5px}
+#guideWrap .gd-t{font-size:15.5px;font-weight:800;color:#3E2A0E;line-height:1.45;margin-bottom:4px}
+#guideWrap .gd-d{font-size:13px;color:#4A443E;line-height:1.7}
+#guideWrap .gd-foot{display:flex;gap:7px;margin-top:11px;align-items:center}
+#guideWrap .gd-foot button{min-height:40px;padding:0 14px;border:0;border-radius:10px;font-family:inherit;font-size:13.5px;font-weight:800;cursor:pointer}
+#guideWrap .gd-next{background:var(--brand-grad);color:#fff;flex:1}
+#guideWrap .gd-skip{background:#F1ECE3;color:#6A5A44}
+#guideWrap .gd-quit{background:transparent;color:#9b948c;font-weight:700;padding:0 8px}
 /* はじめての案内（v222）：作る→出すまでを順に見せる。何度でも開ける */
 #tourSheet{position:fixed;inset:0;z-index:5600;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.45);padding:16px}
 #tourSheet.show{display:flex}
@@ -763,7 +778,7 @@ body.viewonly #firstTip,body.embed #firstTip{display:none!important}
 #tourSheet .tr-foot button{flex:1;min-height:46px;border:0;border-radius:12px;font-family:inherit;font-size:15px;font-weight:800;cursor:pointer}
 #tourSheet .tr-back{background:#F1ECE3;color:#4A2E0E;flex:0 0 96px!important}
 #tourSheet .tr-next{background:var(--brand-grad);color:#fff}
-.s1-help{display:block;width:100%;margin:8px 0 0;padding:11px;border:0.5px dashed #D9CFC0;border-radius:12px;background:transparent;color:#6A5A44;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer}
+.s1-help{display:block;width:100%;margin:8px 0 0;min-height:var(--tap);padding:0 12px;border:0.5px dashed #D9CFC0;border-radius:12px;background:transparent;color:#6A5A44;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer}
 /* スタート地点を決める（v227）：スポットを整理と同じ形 */
 #startPickSheet{position:fixed;inset:0;z-index:5300;display:none;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.35)}
 #startPickSheet.show{display:flex}
@@ -780,7 +795,8 @@ body.viewonly #firstTip,body.embed #firstTip{display:none!important}
 #startPickSheet .gs-name small{display:block;font-weight:600;font-size:11px;color:#9b948c}
 #startPickSheet .gs-d{flex-shrink:0;font-size:12px;color:#6A645E;font-variant-numeric:tabular-nums}
 #startPickSheet .gs-foot{display:flex;gap:8px;align-items:center}
-#startPickSheet .gs-foot .ds-btn{flex:1}
+#startPickSheet .gs-foot .ds-btn{flex:1;min-height:var(--tap);border:none;border-radius:12px;font-family:inherit;font-size:14.5px;font-weight:800;background:var(--brand-grad);color:#fff;cursor:pointer}
+#startPickSheet .gs-foot .ds-btn:disabled{background:#EDE7DC;color:#B2ABA2}
 /* 取り込んだスポットの整理（v217） */
 #gotSheet{position:fixed;inset:0;z-index:5200;display:none;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.35)}
 #gotSheet.show{display:flex}
@@ -798,14 +814,15 @@ body.viewonly #firstTip,body.embed #firstTip{display:none!important}
 #gotSheet .gs-d{flex-shrink:0;font-size:12px;color:#6A645E;font-variant-numeric:tabular-nums}
 #gotSheet .gs-pick{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding-bottom:2px}
 #gotSheet .gs-pick b{font-size:11.5px;color:#6A645E;font-weight:700;margin-right:2px}
-#gotSheet .gs-chip{border:0.5px solid #E3DCD1;border-radius:14px;background:#FCFAF6;color:#4A2E0E;font-family:inherit;font-size:12px;font-weight:700;padding:5px 10px;cursor:pointer}
+#gotSheet .gs-chip{min-height:38px;border:0.5px solid #E3DCD1;border-radius:12px;background:#FCFAF6;color:#4A2E0E;font-family:inherit;font-size:12.5px;font-weight:700;padding:0 12px;cursor:pointer}
 #gotSheet .gs-tag{flex-shrink:0;font-size:10.5px;font-weight:700;color:#7A6A55;background:#F1ECE3;border-radius:8px;padding:2px 6px}
 #gotSheet .gs-tag.got{color:#0A6E4A;background:#E7F5EE}
 #gotSheet .gs-foot{display:flex;gap:8px;align-items:center}
-#gotSheet .gs-foot .ds-btn{flex:1}
+#gotSheet .gs-foot .ds-btn{flex:1;min-height:var(--tap);border:none;border-radius:12px;font-family:inherit;font-size:14.5px;font-weight:800;background:var(--brand-grad);color:#fff;cursor:pointer}
+#gotSheet .gs-foot .ds-btn:disabled{background:#EDE7DC;color:#B2ABA2}
 #libSheet .lb-item{display:flex;align-items:stretch;gap:6px}
 #libSheet .lb-item .lb-row{flex:1;min-width:0}
-#libSheet .lb-del{flex-shrink:0;margin-bottom:8px;padding:0 12px;border:0.5px solid #E8C9C9;border-radius:12px;background:#FDF3F3;color:#B3261E;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer}
+#libSheet .lb-del{flex-shrink:0;margin-bottom:8px;min-height:var(--tap);padding:0 14px;border:0.5px solid #E8C9C9;border-radius:12px;background:#FDF3F3;color:#B3261E;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer}
 #libSheet .lb-name{display:block;font-size:14.5px;font-weight:800;color:#231C14;line-height:1.35;overflow-wrap:anywhere}
 #libSheet .lb-sub{display:block;font-size:11.5px;color:var(--t-sub);margin-top:2px}
 #libSheet .lb-add{width:100%;min-height:var(--tap);border:1.5px solid #D4C4A8;border-radius:12px;background:#FAF6EE;color:#4A2E0E;font-family:inherit;font-size:13.5px;font-weight:700;cursor:pointer;margin-top:4px}
@@ -1340,7 +1357,8 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
       <button class="s1-tool" onclick="exportAllCourses()" title="保存されている全コースを1つのファイルに書き出します">すべて書き出す<br>（バックアップ）</button>
       <label class="s1-tool" title="バックアップファイルからコースを戻します">バックアップ<br>から復元<input type="file" accept=".json" style="display:none" onchange="importBackupFile(this)"></label>
     </div>
-    <button type="button" class="s1-help tap" onclick="openTour()">📖 はじめての方へ（使い方を順番に見る）</button>
+    <button type="button" class="s1-help tap" onclick="startGuide()">📖 はじめての方へ（さわりながら覚える）</button>
+    <button type="button" class="s1-help tap" onclick="openTour()">📄 文字だけで読む（全体の流れ）</button>
     <button type="button" class="s1-help tap" onclick="openA2hs()">📲 ホーム画面に追加する</button>
     <div id="backupInfo"></div>
     <div id="storageInfo"></div>
@@ -1393,7 +1411,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
       <button class="pp-row ed" onclick="closePcPops();loopCourse()" title="出発点にゴールを置いて、帰りの道順を自動で引く">出発点に戻る周回にする</button>
       <button class="pp-row ed" onclick="closePcPops();openFixRouteSheet()" title="区間ごとに、道なりに引き直す（手直しの点を消す）／まっすぐ結ぶ">ルートを引き直す（道なり・まっすぐ・消す）</button>
       <button class="pp-row" onclick="closePcPops();exportCourse()">ファイルに保存</button>
-      <button class="pp-row" onclick="closePcPops();openTour()">はじめての方へ（使い方）</button>
+      <button class="pp-row" onclick="closePcPops();startGuide()">はじめての方へ（さわりながら覚える）</button>
       <div class="pp-sec ed">詳細</div>
       <button class="pp-row ed" id="btnManual" onclick="toggleManualMode();_syncPcPops()" title="OFF にすると、これから置く調整点が道に吸い付かない（地図に無い山道・農道用）">道なりに引く<span class="pp-sw"></span></button>
       <button class="pp-row ed" id="btnCustomFeat" onclick="toggleCustomFeature();_syncPcPops()" title="地図に無い道を自分で描いて、その道に沿って道順を引く">手描きの道を使う<span class="pp-sw"></span></button>
@@ -1797,7 +1815,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
           </div>
           <div class="mm-grid four">
           <button class="mm-act" onclick="closeMobileMenu();exportCourse()"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v4a1 1 0 0 0 1 1h4" /> <path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2" /> <path d="M12 17v-6" /> <path d="M9.5 14.5l2.5 2.5l2.5 -2.5" /></svg><span>JSONで保存</span></button>
-          <button class="mm-act" onclick="closeMobileMenu();openTour()"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0" /> <path d="M12 16v.01" /> <path d="M12 13a2 2 0 0 0 .914 -3.782a1.98 1.98 0 0 0 -2.414 .483" /></svg><span>使い方</span></button>
+          <button class="mm-act" onclick="closeMobileMenu();startGuide()"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0" /> <path d="M12 16v.01" /> <path d="M12 13a2 2 0 0 0 .914 -3.782a1.98 1.98 0 0 0 -2.414 .483" /></svg><span>使い方</span></button>
           </div>
         <button class="mm-danger" onclick="closeMobileMenu();clearAll()" data-edit="1"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7l16 0" /> <path d="M10 11l0 6" /> <path d="M14 11l0 6" /> <path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12" /> <path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3" /></svg>すべて削除</button>
         </div>
@@ -3265,7 +3283,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 手描きの道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した手描きの道id（直前取り消し用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v227';
+const APP_VERSION = 'v229';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -7080,6 +7098,111 @@ const TOUR = [
   {ic:'🔗', t:'8. 歩く人に渡す', d:'「配る」からは、ほかにも<br>・<b>共有リンク</b>…LINE やメールでそのまま送れます<br>・<b>印刷用シート</b>…A4 で刷って配れます<br>・<b>画像</b>…地図の絵だけ保存<br><br>お疲れさまでした。さっそく作ってみましょう。'}
 ];
 let _tourI = 0;
+/* ===== さわりながら覚える案内（v228・オーナー指示）=====
+   ・実際の画面を操作しながら、その場に吹き出しを出す
+   ・対象の部品だけ押せる（まわりは暗い幕）。押して進むか、「次へ」でも進める
+   ・どの段でも「この手順はとばす」「やめる」で抜けられる
+   ・部品が見つからない段は自動で飛ばす＝画面が変わっても止まらない */
+const GUIDE = [
+  {sel:'.s1-fab', t:'① コースを作りましょう', d:'まず「新しいコースを作成」を押します。', done:() => _vis('#newCourseSheet.show')},
+  {sel:'#s1Name', t:'② 名前をつけます', d:'例：飯見の棚田おにぎりウォーク<br>エリアは空欄でもかまいません（現在地になります）。', done:() => (document.getElementById('s1Name') || {}).value},
+  {sel:'#s1Btn', t:'③ 地図を開きます', d:'「作成してマップへ」を押すと、地図の画面になります。', done:() => _vis('#s2') && !_vis('#newCourseSheet.show')},
+  {sel:'#map', t:'④ スポットを置きます', d:'地図を<b>長押し</b>すると「ここにスポットを追加しますか？」と出ます。<br>歩く順に入れるなら「コースに入れる」、目印だけなら「立ち寄り先にする」。', done:() => wps.filter(w => w && w.type !== 'node').length > 0, big:1},
+  {sel:'#mobileWpBtn', t:'⑤ 道具の使い分け', d:'下の道具で、置くもの・描くものを切り替えます。<br>・<b>スポット</b>…目印を置く<br>・<b>手描き</b>…指でなぞって道順を引く<br>・<b>ルート調整</b>…引かれた線を動かす<br>・<b>道を足す</b>…地図に無い道を描く'},
+  {sel:'#map', t:'⑥ もう1つ置くと道順が引かれます', d:'2つ目のスポットを置くと、道なりに赤い線が引かれます。<br>○を押すと、名前・写真・説明を書けます。', done:() => wps.filter(w => w && w.type !== 'node' && _onRouteOf(w)).length > 1, big:1},
+  {sel:'.mob-save', t:'⑦ 保存します', d:'勝手には保存しません。<b>「保存」</b>を押してこの端末に残します。', done:() => !_dirty},
+  {sel:'.mob-share', t:'⑧ 配ります', d:'「配る」から、<b>みんなのマップに出す</b>・共有リンク・印刷用シート・画像が選べます。', done:() => _vis('#shareSheet.show')},
+  {sel:'[data-share="pub"]', t:'⑨ みんなのマップに出す', d:'名前と「見た人にできること（見るだけ／編集できる）」を選んで <b>「出す」</b> を押すだけ。<br>登録も合言葉もいりません。押した瞬間に全員の一覧に並びます。', done:() => _vis('#pubSheet.show')},
+  {sel:null, t:'これでひと通りです', d:'あとは歩きながら写真を足したり、道順を直したりできます。<br>この案内は、一覧の <b>「はじめての方へ」</b> からいつでも見られます。'}
+];
+let _gdI = -1, _gdTimer = null;
+function _vis(sel){ const e = document.querySelector(sel); return !!e && e.getBoundingClientRect().width > 0 && getComputedStyle(e).display !== 'none'; }
+function startGuide(){
+  closeTour();
+  let w = document.getElementById('guideWrap');
+  if (!w) {
+    w = document.createElement('div'); w.id = 'guideWrap';
+    w.innerHTML = '<div class="gd-dim" data-d="t"></div><div class="gd-dim" data-d="b"></div>'
+      + '<div class="gd-dim" data-d="l"></div><div class="gd-dim" data-d="r"></div>'
+      + '<div class="gd-ring" id="gdRing"></div>'
+      + '<div class="gd-tip"><span class="gd-step" id="gdStep"></span><div class="gd-t" id="gdT"></div><div class="gd-d" id="gdD"></div>'
+      + '<div class="gd-foot"><button type="button" class="gd-next tap" id="gdNext">次へ</button>'
+      + '<button type="button" class="gd-skip tap" id="gdSkip">とばす</button>'
+      + '<button type="button" class="gd-quit tap" id="gdQuit">やめる</button></div></div>';
+    document.body.appendChild(w);
+    w.querySelector('#gdNext').addEventListener('click', () => _gdGo(_gdI + 1));
+    w.querySelector('#gdSkip').addEventListener('click', () => _gdGo(_gdI + 1));
+    w.querySelector('#gdQuit').addEventListener('click', stopGuide);
+  }
+  try { localStorage.setItem(LS.tourSeen, '1'); } catch(_) {}
+  w.classList.add('on');
+  _gdGo(0);
+  if (_gdTimer) clearInterval(_gdTimer);
+  _gdTimer = setInterval(_gdTick, 300);   // 位置の追従と「できた？」の見張り
+}
+function stopGuide(){
+  const w = document.getElementById('guideWrap'); if (w) w.classList.remove('on');
+  if (_gdTimer) { clearInterval(_gdTimer); _gdTimer = null; }
+  _gdI = -1;
+}
+function _gdGo(i){
+  if (i >= GUIDE.length) { stopGuide(); showToast('お疲れさまでした。いつでも「はじめての方へ」から見られます'); return; }
+  _gdI = i;
+  const g = GUIDE[i];
+  document.getElementById('gdStep').textContent = (i + 1) + ' / ' + GUIDE.length;
+  document.getElementById('gdT').innerHTML = g.t;
+  document.getElementById('gdD').innerHTML = g.d;
+  document.getElementById('gdNext').textContent = (i === GUIDE.length - 1) ? 'おわり' : '次へ';
+  _gdPlace();
+  requestAnimationFrame(_gdPlace);   // 吹き出しの高さが決まってからもう一度置き直す（初回のずれ防止）
+}
+function _gdRect(){
+  const g = GUIDE[_gdI]; if (!g || !g.sel) return null;
+  const el = document.querySelector(g.sel); if (!el) return null;
+  const r = el.getBoundingClientRect();
+  if (r.width < 4 || r.height < 4) return null;
+  if (g.big) return {left:12, top:Math.max(12, r.top + 70), width:Math.max(60, r.width - 24), height:Math.max(60, Math.min(220, r.height - 220))};
+  const pad = 6;
+  return {left:r.left - pad, top:r.top - pad, width:r.width + pad * 2, height:r.height + pad * 2};
+}
+function _gdPlace(){
+  const w = document.getElementById('guideWrap'); if (!w || !w.classList.contains('on')) return;
+  const r = _gdRect(), W = innerWidth, H = innerHeight;
+  const put = (d, x, y, ww, hh) => { const e = w.querySelector('.gd-dim[data-d="' + d + '"]');
+    e.style.left = Math.max(0, x) + 'px'; e.style.top = Math.max(0, y) + 'px';
+    e.style.width = Math.max(0, ww) + 'px'; e.style.height = Math.max(0, hh) + 'px'; };
+  const ring = w.querySelector('#gdRing'), tip = w.querySelector('.gd-tip');
+  if (!r) {                                   // 対象が無い段は、画面全体を暗くして真ん中に出す
+    put('t', 0, 0, W, H); put('b', 0, H, W, 0); put('l', 0, 0, 0, 0); put('r', W, 0, 0, 0);
+    ring.style.display = 'none';
+    tip.style.left = Math.round((W - Math.min(420, W - 24)) / 2) + 'px';
+    tip.style.top = Math.round(H / 2 - 90) + 'px';
+    return;
+  }
+  ring.style.display = 'block';
+  ring.style.left = r.left + 'px'; ring.style.top = r.top + 'px';
+  ring.style.width = r.width + 'px'; ring.style.height = r.height + 'px';
+  put('t', 0, 0, W, r.top);
+  put('b', 0, r.top + r.height, W, H - (r.top + r.height));
+  put('l', 0, r.top, r.left, r.height);
+  put('r', r.left + r.width, r.top, W - (r.left + r.width), r.height);
+  const th = tip.offsetHeight || 150, tw = Math.min(420, W - 24);
+  let ty = r.top + r.height + 12;
+  if (ty + th > H - 10) ty = r.top - th - 12;
+  if (ty < 10) ty = Math.max(10, Math.min(H - th - 10, r.top + r.height + 12));
+  tip.style.left = Math.round(Math.max(12, Math.min(W - tw - 12, r.left + r.width / 2 - tw / 2))) + 'px';
+  tip.style.top = Math.round(ty) + 'px';
+}
+function _gdTick(){
+  const w = document.getElementById('guideWrap'); if (!w || !w.classList.contains('on')) return;
+  const g = GUIDE[_gdI]; if (!g) return;
+  if (g.sel && !document.querySelector(g.sel)) { _gdGo(_gdI + 1); return; }   // 部品が無い段は飛ばす
+  let ok = false;
+  try { ok = !!(g.done && g.done()); } catch(_) {}
+  if (ok) { _gdGo(_gdI + 1); return; }
+  _gdPlace();
+}
+addEventListener('resize', () => _gdPlace());
 function openTour(i){
   _tourI = i || 0;
   let sh = document.getElementById('tourSheet');
@@ -7119,7 +7242,7 @@ function _tourRender(){
 function _tourFirstRun(){   // 初回だけ自動で開く（配るリンクで開いた人には出さない）
   try { if (localStorage.getItem(LS.tourSeen)) return; } catch(_) { return; }
   if (_viewParams().on) return;
-  setTimeout(() => { if (document.getElementById('s1').style.display !== 'none') openTour(0); }, 700);
+  setTimeout(() => { if (document.getElementById('s1').style.display !== 'none') startGuide(); }, 700);
 }
 /* ===== ホーム画面に追加（v223・オーナー指示「しそチャンNET と同じように」）=====
    ・Android など Chromium 系＝ブラウザが出す合図（beforeinstallprompt）を捕まえておき、
