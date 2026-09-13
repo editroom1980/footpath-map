@@ -2008,7 +2008,9 @@ const WT = [
   {v:'start',   l:'スタート',                    c:'#0E6B3C'},
   {v:'goal',    l:'ゴール',                      c:'#B71C1C'},
   {v:'view',    l:'ビュースポット',              c:'#1565C0'},
-  {v:'shop',    l:'飲食店・ショップ',            c:'#AD1457'},   // 濃赤(ゴール)と紛らわしかった → 濃ピンクへ
+  {v:'food',    l:'飲食店',                      c:'#AD1457'},   // v236：フォークとナイフ。お店と分ける
+  {v:'shop',    l:'お店・売店',                  c:'#C2410C'},   // v236：買い物かご
+  {v:'conveni', l:'コンビニ',                    c:'#0F766E'},   // v236：24時間の看板
   {v:'shrine',  l:'神社・寺院',                  c:'#6D4C41'},
   {v:'history', l:'史跡・記念碑',                c:'#8E24AA'},   // 橙茶(コースポイント)と紛らわしかった → 紫へ
   {v:'park',    l:'公園・自然',                  c:'#00796B'},   // 緑(スタート)と紛らわしかった → ティールへ
@@ -2029,7 +2031,9 @@ function _normType(t){ return LEGACY_TYPE[t] || t || 'spot'; }
    数字（歩く順）は種類と別に付く（_isNumbered）。spot＝種類なし（数字だけ） */
 const TYPE_ICON = {
   view:    {d:'<path d="M2.5 12c2.6-4 5.8-6 9.5-6s6.9 2 9.5 6c-2.6 4-5.8 6-9.5 6s-6.9-2-9.5-6z"/><circle cx="12" cy="12" r="3"/>'},                       // 目＝眺め
-  shop:    {d:'<path d="M6 3v5a2.5 2.5 0 0 0 5 0V3"/><path d="M8.5 3v18"/><path d="M18 3c-2.2 2.2-3 5-3 8.5H18V21"/>'},                                     // フォークとナイフ
+  food:    {d:'<path d="M6 3v5a2.5 2.5 0 0 0 5 0V3"/><path d="M8.5 3v18"/><path d="M18 3c-2.2 2.2-3 5-3 8.5H18V21"/>'},                                     // フォークとナイフ（飲食店）
+  shop:    {d:'<path d="M4 8h16l-1.5 12h-13z"/><path d="M9 8V5.5a3 3 0 0 1 6 0V8"/>'},                                                                     // v236：買い物かご（お店・売店）
+  conveni: {d:'<path d="M3.5 9.5l1.5-5h14l1.5 5"/><path d="M4.5 9.5h15V20h-15z"/><path d="M9 20v-5h6v5"/>'},                                               // v236：コンビニ（軒とレジ）
   shrine:  {d:'<path d="M3 5.5c3 1.3 15 1.3 18 0"/><path d="M5 9.5h14"/><path d="M7 6v15"/><path d="M17 6v15"/>'},                                          // 鳥居
   history: {d:'<path d="M12 3l3.5 3.5h-7z"/><path d="M9.5 6.5v10h5v-10"/><path d="M6.5 16.5h11"/><path d="M4.5 20.5h15"/>'},                              // 碑
   park:    {d:'<path d="M12 2.5l5.5 7.5h-3l4.5 6h-5.5v5.5h-3V16H5l4.5-6h-3z"/>', fill:true},                                                              // 木
@@ -2171,12 +2175,17 @@ const NEARBY_WIKI       = 'https://ja.wikipedia.org/w/api.php';
 const SCRUB_WIN_M = 75, SCRUB_HOLD_MS = 3000, SCRUB_HOLD_START_MS = 220, SCRUB_MOVE_PX = 8, SCRUB_FLICK_PX = 12;   // v168：押さえてから／横に動かしてからなぞる、縦ならフリック     // 高低差のなぞり（v166）：勾配は前後 75m（計150m）の平均（標高データの粗さをならす）／指を離してから印を残す時間
 const GRADE_MID = 4, GRADE_STEEP = 8;              // 勾配の色分け（v166）%：やや急／急
 const GRADE_COL = {mid:'#D97706', steep:'#DC2626'};
+/* v236（オーナー報告「夢公園に さつき祭り・納涼夏祭り の史跡が出る」）。
+   国土数値情報の「観光資源」には**年中行事（祭り）**が含まれる。行事は歩いて行ける場所ではないので候補から外す。 */
+const NEARBY_EVENT_RE = /(祭り|まつり|祭$|花火|大会|フェス|フェア|イベント|市$|行事)/;
 const NEARBY_NONAME_TAIL = true;   // v225：タグから作った呼び名（名前なし）の候補は一覧の後ろへ
 const NEARBY_TIMEOUT_MS = 20000, NEARBY_MAX = 300, NEARBY_DUP_M = 15, NEARBY_DESC_MAX = 160, NEARBY_KW_RADIUS = 10000, NEARBY_MERGE_M = 60;
 const KSJ_INDEX = 'data/ksj/index.json';   // 国土数値情報（国土交通省）を tools/ksj_convert.py で変換したもの（v162）
 const NEARBY_RADII      = [300, 1000, 2000, 5000];   // コース（スポット）からの距離の選択肢（v162：5km を追加）
 const NEARBY_KINDS = [                                // 画面の並び。t＝このアプリの種別。v162：問い合わせは種類ごとでなく「名前のあるもの全部」を1回で取り、あとで種類に振り分ける
-  {k:'shop',     l:'お店・飲食',            t:'shop'},
+  {k:'food',     l:'飲食店',                t:'food'},
+  {k:'conveni',  l:'コンビニ',              t:'conveni'},
+  {k:'shop',     l:'お店・売店',            t:'shop'},
   {k:'shrine',   l:'神社・寺院',            t:'shrine'},
   {k:'hist',     l:'史跡・文化財・見どころ', t:'history'},
   {k:'view',     l:'展望',                  t:'view'},
@@ -2196,10 +2205,10 @@ const NEARBY_KIND_DEFAULT_OFF = ['bus', 'place'];    // 最初は外しておく
    組み合わせ（preset）＝道順の線の色＋印の色。線の色・点線／実線・太さは個別にも変えられる */
 const THEMES = [
   {id:'std',      l:'標準',   n:'いまの色',                          route:'#E84040', pal:null},
-  {id:'satoyama', l:'里山',   n:'土と緑。田畑や林の道に',            route:'#2E7D32', pal:{spot:'#6D4C41', start:'#1B5E20', goal:'#B71C1C', view:'#00695C', shop:'#AD1457', shrine:'#4E342E', history:'#7B1FA2', park:'#33691E', school:'#00838F', hall:'#3E2723', toilet:'#546E7A', parking:'#283593', bus:'#827717', hospital:'#283593', facility:'#7A1F5E', place:'#0A8700', other:'#616161'}},
-  {id:'umi',      l:'海と空', n:'青を基調に。川や海辺の道に',        route:'#1976D2', pal:{spot:'#0D47A1', start:'#00695C', goal:'#C62828', view:'#01579B', shop:'#C2185B', shrine:'#5D4037', history:'#6A1B9A', park:'#2E7D32', school:'#00838F', hall:'#37474F', toilet:'#607D8B', parking:'#303F9F', bus:'#827717', hospital:'#1A2ACC', facility:'#7A1F5E', place:'#0A8700', other:'#757575'}},
-  {id:'aki',      l:'秋',     n:'紅葉の暖色。里の秋の道に',          route:'#D84315', pal:{spot:'#BF360C', start:'#33691E', goal:'#B71C1C', view:'#EF6C00', shop:'#AD1457', shrine:'#4E342E', history:'#6A1B9A', park:'#558B2F', school:'#00838F', hall:'#3E2723', toilet:'#546E7A', parking:'#3949AB', bus:'#827717', hospital:'#1A2ACC', facility:'#7A1F5E', place:'#0A8700', other:'#5F5F5F'}},
-  {id:'mono',     l:'白黒',   n:'白黒コピー向け。印は形と番号で見分ける', route:'#222222', pal:{spot:'#222222', start:'#333333', goal:'#000000', view:'#555555', shop:'#444444', shrine:'#333333', history:'#555555', park:'#666666', school:'#444444', hall:'#222222', toilet:'#777777', parking:'#555555', bus:'#666666', hospital:'#333333', facility:'#555555', place:'#777777', other:'#888888'}},
+  {id:'satoyama', l:'里山',   n:'土と緑。田畑や林の道に',            route:'#2E7D32', pal:{spot:'#6D4C41', start:'#1B5E20', goal:'#B71C1C', view:'#00695C', food:'#AD1457', shop:'#C2410C', conveni:'#0F766E', shrine:'#4E342E', history:'#7B1FA2', park:'#33691E', school:'#00838F', hall:'#3E2723', toilet:'#546E7A', parking:'#283593', bus:'#827717', hospital:'#283593', facility:'#7A1F5E', place:'#0A8700', other:'#616161'}},
+  {id:'umi',      l:'海と空', n:'青を基調に。川や海辺の道に',        route:'#1976D2', pal:{spot:'#0D47A1', start:'#00695C', goal:'#C62828', view:'#01579B', food:'#C2185B', shop:'#C2410C', conveni:'#0F766E', shrine:'#5D4037', history:'#6A1B9A', park:'#2E7D32', school:'#00838F', hall:'#37474F', toilet:'#607D8B', parking:'#303F9F', bus:'#827717', hospital:'#1A2ACC', facility:'#7A1F5E', place:'#0A8700', other:'#757575'}},
+  {id:'aki',      l:'秋',     n:'紅葉の暖色。里の秋の道に',          route:'#D84315', pal:{spot:'#BF360C', start:'#33691E', goal:'#B71C1C', view:'#EF6C00', food:'#AD1457', shop:'#C2410C', conveni:'#0F766E', shrine:'#4E342E', history:'#6A1B9A', park:'#558B2F', school:'#00838F', hall:'#3E2723', toilet:'#546E7A', parking:'#3949AB', bus:'#827717', hospital:'#1A2ACC', facility:'#7A1F5E', place:'#0A8700', other:'#5F5F5F'}},
+  {id:'mono',     l:'白黒',   n:'白黒コピー向け。印は形と番号で見分ける', route:'#222222', pal:{spot:'#222222', start:'#333333', goal:'#000000', view:'#555555', food:'#444444', shop:'#C2410C', conveni:'#0F766E', shrine:'#333333', history:'#555555', park:'#666666', school:'#444444', hall:'#222222', toilet:'#777777', parking:'#555555', bus:'#666666', hospital:'#333333', facility:'#555555', place:'#777777', other:'#888888'}},
 ];
 const THEME_ROUTE_COLORS = ['#E84040', '#D84315', '#F57F17', '#2E7D32', '#1976D2', '#6A1B9A', '#AD1457', '#222222'];
 const THEME_WIDTHS = {thin:0.75, std:1, thick:1.4};
@@ -2214,7 +2223,7 @@ const SHARE_CHECKS = [
   {k:'contact', l:'問い合わせ先を書いた（困ったときの連絡先）', auto:'contact'},
 ];
 const GOAL_IMG_MAX = 1280;   // ゴールの1枚（記念写真）の長辺（v147）
-const TYPE_BIG = ['view', 'history', 'shop', 'shrine'];   // v162：「地点」は選択肢から外した（種類なし＝既定。番号は種類と別に付く）
+const TYPE_BIG = ['view', 'history', 'food', 'shrine'];   // v236：よく使う4つの「お店」は飲食店に   // v162：「地点」は選択肢から外した（種類なし＝既定。番号は種類と別に付く）
 /* 名前から種類を決める（v160・Footpath に倣う：名前を入れれば絵が決まる。人に分類を考えさせない）。上から順に最初に当たったもの */
 const NAME_TYPE_HINTS = [
   ['hospital',['病院','医院','クリニック','診療所','歯科','薬局']],   // v163：「院」が寺院に取られる前に見る
@@ -2224,6 +2233,8 @@ const NAME_TYPE_HINTS = [
   ['toilet',  ['トイレ','便所','お手洗い','WC']],
   ['parking', ['駐車場','パーキング']],
   ['view',    ['展望','見晴','眺め','絶景','ビュー']],
+  ['conveni', ['コンビニ','セブン-イレブン','セブンイレブン','ローソン','ファミリーマート','ミニストップ','デイリーヤマザキ','ポプラ']],
+  ['food',    ['食堂','レストラン','カフェ','喫茶','居酒屋','そば','うどん','ラーメン','焼肉','寿司','鮨','定食','ピザ','バル','パン工房']],
   ['history', ['城跡','古墳','遺跡','史跡','記念碑','石碑','一里塚','道標','資料館','博物館','旧跡','跡','碑','塚']],
   ['shop',    ['道の駅','直売','カフェ','喫茶','食堂','そば','うどん','ラーメン','パン','ベーカリー','市場','売店','商店','スーパー','コンビニ','レストラン','店']],
   ['park',    ['公園','広場','棚田','湧水','滝','池','湖','川','森','林','峠','桜','花','庭園','山']],
@@ -3290,7 +3301,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 手描きの道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した手描きの道id（直前取り消し用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v235';
+const APP_VERSION = 'v237';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -7147,12 +7158,17 @@ const GUIDE = [
   {scr:'map', sel:'#map', big:1, t:'⑦ 2つ目を置くと道順が引かれます', d:'○を押すと、名前・写真・説明を書けます。',
    done:() => wps.filter(w => w && w.type !== 'node' && _onRouteOf(w)).length > 1},
   {scr:'map', sel:'.mob-save', t:'⑧ 保存します', d:'勝手には保存しません。「保存」を押してこの端末に残します。', done:() => !_dirty},
-  {scr:'map', sel:'.mob-share', t:'⑨ 配ります', d:'「配る」から みんなのマップ・共有リンク・印刷用シート・画像。', done:() => _vis('#shareSheet')},
-  {scr:'share', sel:'[data-share="pub"]', t:'⑩ みんなのマップに出す', d:'押すと、名前と「見た人にできること」を選ぶ画面になります。',
-   done:() => _vis('#pubSheet.show')},
+  {scr:'map', sel:'.mob-back', t:'⑨ 一覧にもどります', d:'左上の ← を押すと、保存したコースの一覧にもどります。',
+   done:() => _vis('#s1'), must:'左上の ← を押して一覧にもどってください'},
+  {scr:'list', sel:'#courseList', t:'⑩ 作ったコースはここに並びます', d:'押すと、また地図の画面が開いて続きを作れます。'},
+  {scr:'list', sel:'.s1-lib', t:'⑪ みんなのマップ', d:
+   'ここを押すと、<b>みんなが出したコース</b>が見られます。押すとその場で歩く人の画面が開きます。'},
+  {scr:'lib', sel:'#libAdd', t:'⑫ 自分のコースを出す', d:
+   '「ここに自分のコースを出す」→ 名前と「見た人にできること（<b>見るだけ</b>／<b>編集できる</b>）」を選んで <b>「出す」</b>。<br>登録も合言葉もいりません。押した瞬間に全員の一覧に並びます。'},
   {scr:'pub', sel:null, t:'名前と公開の仕方を選んで「出す」', d:
-   '<b>見るだけ</b>／<b>編集できる</b> を選んで <b>「出す」</b>。登録も合言葉もいりません。押した瞬間に全員の一覧に並びます。'},
-  {scr:'map', sel:null, last:1, t:'これでひと通りです', d:'この案内は、一覧の「はじめての方へ」からいつでも見られます。'}
+   '<b>見るだけ</b>／<b>編集できる</b> を選んで <b>「出す」</b>。あとで自動的に保存先にも控えが残ります。'},
+  {scr:'list', sel:null, last:1, t:'これでひと通りです', d:
+   'コースは「配る」からも渡せます（共有リンク・印刷用シート・画像）。<br>この案内は、一覧の「はじめての方へ」からいつでも見られます。'}
 ];
 /* いま出ている画面（上にあるものほど優先） */
 function _gdScreen(){
@@ -7160,6 +7176,7 @@ function _gdScreen(){
   if (_vis('#mOver.show')) return 'spot';
   if (_vis('#startPickSheet.show')) return 'start';
   if (_vis('#nearbySheet')) return 'nearby';
+  if (_vis('#libSheet.show')) return 'lib';
   if (_vis('#shareSheet')) return 'share';
   if (_vis('#firstTip')) return 'first';
   if (_vis('#newCourseSheet.show')) return 'new';
@@ -7219,8 +7236,20 @@ function _gdGo(i){
   document.getElementById('gdT').innerHTML = g.t;
   document.getElementById('gdD').innerHTML = g.d;
   document.getElementById('gdNext').textContent = (i === GUIDE.length - 1) ? 'おわり' : '次へ';
+  _gdScrollTo(g);                    // v237：対象が画面の外なら、見える所まで送る
   _gdPlace();
   requestAnimationFrame(_gdPlace);   // 吹き出しの高さが決まってからもう一度置き直す（初回のずれ防止）
+  setTimeout(_gdPlace, 320);
+}
+/* 対象が画面の外にあるときは、そこまで画面を送る（v237・オーナー指摘「みんなのマップが見える所まで案内してから説明しろ」） */
+function _gdScrollTo(g){
+  if (!g || !g.sel) return;
+  const el = document.querySelector(g.sel); if (!el) return;
+  const r = el.getBoundingClientRect();
+  if (r.height === 0 && r.width === 0) return;
+  const pad = 90;
+  if (r.top >= pad && r.bottom <= innerHeight - pad) return;   // もう見えている
+  try { el.scrollIntoView({block: 'center', behavior: 'smooth'}); } catch(_) { try { el.scrollIntoView(); } catch(_) {} }
 }
 function _gdRect(){
   const g = GUIDE[_gdI]; if (!g || !g.sel) return null;
@@ -8754,7 +8783,9 @@ function _nbDistToCourse(lat, lng){   // コース（道順の線があればそ
 }
 function _nbKindOf(tags){   // OpenStreetMap のタグ → この画面の種類（v162：会社・病院・役所・地名も拾う）
   const a = tags.amenity || '', t = tags.tourism || '', l = tags.leisure || '', n = tags.natural || '', h = tags.highway || '', r = tags.railway || '';
-  if (/^(restaurant|cafe|fast_food|pub|bar|ice_cream|food_court|marketplace|vending_machine)$/.test(a) || tags.shop || tags.craft) return 'shop';
+  if (tags.shop === 'convenience') return 'conveni';                                                            // v236：コンビニは別
+  if (/^(restaurant|cafe|fast_food|pub|bar|ice_cream|food_court)$/.test(a)) return 'food';                      // v236：飲食店
+  if (/^(marketplace|vending_machine)$/.test(a) || tags.shop || tags.craft) return 'shop';                      // v236：お店・売店
   if (a === 'place_of_worship' || tags.historic === 'wayside_shrine') return 'shrine';
   if (a === 'toilets') return 'toilet';
   if (a === 'parking') return 'parking';
@@ -8786,7 +8817,7 @@ function _nbDefaultName(kind, tags){
 }
 function _nbDesc(kind, tags){
   const parts = [];
-  if (kind === 'shop') { const w = _nbWord(tags.amenity) || (tags.shop ? (_NB_WORDS[tags.shop] || 'お店（' + tags.shop + '）') : ''); if (w) parts.push(w); if (tags.cuisine) parts.push(tags.cuisine.replace(/;/g, '・')); }
+  if (kind === 'shop' || kind === 'food' || kind === 'conveni') { const w = _nbWord(tags.amenity) || (tags.shop ? (_NB_WORDS[tags.shop] || 'お店（' + tags.shop + '）') : ''); if (w) parts.push(w); if (tags.cuisine) parts.push(tags.cuisine.replace(/;/g, '・')); }
   else if (kind === 'shrine') { if (tags.religion) parts.push(_nbWord(tags.religion)); }
   else if (kind === 'hist') { if (tags.historic) parts.push(_nbWord(tags.historic)); if (tags.inscription) parts.push(tags.inscription); }
   else { const w = _nbWord(tags.amenity) || _nbWord(tags.tourism) || _nbWord(tags.leisure) || _nbWord(tags.natural) || _nbWord(tags.highway) || _nbWord(tags.railway); if (w) parts.push(w); }
@@ -8795,6 +8826,28 @@ function _nbDesc(kind, tags){
   if (tags.website || tags['contact:website']) parts.push(tags.website || tags['contact:website']);
   let d = parts.filter(Boolean).join('。').slice(0, NEARBY_DESC_MAX);
   return (d ? d + '\n' : '') + '（情報：OpenStreetMap）';
+}
+/* 候補の手直し（v236）。出どころ（OpenStreetMap・国土数値情報・Wikipedia）は変えず、見せ方だけ直す。
+   ① 祭り・行事は場所ではないので外す
+   ② 名前から種類を見分ける（「〇〇中学校」が史跡にならないように）。OSM のタグで決まったものは触らない
+   ③ 名前の無い社寺は、150m 以内に名前つきの社寺があればその名前をもらう（どちらか片方だけ残す） */
+function _nbRefine(list){
+  const out = [];
+  list.forEach(c => {
+    if (c.src !== 'OpenStreetMap' && NEARBY_EVENT_RE.test(c.name || '')) return;        // ①
+    if (c.src !== 'OpenStreetMap' || c.noName) {                                        // ②
+      const g = _guessType(c.name);
+      if (g) { c.type = g; const k = NEARBY_KINDS.find(x => x.t === g); if (k) c.kind = k.k; }
+    }
+    out.push(c);
+  });
+  const named = out.filter(c => !c.noName && c.type === 'shrine');
+  out.forEach(c => {                                                                    // ③
+    if (!c.noName || c.type !== 'shrine') return;
+    const near = named.find(n => haversine(n.lat, n.lng, c.lat, c.lng) <= 150);
+    if (near) { c.name = near.name; c.noName = undefined; c.borrowed = 1; c.desc = (c.desc || '') + '\n（名前は近くの「' + near.name + '」から）'; }
+  });
+  return out;
 }
 function _nbBbox(){ return _nbBboxFor(_nb.radius); }
 function _nbBboxFor(radius){
@@ -8891,7 +8944,8 @@ async function nearbySearch(){
   try { ksj = await _nbFetchKsj(bb, kw); } catch(e) { errs.push('国土数値情報'); }
   if (!kw) { try { wiki = await _nbFetchWiki(bb); } catch(e) { errs.push('Wikipedia'); } }
   else { try { nom = await _nbFetchNominatim(kw, bb); } catch(e) {} }
-  const all = osm.concat(ksj, wiki, nom).map(c => Object.assign(c, {dist: Math.round(_nbDistToCourse(c.lat, c.lng))})).filter(c => c.dist <= radius && !_nbIsDup(c));
+  let all = osm.concat(ksj, wiki, nom).map(c => Object.assign(c, {dist: Math.round(_nbDistToCourse(c.lat, c.lng))})).filter(c => c.dist <= radius && !_nbIsDup(c));
+  all = _nbRefine(all);   // v236：行事を外し、名前から種類を直し、名前の無い社寺に近くの名前を引き継ぐ
   const kept = [];                                         // 同じ名前が 60m 以内に2つ（OSM と公的データ）なら先のものだけ
   /* v225：名前のあるものを先に、タグから作った呼び名（名前なし）はそのあとに。どちらも近い順 */
   all.sort((a, b) => (NEARBY_NONAME_TAIL ? ((a.noName ? 1 : 0) - (b.noName ? 1 : 0)) : 0) || a.dist - b.dist)

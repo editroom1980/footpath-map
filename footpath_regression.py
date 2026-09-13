@@ -430,7 +430,7 @@ def static_checks(src):
     chk('静的', '地図タップで即「コースポイント」として置く（選択画面も編集画面も開かない）',
         "addWp(e.latlng.lat, e.latlng.lng, 'spot');" in _omc and 'showWpTypePicker(e.latlng' not in _omc and 'openModal(' not in _omc)
     chk('静的', '編集画面の種別は「よく使う4つを大きく、残りは畳む」',
-        "const TYPE_BIG = ['view', 'history', 'shop', 'shrine']" in src and "if (t.v === 'spot' && wp.type !== 'spot') return;" in src and 'id="mTypeChips"' in src and 'function _renderTypeChips' in src
+        "const TYPE_BIG = ['view', 'history', 'food', 'shrine']" in src and "if (t.v === 'spot' && wp.type !== 'spot') return;" in src and 'id="mTypeChips"' in src and 'function _renderTypeChips' in src
         and '#mType{display:none}' in src)
     chk('静的', '選べる種類の出どころは _buildTypeOptions のまま（チップは select を読む）',
         "const cur = sel.value, opts = [...sel.options].map(o => o.value);" in src and 'function _buildTypeOptions' in src)
@@ -447,6 +447,12 @@ def static_checks(src):
     # --- v157: 番号の丸と種類の丸を横に並べる（オーナー指摘：iPhone で片方しか見えない）---
     chk('静的', '番号つきで種類がある地点：地図は「種類の丸＋右上に番号の小丸」、一覧・並べ替え・印刷用シート・カードは番号と種類を並べて出す',
         'class="wp-num"' in src and 'class="wp-dot cat"' in src and 'class="ro-badge cat"' in src and 'class="sh-cat"' in src and 'class="vip-dot vip-dot2"' in src and '_catBadge' not in src and 'wp-pair' not in src)
+    # --- v237: 案内の終盤を、初めての人の道すじどおりに（保存→一覧→みんなのマップ）---
+    chk('静的', '案内は 保存 → 一覧にもどる → みんなのマップが見える所まで送ってから説明する',
+        "{scr:'map', sel:'.mob-back', t:'⑨ 一覧にもどります'" in src and "{scr:'list', sel:'.s1-lib', t:'⑪ みんなのマップ'" in src
+        and "{scr:'lib', sel:'#libAdd', t:'⑫ 自分のコースを出す'" in src
+        and 'function _gdScrollTo' in src and "el.scrollIntoView({block: 'center', behavior: 'smooth'})" in src
+        and '⑩ みんなのマップに出す' not in src)
     # --- v235: 案内が行ったり来たりしない（オーナー報告「9〜12でループする」）---
     chk('静的', '案内は画面が変わったときだけ切り替え、その画面で最後に見た段から続ける（手で進めた段を引き戻さない）',
         'let _gdI = -1, _gdTimer = null, _gdScrLast' in src and 'if (scr !== _gdScrLast) {' in src
@@ -454,8 +460,8 @@ def static_checks(src):
     # --- v232: 案内はいまの画面に合わせる（出ている窓を説明する）---
     chk('静的', '案内はいま出ている画面で段を選ぶ（どれから始めますか／まわりの施設／スタート地点／スポットの編集／配る／出す）',
         'function _gdScreen' in src and 'function _gdFirstFor' in src and '④ どれから始めますか' in src
-        and "{scr:'nearby'" in src and "{scr:'start'" in src and "{scr:'spot'" in src and "{scr:'share'" in src and "{scr:'pub'" in src
-        and "if (_vis('#pubSheet.show')) return 'pub';" in src)
+        and "{scr:'nearby'" in src and "{scr:'start'" in src and "{scr:'spot'" in src and "{scr:'lib'" in src and "{scr:'pub'" in src
+        and "if (_vis('#pubSheet.show')) return 'pub';" in src and "if (_vis('#libSheet.show')) return 'lib';" in src)
     chk('静的', '案内の吹き出しは画面の上か下に貼り付く帯（真ん中に浮かせない）。大きな窓は枠で囲まない',
         "#guideWrap .gd-tip{position:fixed;left:8px;right:8px;bottom:calc(8px + var(--sab))" in src
         and '#guideWrap .gd-tip.top{top:calc(8px + var(--sat));bottom:auto}' in src
@@ -2188,7 +2194,7 @@ def functional_checks(index_path):
           }catch(e){ return 'ERR:'+e.message; } }""")
         chk('機能', '10個置くのに画面切替0回。編集画面は4つ大きく、残りは畳んだ中から選べる',
             isinstance(pl, dict) and pl.get('added') == 10 and pl.get('allCourse') and pl.get('switches') == 0
-            and pl.get('bigs') == ['ビュースポット', '史跡・記念碑', '飲食店・ショップ', '神社・寺院'] and pl.get('restHidden')
+            and pl.get('bigs') == ['ビュースポット', '史跡・記念碑', '飲食店', '神社・寺院'] and pl.get('restHidden')
             and pl.get('restN', 0) >= 5 and pl.get('selVal') == 'parking' and pl.get('onChip') == '駐車場' and pl.get('savedType') == 'parking',
             str(pl)[:260])
 
@@ -2354,6 +2360,29 @@ def functional_checks(index_path):
             isinstance(bx, dict) and all(bx.get(k) for k in ('oneBtn', 'idx', 'body', 'list', 'open', 'mine', 'heal', 'big', 'moved',
                                                             'phPut', 'phFlag', 'phGot', 'phSticker', 'dup', 'dup2', 'dup3',
                                                             'mineFlag', 'deleted', 'delMark', 'moved2')), str(bx)[:420])
+
+        # v237: 一覧まで案内し、みんなのマップを見える所まで送る
+        gv = page.evaluate("""async ()=>{ try{
+            const out = {}, keepS1 = document.getElementById('s1').style.display, keepS2 = document.getElementById('s2').style.display;
+            document.getElementById('s2').style.display = 'none'; document.getElementById('s1').style.display = 'flex';
+            closeNewCourseSheet();
+            startGuide(); await new Promise(r => setTimeout(r, 350));
+            // 一覧の画面では、一覧・みんなのマップの段がある
+            const titles = GUIDE.filter(g => g.scr === 'list').map(g => g.t).join('|');
+            out.listSteps = /一覧にもどります|コースはここに並びます/.test(titles) && /みんなのマップ/.test(titles);
+            // みんなのマップの段へ進めると、対象（みんなのマップを見る）が画面の中に入る
+            const li = GUIDE.findIndex(g => g.sel === '.s1-lib');
+            _gdGo(li); await new Promise(r => setTimeout(r, 700));
+            const r2 = document.querySelector('.s1-lib').getBoundingClientRect();
+            out.scrolled = r2.top > 0 && r2.bottom < innerHeight;
+            out.title = /みんなのマップ/.test(document.getElementById('gdT').textContent);
+            stopGuide();
+            document.getElementById('s1').style.display = keepS1; document.getElementById('s2').style.display = keepS2;
+            document.querySelectorAll('#toastBox .toast').forEach(e => e.remove());
+            return out;
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        chk('機能', '案内に一覧の段があり、みんなのマップの段では対象が画面の中に入るまで送る',
+            isinstance(gv, dict) and all(gv.get(k) for k in ('listSteps', 'scrolled', 'title')), str(gv)[:200])
 
         # v235: 「次へ」を押し続けても案内が戻らない
         gl = page.evaluate("""async ()=>{ try{
@@ -3174,7 +3203,7 @@ def functional_checks(index_path):
 
         # v160: 名前→種類の判定／逆回りでスポットの順と S・G が入れ替わり取り消しで戻る／周回で出発点にゴールが付く
         fp = page.evaluate("""()=>{ try{
-            const out = {guess: _guessType('加茂神明神社') === 'shrine' && _guessType('市立戸原小学校') === 'school' && _guessType('宇原公民館') === 'hall' && _guessType('待避所') === null && _guessType('飯見の棚田') === 'park' && _guessType('縁側カフェ') === 'shop' && _guessType('宇原城跡') === 'history' && _guessType('公衆トイレ') === 'toilet' && _guessType('') === null};
+            const out = {guess: _guessType('加茂神明神社') === 'shrine' && _guessType('市立戸原小学校') === 'school' && _guessType('宇原公民館') === 'hall' && _guessType('待避所') === null && _guessType('飯見の棚田') === 'park' && _guessType('縁側カフェ') === 'food' && _guessType('宇原城跡') === 'history' && _guessType('公衆トイレ') === 'toilet' && _guessType('') === null};
             const keepU = undoStack.length, keepD = _dirty; const ids0 = wps.map(w => w.id), types0 = wps.map(w => w.type), nv = vps.length;
             reverseCourse(); const ids1 = wps.map(w => w.id);
             out.reversed = ids1.join(',') === ids0.slice().reverse().join(',') && vps.length === nv
@@ -3408,8 +3437,8 @@ def functional_checks(index_path):
             addNearbySelected();
             const a = wps.find(w => w.name === '縁側カフェ'), b = wps.find(w => w.name === '飯見の棚田'), bs = wps.find(w => w.name === '検査バス停');
             out.bus = !!bs && bs.type === 'bus' && _sheetLegend().indexOf('バス停・駅') >= 0 && (bs.marker.getElement().innerHTML.indexOf('<svg') >= 0);
-            out.added = wps.length === n0 + 3 && !!a && a.type === 'shop' && a.onRoute === false && a.tel === '0790-00-0000' && a.desc.indexOf('営業時間') >= 0 && a.desc.indexOf('（情報：OpenStreetMap）') >= 0 && !!a.marker
-                        && !!b && b.type === 'history' && b.desc.indexOf('棚田百選') >= 0 && b.desc.indexOf('Wikipedia「飯見の棚田」') >= 0;
+            out.added = wps.length === n0 + 3 && !!a && a.type === 'food' && a.onRoute === false && a.tel === '0790-00-0000' && a.desc.indexOf('営業時間') >= 0 && a.desc.indexOf('（情報：OpenStreetMap）') >= 0 && !!a.marker
+                        && !!b && b.type === 'park' && b.desc.indexOf('棚田百選') >= 0 && b.desc.indexOf('Wikipedia「飯見の棚田」') >= 0;
             out.closed = document.getElementById('nearbySheet').style.display === 'none' && !_nbLayer;
             // 名前で探す：OSM の名前検索＋Nominatim＋国土数値情報の名前一致
             openNearbySheet(); document.getElementById('nbKw').value = '検査'; await nearbySearch();
