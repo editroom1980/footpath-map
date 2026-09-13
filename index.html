@@ -3286,7 +3286,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 手描きの道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した手描きの道id（直前取り消し用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v231';
+const APP_VERSION = 'v232';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -7122,15 +7122,41 @@ function _onSwipe(el, onLeft, onRight){
   el.addEventListener('pointercancel', () => { id = null; }, {passive:true});
 }
 const GUIDE = [
-  {sel:'.s1-fab', t:'① コースを作りましょう', d:'まず「新しいコースを作成」を押します。', done:() => _vis('#newCourseSheet.show'), must:'「新しいコースを作成」を押してください'},
-  {sel:'#s1Name', t:'② 名前をつけます', d:'例：飯見の棚田おにぎりウォーク<br>エリアは空欄でもかまいません（現在地になります）。', done:() => (document.getElementById('s1Name') || {}).value},
-  {sel:'#s1Btn', t:'③ 地図を開きます', d:'「作成してマップへ」を押すと、地図の画面になります。', done:() => _vis('#s2') && !_vis('#newCourseSheet.show'), must:'「作成してマップへ」を押してください'},
-  {sel:'#map', t:'④ スポットを置きます', d:'地図を<b>長押し</b>すると「ここにスポットを追加しますか？」と出ます。<br>歩く順に入れるなら「コースに入れる」、目印だけなら「立ち寄り先にする」。', done:() => wps.filter(w => w && w.type !== 'node').length > 0, big:1},
-  {sel:'#mobileWpBtn', t:'⑤ 道具の使い分け', d:'下の道具で、置くもの・描くものを切り替えます。<br>・<b>スポット</b>…目印を置く<br>・<b>手描き</b>…指でなぞって道順を引く<br>・<b>ルート調整</b>…引かれた線を動かす<br>・<b>道を足す</b>…地図に無い道を描く'},
-  {sel:'#map', t:'⑥ もう1つ置くと道順が引かれます', d:'2つ目のスポットを置くと、道なりに赤い線が引かれます。<br>○を押すと、名前・写真・説明を書けます。', done:() => wps.filter(w => w && w.type !== 'node' && _onRouteOf(w)).length > 1, big:1},
-  {sel:'.mob-save', t:'⑦ 保存します', d:'勝手には保存しません。<b>「保存」</b>を押してこの端末に残します。', done:() => !_dirty},
-  {sel:'.mob-share', t:'⑧ 配ります', d:'「配る」から、<b>みんなのマップに出す</b>・共有リンク・印刷用シート・画像が選べます。', done:() => _vis('#shareSheet.show')},
-  {sel:'[data-share="pub"]', t:'⑨ みんなのマップに出す', d:'名前と「見た人にできること（見るだけ／編集できる）」を選んで <b>「出す」</b> を押すだけ。<br>登録も合言葉もいりません。押した瞬間に全員の一覧に並びます。', done:() => _vis('#pubSheet.show')},
+  {sel:'.s1-fab', when:() => _vis('#s1'), t:'① コースを作りましょう', d:'まず「新しいコースを作成」を押します。',
+   done:() => _vis('#newCourseSheet.show'), must:'「新しいコースを作成」を押してください'},
+  {sel:'#s1Name', when:() => _vis('#newCourseSheet.show'), t:'② 名前をつけます',
+   d:'例：飯見の棚田おにぎりウォーク<br>エリアは空欄でもかまいません（現在地になります）。', done:() => (document.getElementById('s1Name') || {}).value},
+  {sel:'#s1Btn', when:() => _vis('#newCourseSheet.show'), t:'③ 地図を開きます', d:'「作成してマップへ」を押すと、地図の画面になります。',
+   done:() => _vis('#s2') && !_vis('#newCourseSheet.show'), must:'「作成してマップへ」を押してください'},
+  /* まっさらな地図で出る「どれから始めますか」。いま画面に出ているものを説明する（v232・オーナー指摘） */
+  {sel:'#firstTip', when:() => _vis('#firstTip'), grab:1, t:'④ どれから始めますか', d:
+   '<b>タップして置く</b>…地図を長押しして、スポットを1つずつ置きます<br>'
+   + '<b>指でなぞって描く</b>…歩く道を指でなぞると、そのとおりにコースになります<br>'
+   + '<b>まわりの施設を探す</b>…お店・神社・史跡・バス停などをまとめて置きます<br><br>'
+   + 'どれを選んでも、あとから他のやり方もできます。', done:() => !_vis('#firstTip')},
+  /* まわりの施設を探すを選んだとき */
+  {sel:'#nearbySheet', when:() => _vis('#nearbySheet'), grab:1, t:'まわりの施設を探します', d:
+   '<b>距離</b>と<b>種類</b>を選んで <b>「探す」</b>。<br>見つかったものから、置きたいものに✓を付けて <b>「選んだ ○ 件を追加」</b>。<br>'
+   + '（多すぎたら、あとで「スポットを整理」でまとめて消せます）', done:() => !_vis('#nearbySheet')},
+  /* 取り込みのあとに出る「スタート地点を決める」 */
+  {sel:'#startPickSheet', when:() => _vis('#startPickSheet.show'), grab:1, t:'スタート地点を決めます', d:
+   '歩きはじめる場所を選びます。駐車場やバス停が便利です。<br>近い順に並んでいます。あとから変えられます。', done:() => !_vis('#startPickSheet.show')},
+  /* 地図の上での置き方 */
+  {sel:'#map', when:() => _vis('#s2') && !_vis('#firstTip'), big:1, t:'⑤ スポットを置きます',
+   d:'地図を<b>長押し</b>すると「ここにスポットを追加しますか？」と出ます。<br>歩く順に入れるなら「コースに入れる」、目印だけなら「立ち寄り先にする」。',
+   done:() => wps.filter(w => w && w.type !== 'node').length > 0},
+  {sel:'#mOver', when:() => _vis('#mOver.show'), grab:1, t:'名前・写真・説明を書きます', d:
+   '<b>種別</b>で見た目が変わり、<b>この場所の役</b>でスタート／ゴールにできます。<br>写真は歩く人のカードにシールのように貼られます。書いたら <b>「保存」</b>。',
+   done:() => !_vis('#mOver.show')},
+  {sel:'#mobileWpBtn', when:() => _vis('#s2') && !_vis('#firstTip'), t:'⑥ 道具の使い分け', d:
+   '・<b>スポット</b>…目印を置く<br>・<b>手描き</b>…指でなぞって道順を引く<br>・<b>ルート調整</b>…引かれた線を動かす<br>・<b>道を足す</b>…地図に無い道を描く'},
+  {sel:'#map', when:() => _vis('#s2') && !_vis('#firstTip'), big:1, t:'⑦ もう1つ置くと道順が引かれます',
+   d:'2つ目のスポットを置くと、道なりに赤い線が引かれます。<br>○を押すと、名前・写真・説明を書けます。',
+   done:() => wps.filter(w => w && w.type !== 'node' && _onRouteOf(w)).length > 1},
+  {sel:'.mob-save', when:() => _vis('#s2'), t:'⑧ 保存します', d:'勝手には保存しません。<b>「保存」</b>を押してこの端末に残します。', done:() => !_dirty},
+  {sel:'.mob-share', when:() => _vis('#s2'), t:'⑨ 配ります', d:'「配る」から、<b>みんなのマップに出す</b>・共有リンク・印刷用シート・画像が選べます。', done:() => _vis('#shareSheet')},
+  {sel:'[data-share="pub"]', when:() => _vis('#shareSheet'), grab:1, t:'⑩ みんなのマップに出す',
+   d:'名前と「見た人にできること（見るだけ／編集できる）」を選んで <b>「出す」</b> を押すだけ。<br>登録も合言葉もいりません。押した瞬間に全員の一覧に並びます。', done:() => _vis('#pubSheet.show')},
   {sel:null, t:'これでひと通りです', d:'あとは歩きながら写真を足したり、道順を直したりできます。<br>この案内は、一覧の <b>「はじめての方へ」</b> からいつでも見られます。'}
 ];
 let _gdI = -1, _gdTimer = null;
@@ -7152,8 +7178,10 @@ function startGuide(){
     _onSwipe(w.querySelector('.gd-tip'), _gdNext, _gdBack);   // v230：左へフリックで次、右へ戻る
   }
   try { localStorage.setItem(LS.tourSeen, '1'); } catch(_) {}
+  GUIDE.forEach(g => { delete g._seen; delete g._nudged; });   // v232：開き直したら最初から
   w.classList.add('on');
-  _gdGo(0);
+  let first = 0; while (first < GUIDE.length - 1 && !_gdFits(first)) first++;   // いまの画面に合う段から始める
+  _gdGo(first);
   if (_gdTimer) clearInterval(_gdTimer);
   _gdTimer = setInterval(_gdTick, 300);   // 位置の追従と「できた？」の見張り
 }
@@ -7178,6 +7206,7 @@ function _gdGo(i){
   if (i >= GUIDE.length) { stopGuide(); showToast('お疲れさまでした。いつでも「はじめての方へ」から見られます'); return; }
   _gdI = i;
   const g = GUIDE[i];
+  g._seen = 1;   // v232：一度出した「窓の説明」は割り込まない
   document.getElementById('gdStep').textContent = (i + 1) + ' / ' + GUIDE.length;
   document.getElementById('gdT').innerHTML = g.t;
   document.getElementById('gdD').innerHTML = g.d;
@@ -7215,10 +7244,26 @@ function _gdPlace(){
   tip.style.left = Math.round(Math.max(12, Math.min(W - tw - 12, r.left + r.width / 2 - tw / 2))) + 'px';
   tip.style.top = Math.round(ty) + 'px';
 }
+/* いまの画面に合う段か（v232・オーナー指摘「画面に出ているものを案内しろ」） */
+function _gdFits(i){
+  const g = GUIDE[i]; if (!g) return false;
+  try { return !g.when || !!g.when(); } catch(_) { return true; }
+}
 function _gdTick(){
   const w = document.getElementById('guideWrap'); if (!w || !w.classList.contains('on')) return;
   const g = GUIDE[_gdI]; if (!g) return;
-  if (g.sel && !document.querySelector(g.sel)) { _gdGo(_gdI + 1); return; }   // 部品が無い段は飛ばす
+  /* ① 画面に出た窓の説明（grab）があれば、そちらへ割り込む（1回だけ） */
+  for (let j = 0; j < GUIDE.length; j++) {
+    const x = GUIDE[j];
+    if (x.grab && !x._seen && j !== _gdI && _gdFits(j)) { _gdGo(j); return; }
+  }
+  /* ② いまの段が画面に合っていなければ、合う段へ移る */
+  if (!_gdFits(_gdI) || (g.sel && !document.querySelector(g.sel))) {
+    for (let j = _gdI + 1; j < GUIDE.length; j++) if (_gdFits(j)) { _gdGo(j); return; }
+    for (let j = _gdI - 1; j >= 0; j--) if (_gdFits(j)) { _gdGo(j); return; }
+    return;
+  }
+  /* ③ できたら次へ */
   let ok = false;
   try { ok = !!(g.done && g.done()); } catch(_) {}
   if (ok) { _gdGo(_gdI + 1); return; }
