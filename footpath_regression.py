@@ -447,6 +447,34 @@ def static_checks(src):
     # --- v157: 番号の丸と種類の丸を横に並べる（オーナー指摘：iPhone で片方しか見えない）---
     chk('静的', '番号つきで種類がある地点：地図は「種類の丸＋右上に番号の小丸」、一覧・並べ替え・印刷用シート・カードは番号と種類を並べて出す',
         'class="wp-num"' in src and 'class="wp-dot cat"' in src and 'class="ro-badge cat"' in src and 'class="sh-cat"' in src and 'class="vip-dot vip-dot2"' in src and '_catBadge' not in src and 'wp-pair' not in src)
+    # --- v239: 案内と画面の食い違い／前の画面の残りを断つ ---
+    _gi = src.index('const GUIDE = [')
+    _guide_src = src[_gi:src.index('];', _gi)]
+    chk('静的', '案内はボタン名を書き写さず、そのときの画面から読む（《b》）。GUIDE にボタン名の直書きが無い',
+        'function _gdBtn' in src and 'function _gdText' in src and 'function _gdPlain' in src
+        and "document.getElementById('gdT').innerHTML = _gdText(g.t, g);" in src
+        and 'showToast(_gdPlain(g.must, g));' in src
+        and '《b》' in src and '《b:#nbSearch|探す》' in src and '《b:#pubGo|出す》' in src
+        and '《b|ここに自分のコースを出す》' in src   # まだ開いていない窓のボタンには言い方を添える
+        and "return w ? ('<b>「' + escHtml(w) + '」</b>') : '';" in src
+        # 画面のボタン名を GUIDE に書き写していない（書き写すと、ボタンを直したとき案内だけ古くなる）
+        and not any(w in _guide_src for w in ['「新しいコースを作成」', '「作成してマップへ」', '「みんなのマップを見る」',
+                                              '「ここに自分のコースを出す」', '「探す」', '「出す」', '「保存」']))
+    chk('静的', '新しいコースのボタンは文字も＋の絵も書き換えない（2回目から「コース設定画面へ」になっていた）',
+        'const btnHtml = btn.innerHTML;' in src and 'btn.disabled = false; btn.innerHTML = btnHtml;' in src
+        and "btn.textContent = 'コース設定画面へ →'" not in src)
+    chk('静的', '画面を移るときは開いていた窓を全部閉じる（名前を並べず close〜／hide〜 を呼び、残る show を外す）',
+        'function _closeAllSheets' in src and "/^(close|hide)[A-Z]/.test(k)" in src
+        and 'const SHEET_KEEP' in src and 'const SHEET_CLOSE_SKIP' in src
+        and "SHEET_CLOSE_SKIP = ['closeA2hs', 'closeStartChooser']" in src   # 閉じる以外のことをするので呼ばない
+        and '_closeAllSheets();          // v239：開いていた窓を全部閉じる（戻ったときに残さない）' in src
+        and '_closeAllSheets();          // v239：前のコースで開いていた窓を持ち込まない' in src)
+    chk('静的', 'コースを開くたびに、道具は「スポット」・閲覧モードは解除・新しいコース欄と検索語はまっさら',
+        'function _resetTools' in src and "if (mode !== 'wp') setMode('wp');" in src
+        and "if (viewMode && !(typeof _viewParams === 'function' && _viewParams().on)) toggleViewMode();" in src
+        and "if (n) n.value = ''; if (a) a.value = '';" in src
+        and "const kw = document.getElementById('nbKw'); if (kw) kw.value = '';" in src
+        and 'closeNewCourseSheet();      // v239' in src)
     # --- v238: 寺・神社を国の地図（地理院地図Vector）と Wikidata から取り込む ---
     chk('静的', 'まわりの施設に「地理院地図Vector（国土地理院）」と「Wikidata」を足し、出どころを画面に書いている',
         "const GSI_VT_URL = 'https://cyberjapandata.gsi.go.jp/xyz/experimental_bvmap/16/{x}/{y}.pbf'" in src
@@ -490,7 +518,7 @@ def static_checks(src):
     # --- v230: 案内の枠を角丸のまま暗くする／フリックで進む・戻る ---
     chk('静的', '案内の暗幕は「丸い穴＋大きな影」1枚（四隅が明るく残らない）。押してほしいボタンは押すまで進まない（1回うながしたら進める）',
         '.gd-hole{position:fixed;border-radius:16px' in src and '0 0 0 9999px rgba(20,14,6,.55)' in src
-        and '.gd-dim' not in src and 'function _gdCanNext' in src and "must:'「新しいコースを作成」を押してください'" in src
+        and '.gd-dim' not in src and 'function _gdCanNext' in src and "must:'《b》 を押してください'" in src
         and 'g._nudged' in src)
     chk('静的', '進む・戻るができる所はフリックでも動く（案内・読むだけの案内・歩く人のカード）',
         'function _onSwipe' in src and 'const SWIPE_PX = 50' in src
@@ -3470,6 +3498,66 @@ def functional_checks(index_path):
           }catch(e){ return 'ERR:'+e.message; } }""")
         chk('機能', 'まわりの施設：候補（距離・重複を除外）→地図の薄い○→選んで追加（種別・説明・出典）→1回で取り消し',
             isinstance(nb, dict) and all(nb.get(k) for k in ('found', 'v162', 'v163', 'dup', 'layer', 'listed', 'btn', 'added', 'bus', 'closed', 'keyword', 'undone')), str(nb)[:600])
+
+        # v239: 案内の文は画面のボタン名と必ず一致する／画面を移ると前の窓・設定が残らない
+        lv = page.evaluate("""async ()=>{ try{
+            const T = e => e ? String(e.textContent || '').replace(/\\s+/g, ' ').trim() : '';
+            const out = {};
+            /* ① 案内の文は、そのときの画面のボタン名をそのまま使う（書き写しでない） */
+            const bad = [];
+            GUIDE.forEach((g, i) => {
+                const txt = _gdText(g.t, g) + ' ' + _gdText(g.d, g) + ' ' + _gdText(g.must || '', g);
+                (txt.match(/《b[^》]*》/g) || []).forEach(() => bad.push(i));     // 置き換え漏れ
+                if (txt.indexOf('「」') >= 0) bad.push('空' + i);                    // まだ作られていない窓＝空の「」
+            });
+            out.noLeft = bad.length === 0;
+            out.bad = bad.join(',');
+            const g1 = GUIDE.find(g => g.sel === '.s1-fab'), g3 = GUIDE.find(g => g.sel === '#s1Btn');
+            out.live = _gdText(g1.d, g1).indexOf(T(document.querySelector('.s1-fab'))) >= 0
+                    && _gdText(g1.must, g1).indexOf(T(document.querySelector('.s1-fab'))) >= 0;
+            /* ② ボタン名を変えたら、案内の文も勝手に追いかける（書き写しなら追いかけない） */
+            const fab = document.querySelector('.s1-fab'), keep = fab.innerHTML;
+            fab.textContent = '検査ボタン名';
+            out.follows = _gdText(g1.d, g1).indexOf('検査ボタン名') >= 0;
+            fab.innerHTML = keep;
+            /* ③ 文字の無いボタン（絵だけ）は、書いておいた言い方を使う */
+            const g9 = GUIDE.find(g => g.sel === '.mob-back');
+            out.fallback = _gdText(g9.d, g9).indexOf('←') >= 0;
+            /* ④ 新しいコースの窓：欄はまっさら・作ったら閉じる・ボタン名と＋の絵はそのまま */
+            const n = document.getElementById('s1Name'); n.value = 'のこり検査';
+            openNewCourseSheet();
+            out.clears = n.value === '';
+            out.btnName = T(document.getElementById('s1Btn'));
+            closeNewCourseSheet();
+            /* ⑤ 画面を移ると、開いていた窓は全部閉じる */
+            const fixedShown = () => [...document.querySelectorAll('*')].filter(e => {
+                const cs = getComputedStyle(e); if (cs.position !== 'fixed') return false;
+                if (cs.display === 'none' || cs.visibility === 'hidden' || cs.opacity === '0') return false;
+                const r = e.getBoundingClientRect(); return r.width >= 8 && r.height >= 8;
+            }).map(e => e.id).filter(id => id && SHEET_KEEP.indexOf(id) < 0);
+            openNearbySheet(); if (typeof openShareSheet === 'function') openShareSheet();
+            await new Promise(r => setTimeout(r, 150));
+            out.opened = fixedShown().length >= 2;
+            /* ⑥ 閉じるついでに余計なことをする関数は呼ばない（呼ぶ前と後で変わっていないこと） */
+            let pre = null; try { localStorage.removeItem(LS.homeTipSeen); pre = localStorage.getItem(LS.homeTipSeen); } catch(_) {}
+            const preSc = _scDismissed; _scDismissed = false;
+            _closeAllSheets();
+            await new Promise(r => setTimeout(r, 150));
+            out.allClosed = fixedShown().length === 0;
+            let post = null; try { post = localStorage.getItem(LS.homeTipSeen); } catch(_) {}
+            out.noSideEffect = post === pre && _scDismissed === false;
+            _scDismissed = preSc;
+            /* ⑦ 道具と閲覧モードは持ち越さない */
+            setMode('draw'); _resetTools(); out.tool = mode === 'wp';
+            const keepView = viewMode;
+            if (!viewMode) toggleViewMode();
+            _resetTools(); out.view = viewMode === false;
+            if (viewMode !== keepView) { /* 元に戻す */ if (viewMode) toggleViewMode(); }
+            return out;
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        chk('機能', '案内の文は画面のボタン名をその場で読む（名前を変えると案内も変わる）。窓・道具・入力欄を次の画面に持ち越さない',
+            isinstance(lv, dict) and all(lv.get(k) for k in ('noLeft', 'live', 'follows', 'fallback', 'clears', 'opened', 'allClosed', 'noSideEffect', 'tool', 'view'))
+            and lv.get('btnName') == '作成してマップへ', str(lv)[:400])
 
         # v238: 地理院地図Vector（地図記号の神社・寺院＋地図に書かれた名前）と Wikidata
         gs = page.evaluate("""async ()=>{ const keepFetch = window.fetch; try{

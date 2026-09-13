@@ -3025,6 +3025,7 @@ async function newCourse() {
   if (typeof applyTheme === 'function') applyTheme(null, {quiet:true});   // 色を標準に戻す（v145）
 
   const btn = document.getElementById('s1Btn');
+  const btnHtml = btn.innerHTML;   // v239：元の文字と＋の絵を覚えておく（読み込み中の表示で消さない）
   btn.disabled = true; btn.textContent = '⏳ マップを読み込み中...';
 
   // Reset state
@@ -3035,6 +3036,9 @@ async function newCourse() {
   redrawList();
   updateDistanceAndTime();  // 空コースなので高低差バンド・距離を非表示にする
 
+  closeNewCourseSheet();      // v239：作ったらこの窓は閉じる（一覧に戻ると開いたままだった）
+  _closeAllSheets();          // v239：前のコースで開いていた窓を持ち込まない
+  _resetTools();              // v239：道具は「スポット」から始める
   document.getElementById('s1').style.display = 'none';
   document.getElementById('s2').style.display = 'flex';
   document.getElementById('cnDisp').textContent = name;
@@ -3045,7 +3049,10 @@ async function newCourse() {
     const c = area ? await geocode(area) : await _herePos();   // エリアが空なら現在地（v149）
     if (c && leafMap) { leafMap.setView([c.lat, c.lng], 15); _setAnchor(c.lat, c.lng, false); }
     else if (leafMap) { const ctr = leafMap.getCenter(); _setAnchor(ctr.lat, ctr.lng, false); if (!area) showToast('現在地が取れなかったので、今の地図の場所から始めます'); }  // 失敗時も範囲を必ず確定
-    btn.disabled = false; btn.textContent = 'コース設定画面へ →';
+    /* v239（オーナー報告「案内と画面がまた食い違っている」）：ここで別の名前に書き換えていたため、
+       2回目からボタンが「コース設定画面へ →」になり、案内の「作成してマップへ」と食い違っていた。
+       元の文字と絵をそのまま戻す。 */
+    btn.disabled = false; btn.innerHTML = btnHtml;
     maybeShowFirstTip();                  // まだ何も置いていない人に、最初の一歩を示す
   }, 60);
 }
@@ -3059,7 +3066,7 @@ function _doBackToS1() {
   if (_followOn) stopFollowMode(true);   // 地図画面を離れたら追従を止める（電池のため）
   _dirty = false;             // 保存/破棄をダイアログで選んだあと＝以降は確認不要
   setTimeout(showUpdateBarIfPending, 300);   // 一覧に戻ったら新版の案内を出す
-  if (typeof _closeAllPopups === 'function') _closeAllPopups();
+  _closeAllSheets();          // v239：開いていた窓を全部閉じる（戻ったときに残さない）
   document.getElementById('s2').style.display = 'none';
   document.getElementById('s1').style.display = 'flex';
   renderCourseList();
@@ -3342,7 +3349,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 手描きの道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した手描きの道id（直前取り消し用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v238';
+const APP_VERSION = 'v239';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -4981,6 +4988,9 @@ function _syncMmValues(){
 
 /* 新規コース作成シート */
 function openNewCourseSheet() {
+  /* v239（オーナー報告「前の画面で開いた設定が残ってる」）：前のコース名が入ったままだった。毎回まっさらにする */
+  const n = document.getElementById('s1Name'), a = document.getElementById('s1Area');
+  if (n) n.value = ''; if (a) a.value = '';
   document.getElementById('newCourseScrim')?.classList.add('show');
   document.getElementById('newCourseSheet')?.classList.add('show');
 }
@@ -6979,6 +6989,30 @@ function _buildTypeOptions(wp) {
 }
 
 // 全ての設定ウィンドウ/ポップアップを閉じる（排他制御用）
+/* 画面を移るときは、開いていた窓を全部閉じる（v239）。
+   オーナー報告「戻った時にこういうのが残っている／前の画面で開いた設定が残ってる」。
+   窓は数が多く、これからも増える。**名前を並べて書くと必ず閉じ忘れる**ので、
+   ① close〜／hide〜 という名前の関数を全部呼ぶ ② それでも開いている窓の show を外す、の2段で閉じる。 */
+const SHEET_KEEP = ['toastBox', 'updBar', 'guideWrap', 'offlineBadge', 's1', 's2'];   // 閉じてはいけないもの
+/* 「閉じる」だけで済まない関数＝呼ぶと別のことまで起きるので、ここでは呼ばない。
+   closeA2hs … ホーム画面追加の案内を「見た」ことにしてしまう
+   closeStartChooser … 「どれから始めますか」を二度と出さないことにしてしまう
+   ※ close〜 を新しく作るとき、閉じる以外のことをするならここに足すこと。 */
+const SHEET_CLOSE_SKIP = ['closeA2hs', 'closeStartChooser'];
+function _closeAllSheets(){
+  try { _closeAllPopups(); } catch(_) {}
+  Object.keys(window).forEach(k => {
+    if (!/^(close|hide)[A-Z]/.test(k) || SHEET_CLOSE_SKIP.indexOf(k) >= 0) return;
+    const f = window[k];
+    if (typeof f !== 'function' || f.length) return;     // 引数の要る関数は呼ばない
+    try { f(); } catch(_) {}
+  });
+  document.querySelectorAll('.show').forEach(el => {
+    if (SHEET_KEEP.indexOf(el.id) >= 0) return;
+    try { if (getComputedStyle(el).position !== 'fixed') return; } catch(_) { return; }
+    el.classList.remove('show');
+  });
+}
 function _closeAllPopups(except) {
   if (typeof closeClusterPicker === 'function') closeClusterPicker();   // v189
   if (_moveWp) _moveCancel();          // 場所を動かす途中なら、やめる（v164）
@@ -7178,19 +7212,20 @@ function _onSwipe(el, onLeft, onRight){
   el.addEventListener('pointercancel', () => { id = null; }, {passive:true});
 }
 const GUIDE = [
-  {scr:'list', sel:'.s1-fab', t:'① コースを作りましょう', d:'「新しいコースを作成」を押します。',
-   done:() => _vis('#newCourseSheet.show'), must:'「新しいコースを作成」を押してください'},
+  {scr:'list', sel:'.s1-fab', t:'① コースを作りましょう', d:'《b》 を押します。',
+   done:() => _vis('#newCourseSheet.show'), must:'《b》 を押してください'},
   {scr:'new', sel:'#s1Name', t:'② 名前をつけます', d:'例：飯見の棚田おにぎりウォーク（エリアは空欄でも大丈夫）',
    done:() => (document.getElementById('s1Name') || {}).value},
-  {scr:'new', sel:'#s1Btn', t:'③ 地図を開きます', d:'「作成してマップへ」を押します。',
-   done:() => _vis('#s2') && !_vis('#newCourseSheet.show'), must:'「作成してマップへ」を押してください'},
+  {scr:'new', sel:'#s1Btn', t:'③ 地図を開きます', d:'《b》 を押します。',
+   done:() => _vis('#s2') && !_vis('#newCourseSheet.show'), must:'《b》 を押してください'},
   {scr:'first', sel:'#firstTip', t:'④ どれから始めますか', d:
    '<b>地図を長押しして置く</b>…1つずつ置く<br><b>指でなぞって描く</b>…なぞった道がコースに<br><b>まわりの施設を探す</b>…お店・神社・バス停などをまとめて<br>どれでも、あとから他のやり方もできます。'},
   {scr:'nearby', sel:null, t:'まわりの施設を探します', d:
-   '<b>距離</b>と<b>種類</b>を選んで <b>「探す」</b> → 置きたいものに✓ → <b>「選んだ ○ 件を追加」</b>。<br>多すぎたら、あとで「スポットを整理」でまとめて消せます。'},
-  {scr:'start', sel:null, t:'スタート地点を決めます', d:'歩きはじめる場所を選びます（駐車場やバス停が便利）。近い順に並んでいます。あとから変えられます。'},
+   '<b>距離</b>と<b>種類</b>を選んで 《b:#nbSearch|探す》 → 置きたいものに✓ → 《b:#nbAdd|選んだものを追加》。<br>多すぎたら、あとで「スポットを整理」でまとめて消せます。'},
+  {scr:'start', sel:null, t:'スタート地点を決めます', d:
+   '歩きはじめる場所を選んで 《b:#spGo|ここをスタートにする》 を押します（駐車場やバス停が便利）。近い順に並んでいます。あとから変えられます。'},
   {scr:'spot', sel:null, t:'名前・写真・説明を書きます', d:
-   '<b>種別</b>で見た目が変わります。<b>この場所の役</b>でスタート／ゴールにできます。書いたら「保存」。'},
+   '<b>種別</b>で見た目が変わります。<b>この場所の役</b>でスタート／ゴールにできます。書いたら 《b:#mOver .m-hbtn.save|保存》。'},
   {scr:'map', sel:'#map', big:1, t:'⑤ スポットを置きます', d:
    '地図を<b>長押し</b>→「コースに入れる」（歩く順に入る）か「立ち寄り先にする」（目印だけ）。',
    done:() => wps.filter(w => w && w.type !== 'node').length > 0},
@@ -7198,16 +7233,16 @@ const GUIDE = [
    '<b>スポット</b>＝置く／<b>手描き</b>＝なぞって引く／<b>ルート調整</b>＝線を動かす／<b>道を足す</b>＝地図に無い道'},
   {scr:'map', sel:'#map', big:1, t:'⑦ 2つ目を置くと道順が引かれます', d:'○を押すと、名前・写真・説明を書けます。',
    done:() => wps.filter(w => w && w.type !== 'node' && _onRouteOf(w)).length > 1},
-  {scr:'map', sel:'.mob-save', t:'⑧ 保存します', d:'勝手には保存しません。「保存」を押してこの端末に残します。', done:() => !_dirty},
-  {scr:'map', sel:'.mob-back', t:'⑨ 一覧にもどります', d:'左上の ← を押すと、保存したコースの一覧にもどります。',
-   done:() => _vis('#s1'), must:'左上の ← を押して一覧にもどってください'},
+  {scr:'map', sel:'.mob-save', t:'⑧ 保存します', d:'勝手には保存しません。《b|保存》 を押してこの端末に残します。', done:() => !_dirty},
+  {scr:'map', sel:'.mob-back', t:'⑨ 一覧にもどります', d:'左上の 《b|←》 を押すと、保存したコースの一覧にもどります。',
+   done:() => _vis('#s1'), must:'左上の 《b|←》 を押して一覧にもどってください'},
   {scr:'list', sel:'#courseList', t:'⑩ 作ったコースはここに並びます', d:'押すと、また地図の画面が開いて続きを作れます。'},
   {scr:'list', sel:'.s1-lib', t:'⑪ みんなのマップ', d:
-   'ここを押すと、<b>みんなが出したコース</b>が見られます。押すとその場で歩く人の画面が開きます。'},
+   '《b》 を押すと、<b>みんなが出したコース</b>が見られます。押すとその場で歩く人の画面が開きます。'},
   {scr:'lib', sel:'#libAdd', t:'⑫ 自分のコースを出す', d:
-   '「ここに自分のコースを出す」→ 名前と「見た人にできること（<b>見るだけ</b>／<b>編集できる</b>）」を選んで <b>「出す」</b>。<br>登録も合言葉もいりません。押した瞬間に全員の一覧に並びます。'},
-  {scr:'pub', sel:null, t:'名前と公開の仕方を選んで「出す」', d:
-   '<b>見るだけ</b>／<b>編集できる</b> を選んで <b>「出す」</b>。あとで自動的に保存先にも控えが残ります。'},
+   '《b|ここに自分のコースを出す》 → 名前と「見た人にできること（<b>見るだけ</b>／<b>編集できる</b>）」を選んで 《b:#pubGo|出す》。<br>登録も合言葉もいりません。押した瞬間に全員の一覧に並びます。'},
+  {scr:'pub', sel:null, t:'名前と公開の仕方を選んで出します', d:
+   '<b>見るだけ</b>／<b>編集できる</b> を選んで 《b:#pubGo|出す》 を押します。あとで自動的に保存先にも控えが残ります。'},
   {scr:'list', sel:null, last:1, t:'これでひと通りです', d:
    'コースは「配る」からも渡せます（共有リンク・印刷用シート・画像）。<br>この案内は、一覧の「はじめての方へ」からいつでも見られます。'}
 ];
@@ -7256,6 +7291,23 @@ function stopGuide(){
   if (_gdTimer) { clearInterval(_gdTimer); _gdTimer = null; }
   _gdI = -1;
 }
+/* 案内の文に出すボタン名は、**そのときの画面から読む**（v239）。
+   オーナー報告「また食い違ってる」。文にボタン名を書き写すと、ボタンの文字を直したときに
+   案内だけ古いまま残る。だから案内には {b} とだけ書き、ここで実物の文字に置き換える。
+     《b》           … その段が指しているボタンの文字
+     《b:#id》       … 別のボタンの文字
+     《b|←》         … 文字が無いボタン（絵だけ）のときに使う言い方 */
+function _gdBtn(sel, fb){
+  const el = sel ? document.querySelector(sel) : null;
+  const t = el ? String(el.textContent || '').replace(/\s+/g, ' ').trim() : '';
+  const w = t || fb || '';
+  return w ? ('<b>「' + escHtml(w) + '」</b>') : '';   // v239：まだ作られていない窓のボタンでも、空の「」を出さない
+}
+function _gdText(str, g){
+  return String(str == null ? '' : str).replace(/《b(?::([^|》]+))?(?:\|([^》]*))?》/g,
+    (m, sel, fb) => _gdBtn(sel || (g && g.sel), fb));
+}
+function _gdPlain(str, g){ return _gdText(str, g).replace(/<[^>]+>/g, ''); }   // トーストは文字だけ
 /* 先に進めるか（v230）：押してほしいボタンがある段は、押すまで進めない。
    ただし**1回うながしたら、次からは進める**（詰まって抜けられなくなるのを防ぐ） */
 function _gdCanNext(){
@@ -7263,7 +7315,7 @@ function _gdCanNext(){
   let ok = false; try { ok = !!(g.done && g.done()); } catch(_) {}
   if (ok || g._nudged) return true;
   g._nudged = true;
-  showToast(g.must);
+  showToast(_gdPlain(g.must, g));
   return false;
 }
 function _gdNext(){ if (_gdCanNext()) _gdGo(_gdI + 1); }
@@ -7274,8 +7326,8 @@ function _gdGo(i){
   const g = GUIDE[i];
   if (g.scr) _gdLast[g.scr] = i;   // v235：その画面で最後に見た段
   document.getElementById('gdStep').textContent = (i + 1) + ' / ' + GUIDE.length;
-  document.getElementById('gdT').innerHTML = g.t;
-  document.getElementById('gdD').innerHTML = g.d;
+  document.getElementById('gdT').innerHTML = _gdText(g.t, g);
+  document.getElementById('gdD').innerHTML = _gdText(g.d, g);
   document.getElementById('gdNext').textContent = (i === GUIDE.length - 1) ? 'おわり' : '次へ';
   _gdScrollTo(g);                    // v237：対象が画面の外なら、見える所まで送る
   _gdPlace();
@@ -7973,6 +8025,14 @@ async function saveSheetAsImage() {
 /* ============================================================
    MODE / UNDO / CLEAR
    ============================================================ */
+/* 道具は、コースを開くたび「スポット」から始める（v239・オーナー報告「前の画面で開いた設定が残ってる」）。
+   前のコースで「手描き」や「ルート調整」にしていると、次のコースでもそのままだった。 */
+function _resetTools(){
+  try { if (mode !== 'wp') setMode('wp'); } catch(_) {}
+  /* v239：閲覧モードのまま次のコースへ持ち越すと、画面は編集用なのに中身は閲覧モード、という
+     ちぐはぐな状態になっていた。共有リンク（URL で閲覧指定）のときだけ閲覧モードのままにする */
+  try { if (viewMode && !(typeof _viewParams === 'function' && _viewParams().on)) toggleViewMode(); } catch(_) {}
+}
 function setMode(m) {
   if (_moveWp) _moveCancel();          // v164
   if (_wpAdd) _closeAddWp();           // v171
@@ -9169,6 +9229,7 @@ function _nbRenderControls(){
 function openNearbySheet(){
   if (viewMode) { showToast('まわりの施設は編集画面で取り込めます'); return; }
   _closeAllPopups();
+  const kw = document.getElementById('nbKw'); if (kw) kw.value = '';   // v239：前に探した言葉を残さない
   const r = document.getElementById('nbRadius'); if (r && !r.children.length) r.innerHTML = NEARBY_RADII.map(v => '<button type="button" data-v="' + v + '" onclick="_nbPick(\'radius\',' + v + ')">' + (v >= 1000 ? (v / 1000) + ' km' : v + ' m') + '</button>').join('');
   _nbRenderControls(); _nbRenderList(); _nbRenderLayer();
   const ns = document.getElementById('nbNoSpot'); if (ns) ns.hidden = _stampTargets().length > 0;   // v165
@@ -10391,6 +10452,8 @@ function loadCourseData(data) {
   _dirty = false;             // 読み込み直後は未保存の変更なし
   clearTimeout(_autoSaveT); _autoSaveT = null; _setSaveState('saved');
 
+  _closeAllSheets();          // v239：前のコースで開いていた窓を持ち込まない
+  _resetTools();              // v239：道具は「スポット」から始める
   document.getElementById('s1').style.display = 'none';
   document.getElementById('s2').style.display = 'flex';
   document.getElementById('cnDisp').textContent = data.name;
