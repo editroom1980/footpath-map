@@ -749,8 +749,11 @@ body.viewonly #firstTip,body.embed #firstTip{display:none!important}
    穴を開けるのではなく「上下左右の4枚の幕」で囲む＝対象はそのまま押せる（作りが単純で壊れにくい） */
 #guideWrap{position:fixed;inset:0;z-index:5800;display:none;pointer-events:none}
 #guideWrap.on{display:block}
-#guideWrap .gd-dim{position:fixed;background:rgba(20,14,6,.55);pointer-events:auto;transition:all .12s ease-out}
-#guideWrap .gd-ring{position:fixed;border:2.5px solid #fff;border-radius:14px;box-shadow:0 0 0 3px rgba(196,112,58,.9),0 6px 22px rgba(0,0,0,.35);pointer-events:none;transition:all .12s ease-out}
+/* v230：穴そのものに大きな影を付けて外側を暗くする＝角丸のまま暗くなる（4枚の幕だと四隅が明るく残っていた） */
+#guideWrap .gd-hole{position:fixed;border-radius:16px;border:2.5px solid #fff;
+  box-shadow:0 0 0 3px rgba(196,112,58,.95), 0 0 0 9999px rgba(20,14,6,.55);
+  pointer-events:none;transition:all .12s ease-out}
+#guideWrap .gd-hole.full{border:0;border-radius:0;box-shadow:0 0 0 9999px rgba(20,14,6,.55)}
 #guideWrap .gd-tip{position:fixed;max-width:min(420px,calc(100vw - 24px));background:#fff;border-radius:14px;padding:13px 14px;box-shadow:0 10px 30px rgba(0,0,0,.32);pointer-events:auto}
 #guideWrap .gd-step{font-size:11px;font-weight:800;color:#fff;background:var(--brand);border-radius:9px;padding:2px 8px;display:inline-block;margin-bottom:5px}
 #guideWrap .gd-t{font-size:15.5px;font-weight:800;color:#3E2A0E;line-height:1.45;margin-bottom:4px}
@@ -3283,7 +3286,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 手描きの道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した手描きの道id（直前取り消し用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v229';
+const APP_VERSION = 'v230';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -7103,10 +7106,25 @@ let _tourI = 0;
    ・対象の部品だけ押せる（まわりは暗い幕）。押して進むか、「次へ」でも進める
    ・どの段でも「この手順はとばす」「やめる」で抜けられる
    ・部品が見つからない段は自動で飛ばす＝画面が変わっても止まらない */
+/* 横フリック（v230・オーナー指示「進んだり戻ったりできる所はフリックで」）。
+   縦に大きく動いたときは無視する＝スクロールの邪魔をしない */
+const SWIPE_PX = 50, SWIPE_SLOP = 40;
+function _onSwipe(el, onLeft, onRight){
+  if (!el || el._swipeOn) return; el._swipeOn = true;
+  let x0 = 0, y0 = 0, id = null;
+  el.addEventListener('pointerdown', e => { if (e.pointerType === 'mouse') return; id = e.pointerId; x0 = e.clientX; y0 = e.clientY; }, {passive:true});
+  el.addEventListener('pointerup', e => {
+    if (id === null || e.pointerId !== id) return;
+    const dx = e.clientX - x0, dy = e.clientY - y0; id = null;
+    if (Math.abs(dx) < SWIPE_PX || Math.abs(dy) > SWIPE_SLOP) return;
+    if (dx < 0) { if (onLeft) onLeft(); } else { if (onRight) onRight(); }
+  }, {passive:true});
+  el.addEventListener('pointercancel', () => { id = null; }, {passive:true});
+}
 const GUIDE = [
-  {sel:'.s1-fab', t:'① コースを作りましょう', d:'まず「新しいコースを作成」を押します。', done:() => _vis('#newCourseSheet.show')},
+  {sel:'.s1-fab', t:'① コースを作りましょう', d:'まず「新しいコースを作成」を押します。', done:() => _vis('#newCourseSheet.show'), must:'「新しいコースを作成」を押してください'},
   {sel:'#s1Name', t:'② 名前をつけます', d:'例：飯見の棚田おにぎりウォーク<br>エリアは空欄でもかまいません（現在地になります）。', done:() => (document.getElementById('s1Name') || {}).value},
-  {sel:'#s1Btn', t:'③ 地図を開きます', d:'「作成してマップへ」を押すと、地図の画面になります。', done:() => _vis('#s2') && !_vis('#newCourseSheet.show')},
+  {sel:'#s1Btn', t:'③ 地図を開きます', d:'「作成してマップへ」を押すと、地図の画面になります。', done:() => _vis('#s2') && !_vis('#newCourseSheet.show'), must:'「作成してマップへ」を押してください'},
   {sel:'#map', t:'④ スポットを置きます', d:'地図を<b>長押し</b>すると「ここにスポットを追加しますか？」と出ます。<br>歩く順に入れるなら「コースに入れる」、目印だけなら「立ち寄り先にする」。', done:() => wps.filter(w => w && w.type !== 'node').length > 0, big:1},
   {sel:'#mobileWpBtn', t:'⑤ 道具の使い分け', d:'下の道具で、置くもの・描くものを切り替えます。<br>・<b>スポット</b>…目印を置く<br>・<b>手描き</b>…指でなぞって道順を引く<br>・<b>ルート調整</b>…引かれた線を動かす<br>・<b>道を足す</b>…地図に無い道を描く'},
   {sel:'#map', t:'⑥ もう1つ置くと道順が引かれます', d:'2つ目のスポットを置くと、道なりに赤い線が引かれます。<br>○を押すと、名前・写真・説明を書けます。', done:() => wps.filter(w => w && w.type !== 'node' && _onRouteOf(w)).length > 1, big:1},
@@ -7122,17 +7140,16 @@ function startGuide(){
   let w = document.getElementById('guideWrap');
   if (!w) {
     w = document.createElement('div'); w.id = 'guideWrap';
-    w.innerHTML = '<div class="gd-dim" data-d="t"></div><div class="gd-dim" data-d="b"></div>'
-      + '<div class="gd-dim" data-d="l"></div><div class="gd-dim" data-d="r"></div>'
-      + '<div class="gd-ring" id="gdRing"></div>'
+    w.innerHTML = '<div class="gd-hole" id="gdHole"></div>'
       + '<div class="gd-tip"><span class="gd-step" id="gdStep"></span><div class="gd-t" id="gdT"></div><div class="gd-d" id="gdD"></div>'
       + '<div class="gd-foot"><button type="button" class="gd-next tap" id="gdNext">次へ</button>'
       + '<button type="button" class="gd-skip tap" id="gdSkip">とばす</button>'
       + '<button type="button" class="gd-quit tap" id="gdQuit">やめる</button></div></div>';
     document.body.appendChild(w);
-    w.querySelector('#gdNext').addEventListener('click', () => _gdGo(_gdI + 1));
-    w.querySelector('#gdSkip').addEventListener('click', () => _gdGo(_gdI + 1));
+    w.querySelector('#gdNext').addEventListener('click', _gdNext);
+    w.querySelector('#gdSkip').addEventListener('click', () => _gdGo(_gdI + 1));   // 「とばす」はいつでも進める
     w.querySelector('#gdQuit').addEventListener('click', stopGuide);
+    _onSwipe(w.querySelector('.gd-tip'), _gdNext, _gdBack);   // v230：左へフリックで次、右へ戻る
   }
   try { localStorage.setItem(LS.tourSeen, '1'); } catch(_) {}
   w.classList.add('on');
@@ -7145,6 +7162,18 @@ function stopGuide(){
   if (_gdTimer) { clearInterval(_gdTimer); _gdTimer = null; }
   _gdI = -1;
 }
+/* 先に進めるか（v230）：押してほしいボタンがある段は、押すまで進めない。
+   ただし**1回うながしたら、次からは進める**（詰まって抜けられなくなるのを防ぐ） */
+function _gdCanNext(){
+  const g = GUIDE[_gdI]; if (!g || !g.must) return true;
+  let ok = false; try { ok = !!(g.done && g.done()); } catch(_) {}
+  if (ok || g._nudged) return true;
+  g._nudged = true;
+  showToast(g.must);
+  return false;
+}
+function _gdNext(){ if (_gdCanNext()) _gdGo(_gdI + 1); }
+function _gdBack(){ if (_gdI > 0) _gdGo(_gdI - 1); }
 function _gdGo(i){
   if (i >= GUIDE.length) { stopGuide(); showToast('お疲れさまでした。いつでも「はじめての方へ」から見られます'); return; }
   _gdI = i;
@@ -7168,24 +7197,17 @@ function _gdRect(){
 function _gdPlace(){
   const w = document.getElementById('guideWrap'); if (!w || !w.classList.contains('on')) return;
   const r = _gdRect(), W = innerWidth, H = innerHeight;
-  const put = (d, x, y, ww, hh) => { const e = w.querySelector('.gd-dim[data-d="' + d + '"]');
-    e.style.left = Math.max(0, x) + 'px'; e.style.top = Math.max(0, y) + 'px';
-    e.style.width = Math.max(0, ww) + 'px'; e.style.height = Math.max(0, hh) + 'px'; };
-  const ring = w.querySelector('#gdRing'), tip = w.querySelector('.gd-tip');
+  const hole = w.querySelector('#gdHole'), tip = w.querySelector('.gd-tip');
   if (!r) {                                   // 対象が無い段は、画面全体を暗くして真ん中に出す
-    put('t', 0, 0, W, H); put('b', 0, H, W, 0); put('l', 0, 0, 0, 0); put('r', W, 0, 0, 0);
-    ring.style.display = 'none';
+    hole.classList.add('full');
+    hole.style.left = '0px'; hole.style.top = '0px'; hole.style.width = W + 'px'; hole.style.height = '0px';
     tip.style.left = Math.round((W - Math.min(420, W - 24)) / 2) + 'px';
     tip.style.top = Math.round(H / 2 - 90) + 'px';
     return;
   }
-  ring.style.display = 'block';
-  ring.style.left = r.left + 'px'; ring.style.top = r.top + 'px';
-  ring.style.width = r.width + 'px'; ring.style.height = r.height + 'px';
-  put('t', 0, 0, W, r.top);
-  put('b', 0, r.top + r.height, W, H - (r.top + r.height));
-  put('l', 0, r.top, r.left, r.height);
-  put('r', r.left + r.width, r.top, W - (r.left + r.width), r.height);
+  hole.classList.remove('full');
+  hole.style.left = r.left + 'px'; hole.style.top = r.top + 'px';
+  hole.style.width = r.width + 'px'; hole.style.height = r.height + 'px';
   const th = tip.offsetHeight || 150, tw = Math.min(420, W - 24);
   let ty = r.top + r.height + 12;
   if (ty + th > H - 10) ty = r.top - th - 12;
@@ -7218,6 +7240,8 @@ function openTour(i){
     sh.addEventListener('click', e => { if (e.target === sh) closeTour(); });
     sh.querySelector('.tr-x').addEventListener('click', closeTour);
     sh.querySelector('#tourBack').addEventListener('click', () => { if (_tourI > 0) { _tourI--; _tourRender(); } });
+    _onSwipe(sh.querySelector('.tr-box'), () => { if (_tourI < TOUR.length - 1) { _tourI++; _tourRender(); } },
+                                          () => { if (_tourI > 0) { _tourI--; _tourRender(); } });   // v230：フリックでめくる
     sh.querySelector('#tourNext').addEventListener('click', () => {
       if (_tourI < TOUR.length - 1) { _tourI++; _tourRender(); return; }
       closeTour();
@@ -8213,10 +8237,20 @@ function showViewInfo(wpId) {
 
   const panel = document.getElementById('viewInfoPanel');   // 表示後に参照写真を流し込む（_fillPhotoImgs）
   panel.innerHTML = html2;
+  _onSwipe(panel, () => _viewInfoStep(1), () => _viewInfoStep(-1));   // v230：フリックで次／前のスポット
   _fillPhotoImgs(panel);        // 参照(idb:)の写真を取り出して表示
   panel.classList.add('show');
 }
 
+/* 歩く人のカードを左右にフリックすると、次／前のスポットへ（v230） */
+function _viewInfoStep(d){
+  const list = wps.filter(w => w && w.type !== 'node' && (_hasRole(w) || _isNumbered(w) || _onRouteOf(w) === false))
+                  .sort((a, b) => (_isStart(a) ? -1 : _isStart(b) ? 1 : 0) || ((courseNum(a) || 999) - (courseNum(b) || 999)));
+  if (!list.length) return;
+  const i = list.findIndex(w => w.id === _viewInfoId);
+  const n = list[(i < 0 ? 0 : i + d + list.length) % list.length];
+  if (n) { showViewInfo(n.id); if (leafMap) leafMap.panTo([n.lat, n.lng], {animate:true}); }
+}
 function closeViewInfo() {
   _viewInfoId = null;
   document.getElementById('viewInfoPanel').classList.remove('show');

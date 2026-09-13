@@ -447,6 +447,17 @@ def static_checks(src):
     # --- v157: 番号の丸と種類の丸を横に並べる（オーナー指摘：iPhone で片方しか見えない）---
     chk('静的', '番号つきで種類がある地点：地図は「種類の丸＋右上に番号の小丸」、一覧・並べ替え・印刷用シート・カードは番号と種類を並べて出す',
         'class="wp-num"' in src and 'class="wp-dot cat"' in src and 'class="ro-badge cat"' in src and 'class="sh-cat"' in src and 'class="vip-dot vip-dot2"' in src and '_catBadge' not in src and 'wp-pair' not in src)
+    # --- v230: 案内の枠を角丸のまま暗くする／フリックで進む・戻る ---
+    chk('静的', '案内の暗幕は「丸い穴＋大きな影」1枚（四隅が明るく残らない）。押してほしいボタンは押すまで進まない（1回うながしたら進める）',
+        '.gd-hole{position:fixed;border-radius:16px' in src and '0 0 0 9999px rgba(20,14,6,.55)' in src
+        and '.gd-dim' not in src and 'function _gdCanNext' in src and "must:'「新しいコースを作成」を押してください'" in src
+        and 'g._nudged' in src)
+    chk('静的', '進む・戻るができる所はフリックでも動く（案内・読むだけの案内・歩く人のカード）',
+        'function _onSwipe' in src and 'const SWIPE_PX = 50' in src
+        and "_onSwipe(w.querySelector('.gd-tip'), _gdNext, _gdBack);" in src
+        and "_onSwipe(sh.querySelector('.tr-box')" in src
+        and '_onSwipe(panel, () => _viewInfoStep(1), () => _viewInfoStep(-1));' in src
+        and 'function _viewInfoStep' in src)
     # --- v229: シートのボタンの高さをそろえる（オーナー指摘「やたらと縦幅の細いボタンがある」）---
     chk('静的', 'シートのボタンは指で押せる高さ（--tap）にそろえる',
         '.f-ghost{border:none;background:#F2EEE7;border-radius:10px;min-height:var(--tap)' in src
@@ -456,7 +467,7 @@ def static_checks(src):
     # --- v228: さわりながら覚える案内（実際の操作をしながら吹き出しで案内）---
     chk('静的', 'さわりながら覚える案内：対象の部品だけ押せる（4枚の幕）・操作すると次へ進む・とばす／やめるがある',
         'const GUIDE = [' in src and 'function startGuide' in src and 'function _gdTick' in src and 'function _gdPlace' in src
-        and "w.id = 'guideWrap'" in src and 'class="gd-dim"' in src and 'id="gdRing"' in src
+        and "w.id = 'guideWrap'" in src and 'class="gd-hole" id="gdHole"' in src
         and 'id="gdNext"' in src and 'id="gdSkip"' in src and 'id="gdQuit"' in src
         and 'onclick="startGuide()"' in src and 'setInterval(_gdTick, 300)' in src)
     # --- v227: 取り込みのあと、まずスタート地点を決める ---
@@ -2327,6 +2338,39 @@ def functional_checks(index_path):
             isinstance(bx, dict) and all(bx.get(k) for k in ('oneBtn', 'idx', 'body', 'list', 'open', 'mine', 'heal', 'big', 'moved',
                                                             'phPut', 'phFlag', 'phGot', 'phSticker', 'dup', 'dup2', 'dup3',
                                                             'mineFlag', 'deleted', 'delMark', 'moved2')), str(bx)[:420])
+
+        # v230: 押すまで進まない／フリックで進む・戻る
+        gf = page.evaluate("""async ()=>{ try{
+            const out = {}, keepS1 = document.getElementById('s1').style.display, keepS2 = document.getElementById('s2').style.display;
+            document.getElementById('s2').style.display = 'none'; document.getElementById('s1').style.display = 'flex';
+            closeNewCourseSheet();
+            GUIDE.forEach(g => { delete g._nudged; });
+            startGuide(); await new Promise(r => setTimeout(r, 250));
+            // ① 押してほしい段は、1回目は進まない（うながす）→2回目は進む
+            _gdNext();
+            out.blocked = document.getElementById('gdStep').textContent === '1 / ' + GUIDE.length;
+            _gdNext();
+            out.thenOk = document.getElementById('gdStep').textContent === '2 / ' + GUIDE.length;
+            // ② フリック（左＝次／右＝戻る）
+            const tip = document.querySelector('#guideWrap .gd-tip'), r = tip.getBoundingClientRect();
+            const ev = (type, x) => tip.dispatchEvent(new PointerEvent(type, {pointerId:9, pointerType:'touch', isPrimary:true, bubbles:true,
+                        cancelable:true, clientX:x, clientY:Math.round(r.top + r.height/2)}));
+            ev('pointerdown', Math.round(r.left + r.width - 20)); ev('pointerup', Math.round(r.left + 20));
+            out.swipeNext = document.getElementById('gdStep').textContent === '3 / ' + GUIDE.length;
+            ev('pointerdown', Math.round(r.left + 20)); ev('pointerup', Math.round(r.left + r.width - 20));
+            out.swipeBack = document.getElementById('gdStep').textContent === '2 / ' + GUIDE.length;
+            // ③ 縦に大きく動いたときは無視する
+            const y = Math.round(r.top + r.height/2);
+            tip.dispatchEvent(new PointerEvent('pointerdown', {pointerId:9, pointerType:'touch', isPrimary:true, bubbles:true, clientX:Math.round(r.left + r.width - 20), clientY:y}));
+            tip.dispatchEvent(new PointerEvent('pointerup', {pointerId:9, pointerType:'touch', isPrimary:true, bubbles:true, clientX:Math.round(r.left + 20), clientY:y + 120}));
+            out.vertIgnored = document.getElementById('gdStep').textContent === '2 / ' + GUIDE.length;
+            stopGuide();
+            document.getElementById('s1').style.display = keepS1; document.getElementById('s2').style.display = keepS2;
+            document.querySelectorAll('#toastBox .toast').forEach(e => e.remove());
+            return out;
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        chk('機能', '押してほしいボタンは1回うながしてから進める／フリックで次・前へ（縦フリックは無視）',
+            isinstance(gf, dict) and all(gf.get(k) for k in ('blocked', 'thenOk', 'swipeNext', 'swipeBack', 'vertIgnored')), str(gf)[:200])
 
         # v228: さわりながら覚える案内
         gd = page.evaluate("""async ()=>{ try{
