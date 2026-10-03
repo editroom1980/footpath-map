@@ -447,6 +447,17 @@ def static_checks(src):
     # --- v157: 番号の丸と種類の丸を横に並べる（オーナー指摘：iPhone で片方しか見えない）---
     chk('静的', '番号つきで種類がある地点：地図は「種類の丸＋右上に番号の小丸」、一覧・並べ替え・印刷用シート・カードは番号と種類を並べて出す',
         'class="wp-num"' in src and 'class="wp-dot cat"' in src and 'class="ro-badge cat"' in src and 'class="sh-cat"' in src and 'class="vip-dot vip-dot2"' in src and '_catBadge' not in src and 'wp-pair' not in src)
+    # --- v242: みんなのマップの写真（オーナー報告「写真もアップしているのに1〜2個しか表示されない」）---
+    chk('静的', 'みんなのマップの写真：付けた写真は全部（1スポット12枚・約600万字まで）を約70万字ずつに分けて置き、見る側は全部つないで貼る',
+        'const SHARE_PH_PER_SPOT = PHOTO_MAX_PER_SPOT, SHARE_PH_TOTAL = 6000000;' in src and 'const SHARE_PH_CHUNK = 700000;' in src
+        and 'function _phChunks' in src and 'function _phMerge' in src and 'function _boxPhUrls' in src and 'function _phCount' in src
+        and "return b + '-' + id + (what === 'ph' ? '-ph' + (i ? String(i) : '') : '');" in src
+        and 'ph: e.ph ? (_phCount(e.ph) || 1) : undefined' in src                      # 一覧に「何個に分けたか」を残す
+        and 'const p = _phMerge(await Promise.all(urls.map(_fetchPhPart)));' in src
+        and 'if (parts.some(x => !x || !x.p)) continue;' in src                         # 写すとき、1つでも読めなければ写さない（落とさない）
+        and 'await _boxMirror([entry]); _libCache = null;' in src                       # 作者の端末から出しても写真なしの写しを作らない
+        and "_ghPutFile(r.file, r.body, 'みんなのマップ: '" not in src.split('async function _pubOut')[1].split('function closePublishSheet')[0]
+        and "lc.icon = (await _photoSrc(lc.icon)) || undefined;" in src)                  # 一覧の絵は実物を入れる
     # --- v241: ポイントの表示ボタン（押すたびに すべて→コースだけ→線だけ／長押しで種類）・並べ替えはコースの印だけ・閉じるは隅に固定 ---
     chk('静的', 'ポイントの表示：スマホは右の列・PC は右上にボタン。隠すのは _declutter（束ねる前）と _applyVpVis だけ。種類の設定は LS に',
         'id="mobilePtsBtn" data-pts="1"' in src and 'id="btnPts" data-pts="1"' in src and 'onclick="closePcPops();openPtSheet()"' in src
@@ -657,7 +668,7 @@ def static_checks(src):
     chk('静的', '出す前に「写真◯枚も一緒に出します」を見せ、届かなければ小さくしてやり直し、結果も知らせる。地図では文字選択と長押しメニューを切る（拡大鏡が出ない）',
         'function _pubPreparePhotos' in src and 'id="pubPh"' in src and '📷 写真 ' in src
         and '写真はこの端末に実物がないため入りません' in src and 'const BOX_PH_TIMEOUT = 60000;' in src
-        and "_sharePhotos(_pubCourse, {px: 420, per: 1, cap: 220000})" in src and '_boxPhSent' in src
+        and 'if (!ok) ok = await _boxWrite(cfg, \'ph\', entry.id, {p: chunks[k]}, k);' in src and '_boxPhSent' in src   # v242：小さくするのをやめ、分けた1つずつをやり直す
         and '出しました（写真' in src and '#map,#map *{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}' in src
         and '.leaflet-overlay-pane, button' not in src)   # v207：canvas を弾かない（実機で始められなかった原因）
     # --- v206: 片手で拡大縮小（ダブルタップして押したまま上下） ---
@@ -735,7 +746,43 @@ def static_checks(src):
                 _store[key] = data
                 return 'ok'
             _mod._http = _fake
+            # v242：写真つき（2つに分けて置いた）コースと、写真を写しそこねた古い写し（library にあって写真なし）
+            _img = lambda c: 'data:image/jpeg;base64,' + c * 40
+            _store[_base + 'k1'] = json.dumps({'courses': json.loads(_store[_base + 'k1'])['courses'] + [
+                {'id': '20261003-pppp', 'name': '写真テスト', 'at': '2026-10-03', 'ph': 2}]})
+            _store[_base + 'k1-20261003-pppp'] = json.dumps({'d': 'PAYLOAD-PPPP'})
+            _store[_base + 'k1-20261003-pppp-ph'] = json.dumps({'p': {'1': [_img('A'), _img('B')], '2': [_img('C')]}})
+            _store[_base + 'k1-20261003-pppp-ph1'] = json.dumps({'p': {'2': [_img('D')], '3': [_img('E')]}})
+            os.makedirs(_mod.LIB_DIR, exist_ok=True)
+            json.dump({'name': '古い写し', 'from': 'box', 'd': 'OLD'}, open(os.path.join(_mod.LIB_DIR, 'box-20261003-oldp.json'), 'w', encoding='utf-8'))
+            _store[_base + 'k1-20261003-oldp-ph'] = json.dumps({'p': {'7': [_img('F')]}})
+            json.dump({'name': '写真なし', 'from': 'box', 'd': 'NONE'}, open(os.path.join(_mod.LIB_DIR, 'box-20261003-none.json'), 'w', encoding='utf-8'))
+            _store[_base + 'k1-20261003-none-ph'] = ''                                                  # 箱に写真が無い（空）
             _mod.main()
+            _pp = os.path.join(_mod.LIB_DIR, 'box-20261003-pppp-photos.json')
+            _pj = json.load(open(_pp, encoding='utf-8'))['p'] if os.path.exists(_pp) else {}
+            _mv['phAll'] = (_pj.get('1') == [_img('A'), _img('B')] and _pj.get('2') == [_img('C'), _img('D')] and _pj.get('3') == [_img('E')])   # 2つに分けた写真を全部・順番どおりつなぐ
+            _pc = json.load(open(os.path.join(_mod.LIB_DIR, 'box-20261003-pppp.json'), encoding='utf-8'))
+            _mv['phLink'] = _pc.get('ph') == 'library/box-20261003-pppp-photos.json' and _pc.get('phn') == 2
+            _mv['phBlank'] = _store.get(_base + 'k1-20261003-pppp-ph') == '' and _store.get(_base + 'k1-20261003-pppp-ph1') == ''   # 写したら箱の写真は全部空にする
+            _old = json.load(open(os.path.join(_mod.LIB_DIR, 'box-20261003-oldp.json'), encoding='utf-8'))
+            _op = os.path.join(_mod.LIB_DIR, 'box-20261003-oldp-photos.json')
+            _mv['backfill'] = (_old.get('ph') == 'library/box-20261003-oldp-photos.json' and os.path.exists(_op)
+                               and json.load(open(_op, encoding='utf-8'))['p'].get('7') == [_img('F')])                  # 写しそこねた写真を補う
+            _non = json.load(open(os.path.join(_mod.LIB_DIR, 'box-20261003-none.json'), encoding='utf-8'))
+            _mv['noPh'] = _non.get('phChecked') == 1 and not _non.get('ph')                                              # 箱に写真が無ければ、調べた印だけ
+            for _n in ('box-20261003-pppp.json', 'box-20261003-pppp-photos.json', 'box-20261003-oldp.json', 'box-20261003-oldp-photos.json', 'box-20261003-none.json'):
+                os.remove(os.path.join(_mod.LIB_DIR, _n))
+            # つながらないときは、写真を写さず箱に残す（次の回にやり直す）
+            _store[_base + 'k1'] = json.dumps({'courses': json.loads(_store[_base + 'k1'])['courses'] + [
+                {'id': '20261003-qqqq', 'name': '途中で切れる', 'at': '2026-10-03', 'ph': 2}]})
+            _store[_base + 'k1-20261003-qqqq'] = json.dumps({'d': 'PAYLOAD-QQQQ'})
+            _store[_base + 'k1-20261003-qqqq-ph'] = json.dumps({'p': {'1': [_img('G')]}})              # 2つ目（-ph1）が届いていない
+            _mod.main()
+            _mv['retry'] = (not os.path.exists(os.path.join(_mod.LIB_DIR, 'box-20261003-qqqq.json'))
+                            and any(r.get('id') == '20261003-qqqq' for r in json.loads(_store[_base + 'k1'])['courses'])
+                            and _store.get(_base + 'k1-20261003-qqqq-ph') != '')
+            _store[_base + 'k1'] = json.dumps({'courses': [r for r in json.loads(_store[_base + 'k1'])['courses'] if r.get('id') != '20261003-qqqq']})
             _f = os.path.join(_mod.LIB_DIR, 'box-20260912-aaaa.json')
             _mv['wrote'] = os.path.exists(_f)
             _one = json.load(open(_f, encoding='utf-8')) if _mv['wrote'] else {}
@@ -751,6 +798,8 @@ def static_checks(src):
             _mv = {'err': str(_e)[:120]}
     chk('機能', '写し取りの道具：箱のコースを library/box-<ID>.json に書き、箱から外し、中身を空にする。大きすぎるものは残し、不正なIDは書かない。2回目は増えない',
         all(_mv.get(k) for k in ('wrote', 'body', 'gone', 'kept', 'badid', 'blank', 'again')), str(_mv)[:200])
+    chk('機能', '写し取りの道具（v242）：分けて置いた写真を全部つないで写し、箱の写真は全部空にする。写しそこねた古い写しに写真を補い、つながらなければ写さず次の回に回す',
+        all(_mv.get(k) for k in ('phAll', 'phLink', 'phBlank', 'backfill', 'noPh', 'retry')), str({k: _mv.get(k) for k in ('phAll', 'phLink', 'phBlank', 'backfill', 'noPh', 'retry', 'err')}))
     chk('静的', 'アプリ側：写し終わったコースは保存先のぶんだけ出す（二重に並べない／端末の控えも外す）',
         'function _boxIdFromFile' in src and 'function _boxForget' in src and 'if (e && e.boxId) moved[e.boxId] = 1;' in src
         and 'boxRows.forEach(e => { if (!moved[e.id]) out.push(e); });' in src and '_boxForget(Object.keys(moved));' in src
@@ -2408,7 +2457,7 @@ def functional_checks(index_path):
             const keepWps = wps.slice(); wps.length = 0; wps.push({id: 1, type:'spot', name:'あ', photos: []});
             const keepStick = courseInfo.stickers, keepView = viewMode; courseInfo.stickers = false; viewMode = true;
             _sharePhSet(phKey); await _applySharePhotos();
-            out.phGot = Array.isArray(wps[0].photos) && wps[0].photos.length === 1 && _sharePhTake() === '';
+            out.phGot = Array.isArray(wps[0].photos) && wps[0].photos.length === 1 && _sharePhTake().length === 0;
             out.phSticker = keepStick === false && courseInfo.stickers === true;   // v208：歩く人の画面では写真を地図にも出す
             courseInfo.stickers = keepStick; viewMode = keepView;
             wps.length = 0; keepWps.forEach(w => wps.push(w));
@@ -2463,6 +2512,78 @@ def functional_checks(index_path):
             isinstance(bx, dict) and all(bx.get(k) for k in ('oneBtn', 'idx', 'body', 'list', 'open', 'mine', 'heal', 'big', 'moved',
                                                             'phPut', 'phFlag', 'phGot', 'phSticker', 'dup', 'dup2', 'dup3',
                                                             'mineFlag', 'deleted', 'delMark', 'moved2')), str(bx)[:420])
+
+        # v242: 写真の多いコースでも、付けた写真は全部とどく（オーナー報告「写真もアップしているのに1〜2個しか表示されない」）
+        bp = page.evaluate("""async ()=>{ try{
+            const keepFetch = window.fetch, keepCfg = _boxCfgCache, keepMine = localStorage.getItem(LS.boxMine);
+            const keepTok = window._ghToken, keepRepo = window._ghRepo, keepPut = window._ghPutFile;
+            const base = 'https://example.invalid/api/data/', store = {}, posts = [];
+            _boxCfgCache = {kind:'textdb', base: base, key:'k2'};
+            window.fetch = async (u, o) => { const s = String(u).split('?')[0];
+              if (s.indexOf(base) !== 0) return keepFetch(u, o);
+              if (o && o.method === 'POST') { store[s] = o.body; posts.push(s); return new Response('ok', {status:200}); }
+              return new Response(store[s] || '', {status:200}); };      // textdb は置いていない所も 200 で空を返す
+            /* 写真：毎回ちがう模様（縮めても小さくならない）にして、3スポット×4枚＝12枚 */
+            const shot = k => { const c = document.createElement('canvas'); c.width = 900; c.height = 700; const g = c.getContext('2d');
+              const img = g.createImageData(900, 700); let x = 12345 + k * 7919;
+              for (let i = 0; i < img.data.length; i += 4) { x = (x * 1103515245 + 12345) & 0x7fffffff; img.data[i] = x & 255; img.data[i+1] = (x >> 8) & 255; img.data[i+2] = (x >> 16) & 255; img.data[i+3] = 255; }
+              g.putImageData(img, 0, 0); return c.toDataURL('image/jpeg', 0.9); };
+            const course = {id: 994001, name:'写真の多いコース', area:'兵庫県',
+              wps:[1, 2, 3].map(i => ({id: i, type:'spot', name:'S' + i, lat:35.1 + i * 0.001, lng:134.4, photos:[0, 1, 2, 3].map(k => shot(i * 10 + k))}))};
+            const out = {};
+            const sp = await _sharePhotos(course);
+            out.count = sp.count; out.over = sp.over; out.chunksPlanned = _phChunks(sp.photos).length;
+            const entry = {id:'20261003-test01', name: course.name, area: course.area, by:'検査', at:'2026-10-03', allowEdit:true, box:true, cid:'994001', ts:'2026-10-03T00:00:00Z'};
+            const res = await _boxPublish(entry, 'PAYLOAD', sp.photos);
+            out.ok = res.ok === true; out.ph = entry.ph; out.sentAll = _boxPhSent === true && _boxPhSentN === 12;
+            out.keys = Object.keys(store).filter(k => k.indexOf('-ph') >= 0).map(k => k.split('test01')[1]).sort().join(',');
+            out.chunkMax = Math.max(...Object.keys(store).filter(k => k.indexOf('-ph') >= 0).map(k => store[k].length));
+            const row = (await _boxList()).find(e => e.id === entry.id) || {};
+            out.rowPh = row.ph;                                                    // 一覧に「何個に分けたか」が残る
+            /* 見る側：分けて置いた全部を取って、つないで貼る */
+            const keepWps = wps.slice(), keepView = viewMode, keepStick = courseInfo.stickers;
+            wps.length = 0; [1, 2, 3].forEach(i => wps.push({id: i, type:'spot', name:'S' + i, photos: []}));
+            viewMode = true;
+            _sharePhSet(_boxPhUrls(_boxCfgCache, entry.id, row.ph)); await _applySharePhotos();
+            out.got = wps.map(w => w.photos.length).join(',');
+            out.order = wps[1].photos[0] === sp.photos['2'][0] && wps[1].photos[3] === sp.photos['2'][3];   // 並びも出したとおり
+            wps.length = 0; keepWps.forEach(w => wps.push(w)); viewMode = keepView; courseInfo.stickers = keepStick;
+            /* 古い版が置いた「1つだけの在りか（文字）」も読める */
+            sessionStorage.setItem(SHARE_PH_KEY, 'library/x-photos.json'); out.oldForm = JSON.stringify(_sharePhTake()) === JSON.stringify(['library/x-photos.json']);
+            /* 保存先へ写すとき（作者の端末）：写真を全部1つのファイルにまとめて写す */
+            const puts = {};
+            window._ghToken = () => 'tok'; window._ghRepo = () => ({user:'u', repo:'r'});
+            window._ghPutFile = async (path, text) => { puts[path] = text; return {ok: true}; };
+            const n = await _boxMirror([row]);
+            const pf = JSON.parse(puts['library/box-' + entry.id + '-photos.json'] || '{}').p || {};
+            const body = JSON.parse(puts['library/box-' + entry.id + '.json'] || '{}');
+            out.mirror = n === 1 && Object.keys(pf).map(k => pf[k].length).join(',') === '4,4,4'
+                         && body.ph === 'library/box-' + entry.id + '-photos.json' && body.phn === row.ph;
+            /* 1つでも読めなければ写さない（写真を落とさない） */
+            const e2 = {id:'20261003-test02', name:'欠け', box:true, ph:2};
+            store[base + 'k2-20261003-test02'] = JSON.stringify({d:'P2'}); store[base + 'k2-20261003-test02-ph'] = JSON.stringify({p:{'1':['data:image/jpeg;base64,AA']}});
+            out.noPartial = (await _boxMirror([e2])) === 0 && !puts['library/box-20261003-test02.json'];
+            /* 消すときは、分けて置いた写真も全部空にする */
+            await _boxPublish({id:'20261003-test03', name:'消す', at:'2026-10-03', box:true}, 'P3', sp.photos);
+            const ok3 = await _boxDelete('20261003-test03');
+            out.delAll = ok3 && Object.keys(store).filter(k => k.indexOf('test03-ph') >= 0).every(k => store[k] === '""' || store[k] === '');
+            /* 一覧に出す絵：この端末の中の参照ではなく、実物を入れて配る */
+            _photoMem['ptesticon'] = 'data:image/jpeg;base64,SUNPTg==';
+            const link = await _makeDataLink({name:'絵', area:'', icon:'idb:ptesticon', wps:[]});
+            const lc = await _courseFromHash(link.slice(link.indexOf('#')));
+            out.icon = !!lc && lc.icon === 'data:image/jpeg;base64,SUNPTg==';
+            delete _photoMem['ptesticon'];
+            window.fetch = keepFetch; _boxCfgCache = keepCfg; window._ghToken = keepTok; window._ghRepo = keepRepo; window._ghPutFile = keepPut;
+            if (keepMine === null) localStorage.removeItem(LS.boxMine); else localStorage.setItem(LS.boxMine, keepMine);
+            document.querySelectorAll('#toastBox .toast').forEach(e => e.remove());
+            return out;
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        chk('機能', 'みんなのマップの写真：12枚つきのコースを出すと全部を分けて置き（1つ約70万字以下）、見る側は全部を順番どおり貼る。保存先へも全部写し、欠けていれば写さない。消すと全部消え、一覧の絵は実物で配る',
+            isinstance(bp, dict) and bp.get('count') == 12 and bp.get('over') == 0 and bp.get('chunksPlanned', 0) >= 2
+            and bp.get('ok') and bp.get('ph') == bp.get('chunksPlanned') and bp.get('sentAll') and bp.get('rowPh') == bp.get('ph')
+            and bp.get('chunkMax', 9e9) <= 700100 and bp.get('got') == '4,4,4' and bp.get('order') and bp.get('oldForm')
+            and bp.get('mirror') and bp.get('noPartial') and bp.get('delAll') and bp.get('icon'),
+            str(bp)[:400])
 
         # v237: 一覧まで案内し、みんなのマップを見える所まで送る
         gv = page.evaluate("""async ()=>{ try{

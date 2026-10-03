@@ -3413,7 +3413,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 手描きの道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した手描きの道id（直前取り消し用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v241';
+const APP_VERSION = 'v242';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -11345,19 +11345,43 @@ async function _boxCfg(){
   _boxCfgCache = (cfg && cfg.kind && cfg.kind !== 'off') ? cfg : null;
   return _boxCfgCache;
 }
-function _boxUrl(cfg, what, id){
+function _boxUrl(cfg, what, id, i){   // i＝写真を分けて置いたときの何番目か（v242。0 か省略で1つ目）
   if (cfg.kind === 'firebase') {   // 自分で用意した無料の箱（Firebase Realtime Database）
     const u = String(cfg.url || '').replace(/\/+$/, '');
     if (what === 'idx') return u + '/idx.json';
     if (what === 'row') return u + '/idx/' + id + '.json';
-    if (what === 'ph')  return u + '/ph/' + id + '.json';   // v202：写真
+    if (what === 'ph')  return u + '/ph/' + id + (i ? '-' + i : '') + '.json';   // v202：写真（v242：2つ目からは -1, -2 …）
     if (what === 'del') return u + '/del/' + id + '.json';  // v212：消した印
     if (what === 'delAll') return u + '/del.json';
     return u + '/c/' + id + '.json';
   }
   const b = String(cfg.base || BOX_DEFAULT.base) + String(cfg.key || BOX_DEFAULT.key);
   if (what === 'idx') return b;
-  return b + '-' + id + (what === 'ph' ? '-ph' : '');
+  return b + '-' + id + (what === 'ph' ? '-ph' + (i ? String(i) : '') : '');
+}
+/* 写真を何個に分けて置いたか（一覧の ph。v202〜241 は 1 か true＝1つだけ） */
+function _phCount(v){ return v === true ? 1 : Math.max(0, Math.min(99, parseInt(v, 10) || 0)); }
+function _boxPhUrls(cfg, id, n){ const out = []; for (let i = 0; i < Math.max(1, n); i++) out.push(_boxUrl(cfg, 'ph', id, i)); return out; }
+/* 写真を箱の1か所に入る大きさ（SHARE_PH_CHUNK）ずつに分ける。1スポットの写真が2つに分かれてもよい（読むときにつなぐ） */
+function _phChunks(photos){
+  const chunks = []; let cur = {}, size = 0;
+  Object.keys(photos || {}).forEach(id => {
+    (photos[id] || []).forEach(src => {
+      if (size && size + src.length > SHARE_PH_CHUNK) { chunks.push(cur); cur = {}; size = 0; }
+      (cur[id] = cur[id] || []).push(src); size += src.length;
+    });
+  });
+  if (size) chunks.push(cur);
+  return chunks;
+}
+/* 分けて置いた写真をつなぐ（見る側・写し取り側で同じ）。並びは置いた順のまま */
+function _phMerge(parts){
+  const out = {};
+  (parts || []).forEach(p => {
+    if (!p || typeof p !== 'object') return;
+    Object.keys(p).forEach(id => { if (Array.isArray(p[id])) out[id] = (out[id] || []).concat(p[id].filter(x => typeof x === 'string' && x)); });
+  });
+  return out;
 }
 async function _boxFetch(url, opt, ms){
   const ctl = (typeof AbortController === 'function') ? new AbortController() : null;
@@ -11365,22 +11389,22 @@ async function _boxFetch(url, opt, ms){
   try { return await fetch(url, Object.assign({cache: 'no-store'}, opt || {}, ctl ? {signal: ctl.signal} : {})); }
   finally { clearTimeout(t); }
 }
-async function _boxRead(cfg, what, id){
+async function _boxRead(cfg, what, id, i){
   try {
-    const r = await _boxFetch(_boxUrl(cfg, what, id) + '?t=' + Date.now());
+    const r = await _boxFetch(_boxUrl(cfg, what, id, i) + '?t=' + Date.now());
     if (!r.ok) return null;
     const t = (await r.text()).trim();
     if (!t || t === 'null') return null;
     return JSON.parse(t);
   } catch(_) { return null; }
 }
-async function _boxWrite(cfg, what, id, obj){
+async function _boxWrite(cfg, what, id, obj, i){
   try {
     const body = JSON.stringify(obj);
     const opt = (cfg.kind === 'firebase')
       ? {method: 'PUT', headers: {'Content-Type': 'application/json'}, body: body}
       : {method: 'POST', headers: {'Content-Type': 'text/plain'}, body: body};   // text/plain＝ブラウザの事前問い合わせが起きない
-    const r = await _boxFetch(_boxUrl(cfg, what, id), opt, what === 'ph' ? BOX_PH_TIMEOUT : BOX_TIMEOUT);   // v207：写真は大きいので長く待つ
+    const r = await _boxFetch(_boxUrl(cfg, what, id, i), opt, what === 'ph' ? BOX_PH_TIMEOUT : BOX_TIMEOUT);   // v207：写真は大きいので長く待つ
     return !!(r && r.ok);
   } catch(_) { return false; }
 }
@@ -11391,7 +11415,7 @@ function _boxNorm(arr){   // 並べ替え・重複外し・長すぎる項目の
     seen[e.id] = 1;
     out.push({id: String(e.id).slice(0, 40), name: String(e.name).slice(0, 80), area: String(e.area || '').slice(0, 40),
               by: String(e.by || '').slice(0, 24), at: String(e.at || '').slice(0, 10), allowEdit: e.allowEdit !== false,
-              ph: e.ph ? 1 : undefined, box: true,    // v202：写真が付いているか
+              ph: e.ph ? (_phCount(e.ph) || 1) : undefined, box: true,    // v202：写真が付いているか（v242：何個に分けて置いたか）
               cid: e.cid ? String(e.cid).slice(0, 24) : undefined, ts: e.ts ? String(e.ts).slice(0, 24) : undefined});   // v204：同じコースの出し直しを見分ける
   });
   out.sort((a, b) => String(b.at).localeCompare(String(a.at)) || String(b.id).localeCompare(String(a.id)));
@@ -11457,36 +11481,39 @@ async function _shrinkDataUrl(src, px, q){
 async function _sharePhotos(course, opt){
   const px = (opt && opt.px) || SHARE_PH_PX, per = (opt && opt.per) || SHARE_PH_PER_SPOT;
   const cap = (opt && opt.cap) || SHARE_PH_TOTAL;
-  const out = {}; let total = 0, n = 0, missing = 0;
+  const out = {}; let total = 0, n = 0, missing = 0, over = 0;
   for (const w of ((course && course.wps) || [])) {
     if (!w || !Array.isArray(w.photos) || !w.photos.length) continue;
     const arr = [];
     for (const p of w.photos.slice(0, per)) {
+      if (total >= cap) { over++; continue; }                // v242：入りきらなかった枚数は数えて知らせる（黙って落とさない）
       const src = await _photoSrc(p);
       if (!src) { missing++; continue; }                     // v207：参照はあるのに実物がこの端末に無い
       const small = await _shrinkDataUrl(src, px, SHARE_PH_Q); if (!small) { missing++; continue; }
-      if (total + small.length > cap) break;
+      if (total + small.length > cap) { over++; continue; }
       arr.push(small); total += small.length; n++;
     }
     if (arr.length) out[String(w.id)] = arr;
-    if (total >= cap) break;
   }
-  return {photos: out, count: n, bytes: total, missing: missing};
+  return {photos: out, count: n, bytes: total, missing: missing, over: over};
 }
-let _boxPhSent = false;   // v207：直前の「出す」で写真が届いたか（知らせに使う）
+let _boxPhSent = false, _boxPhSentN = 0;   // v207：直前の「出す」で写真が全部届いたか／v242：届いた枚数（知らせに使う）
 async function _boxPublish(entry, data, photos){
-  _boxPhSent = false;
+  _boxPhSent = false; _boxPhSentN = 0;
   const cfg = await _boxCfg(); if (!cfg) return {ok: false, why: 'off'};
   if (!data) return {ok: false, why: 'empty'};
   if (data.length > BOX_MAX) return {ok: false, why: 'big'};
   if (photos && Object.keys(photos).length) {                                 // v202：写真は別置き＝開くのが遅くならない
-    let ok = await _boxWrite(cfg, 'ph', entry.id, {p: photos});
-    if (!ok) {                                                                // v207：届かなかったら、もっと小さくしてもう一度
-      const small = await _sharePhotos(_pubCourse, {px: 420, per: 1, cap: 220000});
-      if (small.count) ok = await _boxWrite(cfg, 'ph', entry.id, {p: small.photos});
+    const chunks = _phChunks(photos);                                         // v242：約70万字ずつに分けて、全部置く
+    let k = 0;
+    for (; k < chunks.length; k++) {
+      let ok = await _boxWrite(cfg, 'ph', entry.id, {p: chunks[k]}, k);
+      if (!ok) ok = await _boxWrite(cfg, 'ph', entry.id, {p: chunks[k]}, k);   // v207：届かなかったら、もう一度
+      if (!ok) break;
+      _boxPhSentN += Object.keys(chunks[k]).reduce((t, id) => t + chunks[k][id].length, 0);
     }
-    entry.ph = ok ? 1 : undefined;
-    _boxPhSent = ok;
+    entry.ph = k || undefined;                                                // 置けた数＝見る側が取りに行く数
+    _boxPhSent = k === chunks.length;
   }
   if (!(await _boxWrite(cfg, 'c', entry.id, {d: data, k: _pubKind}))) return {ok: false, why: 'write'};   // 先に中身。一覧に載る＝必ず開ける
   let ok;
@@ -11499,21 +11526,24 @@ async function _boxPublish(entry, data, photos){
 /* みんなのマップから消す（v212・オーナー指示「出した本人だけは消せるように」）。
    箱の一覧から外し、**消した印（del）**を残す。保存先に写ったファイルは、
    その印を見て写し取りの仕組み（tools/box_mirror.py）が消す。印がある間はアプリも出さない。 */
-async function _boxDelete(id){
+async function _boxDelete(id, nph){   // nph＝写真を何個に分けて置いたか（v242：全部消す）
   const cfg = await _boxCfg(); if (!cfg || !id) return false;
   if (cfg.kind === 'firebase') {
     const ok = await _boxWrite(cfg, 'row', id, null);
-    await _boxWrite(cfg, 'c', id, null); await _boxWrite(cfg, 'ph', id, null);
+    await _boxWrite(cfg, 'c', id, null);
+    for (let i = 0; i < Math.max(1, nph || 0); i++) await _boxWrite(cfg, 'ph', id, null, i);
     await _boxWrite(cfg, 'del', id, true);
     if (ok) { _boxOwnDrop(id); _boxForget([id]); }
     return ok;
   }
   const raw = await _boxRead(cfg, 'idx') || {};
+  const row0 = (Array.isArray(raw) ? raw : (raw.courses || [])).find(r => r && String(r.id) === String(id));
+  nph = Math.max(nph || 0, _phCount(row0 && row0.ph));
   const rows = (Array.isArray(raw) ? raw : (raw.courses || [])).filter(r => r && String(r.id) !== String(id));
   const del = (raw && Array.isArray(raw.del) ? raw.del : []).filter(x => x !== id);
   del.unshift(id);
   const ok = await _boxWrite(cfg, 'idx', null, {courses: rows, del: del.slice(0, 200)});
-  if (ok) { _boxOwnDrop(id); _boxForget([id]); await _boxWrite(cfg, 'c', id, ''); await _boxWrite(cfg, 'ph', id, ''); }
+  if (ok) { _boxOwnDrop(id); _boxForget([id]); await _boxWrite(cfg, 'c', id, ''); for (let i = 0; i < Math.max(1, nph); i++) await _boxWrite(cfg, 'ph', id, '', i); }
   return ok;
 }
 async function _boxDelSet(){   // 消した印の一覧（保存先に残っているファイルを隠すのに使う）
@@ -11546,12 +11576,13 @@ async function _boxMirror(list){
     const body = {name: e.name || '', area: e.area || '', by: e.by || '', at: e.at || '',
                   allowEdit: e.allowEdit !== false, from: 'box', cid: e.cid || undefined, ts: e.ts || undefined,
                   oid: e.oid || undefined, k: got.k === 'j' ? 'j' : undefined, d: got.d};
-    if (e.ph) {
-      const pj = await _boxRead(cfg, 'ph', e.id);
-      if (pj && pj.p) {
-        const pPath = 'library/box-' + e.id + '-photos.json';
-        if ((await _ghPutFile(pPath, JSON.stringify({p: pj.p}), '写真: ' + (e.name || ''))).ok) body.ph = pPath;
-      }
+    const nph = _phCount(e.ph);
+    if (nph) {   // v242：分けて置いた写真を全部読んで、1つのファイルにまとめて写す。1つでも読めなければ今回は写さない（写真を落とさない）
+      const parts = await Promise.all(_boxPhUrls(cfg, e.id, nph).map((u, i) => _boxRead(cfg, 'ph', e.id, i)));
+      if (parts.some(x => !x || !x.p)) continue;
+      const pPath = 'library/box-' + e.id + '-photos.json';
+      if (!(await _ghPutFile(pPath, JSON.stringify({p: _phMerge(parts.map(x => x.p))}), '写真: ' + (e.name || ''))).ok) continue;
+      body.ph = pPath; body.phn = nph;
     }
     if ((await _ghPutFile('library/box-' + e.id + '.json', JSON.stringify(body, null, 1), 'みんなのマップ: ' + (e.name || ''))).ok) done.push(e.id);
   }
@@ -11607,7 +11638,7 @@ function _libAskDelete(entry){
   if (!id) { showToast('このコースは消せません'); return; }
   if (!confirm('「' + (entry.name || '') + '」を みんなのマップ から削除します。\nよろしいですか？（自分が出したものだけ削除できます）')) return;
   showToast('削除しています…');
-  _boxDelete(id).then(ok => {
+  _boxDelete(id, _phCount(entry.phn || entry.ph)).then(ok => {   // v242：分けて置いた写真も全部消す
     if (!ok) { showToast('削除できませんでした。電波の良いところでもう一度お試しください'); return; }
     _libCache = null;
     showToast('削除しました（保存先に写ったぶんも、まもなく消えます）');
@@ -11624,7 +11655,12 @@ function _goShare(hash){
   location.href = base + h;
 }
 /* 写真の在りかを、開き直したあとの画面へ渡す（v202）。このタブの中だけに一時的に置く。 */
-function _sharePhSet(url){ try { if (url) sessionStorage.setItem(SHARE_PH_KEY, url); else sessionStorage.removeItem(SHARE_PH_KEY); } catch(_) {} }
+function _sharePhSet(urls){   // v242：分けて置いた写真の在りかを全部渡す（1つだけの文字でもよい）
+  try {
+    const a = (Array.isArray(urls) ? urls : [urls]).filter(x => typeof x === 'string' && x);
+    if (a.length) sessionStorage.setItem(SHARE_PH_KEY, JSON.stringify(a)); else sessionStorage.removeItem(SHARE_PH_KEY);
+  } catch(_) {}
+}
 /* みんなのマップから開いたコースには、一覧の情報から作者の印を付ける（v221）。
    v220 より前に出されたコース（中身に印が無いもの）でも、取り込んだ人が自分名義で出せないようにするため。 */
 function _shareOrgSet(o){ try { if (o) sessionStorage.setItem(SHARE_ORG_KEY, JSON.stringify(o)); else sessionStorage.removeItem(SHARE_ORG_KEY); } catch(_) {} }
@@ -11640,18 +11676,27 @@ function _libOrigin(c){   // 一覧の1件から作者の印を作る
   const key = String(c.cid || c.id || c.file || c.name || '');
   return key ? {oid: 'lib:' + key, by: c.by || '', at: c.at || ''} : null;
 }
-function _sharePhTake(){ try { const v = sessionStorage.getItem(SHARE_PH_KEY); sessionStorage.removeItem(SHARE_PH_KEY); return v || ''; } catch(_) { return ''; } }
-/* 開いたあと、写真だけあとから貼る（地図はすぐ出る＝待たされない） */
-async function _applySharePhotos(){
-  const url = _sharePhTake(); if (!url) return;
+function _sharePhTake(){   // 在りかの一覧（古い版が置いた1つだけの文字も読む）
   try {
-    const http = /^https?:/i.test(url) || url.charAt(0) !== 'd';   // data: 以外は読み直しよけを付ける（v207）
-    const u = http ? url + (url.indexOf('?') < 0 ? '?t=' : '&t=') + Date.now() : url;
-    let r = await fetch(u, {cache: 'no-store'});
-    if (!r.ok) { r = await fetch(u, {cache: 'no-store'}); }        // v207：1回だけやり直す
-    if (!r.ok) return;
-    const j = await r.json(); const p = j && j.p;
-    if (!p || typeof p !== 'object') return;
+    const v = sessionStorage.getItem(SHARE_PH_KEY); sessionStorage.removeItem(SHARE_PH_KEY);
+    if (!v) return [];
+    let a = v; try { a = JSON.parse(v); } catch(_) {}       // 古い版は在りかの文字をそのまま置いていた（JSON ではない）
+    return Array.isArray(a) ? a.filter(x => typeof x === 'string' && x) : [v];
+  } catch(_) { return []; }
+}
+async function _fetchPhPart(url){   // 写真の入れ物を1つ取る（v207：1回だけやり直す）
+  const http = /^https?:/i.test(url) || url.charAt(0) !== 'd';   // data: 以外は読み直しよけを付ける（v207）
+  const u = http ? url + (url.indexOf('?') < 0 ? '?t=' : '&t=') + Date.now() : url;
+  for (let k = 0; k < 2; k++) {
+    try { const r = await fetch(u, {cache: 'no-store'}); if (r.ok) { const j = await r.json(); return (j && j.p && typeof j.p === 'object') ? j.p : null; } } catch(_) {}
+  }
+  return null;
+}
+/* 開いたあと、写真だけあとから貼る（地図はすぐ出る＝待たされない）。v242：分けて置いた全部を同時に取って、つないで貼る */
+async function _applySharePhotos(){
+  const urls = _sharePhTake(); if (!urls.length) return;
+  try {
+    const p = _phMerge(await Promise.all(urls.map(_fetchPhPart)));
     let n = 0;
     wps.forEach(w => { const a = p[String(w.id)]; if (Array.isArray(a) && a.length) { w.photos = a.slice(0, SHARE_PH_PER_SPOT); n += w.photos.length; } });
     if (!n) return;
@@ -11669,7 +11714,7 @@ async function _libOpenBox(entry){   // v199：箱のコースは、中身を取
   const cfg = await _boxCfg();
   const got = await _boxOpen(entry);
   if (!got) { showToast('このコースは開けませんでした（もう一度お試しください）'); return; }
-  _sharePhSet(entry.ph && cfg ? _boxUrl(cfg, 'ph', entry.id) : '');   // v202：写真はあとから
+  _sharePhSet(_phCount(entry.ph) && cfg ? _boxPhUrls(cfg, entry.id, _phCount(entry.ph)) : '');   // v202：写真はあとから（v242：分けて置いた全部）
   _goShare('#' + got.k + '=' + got.d);
 }
 function _libOpen(entry){
@@ -11830,7 +11875,7 @@ async function _pubPreparePhotos(course){
   _pubPh = sp;
   if (!el) return;
   const has = (course.wps || []).some(w => w && Array.isArray(w.photos) && w.photos.length);
-  if (sp && sp.count) el.textContent = '📷 写真 ' + sp.count + ' 枚も一緒に出します';
+  if (sp && sp.count) el.textContent = '📷 写真 ' + sp.count + ' 枚も一緒に出します' + (sp.over ? '（多すぎるため ' + sp.over + ' 枚は入りません）' : '');
   else if (has) el.textContent = '📷 写真はこの端末に実物がないため入りません（写真を撮った端末から出してください）';
   else el.textContent = '📷 このコースには写真がありません';
 }
@@ -11849,14 +11894,16 @@ async function _pubOut(){
   if (go) go.textContent = (sp && sp.count) ? ('写真' + sp.count + '枚を送っています…') : '出しています…';
   entry.oid = _originFor(r.c, by).oid;   // v220：作者の印（写し取り側でも見分ける）
   const res = await _boxPublish(entry, _pubData, sp ? sp.photos : null);
-  if (res.ok && _ghToken() && _ghRepo()) { try { await _ghPutFile(r.file, r.body, 'みんなのマップ: ' + (r.c.name || '')); } catch(_) {} }   // 作者の端末なら保存先にも残す
+  if (res.ok && _ghToken() && _ghRepo()) { try { await _boxMirror([entry]); _libCache = null; } catch(_) {} }   // 作者の端末なら保存先にも残す（v242：写真ごと写す。写真なしの写しを別に作らない）
   if (go) { go.disabled = false; go.textContent = '出す'; }
   if (res.ok) {
     closePublishSheet();
-    const n = sp ? sp.count : 0;
-    showToast(n && _boxPhSent ? ('出しました（写真' + n + '枚つき）。「みんなのマップを見る」にもう並んでいます')
+    const n = sp ? sp.count : 0, over = sp ? (sp.over || 0) : 0;
+    const more = over ? '（写真が多すぎるため、あと' + over + '枚は入っていません）' : '';
+    showToast(n && _boxPhSent ? ('出しました（写真' + n + '枚つき）' + more + '。「みんなのマップを見る」にもう並んでいます')
+             : (n && _boxPhSentN ? ('出しました。ただし写真は ' + n + ' 枚のうち ' + _boxPhSentN + ' 枚しか送れませんでした（電波の良い所でもう一度出してください）')
              : (n ? '出しました。ただし写真は送れませんでした（電波の良い所でもう一度お試しください）'
-                  : '出しました（写真は入っていません）。「みんなのマップを見る」にもう並んでいます'));
+                  : '出しました（写真は入っていません）。「みんなのマップを見る」にもう並んでいます')));
     return;
   }
   if (res.why === 'big') { showToast('コースが大きすぎて出せませんでした'); return; }
@@ -11941,7 +11988,8 @@ const BOX_FILE = 'box.json';
 const BOX_DEFAULT = {kind: 'textdb', base: 'https://textdb.dev/api/data/', key: 'footpath-map-minna-2026a'};
 const BOX_MAX = 300000;     // 1コースの中身の上限（文字数）
 const SHARE_PH_PX = 640, SHARE_PH_Q = 0.6;   // みんなのマップに付ける写真（v202）。小さく作り直してから送る
-const SHARE_PH_PER_SPOT = 2, SHARE_PH_TOTAL = 600000;   // 1スポット2枚まで・全部で約600KBまで
+const SHARE_PH_PER_SPOT = PHOTO_MAX_PER_SPOT, SHARE_PH_TOTAL = 6000000;   // v242：付けた写真は全部（1スポット最大12枚・全部で約600万字＝約75枚まで）。v202〜241 は「2枚・約60万字」で打ち切り、7枚ほどしか届いていなかった
+const SHARE_PH_CHUNK = 700000;   // v242：箱へは約70万字ずつに分けて置く（1回の送信を小さく＝電波が細くても届く）。1つ目は今までと同じ「-ph」、2つ目から「-ph1」「-ph2」…
 const SHARE_PH_KEY = 'fp_share_ph';
 const SHARE_ORG_KEY = 'fp_share_org';   // v221：みんなのマップから開いたコースの作者（開き直しをまたいで渡す）          // 開くときに写真の在りかを渡す（このタブだけ・読み込み直しをまたぐ）
 const BOX_MAX_ROWS = 300;   // 一覧に載せる上限
@@ -11972,7 +12020,9 @@ function _courseForLink(course, opts){   // リンクに入れる中身（写真
   return c;
 }
 async function _makeDataLink(course, opts){
-  const raw = new TextEncoder().encode(JSON.stringify(_courseForLink(course, opts)));
+  const lc = _courseForLink(course, opts);
+  if (lc.icon && _isPhotoRef(lc.icon)) { try { lc.icon = (await _photoSrc(lc.icon)) || undefined; } catch(_) { lc.icon = undefined; } }   // v242：一覧の絵は実物を入れる（この端末の中の参照のままだと、ほかの端末では出ない）
+  const raw = new TextEncoder().encode(JSON.stringify(lc));
   const base = _shareBaseUrl();
   if (typeof CompressionStream !== 'undefined') {
     try {
