@@ -805,6 +805,28 @@ body.viewonly #firstTip,body.embed #firstTip{display:none!important}
 #startPickSheet .gs-foot .ds-btn{flex:1;min-height:var(--tap);border:none;border-radius:12px;font-family:inherit;font-size:14.5px;font-weight:800;background:var(--brand-grad);color:#fff;cursor:pointer}
 #startPickSheet .gs-foot .ds-btn:disabled{background:#EDE7DC;color:#B2ABA2}
 /* 取り込んだスポットの整理（v217） */
+/* ポイントの表示（v241）：地図が見えるように下半分だけ。閉じるは右上の隅に常に出し、中身だけが流れる */
+#ptSheet{position:fixed;inset:0;z-index:5200;display:none;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.16)}
+#ptSheet.show{display:flex}
+#ptSheet .pt-box{background:#fff;width:100%;max-width:520px;max-height:66vh;border-radius:16px 16px 0 0;padding:12px 14px calc(12px + var(--sab));display:flex;flex-direction:column;gap:4px;box-shadow:0 -4px 20px rgba(0,0,0,.2)}
+#ptSheet .pt-hd{display:flex;align-items:center;gap:8px;flex:none}
+#ptSheet .pt-t{font-size:16px;font-weight:800;color:#4A2E0E;flex:1}
+#ptSheet .pt-x{flex:none;min-height:38px;padding:0 16px;border:0;border-radius:19px;background:var(--brand);color:#fff;font-family:inherit;font-size:13px;font-weight:800;cursor:pointer}
+#ptSheet .pt-body{overflow-y:auto;-webkit-overflow-scrolling:touch;flex:1;min-height:0}
+#ptSheet .pt-sec{font-size:11.5px;font-weight:800;color:#6A645E;margin:8px 2px 5px}
+#ptSheet .pt-seg{display:flex;gap:6px}
+#ptSheet .pt-lv{flex:1;min-height:42px;padding:0 4px;border:1.5px solid #D4C4A8;border-radius:10px;background:#FAF6EE;font-family:inherit;font-size:12px;font-weight:800;color:#4A2E0E;cursor:pointer;line-height:1.25}
+#ptSheet .pt-lv.on{background:var(--brand);border-color:var(--brand);color:#fff}
+#ptSheet .pt-row{width:100%;display:flex;align-items:center;gap:10px;min-height:46px;padding:4px 2px;border:0;border-bottom:0.5px solid rgba(0,0,0,.07);background:none;font-family:inherit;text-align:left;cursor:pointer}
+#ptSheet .pt-badge{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex:none;color:#fff;font-size:11px;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+#ptSheet .pt-l{flex:1;min-width:0;font-size:13.5px;font-weight:700;color:#2C2620}
+#ptSheet .pt-l small{display:block;font-size:11.5px;font-weight:600;color:#6A645E}
+#ptSheet .pt-row:not(.on) .pt-badge, #ptSheet .pt-row:not(.on) .pt-l{opacity:.45}
+#ptSheet .pt-row.on .pp-sw{background:var(--brand)}#ptSheet .pt-row.on .pp-sw::after{left:17px}
+#ptSheet .pt-none{font-size:12.5px;color:#6A645E;padding:10px 2px}
+#ptSheet .pt-reset{width:100%;min-height:42px;margin-top:10px;border:1.5px solid #D4C4A8;border-radius:10px;background:#fff;font-family:inherit;font-size:13px;font-weight:800;color:#4A2E0E;cursor:pointer}
+#ptSheet .pt-reset:disabled{opacity:.4;cursor:default}
+#ptSheet .pt-note{font-size:11.5px;color:#6A645E;line-height:1.55;margin:8px 2px 2px}
 #gotSheet{position:fixed;inset:0;z-index:5200;display:none;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.35)}
 #gotSheet.show{display:flex}
 #gotSheet .gs-box{background:#fff;width:100%;max-width:520px;max-height:82vh;border-radius:16px 16px 0 0;padding:14px 14px calc(14px + var(--sab));display:flex;flex-direction:column;gap:8px}
@@ -1091,6 +1113,7 @@ body.viewonly .mob-share, body.embed .mob-share{display:none!important}
   .mob-back{background:rgba(255,255,255,0.95)!important;box-shadow:0 2px 8px rgba(0,0,0,0.18)}
   .mob-save{box-shadow:0 2px 8px rgba(0,0,0,0.22)}
   #mobileRbtns{display:flex!important;top:calc(50px + var(--sat))!important;bottom:auto;right:max(8px,env(safe-area-inset-right))}
+  #mobileRbtns{gap:5px!important}#mobileRbtns .mrb.mt{margin-top:5px}   /* v241：横向きは縦が短い。ボタンが1つ増えても下の帯に重ならないように間を詰める */
   #mobileShelf{display:flex!important}
   #mobileElevBand{display:block!important}
 
@@ -1178,8 +1201,10 @@ body.viewing #modeHint,body.viewonly #modeHint{display:none!important}
 #fixRouteSheet .fr-b{flex:none;min-height:38px;padding:0 12px;border:1.5px solid #D4C4A8;border-radius:10px;background:#FAF6EE;color:#4A2E0E;font-family:inherit;font-size:12.5px;font-weight:700;cursor:pointer}
 #fixRouteSheet .fr-none{color:#999;padding:14px;text-align:center;font-size:12px}
 #fixRouteSheet .fr-all{width:100%;margin-top:12px;min-height:var(--tap);border:none;border-radius:12px;background:var(--brand-grad);color:#fff;font-family:inherit;font-size:14px;font-weight:800;cursor:pointer}
-#reorderSheet .ro-head{display:flex;align-items:center;justify-content:space-between;font-size:14px;font-weight:700;color:#4A2E0E;padding:2px 0 6px}
-#reorderSheet .ro-close{border:none;background:var(--brand);color:#fff;border-radius:8px;font-size:13px;font-weight:700;padding:6px 14px}
+/* v241：閉じるボタンは画面の隅に常に出す（並べ替えが長くても、上へ戻さずに閉じられる）＝見出しを貼り付ける */
+#reorderSheet .ro-head{display:flex;align-items:center;justify-content:space-between;font-size:14px;font-weight:700;color:#4A2E0E;
+  position:sticky;top:-8px;z-index:6;background:#fff;margin:-8px -14px 0;padding:10px 14px 8px;box-shadow:0 1px 0 rgba(0,0,0,.06)}   /* top は窓の上の余白(8px)ぶん上げる＝隅にぴったり */
+#reorderSheet .ro-close{flex:none;border:none;background:var(--brand);color:#fff;border-radius:19px;font-family:inherit;font-size:13px;font-weight:800;min-height:38px;padding:0 16px;cursor:pointer}
 #reorderSheet .ro-hint{font-size:11px;color:#9b948c;padding-bottom:6px}
 #reorderSheet .ro-row{display:flex;align-items:center;gap:8px;padding:0 4px;height:48px;box-sizing:border-box;border-bottom:0.5px solid rgba(0,0,0,.06);background:#fff;will-change:transform}
 #reorderSheet .ro-row.ro-shift{transition:transform .16s ease}
@@ -1271,6 +1296,15 @@ body.viewing #modeHint,body.viewonly #modeHint{display:none!important}
 .mob-mode.lbl{gap:5px;padding:0 11px}
 .mrb.gps.on{background:var(--brand)!important;color:#fff!important}
 .mrb.gps{color:#3B82F6}
+/* ポイントの表示（v241）：絵と小さな文字で今の見せ方が分かる。何か隠しているときは色が付く。長押しで文字が選ばれないように */
+.mrb.pts{flex-direction:column;gap:1px;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+.mrb.pts .svgi{width:17px;height:17px}
+.mrb.pts .pts-l{font-size:9px;font-weight:800;line-height:1;letter-spacing:-.02em;white-space:nowrap}
+.mrb.pts.on{background:var(--brand)!important;color:#fff!important}
+#btnPts{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+#btnPts .svgi{width:15px;height:15px}
+#btnPts .pc-val{font-size:11.5px;font-weight:800;color:var(--brand)}
+#btnPts.on .pc-val{color:inherit}
 /* 保存・戻るボタン グラデーション */
 .mob-save{background:var(--brand-grad)!important;box-shadow:0 3px 9px rgba(184,68,10,.3)}
 .mob-mode.on{background:var(--brand-soft);color:var(--brand)}
@@ -1488,6 +1522,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
         <div id="pcTr">
           <button class="pc-pill" id="btnBaseMap" onclick="togglePcPop('popMap', this)" aria-expanded="false" aria-controls="popMap" title="背景地図と地図の見せ方"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M9 4l0 13" /> <path d="M15 7l0 13" /> <path d="M3.5 5.5l5.5 -1.5l6 2l5.5 -1.5v12l-5.5 1.5l-6 -2l-5.5 1.5z" /></svg><span id="bmPillTxt">標準地図</span><span class="pc-caret">▾</span></button>
           <button class="pc-pill" id="btnLegend" onclick="togglePcPop('popLegend', this)" aria-expanded="false" aria-controls="popLegend" title="このコースの凡例"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg><span>凡例</span></button>
+          <button class="pc-pill" id="btnPts" data-pts="1" aria-label="ポイントの表示：全部（押すと切り替え・長押しで種類を選ぶ）" title="ポイントの表示：押すたびに 全部→コースだけ→線だけ。長押し（右クリック）で種類を選ぶ"><span class="pts-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17c3.5 0 4.5-6 8.5-6S16 15 21 13"/><circle cx="5" cy="16.6" r="1.9" fill="currentColor"/><circle cx="12" cy="11" r="1.9" fill="currentColor"/><circle cx="19.5" cy="13.4" r="1.9" fill="currentColor"/><circle cx="17" cy="5" r="1.9" fill="currentColor"/><circle cx="6" cy="6.5" r="1.9" fill="currentColor"/></svg></span><span>ポイント</span><span class="pts-l pc-val">全部</span></button>
           <div class="pc-pop" id="popMap" role="menu">
       <div class="pp-sec">背景地図</div>
       <button class="pp-row pick" data-bm="osm" onclick="setBaseMap('osm');_syncPcPops()">標準地図（OSM）<span class="pp-ck">✓</span></button>
@@ -1498,6 +1533,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
       <button class="pp-row pick" data-bm="carto" onclick="setBaseMap('carto');_syncPcPops()">うすい色の地図<span class="pp-ck">✓</span></button>
       <div class="pp-sec">地図の見せ方</div>
       <button class="pp-row" id="btnMapLabels" onclick="toggleMapLabels();_syncPcPops()">地名とスポットを表示<span class="pp-sw"></span></button>
+      <button class="pp-row" id="btnPtsSet" onclick="closePcPops();openPtSheet()" title="押すたびの切り替え（すべて／コースだけ／線だけ）と、種類ごとに隠す設定">ポイントの表示<span class="pp-val" id="pcPtsVal">すべて表示</span></button>
       <button class="pp-row ed" id="btnStickers" onclick="toggleStickers();_syncPcPops()" title="写真のあるスポットの印を、写真そのもの（シール）にする。歩く人の画面と印刷用シートにも同じに出る">写真をシールで見せる<span class="pp-sw"></span></button>
       <button class="pp-row ed" id="btnTheme" onclick="closePcPops();openThemeSheet()" title="道順の線と印の色の組み合わせ。コースに保存され、歩く人の画面と印刷用シートも同じ色になる">地図の色（テーマ）<span class="pp-val" id="pcThemeName">標準</span></button>
       <div class="pp-row static">文字の大きさ<span class="pp-seg" id="btnLabelSize"><button data-lsz="0" onclick="setLabelSize(0);_syncPcPops()">標準</button><button data-lsz="1" onclick="setLabelSize(1);_syncPcPops()">大</button><button data-lsz="2" onclick="setLabelSize(2);_syncPcPops()">特大</button></span></div>
@@ -1529,6 +1565,8 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
         <div id="mobileRbtns">
           <button class="mrb next tap" id="mobileNextBtn" onclick="toggleFollowMode()" aria-label="次のスポットまでの距離" title="次のスポットまでの距離（現在地を追いかけます）" hidden><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l19 -9l-9 19l-2 -8z" /></svg></button>
           <button class="mrb gps tap" onclick="gotoCurrentLocation()" aria-label="現在地" title="現在地へ"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12a3 3 0 1 0 6 0a3 3 0 1 0 -6 0" /> <path d="M4 12a8 8 0 1 0 16 0a8 8 0 1 0 -16 0" /> <path d="M12 2l0 2" /> <path d="M12 20l0 2" /> <path d="M20 12l2 0" /> <path d="M2 12l2 0" /></svg></button>
+          <!-- v241：ポイントの表示。押すたびに 全部→コース→線だけ。長押しで種類を選ぶ（_ptBindHold） -->
+          <button class="mrb pts tap" id="mobilePtsBtn" data-pts="1" aria-label="ポイントの表示：全部（押すと切り替え・長押しで種類を選ぶ）" title="ポイントの表示：押すたびに 全部→コースだけ→線だけ。長押しで種類を選ぶ"><span class="pts-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17c3.5 0 4.5-6 8.5-6S16 15 21 13"/><circle cx="5" cy="16.6" r="1.9" fill="currentColor"/><circle cx="12" cy="11" r="1.9" fill="currentColor"/><circle cx="19.5" cy="13.4" r="1.9" fill="currentColor"/><circle cx="17" cy="5" r="1.9" fill="currentColor"/><circle cx="6" cy="6.5" r="1.9" fill="currentColor"/></svg></span><span class="pts-l">全部</span></button>
           <button class="mrb tap find" id="mobileFindBtn" onclick="openFindSheet()" aria-label="発見を貼る" title="見つけたものを貼る" hidden><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h1a2 2 0 0 0 2 -2a1 1 0 0 1 1 -1h6a1 1 0 0 1 1 1a2 2 0 0 0 2 2h1a2 2 0 0 1 2 2v9a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-9a2 2 0 0 1 2 -2" /><path d="M9 13a3 3 0 1 0 6 0a3 3 0 0 0 -6 0" /></svg></button>
           <button class="mrb mode tap" id="mobileModeBtn" onclick="toggleViewMode();_syncMobileMenu()" aria-label="閲覧モード" title="閲覧モードと編集モードを切り替える"></button>
           <button class="mrb mt tap" id="mobileUndoBtn" onclick="undoLast()" disabled aria-label="取り消し"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14l-4 -4l4 -4" /> <path d="M5 10h11a4 4 0 1 1 0 8h-1" /></svg></button>
@@ -2158,6 +2196,9 @@ const WP_ADD_HOLD_MS = 450, WP_ADD_MOVE_PX = 10;   // スポットを置く（v1
 const LINE_HOLD_MS = 450, LINE_HIT_PX = 16, LINE_GRAB_PX = 34, LINE_MOVE_PX = 6;   // v177：近くの点はつかみやすく（22→34px）
 const LINE_SWEEP_MIN_M = 30, LINE_SWEEP_MAX_M = 400;   // 引っぱったとき、つかんだ所の周りの古い手直しを外す範囲（引っぱった距離ぶん・この間に収める）   // ルート調整（v169）：動かさず押さえて設定が開くまでの時間／線とみなす幅／既にある点をつかむ距離／動いたとみなす距離
 const ROUTE_SOLID_Z = 15;     // これより広域では道順の線を実線・三角なしで描く（v169：破線が崩れて見えるため）
+const PT_HOLD_MS = 550;       // v241：ポイントの表示ボタンを押さえてから「種類を選ぶ」画面が開くまで（現在地の長押しと同じ長さ）
+const PT_LEVELS      = ['全部', 'コース', '線だけ'];                              // v241：ボタンの小さな文字。押すたびにこの順で切り替わる
+const PT_LEVELS_LONG = ['すべて表示', 'コースのポイントだけ', 'コースの線だけ'];  // v241：設定の画面・PC の表示
 /* 曲がり角の案内（v167・Footpath のキューシートに倣う）：経路サーバの steps から、曲がる所だけを拾う */
 const CUE_MODS = {uturn:['折り返す','↩'], 'sharp left':['鋭角に左へ','↙'], left:['左へ','←'], 'slight left':['ゆるく左へ','↖'], 'slight right':['ゆるく右へ','↗'], right:['右へ','→'], 'sharp right':['鋭角に右へ','↘']};
 const CUE_TYPES = {turn:'turn', fork:'fork', 'end of road':'end', merge:'merge', continue:'cont', roundabout:'ra', rotary:'ra', 'roundabout turn':'ra'};
@@ -2399,6 +2440,7 @@ const LS = {
   offAuto:     'fp_offauto',      // 共有リンクを開いた端末で地図を自動で持ち歩いた記録（コースごと・v135）
   finds:       'fp_finds',        // 歩く人が貼った「発見」（コースIDごと・この端末だけ・v143）
   findBy:      'fp_find_by',      // 発見に添える名前（前回の入力を覚える・v143）
+  ptHideTypes: 'fp_pt_hide_types', // ポイントの表示で隠す種類（v241・この端末だけ。コースには入れない）
 };
 // --- サンプルコース（初回起動時に一度だけ取り込む。削除したら復活しない）---
 const SAMPLE_URL = 'sample.json';   // index.html と同じ場所に置く
@@ -2433,6 +2475,9 @@ let routeCasing = null;    // ルート線の白いふち（表示専用。デ�
 let routeDirs   = null;    // 進行方向の三角（表示専用）
 let hitOverlays = [];      // per-segment hit overlays — prevents segment misattribution
 let viaVisible  = false;   // v169：手描きの道の点（node）も見せない（オーナー指示「点は存在するが見えないものに」）。調整点は _vpVisibleAt が決める
+let _ptLevel = 0;          // v241：ポイントの見せ方（0=すべて／1=コースに入っているものだけ／2=コースの線だけ）。表示だけ・保存しない・コースを開くと 0
+let _ptHideTypes = new Set();   // v241：種類ごとに隠す（ボタンの長押しで開く設定）。LS.ptHideTypes に端末ごとに覚える
+let _ptGuardUntil = 0;     // v241：長押しで開いた直後は、指を離したときの「タップ」で外側を押したことにしない（この時刻まで）
 let _moveWp = null;        // 「場所を動かす」中のスポット（v164）。null なら動かしていない
 let _hold = null, _holdHintShown = false, _viaTapHint = false;   // ルート調整の長押し（v169）
 let _wpAdd = null, _lastTouchAt = 0, _tapHintAt = 0;   // スポットを置く確認（v171）
@@ -3245,6 +3290,7 @@ function initMap() {
   _initLineHold();                        // ルート調整：赤い線の長押し（v169）
   _initWpAddHold();                       // スポット：長押し→確認して置く（v171）
   _initOneHandZoom();                     // 片手で拡大縮小：ダブルタップして押したまま上下（v206）
+  _ptInit();                              // ポイントの表示ボタン：押すたびに切り替え・長押しで種類（v241）
   leafMap.on('movestart', hideCtxMenu);
   leafMap.on('zoomend', () => _scheduleViewUpdate(true));   // v173：拡大縮小したあとの描き直しは1回にまとめる
   const _dsc = document.getElementById('iDesc');
@@ -3367,7 +3413,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 手描きの道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した手描きの道id（直前取り消し用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v240';
+const APP_VERSION = 'v241';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -3905,10 +3951,19 @@ function openReorderSheet(){
   _renderReorder(); sh.style.display='block';
 }
 function closeReorderSheet(){ const sh=document.getElementById('reorderSheet'); if(sh) sh.style.display='none'; _roDragId=null; _roFromIdx=-1; }
+/* v241（オーナー指示）：並べ替えは「コースに入っているもの」だけ。立ち寄り先・取り込んだ施設は道順に関係しないので出さない */
+function _roTargets(){ return wps.filter(w => _onRouteOf(w)); }
+/* 並べ替えの結果を wps に戻す：コースに入っていない印の席はそのまま、コースの印の席だけを新しい順に入れ替える */
+function _roApplyOrder(from, to){
+  const list = _roTargets();
+  const [mv] = list.splice(from, 1); list.splice(to, 0, mv);
+  let k = 0;
+  for (let i = 0; i < wps.length; i++) if (_onRouteOf(wps[i])) wps[i] = list[k++];
+}
 function _renderReorder(){
   const sh=document.getElementById('reorderSheet'); if(!sh) return;
   let cn=1;
-  const rows = wps.map((wp,idx)=>{
+  const rows = _roTargets().map((wp,idx)=>{
     const t=WT.find(x=>x.v===wp.type)||WT[0];
     const lbl = wp.name || ('\uFF08'+t.l+'\uFF09');
     return '<div class="ro-row'+(wp.type==='node'?' ro-node':'')+'" data-id="'+escHtml(String(wp.id))+'" data-idx="'+idx+'">'
@@ -3917,9 +3972,9 @@ function _renderReorder(){
       +'<div class="ro-handle" aria-label="\u30C9\u30E9\u30C3\u30B0\u3057\u3066\u4E26\u3079\u66FF\u3048"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 8h16"/><path d="M4 12h16"/><path d="M4 16h16"/></svg></div>'
       +'</div>';
   }).join('');
-  sh.innerHTML='<div class="ro-head"><span>\u30B9\u30DD\u30C3\u30C8\u306E\u4E26\u3079\u66FF\u3048</span><button onclick="closeReorderSheet()" class="ro-close">\u5B8C\u4E86</button></div>'
+  sh.innerHTML='<div class="ro-head"><span>\u30B9\u30DD\u30C3\u30C8\u306E\u4E26\u3079\u66FF\u3048</span><button type="button" onclick="closeReorderSheet()" class="ro-close tap">閉じる</button></div>'
     +'<div class="ro-tools"><button type="button" class="tap" onclick="closeReorderSheet();reverseCourse()">⇄ 逆回りにする</button><button type="button" class="tap" onclick="closeReorderSheet();loopCourse()">↻ 出発点に戻る周回に</button></div>'
-    +'<div class="ro-hint">\u2261 \u3092\u62BC\u3057\u305F\u307E\u307E\u4E0A\u4E0B\u306B\u30C9\u30E9\u30C3\u30B0</div>'
+    +'<div class="ro-hint">\u2261 \u3092\u62BC\u3057\u305F\u307E\u307E\u4E0A\u4E0B\u306B\u30C9\u30E9\u30C3\u30B0\u3002コースに入っていないスポット（立ち寄り先など）は出しません</div>'
     +'<div id="roList">'+(rows || '<div style="color:#999;padding:14px;text-align:center">\u30DD\u30A4\u30F3\u30C8\u304C\u3042\u308A\u307E\u305B\u3093</div>')+'</div>';
   sh.querySelectorAll('.ro-handle').forEach(h=>{
     h.addEventListener('touchstart', _roStart, {passive:false});
@@ -3973,7 +4028,7 @@ function _roEnd(e){
   _roRows.forEach(r=>{ r.style.transform=''; r.classList.remove('ro-lift','ro-shift'); });
   if(id!=null && from>=0 && to>=0 && to!==from){
     saveSnapshot();
-    const [mv]=wps.splice(from,1); wps.splice(to,0,mv);
+    _roApplyOrder(from, to);                         // v241：並んでいるのはコースの印だけ。席の入れ替えはここで
     clearCache(); redrawStraight(); scheduleRouting(); redrawList(); refreshIcons();
   }
   _roRows=[];
@@ -4150,6 +4205,7 @@ function addWp(lat, lng, type) {
   buildWpMarker(wp);
   redrawStraight(); scheduleRouting(); // 全種別でルートを再計算
   redrawList(); refreshIcons();
+  _ptRevealNew([wp]);                  // v241：見せ方のせいで見えないなら知らせる
   return wp; // openModalで使用
 }
 
@@ -4994,7 +5050,7 @@ function _syncMmValues(){
     const ls = LABEL_SIZE_LABELS[_labelSizeIdx] || LABEL_SIZE_LABELS[0], ws = WP_SIZE_LABELS[_wpSizeIdx] || WP_SIZE_LABELS[0];
     v('mmValSize', ls === ws ? ls : `文字 ${ls}・印 ${ws}`);
     v('mmValSpd', (WALK_SPEEDS[_walkSpeedIdx] || 4).toFixed(1) + ' km/h');
-    v('mmReorderN', _stampTargets().length + ' か所');   // 「手描きの道の点」は数えない（B4・v140）
+    v('mmReorderN', _roTargets().filter(w => w.type !== 'node').length + ' か所');   // 並べ替えに出るもの（コースに入っているもの・v241）だけ。「手描きの道の点」は数えない（B4・v140）
     v('mmKokoroe', (courseInfo.kokoroe || '').trim() ? '追記あり' : '標準'); v('mmKokoroe2', (courseInfo.kokoroe || '').trim() ? '追記あり' : '標準');
     v('mmFinds', (typeof finds !== 'undefined' ? finds.length : 0) + ' 件');
     v('mmInfo', viewMode ? (_courseInfoCount() ? '見る' : 'なし') : (_courseInfoCount() ? `${_courseInfoCount()} / ${COURSE_INFO_FIELDS.length}` : 'まだ')); v('mmInfo2', _courseInfoCount() ? `${_courseInfoCount()} / ${COURSE_INFO_FIELDS.length}` : 'まだ');   // 歩く人には件数より「見る」（v153）
@@ -5220,7 +5276,7 @@ function _unlockAllMarkers() {
 }   // 調整点は戻さない（v169：引きずれない）
 
 function _setMarkersClickable(on){
-  wps.forEach(w=>{ try{ const el=w.marker&&w.marker.getElement(); if(el) el.style.pointerEvents = on?'':'none'; }catch(_){} });
+  wps.forEach(w=>{ try{ const el=w.marker&&w.marker.getElement(); if(el) el.style.pointerEvents = (on && !w._clusterHidden)?'':'none'; }catch(_){} });   // v241：隠した印（束ねた・ポイントの表示）は押せないまま
   vps.forEach(p=>{ try{ if (on) _applyVpVis(p); else { const el=p.marker&&p.marker.getElement(); if(el) el.style.pointerEvents='none'; } }catch(_){} });
 }
 function enterDrawMode() {
@@ -5540,7 +5596,7 @@ function _movePinPlace(){
 function _moveEnd(){
   const wp = _moveWp; _moveWp = null;
   document.body.classList.remove('moving');
-  if (wp && wp.marker) { try { wp.marker.setOpacity(1); } catch(_) {} }
+  if (wp && wp.marker) { try { wp.marker.setOpacity(1); } catch(_) {} try { _declutter(); } catch(_) {} }   // v241：隠す設定の印は隠したまま
   const pin = document.getElementById('movePin'); if (pin) { pin.classList.remove('show'); pin.innerHTML = ''; }
   const bar = document.getElementById('moveBar'); if (bar) bar.classList.remove('show');
   return wp;
@@ -7596,6 +7652,7 @@ function _a2FirstRun(){   // 初回だけ、そっと出す（配るリンクで
 // 「画像保存」と「印刷用シート」の両方から使う（html2canvas 対策を1か所に保つため）。
 async function _captureMapCanvas() {
   const mapEl = document.getElementById('map');
+  if (_ptActive()) showToast('ポイントの表示を切り替えているので、隠したポイントは地図の画像にも写りません');   // v241：画面と同じに写る
   try {
     // ── 編集要素を一時非表示（調整点・カスタム道路はマップ画像に映さない）──
     // 撮影後の復元は finally で「正しい状態を作り直す」方式（保存値の巻き戻しはしない）
@@ -8060,6 +8117,7 @@ async function saveSheetAsImage() {
    前のコースで「手描き」や「ルート調整」にしていると、次のコースでもそのままだった。 */
 function _resetTools(){
   try { if (mode !== 'wp') setMode('wp'); } catch(_) {}
+  try { _ptReset(); } catch(_) {}   // v241：ポイントの見せ方は「すべて」から（種類の設定は残す）
   /* v239：閲覧モードのまま次のコースへ持ち越すと、画面は編集用なのに中身は閲覧モード、という
      ちぐはぐな状態になっていた。共有リンク（URL で閲覧指定）のときだけ閲覧モードのままにする */
   try { if (viewMode && !(typeof _viewParams === 'function' && _viewParams().on)) toggleViewMode(); } catch(_) {}
@@ -8241,6 +8299,7 @@ function ctxConvertToWp() {
                  photos:[], labelDir:'auto', labelWrap:false, marker:null};
   wps.splice(wpAIdx+1, 0, newWp);
   buildWpMarker(newWp);
+  _ptRevealNew([newWp]);   // v241：線だけ のときに調整点をスポットにしても見えるように
 
   // wpA→wpB区間の他の調整点を振り分け（tConvert以降はnewWpセグメントへ）
   if (wpB) {
@@ -8673,12 +8732,14 @@ function _declutter(){
     w._clusterHidden = !on; _syncLabelVis(w);
   };
   list.forEach(w => { if (w._clusterHidden || w._clusterN > 1) { const n = w._clusterN; w._clusterN = 0; w._clusterIds = null; show(w, true); if (n > 1) w.marker.setIcon(wpIcon(w)); } });
+  // v241：「ポイントの表示」で隠すものは束ねる前に外す（隠した印のぶん「+n」を数えない・押せない）
+  const vis = list.filter(w => { w._ptHidden = !_ptShown(w); if (w._ptHidden) show(w, false); return !w._ptHidden; });
   // 優先順：S・G → 歩く順の番号（小さい順）→ 種類だけの地点
   const pri = w => _isStart(w) ? 0 : _isGoal(w) ? 1 : _isNumbered(w) ? 10 + (courseNum(w) || 9999) : 100000;
   const base = _wpSize()[0];
   const sizeOf = w => (_stickerOn() && w.photos && w.photos[0] && _stickerOf(w.photos[0])) ? _stickerSize()[0] : base;
   const leaders = [];
-  list.slice().sort((a, b) => pri(a) - pri(b)).forEach(w => {
+  vis.slice().sort((a, b) => pri(a) - pri(b)).forEach(w => {
     const pt = leafMap.latLngToLayerPoint([w.lat, w.lng]), sw = sizeOf(w);
     const isSG = _hasRole(w);
     const near = leaders.find(l => l.pt.distanceTo(pt) < ((l.size + sw) / 2) * DECL_OVERLAP);
@@ -8696,7 +8757,7 @@ function _vpEditing(){ return mode === 'via' && !viewMode && !_drawActive && !_c
 function _vpVisibleAt(vp, z){ return _vpEditing() || !!(vp && vp.guide); }
 function _applyVpVis(vp, z){
   if (!vp || !vp.marker) return;
-  const on = _vpVisibleAt(vp, z == null ? leafMap.getZoom() : z);
+  const on = _vpVisibleAt(vp, z == null ? leafMap.getZoom() : z) && (_ptLevel < 2 || _vpEditing());   // v241：「線だけ」のときは案内の印も隠す（ルート調整中の点は道具なので出す）
   try { vp.marker.setOpacity(on ? 1 : 0); } catch(_) {}
   const el = vp.marker.getElement(); if (el) el.style.pointerEvents = on ? '' : 'none';
   try { const d = vp.marker.dragging; if (d) { if (_vpEditing()) d.enable(); else d.disable(); } } catch(_) {}   // v178：「ルート調整」の間だけつまめる
@@ -8710,6 +8771,136 @@ function _syncLabelVis(wp){
   const tt = wp.marker && wp.marker.getTooltip && wp.marker.getTooltip(); const te = tt && tt.getElement && tt.getElement();
   if (te) te.style.display = (wp._clusterHidden || wp._labelHidden) ? 'none' : '';
 }
+
+/* ===== ポイントの表示（v241・オーナー指示「表示されているポイントを非表示にするボタン」）=====
+   地図のボタン（スマホは右の列・PC は右上の「ポイント」）を押すたびに
+     すべて → コースに入っているものだけ → コースの線だけ → すべて
+   長押し（PC は右クリックも）で「種類ごとに隠す」設定の画面が開く。
+   ・表示だけを変える。wps/vps・道順・番号・保存データ・当たり判定（hitOverlays）には触らない。「未保存」の印も立てない
+   ・隠すのは _declutter（束ねる前に外す）と _applyVpVis（分岐・注意の案内の印）の2か所だけ。隠した印は押せない
+   ・見せ方（_ptLevel）はコースを開くと「すべて」に戻す（_resetTools）。種類の設定（_ptHideTypes）は LS.ptHideTypes に端末ごとに覚える
+   ・画像保存・印刷用シートの地図も画面と同じ見え方になる（撮るときにトーストで知らせる） */
+const PT_ICONS = [
+  '<path d="M3 17c3.5 0 4.5-6 8.5-6S16 15 21 13"/><circle cx="5" cy="16.6" r="1.9" fill="currentColor"/><circle cx="12" cy="11" r="1.9" fill="currentColor"/><circle cx="19.5" cy="13.4" r="1.9" fill="currentColor"/><circle cx="17" cy="5" r="1.9" fill="currentColor"/><circle cx="6" cy="6.5" r="1.9" fill="currentColor"/>',
+  '<path d="M3 17c3.5 0 4.5-6 8.5-6S16 15 21 13"/><circle cx="5" cy="16.6" r="1.9" fill="currentColor"/><circle cx="12" cy="11" r="1.9" fill="currentColor"/><circle cx="19.5" cy="13.4" r="1.9" fill="currentColor"/>',
+  '<path d="M3 17c3.5 0 4.5-6 8.5-6S16 15 21 13"/>'];   // 見えるものの絵：線と点／線の上の点だけ／線だけ
+function _ptLevelShown(w){ return _ptLevel === 0 || (_ptLevel === 1 && _onRouteOf(w)); }
+function _ptShown(w){ return !!w && _ptLevelShown(w) && !_ptHideTypes.has(w.type); }
+function _ptActive(){ return _ptLevel > 0 || _ptHideTypes.size > 0; }
+function _ptLoad(){
+  _ptHideTypes = new Set();
+  try { const a = JSON.parse(_lsGet(LS.ptHideTypes) || '[]'); if (Array.isArray(a)) a.forEach(t => { if (WT.some(x => x.v === t)) _ptHideTypes.add(t); }); } catch(_) {}
+}
+function _ptSave(){ _lsSet(LS.ptHideTypes, JSON.stringify(Array.from(_ptHideTypes))); }
+function _ptInit(){
+  _ptLoad();
+  document.querySelectorAll('[data-pts]').forEach(_ptBindHold);
+  _ptSyncBtns();
+}
+/* 見せ方を地図に反映（印・名札・案内の印・ボタンの見た目・開いている設定の画面） */
+function _ptApply(){
+  try { _declutter(); } catch(_) {}
+  try { scheduleAutoLabels(); } catch(_) {}
+  _ptSyncBtns();
+  const sh = document.getElementById('ptSheet'); if (sh && sh.classList.contains('show')) _ptRender();
+}
+function _ptSyncBtns(){
+  const on = _ptActive();
+  document.querySelectorAll('[data-pts]').forEach(b => {
+    b.classList.toggle('on', on);
+    b.setAttribute('aria-label', 'ポイントの表示：' + PT_LEVELS[_ptLevel] + (_ptHideTypes.size ? '・隠す種類 ' + _ptHideTypes.size : '') + '（押すと切り替え・長押しで種類を選ぶ）');
+    const l = b.querySelector('.pts-l'); if (l) l.textContent = PT_LEVELS[_ptLevel];
+    const ic = b.querySelector('.pts-ic svg'); if (ic) ic.innerHTML = PT_ICONS[_ptLevel];
+  });
+  const v = document.getElementById('pcPtsVal'); if (v) v.textContent = PT_LEVELS_LONG[_ptLevel] + (_ptHideTypes.size ? '・種類' : '');
+}
+/* 押すたびに切り替える。何が起きたかをトーストで言う（長押しの存在もここで知らせる） */
+function ptCycle(){
+  _ptLevel = (_ptLevel + 1) % 3;
+  _ptApply();
+  const msg = _ptLevel === 1 ? 'コースに入っているポイントだけ表示中。もう一度押すと線だけ（長押しで種類を選べます）'
+            : _ptLevel === 2 ? 'コースの線だけ表示中。もう一度押すとすべて表示'
+            : 'ポイントをすべて表示' + (_ptHideTypes.size ? '（種類の設定で ' + _ptHideTypes.size + ' 種類を隠しています）' : '');
+  showToast(msg);
+}
+/* タップ＝切り替え、長押し（PT_HOLD_MS）＝設定。長押しのあとに来る click は切り替えにしない */
+function _ptBindHold(btn){
+  if (!btn || btn._ptBound) return; btn._ptBound = true;
+  let t = null, held = false, x0 = 0, y0 = 0;
+  const cancel = () => { if (t) { clearTimeout(t); t = null; } };
+  const hold = () => {
+    cancel(); held = true;
+    _ptGuardUntil = Infinity;                    // 指を離すまでは外側を押しても閉じない（開いた画面の上で指が離れるため）
+    const up = () => { _ptGuardUntil = Date.now() + 450; document.removeEventListener('pointerup', up, true); document.removeEventListener('pointercancel', up, true); };
+    document.addEventListener('pointerup', up, true); document.addEventListener('pointercancel', up, true);
+    openPtSheet();
+  };
+  btn.addEventListener('pointerdown', e => {
+    if (e.button > 0) return;                    // 右クリックは contextmenu で開く
+    held = false; cancel(); x0 = e.clientX; y0 = e.clientY;
+    t = setTimeout(hold, PT_HOLD_MS);
+  });
+  btn.addEventListener('pointermove', e => { if (t && Math.hypot(e.clientX - x0, e.clientY - y0) > 10) cancel(); });
+  ['pointerup', 'pointercancel', 'pointerleave'].forEach(k => btn.addEventListener(k, cancel));
+  btn.addEventListener('contextmenu', e => { e.preventDefault(); if (!held) hold(); });   // Android の長押し・PC の右クリック
+  btn.addEventListener('click', e => { if (held) { held = false; e.preventDefault(); return; } ptCycle(); });
+}
+/* コースを開いたら「すべて」から（_resetTools から呼ぶ）。種類の設定は残す */
+function _ptReset(){ if (_ptLevel) { _ptLevel = 0; _ptApply(); } else _ptSyncBtns(); }
+/* 置いた・取り込んだ印が見せ方のせいで見えないときは知らせる（「置いたのに出ない」を防ぐ）。
+   コースだけ／線だけ で隠れるなら「すべて」に戻す。種類の設定で隠れるなら、そう言うだけ（設定は勝手に変えない） */
+function _ptRevealNew(list){
+  const ws = (list || []).filter(w => w && w.type !== 'node'); if (!ws.length) return;
+  let msg = '';
+  if (_ptLevel && ws.some(w => !_ptLevelShown(w))) { _ptLevel = 0; _ptApply(); msg = 'ポイントをすべて表示にもどしました'; }
+  const h = ws.find(w => _ptHideTypes.has(w.type));
+  if (h) { const t = WT.find(x => x.v === h.type); msg = (msg ? msg + '。' : '') + '「' + (t ? t.l : h.type) + '」は種類の設定で隠しています（ポイントのボタンを長押しで変えられます）'; }
+  if (msg) showToast(msg);
+}
+function openPtSheet(){
+  let sh = document.getElementById('ptSheet');
+  if (!sh) {
+    sh = document.createElement('div'); sh.id = 'ptSheet';
+    sh.setAttribute('role', 'dialog'); sh.setAttribute('aria-label', 'ポイントの表示');
+    sh.innerHTML = '<div class="pt-box"><div class="pt-hd"><div class="pt-t">ポイントの表示</div>'
+      + '<button type="button" class="pt-x tap" id="ptClose">閉じる</button></div>'
+      + '<div class="pt-body" id="ptBody"></div></div>';
+    document.body.appendChild(sh);
+    sh.addEventListener('click', e => { if (e.target === sh && Date.now() > _ptGuardUntil) closePtSheet(); });   // 外側（地図の上）を押したら閉じる（長押しで開いた直後の指離れは除く）
+    sh.querySelector('#ptClose').addEventListener('click', closePtSheet);
+  }
+  _ptRender();
+  sh.classList.add('show');
+}
+function closePtSheet(){ const sh = document.getElementById('ptSheet'); if (sh) sh.classList.remove('show'); }
+function _ptRender(){
+  const body = document.getElementById('ptBody'); if (!body) return;
+  const pts = wps.filter(w => w && w.type !== 'node');
+  const seg = PT_LEVELS_LONG.map((l, i) => '<button type="button" class="pt-lv tap' + (i === _ptLevel ? ' on' : '') + '" data-lv="' + i + '">' + l + '</button>').join('');
+  // 種類：このコースにあるもの＋隠しているもの（このコースに無くても、隠しているなら戻せるように出す）
+  const types = WT.filter(t => t.v !== 'node' && (pts.some(w => w.type === t.v) || _ptHideTypes.has(t.v)));
+  const rows = types.map(t => {
+    const all = pts.filter(w => w.type === t.v), inC = all.filter(_onRouteOf).length, shown = !_ptHideTypes.has(t.v);
+    return '<button type="button" class="pt-row tap' + (shown ? ' on' : '') + '" data-type="' + escHtml(t.v) + '" aria-pressed="' + shown + '">'
+      + '<span class="pt-badge" style="background:' + t.c + '">' + (_typeSvg(t.v, 13) || '●') + '</span>'
+      + '<span class="pt-l">' + escHtml(t.l) + '<small>' + all.length + ' か所' + (inC ? '（コースに ' + inC + '）' : '') + (shown ? '' : '・隠しています') + '</small></span>'
+      + '<span class="pp-sw" aria-hidden="true"></span></button>';
+  }).join('');
+  body.innerHTML = '<div class="pt-sec">ボタンを押すたびに切り替わる見せ方</div><div class="pt-seg">' + seg + '</div>'
+    + '<div class="pt-sec">種類ごとに表示する／隠す</div>'
+    + (rows || '<div class="pt-none">このコースにはまだポイントがありません</div>')
+    + '<button type="button" class="pt-reset tap"' + (_ptActive() ? '' : ' disabled') + '>すべて表示にもどす</button>'
+    + '<div class="pt-note">表示だけを変えます。コースの中身・順番・保存したデータは変わりません。種類の設定はこの端末に残ります。画像保存と印刷用シートの地図も、この見え方になります。</div>';
+  body.querySelectorAll('.pt-lv').forEach(b => b.addEventListener('click', () => { _ptLevel = Number(b.getAttribute('data-lv')) || 0; _ptApply(); }));
+  body.querySelectorAll('.pt-row').forEach(b => b.addEventListener('click', () => ptToggleType(b.getAttribute('data-type'))));
+  body.querySelector('.pt-reset').addEventListener('click', ptShowAll);
+}
+function ptToggleType(t){
+  if (!t) return;
+  if (_ptHideTypes.has(t)) _ptHideTypes.delete(t); else _ptHideTypes.add(t);
+  _ptSave(); _ptApply();
+}
+function ptShowAll(){ _ptLevel = 0; _ptHideTypes.clear(); _ptSave(); _ptApply(); showToast('ポイントをすべて表示しました'); }
 
 /* ===== 他の人による改変の可否（v147・構想「改変可能かどうかを作者が決める」）=====
    配布用ファイル（「リンクを作る」で書き出したもの）に shared:true と noEdit:true が入っていれば、このアプリは取り込みを断る。
@@ -8826,6 +9017,7 @@ function loopCourse(){
   wps.push(wp); buildWpMarker(wp);
   clearCache(); redrawStraight(); scheduleRouting(); refreshIcons(); redrawList(); updateDistanceAndTime();
   showToast('出発点に戻る周回にしました。帰りの道順は自動です（変えるなら赤い線を引っぱる）');
+  _ptRevealNew([wp]);   // v241
 }
 
 /* ===== 地図の色（テーマ・v145）===== */
@@ -9274,6 +9466,7 @@ function _addSpotsBulk(items){   // 道順に入れないスポットをまと�
   saveSnapshot();
   items.forEach(it => { idW++; const wp = {id:idW, type:it.type || 'other', name:String(it.name || '').slice(0, 60), desc:it.desc || '', tel:it.tel || '', dwell:0, fitBefore:true, fitAfter:true, onRoute:false, lat:it.lat, lng:it.lng, photos:[], labelDir:'auto', got:1, marker:null}; wps.push(wp); buildWpMarker(wp); });   // v217：got＝まわりの施設から取り込んだ印
   redrawList(); refreshIcons(); if (typeof scheduleAutoLabels === 'function') scheduleAutoLabels();
+  _ptRevealNew(wps.slice(-items.length));   // v241：コースだけ／線だけ のときに取り込んでも見えるように
   return items.length;
 }
 /* 取り込んだスポットの整理（v217・オーナー指示「一覧で選んで削除／マップから遠いほど下」）。

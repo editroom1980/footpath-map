@@ -447,6 +447,26 @@ def static_checks(src):
     # --- v157: 番号の丸と種類の丸を横に並べる（オーナー指摘：iPhone で片方しか見えない）---
     chk('静的', '番号つきで種類がある地点：地図は「種類の丸＋右上に番号の小丸」、一覧・並べ替え・印刷用シート・カードは番号と種類を並べて出す',
         'class="wp-num"' in src and 'class="wp-dot cat"' in src and 'class="ro-badge cat"' in src and 'class="sh-cat"' in src and 'class="vip-dot vip-dot2"' in src and '_catBadge' not in src and 'wp-pair' not in src)
+    # --- v241: ポイントの表示ボタン（押すたびに すべて→コースだけ→線だけ／長押しで種類）・並べ替えはコースの印だけ・閉じるは隅に固定 ---
+    chk('静的', 'ポイントの表示：スマホは右の列・PC は右上にボタン。隠すのは _declutter（束ねる前）と _applyVpVis だけ。種類の設定は LS に',
+        'id="mobilePtsBtn" data-pts="1"' in src and 'id="btnPts" data-pts="1"' in src and 'onclick="closePcPops();openPtSheet()"' in src
+        and 'const PT_HOLD_MS = 550;' in src and "ptHideTypes: 'fp_pt_hide_types'" in src
+        and 'const vis = list.filter(w => { w._ptHidden = !_ptShown(w); if (w._ptHidden) show(w, false); return !w._ptHidden; });' in src
+        and 'vis.slice().sort((a, b) => pri(a) - pri(b))' in src
+        and '&& (_ptLevel < 2 || _vpEditing());' in src
+        and '_ptInit();                              // ポイントの表示ボタン' in src
+        and 'try { _ptReset(); } catch(_) {}' in src
+        and 'function closePtSheet(){' in src)                       # 引数なし＝画面を移るときに _closeAllSheets が閉じる
+    _pi = src.index('/* ===== ポイントの表示（v241')
+    _pt_src = src[_pi:src.index('function ptShowAll', _pi)]
+    chk('静的', 'ポイントの表示は見た目だけ：保存データ・道順・未保存の印に触らない（_markDirty／saveSnapshot／clearCache を呼ばない）',
+        '_markDirty' not in _pt_src and 'saveSnapshot' not in _pt_src and 'clearCache' not in _pt_src and 'scheduleRouting' not in _pt_src)
+    chk('静的', '並べ替えはコースに入っているものだけ。戻すときはコース外の印の席を動かさない。閉じるボタンは見出しごと隅に貼り付け',
+        'function _roTargets(){ return wps.filter(w => _onRouteOf(w)); }' in src and 'const rows = _roTargets().map((wp,idx)=>{' in src
+        and '_roApplyOrder(from, to);' in src and "const [mv]=wps.splice(from,1); wps.splice(to,0,mv);" not in src
+        and 'position:sticky;top:-8px;z-index:6' in src and 'class="ro-close tap">閉じる</button>' in src)
+    chk('静的', '手描きのあとで印を押せるように戻すときも、隠した印（束ねた・ポイントの表示）は押せないまま',
+        "el.style.pointerEvents = (on && !w._clusterHidden)?'':'none';" in src)
     # --- v240: みんなのマップを見たあと、自分のコースが閲覧モードのままにならない ---
     chk('静的', '共有リンクの見え方（viewonly・#d=）は、自分のコース一覧にもどった時点で片づける',
         'function _leaveShareView' in src
@@ -1002,7 +1022,7 @@ def static_checks(src):
     chk('静的', 'スポットの削除は確認ダイアログではなく10秒の「元に戻す」', "confirm('このスポットを削除しますか？')" not in src and 'function undoDeleteWp' in src
         and "if (undoStack.length !== u.len)" in src)
     chk('静的', '「配る」の写真つきスポットから、写真の無いスポットへ飛べる', 'function shareInfoPhoto' in src and 'onclick="shareInfoPhoto()"' in src)
-    chk('静的', '並べ替えの件数は「手描きの道の点」を数えず、点の行は控えめ', "v('mmReorderN', _stampTargets().length + ' か所');" in src and "' ro-node'" in src)
+    chk('静的', '並べ替えの件数は「手描きの道の点」を数えず（v241：コースに入っているものだけ）、点の行は控えめ', "v('mmReorderN', _roTargets().filter(w => w.type !== 'node').length + ' か所');" in src and "' ro-node'" in src)
     chk('静的', '種別チップの畳んだ側はこのコースで使った順', "(used[b] || 0) - (used[a] || 0)" in src)
     chk('静的', '通知は1つの箱に積む（重ならない・3つまで）', "box.id = 'toastBox'" in src and "while (box.children.length > 3)" in src)
     # --- v139: 協会式のコース情報（F2）---
@@ -1850,7 +1870,8 @@ def functional_checks(index_path):
         # v106: 主要なボタンが 44px 四方のどこを押しても反応する（実際に当たり判定を調べる）
         taps = page.evaluate("""()=>{
             // 前の検査で開いたままの画面があると、その上を押したことになってしまう
-            ['closeModal','hideWpPicker','closeMobileMenu','closeElevModal','closePrintSheet']
+            // v241：初回に自動で始まる案内（_tourFirstRun）が開いたまま残ると、その吹き出しを押したことになる
+            ['closeModal','hideWpPicker','closeMobileMenu','closeElevModal','closePrintSheet','stopGuide']
               .forEach(f => { try { if (typeof window[f] === 'function') window[f](); } catch(_){} });
             const need = 44, d = need/2 - 1, out = [];
             ['.mob-back','.mob-save','.mob-more','#mobileWpBtn','#mobileViaBtn','#mobileUndoBtn']
@@ -2093,6 +2114,26 @@ def functional_checks(index_path):
             all(isinstance(v, dict) and v.get('inShelf') and v.get('inView') and v.get('noScroll')
                 and v.get('hit', 0) >= 44 and v.get('moreW', 0) >= 40 for v in _fit.values()),
             str(_fit)[:260])
+
+        # v241: 右の列にボタンが1つ増えても、横向き（iPhone SE・標準）や小さい縦の画面で下の帯に重ならず、画面の中に収まる
+        _col = {}
+        for _w, _h in ((667, 375), (844, 390), (320, 568), (390, 844)):
+            page.set_viewport_size({'width': _w, 'height': _h})
+            page.wait_for_timeout(120)
+            _col[f'{_w}x{_h}'] = page.evaluate("""()=>{ try{
+                leafMap.invalidateSize();
+                const vis = e => { const s = getComputedStyle(e); return s.display !== 'none' && s.visibility !== 'hidden' && e.getBoundingClientRect().width > 0; };
+                const bs = [...document.querySelectorAll('#mobileRbtns button')].filter(vis).map(e => e.getBoundingClientRect());
+                const sh = document.getElementById('mobileShelf').getBoundingClientRect();
+                const pts = document.getElementById('mobilePtsBtn');
+                return {n: bs.length, bottom: Math.round(Math.max(...bs.map(r => r.bottom))), shelf: Math.round(sh.top),
+                        inView: bs.every(r => r.right <= innerWidth && r.bottom <= innerHeight), pts: vis(pts)};
+              }catch(e){ return 'ERR:'+e.message; } }""")
+        page.set_viewport_size({'width': 390, 'height': 812})
+        page.evaluate("()=>{ leafMap.invalidateSize(); }")
+        chk('機能', '右の列（ポイントの表示を足した）は横向き・小さい画面でも下の帯に重ならず画面の中',
+            all(isinstance(v, dict) and v.get('pts') and v.get('n', 0) >= 4 and v.get('inView') and v.get('bottom', 9999) <= v.get('shelf', 0)
+                for v in _col.values()), str(_col)[:300])
 
         # v125: 390×844 でメニューが1画面に収まり、2階層目と「上級者向け」が動く
         page.set_viewport_size({'width': 390, 'height': 844})
@@ -2445,6 +2486,153 @@ def functional_checks(index_path):
           }catch(e){ return 'ERR:'+e.message; } }""")
         chk('機能', '案内に一覧の段があり、みんなのマップの段では対象が画面の中に入るまで送る',
             isinstance(gv, dict) and all(gv.get(k) for k in ('listSteps', 'scrolled', 'title')), str(gv)[:200])
+
+        # v241: ポイントの表示（オーナー指示）。押すたびに すべて→コースだけ→線だけ→すべて、長押しで種類を選ぶ。表示だけを変える
+        page.evaluate("""()=>{ try{
+            window.__ptK = {s1: document.getElementById('s1').style.display, s2: document.getElementById('s2').style.display,
+                            view: viewMode, w: wps.slice(), z: leafMap.getZoom(), c: leafMap.getCenter(), dirty: _dirty};
+            document.getElementById('s1').style.display = 'none'; document.getElementById('s2').style.display = 'flex';
+            if (viewMode) toggleViewMode();
+            ['closeModal','hideWpPicker','closeMobileMenu','closeReorderSheet','closePtSheet','stopGuide','closeNearbySheet']
+              .forEach(f => { try { if (typeof window[f] === 'function') window[f](); } catch(_){} });
+            _ptLevel = 0; _ptHideTypes.clear(); _ptSave();
+            /* 検査用：道順の地点（経路サーバは使わない＝直線）＋立ち寄り先。トイレと展望は同じ場所（束ねると「+1」になる） */
+            const mk = (lat, lng, type, onRoute) => { idW++; const w = {id:idW, type:type, name:'PT' + idW, desc:'', tel:'', dwell:0,
+                fitBefore:false, fitAfter:false, onRoute:onRoute, lat:lat, lng:lng, photos:[], labelDir:'auto', marker:null};
+                wps.push(w); buildWpMarker(w); return w; };
+            const a = mk(35.1600, 134.4480, 'spot', true), b = mk(35.1604, 134.4489, 'shrine', true);
+            const t = mk(35.1597, 134.4497, 'toilet', false), v = mk(35.1597, 134.4497, 'view', false), p = mk(35.1609, 134.4476, 'parking', false);
+            for (let i = 0; i < 6; i++) mk(35.1612 + i * 0.0004, 134.4470 + i * 0.0003, 'spot', true);          // 並べ替えの画面が流れるくらい
+            ['food','shop','school','hall','bus','hospital','facility','place'].forEach((ty, i) => mk(35.1590 - i * 0.0002, 134.4510, ty, false));
+            window.__ptIds = {a:a.id, b:b.id, t:t.id, v:v.id, p:p.id};
+            leafMap.setView([35.1601, 134.4488], 18, {animate:false});
+            redrawStraight(); refreshIcons();
+            _dirty = false;
+            document.querySelectorAll('#toastBox .toast').forEach(e => e.remove());
+            return true;
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        page.wait_for_timeout(300)
+        PT_STATE = """()=>{ const ids = __ptIds;
+            const g = id => { const w = wps.find(x => x.id === id); const el = w.marker.getElement();
+              const tt = w.marker.getTooltip && w.marker.getTooltip(); const te = tt && tt.getElement && tt.getElement();
+              return {op: el.style.opacity, pe: el.style.pointerEvents, hid: !!w._ptHidden, tt: te ? te.style.display : 'none', n: w._clusterN || 0}; };
+            const seen = x => x.op !== '0' && x.pe !== 'none' && !x.hid, gone = x => x.op === '0' && x.pe === 'none' && x.hid && x.tt === 'none';
+            const r = {lvl:_ptLevel, a:g(ids.a), b:g(ids.b), t:g(ids.t), v:g(ids.v), p:g(ids.p),
+              label: document.querySelector('#mobilePtsBtn .pts-l').textContent, on: document.getElementById('mobilePtsBtn').classList.contains('on'),
+              line: !!routeLine && leafMap.hasLayer(routeLine), hit: hitOverlays.length, lrc: JSON.stringify(_lastRouteCoords || []).length,
+              data: JSON.stringify(wps.map(w => [w.id, w.type, w.onRoute, w.lat, w.lng, w.name])), dirty: _dirty};
+            r.courseSeen = seen(r.a) && seen(r.b); r.offGone = gone(r.t) && gone(r.v) && gone(r.p); r.courseGone = gone(r.a) && gone(r.b);
+            r.offSeen = seen(r.t) && seen(r.p) && !r.v.hid;      // 展望はトイレと同じ場所なので、ふだんはトイレの「+1」に束ねられている
+            return r; }"""
+        s0 = page.evaluate(PT_STATE)
+        page.click('#mobilePtsBtn'); page.wait_for_timeout(150)
+        s1 = page.evaluate(PT_STATE)
+        s1['tapHidden'] = page.evaluate("""()=>{ const w = wps.find(x => x.id === __ptIds.p); const el = w.marker.getElement(); const r = el.getBoundingClientRect();
+            const t = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2); return !(t && (t === el || el.contains(t))); }""")
+        page.click('#mobilePtsBtn'); page.wait_for_timeout(150)
+        s2 = page.evaluate(PT_STATE)
+        s2['guide'] = page.evaluate("""()=>{ const m = L.marker([35.1602, 134.4485], {icon: L.divIcon({className:'', html:'<div>g</div>', iconSize:[10,10]})}).addTo(leafMap);
+            const vp = {guide:{kind:'turn', dir:'left'}, marker:m}; const out = {};
+            _applyVpVis(vp); out.l2 = m.getElement().style.opacity;           // 線だけ：案内の印も隠す
+            _ptLevel = 1; _applyVpVis(vp); out.l1 = m.getElement().style.opacity;   // コースだけ：案内はコースの一部なので出す
+            _ptLevel = 2; leafMap.removeLayer(m); return out; }""")
+        page.click('#mobilePtsBtn'); page.wait_for_timeout(150)
+        s3 = page.evaluate(PT_STATE)
+        ok_cycle = (isinstance(s0, dict) and s0['lvl'] == 0 and s0['courseSeen'] and s0['offSeen'] and s0['label'] == '全部' and not s0['on']
+                    and s0['t']['n'] == 2                                                   # 同じ場所のトイレと展望は「+1」に束ねている
+                    and s1['lvl'] == 1 and s1['courseSeen'] and s1['offGone'] and s1['label'] == 'コース' and s1['on'] and s1['tapHidden']
+                    and s2['lvl'] == 2 and s2['courseGone'] and s2['offGone'] and s2['line'] and s2['label'] == '線だけ'
+                    and s2['guide'] == {'l2': '0', 'l1': '1'}
+                    and s3['lvl'] == 0 and s3['courseSeen'] and s3['offSeen'] and not s3['on']
+                    and s0['hit'] == s1['hit'] == s2['hit'] == s3['hit'] and s0['lrc'] == s2['lrc'] == s3['lrc']   # 当たり判定・道順は変えない
+                    and s0['data'] == s3['data'] and s3['dirty'] is False)                  # データも「未保存」の印も変わらない
+        chk('機能', 'ポイントの表示：押すたびに すべて→コースだけ→線だけ→すべて。隠した印は名札ごと消えて押せず、線・道順・データ・未保存の印は変わらない',
+            ok_cycle, ' / '.join(str({k: x.get(k) for k in ('lvl', 'label', 'on', 'courseSeen', 'offSeen', 'offGone', 'courseGone', 'line', 'hit', 'dirty', 'tapHidden', 'guide')} if isinstance(x, dict) else x)
+                                 for x in (s0, s1, s2, s3))[:600] + ' t.n=' + str(s0.get('t', {}).get('n') if isinstance(s0, dict) else '?'))
+
+        # 長押し → 種類ごとに隠す画面。押したまま離しても、すぐ閉じない／切り替えにならない
+        bb = page.evaluate("() => { const r = document.getElementById('mobilePtsBtn').getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; }")
+        page.mouse.move(bb[0], bb[1]); page.mouse.down(); page.wait_for_timeout(750); page.mouse.up(); page.wait_for_timeout(300)
+        h = page.evaluate("""()=>{ const sh = document.getElementById('ptSheet');
+            return {open: !!sh && sh.classList.contains('show'), lvl: _ptLevel,
+                    rows: [...document.querySelectorAll('#ptSheet .pt-row')].map(r => r.getAttribute('data-type'))}; }""")
+        page.click('#ptSheet .pt-row[data-type="toilet"]'); page.wait_for_timeout(200)
+        h2 = page.evaluate("""()=>{ const g = id => wps.find(x => x.id === id);
+            const t = g(__ptIds.t), v = g(__ptIds.v), a = g(__ptIds.a);
+            const saved = localStorage.getItem(LS.ptHideTypes); _ptLoad();
+            return {tHidden: !!t._ptHidden && t.marker.getElement().style.opacity === '0', vShown: !v._ptHidden, vAlone: (v._clusterN || 0) <= 1 && (t._clusterN || 0) <= 1,
+                    aShown: !a._ptHidden, saved: saved, reload: _ptHideTypes.has('toilet') && _ptHideTypes.size === 1,
+                    rowOff: !document.querySelector('#ptSheet .pt-row[data-type="toilet"]').classList.contains('on'),
+                    pc: (document.getElementById('pcPtsVal') || {}).textContent, on: document.getElementById('mobilePtsBtn').classList.contains('on')}; }""")
+        # 中身を下まで流しても、閉じるボタンは隅にあって押せる
+        h3 = page.evaluate("""()=>{ const bd = document.getElementById('ptBody'); bd.scrollTop = bd.scrollHeight;
+            const x = document.getElementById('ptClose').getBoundingClientRect(), box = document.querySelector('#ptSheet .pt-box').getBoundingClientRect();
+            const t = document.elementFromPoint(x.left + x.width / 2, x.top + x.height / 2);
+            return {scrolls: bd.scrollHeight > bd.clientHeight + 10 && bd.scrollTop > 0, hit: t === document.getElementById('ptClose'),
+                    corner: x.top - box.top < 30 && box.right - x.right < 30}; }""")
+        page.click('#ptSheet .pt-reset'); page.wait_for_timeout(150)
+        h4 = page.evaluate("()=>({cleared: _ptHideTypes.size === 0 && _ptLevel === 0 && localStorage.getItem(LS.ptHideTypes) === '[]'})")
+        page.click('#ptClose'); page.wait_for_timeout(150)
+        h4['closed'] = page.evaluate("()=>!document.getElementById('ptSheet').classList.contains('show')")
+        chk('機能', 'ポイントの表示：長押しで種類の画面が開き、選んだ種類だけ隠れる（束ねた数にも入れない・端末に覚える）。下まで流しても閉じるは隅にある',
+            isinstance(h, dict) and h['open'] and h['lvl'] == 0 and 'toilet' in h['rows'] and 'parking' in h['rows']
+            and isinstance(h2, dict) and all(h2.get(k) for k in ('tHidden', 'vShown', 'vAlone', 'aShown', 'reload', 'rowOff', 'on')) and h2.get('saved') == '["toilet"]'
+            and isinstance(h3, dict) and all(h3.values()) and h4.get('cleared') and h4.get('closed'),
+            str(h)[:80] + ' ' + str(h2)[:160] + ' ' + str(h3) + ' ' + str(h4))
+
+        # コースを開き直すと「すべて」から。線だけの時に置いた印は見えるように戻す
+        rs = page.evaluate("""()=>{ try{
+            const out = {};
+            _ptLevel = 2; _ptApply(); _resetTools(); out.reset = _ptLevel === 0;
+            _ptLevel = 2; _ptApply();
+            const w = addWp(35.1606, 134.4466, 'spot'); w.fitBefore = false; w.fitAfter = false;
+            out.reveal = _ptLevel === 0 && !w._ptHidden && w.marker.getElement().style.opacity !== '0';
+            document.querySelectorAll('#toastBox .toast').forEach(e => e.remove());
+            return out;
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        chk('機能', 'ポイントの表示：コースを開くと「すべて」にもどり、線だけのときに置いたスポットは見えるようにもどす',
+            isinstance(rs, dict) and rs.get('reset') and rs.get('reveal'), str(rs))
+
+        # 並べ替え：コースに入っているものだけ。動かしてもコース外の印の席は変わらない。下まで流しても「閉じる」は隅で押せる
+        ro = page.evaluate("""()=>{ openReorderSheet(); const rows = [...document.querySelectorAll('#reorderSheet .ro-row')].map(r => Number(r.getAttribute('data-id')));
+            const ids = __ptIds; _syncMobileMenu();
+            return {n: rows.length, want: _roTargets().length, offOut: ![ids.t, ids.v, ids.p].some(i => rows.includes(i)), courseIn: rows.includes(ids.a) && rows.includes(ids.b),
+                    menu: (document.getElementById('mmReorderN') || {}).textContent, menuWant: _roTargets().filter(w => w.type !== 'node').length + ' か所',
+                    before: wps.map(w => _onRouteOf(w) ? 'C' : w.id).join(','), order: _roTargets().map(w => w.id).join(',')}; }""")
+        hb = page.evaluate("""()=>{ const h = document.querySelectorAll('#reorderSheet .ro-handle')[0].getBoundingClientRect(), row = document.querySelectorAll('#reorderSheet .ro-row')[0].getBoundingClientRect();
+            return [h.left + h.width / 2, h.top + h.height / 2, row.height]; }""")
+        page.mouse.move(hb[0], hb[1]); page.mouse.down()
+        for k in range(1, 9): page.mouse.move(hb[0], hb[1] + hb[2] * 1.2 * k / 8); page.wait_for_timeout(16)
+        page.mouse.up(); page.wait_for_timeout(300)
+        ro2 = page.evaluate("""()=>{ const sh = document.getElementById('reorderSheet'); sh.scrollTop = sh.scrollHeight;
+            const b = sh.querySelector('.ro-close').getBoundingClientRect(), r = sh.getBoundingClientRect();
+            const t = document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2);
+            return {after: wps.map(w => _onRouteOf(w) ? 'C' : w.id).join(','), order: _roTargets().map(w => w.id).join(','),
+                    scrolls: sh.scrollTop > 0, hit: !!t && (t === sh.querySelector('.ro-close') || sh.querySelector('.ro-close').contains(t)),
+                    corner: b.top - r.top < 30 && r.right - b.right < 30, label: sh.querySelector('.ro-close').textContent}; }""")
+        page.click('#reorderSheet .ro-close'); page.wait_for_timeout(150)
+        ro2['closed'] = page.evaluate("()=>getComputedStyle(document.getElementById('reorderSheet')).display === 'none'")
+        o1 = ro.get('order', '').split(',') if isinstance(ro, dict) else []
+        o2 = ro2.get('order', '').split(',') if isinstance(ro2, dict) else []
+        chk('機能', '並べ替えの画面はコースに入っているものだけ。動かすとコースの順だけ変わり、コース外の印の席は変わらない。下まで流しても「閉じる」は隅で押せる',
+            isinstance(ro, dict) and ro['n'] == ro['want'] and ro['n'] >= 8 and ro['offOut'] and ro['courseIn'] and ro['menu'] == ro['menuWant'] + ' ›'
+            and isinstance(ro2, dict) and ro2['after'] == ro['before'] and len(o1) == len(o2) and o1[:2] == o2[1::-1] and o1[2:] == o2[2:]
+            and ro2['scrolls'] and ro2['hit'] and ro2['corner'] and ro2['label'] == '閉じる' and ro2['closed'],
+            str(ro)[:160] + ' ' + str(ro2)[:200])
+
+        # 後片づけ：検査用の印を外し、元のコース・画面・見せ方にもどす
+        page.evaluate("""()=>{ try{
+            const K = window.__ptK, keep = new Set(K.w);
+            wps.forEach(w => { if (!keep.has(w) && w.marker) leafMap.removeLayer(w.marker); });
+            wps.length = 0; K.w.forEach(x => wps.push(x));
+            _ptLevel = 0; _ptHideTypes.clear(); _ptSave();
+            refreshIcons(); redrawStraight(); redrawList();
+            leafMap.setView(K.c, K.z, {animate:false});
+            if (K.view && !viewMode) toggleViewMode();
+            document.getElementById('s1').style.display = K.s1; document.getElementById('s2').style.display = K.s2;
+            _dirty = K.dirty;
+            document.querySelectorAll('#toastBox .toast').forEach(e => e.remove());
+          }catch(e){} }""")
 
         # v240: みんなのマップ（共有リンク）を見たあと、自分のコースに入っても編集モードに戻れる（オーナー報告）
         lv2 = page.evaluate("""async ()=>{ try{
@@ -4818,6 +5006,29 @@ def webkit_checks(index_path):
             page.evaluate("() => closeMobileMenu()")
             chk('WebKit', 'iPhone と同じエンジンで編集画面とメニューが開き、横にはみ出さない',
                 r2['wps'] > 5 and not r2['bad'] and r2['sw'] <= r2['iw'] + 1 and r2['menu'] and not errs, str(r2)[:200] + (' err:' + errs[0][:80] if errs else ''))
+            # v241: iPhone と同じエンジンで、ポイントの表示ボタン（タップで切り替え・長押しで種類）と、並べ替えの「閉じる」が隅に残ること
+            page.evaluate("() => { try { stopGuide(); } catch(e){} document.querySelectorAll('#toastBox .toast').forEach(e => e.remove()); }")
+            PTW = "() => { const ws = wps.filter(w => w.marker && w.type !== 'node'); return {lvl: _ptLevel, n: ws.length, hidden: ws.filter(w => w._ptHidden && w.marker.getElement().style.opacity === '0').length, course: ws.filter(w => _onRouteOf(w)).length, line: !!routeLine && leafMap.hasLayer(routeLine)}; }"
+            page.tap('#mobilePtsBtn'); page.wait_for_timeout(200); w1 = page.evaluate(PTW)
+            page.tap('#mobilePtsBtn'); page.wait_for_timeout(200); w2 = page.evaluate(PTW)
+            page.tap('#mobilePtsBtn'); page.wait_for_timeout(200); w3 = page.evaluate(PTW)
+            pb = page.evaluate("() => { const r = document.getElementById('mobilePtsBtn').getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; }")
+            page.mouse.move(pb[0], pb[1]); page.mouse.down(); page.wait_for_timeout(750); page.mouse.up(); page.wait_for_timeout(300)
+            w4 = page.evaluate("() => ({open: !!document.querySelector('#ptSheet.show'), lvl: _ptLevel})")
+            w4.update(page.evaluate(OVERFLOW))
+            page.evaluate("() => closePtSheet()")
+            page.evaluate("() => openReorderSheet()"); page.wait_for_timeout(300)
+            w5 = page.evaluate("""() => { const sh = document.getElementById('reorderSheet'); sh.scrollTop = sh.scrollHeight;
+                const b = sh.querySelector('.ro-close').getBoundingClientRect(), r = sh.getBoundingClientRect();
+                const t = document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2);
+                return {rows: sh.querySelectorAll('.ro-row').length, want: _roTargets().length, hit: !!t && sh.querySelector('.ro-close').contains(t) || t === sh.querySelector('.ro-close'),
+                        corner: b.top - r.top < 30 && r.right - b.right < 30}; }""")
+            page.evaluate("() => closeReorderSheet()")
+            chk('WebKit', 'iPhone と同じエンジンで、ポイントの表示がタップで すべて→コースだけ→線だけ→すべて、長押しで種類の画面。並べ替えの「閉じる」は下まで流しても隅にある',
+                w1['lvl'] == 1 and w1['hidden'] == w1['n'] - w1['course'] and w2['lvl'] == 2 and w2['hidden'] == w2['n'] and w2['line']
+                and w3['lvl'] == 0 and w3['hidden'] == 0 and w4['open'] and w4['lvl'] == 0 and not w4['bad'] and w4['sw'] <= w4['iw'] + 1
+                and w5['rows'] == w5['want'] and w5['hit'] and w5['corner'] and not errs,
+                str([w1, w2, w3])[:200] + ' ' + str(w4)[:80] + ' ' + str(w5) + (' err:' + errs[0][:80] if errs else ''))
             # v161: ノッチ（安全域 59px）を偽装：地図は上端から、押す部品は 59px より下
             page.goto(url + '?nosw=1&safe=59', wait_until='domcontentloaded')
             page.wait_for_function("() => { try { return getCourses().length > 0; } catch(e){ return false; } }", timeout=30000)

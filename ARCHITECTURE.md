@@ -497,3 +497,16 @@ CONSTANTS(904) → STATE(968) → STORAGE(1015) → 版のお知らせ(1021) →
   - `_safeCourseFile()` が受けるのは**同じ場所の `.json` だけ**：`library/` の 1 階層だけ許し、`..`・`/`・`\`・`: ? # % < > " | *`・先頭の `.` を弾く。ファイル名の日本語は可（v197）。
 - 出す：`openPublishSheet()` →（名前・見た人にできること）→ `_pubGo()` が `_ghPutFile(path, text, message)` で **GitHub の contents API に PUT**（v193）。合言葉は `LS.ghToken`（この端末のみ）。GitHub の `/new/main?value=…` 方式は中身が大きいと GitHub 側がエラーになるので**使わない**。合言葉を使わない道は `_pubByFile()`（ファイル保存＋アップロード画面）とコピー。
 - 「見るだけ」は `_courseForLink(course, {allowEdit:false})` が `noEdit:true` を入れる＝受け取った側の `_isLockedShare` が効く。
+
+## ポイントの表示（v241）
+- ボタンは2つで中身は同じ：スマホ `#mobilePtsBtn`（右の列）／PC `#btnPts`（右上）。どちらも `data-pts` を持ち、`_ptInit()`（`initMap` から）が `_ptBindHold` を付ける。**タップ＝`ptCycle()`、長押し（`PT_HOLD_MS`）・右クリック＝`openPtSheet()`**。長押しのあとに来る click は切り替えにしない（`held`）。
+- 状態は2つ：`_ptLevel`（0=すべて／1=コースに入っているもの＝`_onRouteOf`／2=線だけ。**保存しない・コースを開くと `_resetTools` → `_ptReset` で 0**）と `_ptHideTypes`（種類ごとに隠す。**`LS.ptHideTypes` に端末ごと**）。見えるかどうかは `_ptShown(w)` の1か所で決める。
+- **隠すのは2か所だけ**：`_declutter()` が束ねる前に `_ptShown` で外す（`show(w,false)`＝opacity 0・押せない・名札も隠す。隠した印は「+n」に数えない）／`_applyVpVis()` が「線だけ」のとき分岐・注意の案内の印を隠す（ルート調整中の点は道具なので出す）。反映は `_ptApply()`（`_declutter`＋名札の置き直し＋ボタンの見た目＋開いている画面）。
+- **表示だけの約束**：この区画から `_markDirty`／`saveSnapshot`／`clearCache`／`scheduleRouting` を呼ばない（静的検査で見張る）。データ・道順・番号・当たり判定は変わらない。画像保存・印刷用シートの地図は画面と同じ見え方になる（`_captureMapCanvas` がトーストで知らせる）。
+- 新しい印が見せ方のせいで見えないときは `_ptRevealNew(list)`（スポットを置く・まわりの施設の取り込み・調整点をスポットに・周回にする）。レベルのせいなら「すべて」に戻し、種類の設定のせいならそう言うだけ（設定は勝手に変えない）。**印を作る入口を足したら、ここも呼ぶこと。**
+- 長押しで開いた直後は、指を離したときの「タップ」が開いたばかりの画面の外側に当たる。`_ptGuardUntil`（指を離すまで＋0.45秒）の間は外側を押しても閉じない。
+- 印の `pointer-events` を戻すコード（`_setMarkersClickable(true)` など）は、`_clusterHidden` の印を押せる状態にしないこと（隠した印が見えないまま押せてしまう）。
+
+## 並べ替えの画面（v241）
+- 並べるのは `_roTargets()`＝**コースに入っているものだけ**（立ち寄り先・取り込んだ施設は道順に関係しない）。戻すのは `_roApplyOrder(from, to)`：**コース外の印の席はそのまま**、コースの印の席だけを新しい順で埋める。
+- 見出し（題名＋「閉じる」）は `position:sticky; top:-8px`（窓の上の余白ぶん）で貼り付け、下まで流しても右上の隅に残る。ポイントの表示の画面は見出しを流れない側に置き、中身（`.pt-body`）だけが流れる。
