@@ -2478,6 +2478,9 @@ let viaVisible  = false;   // v169：手描きの道の点（node）も見せな
 let _ptLevel = 0;          // v241：ポイントの見せ方（0=すべて／1=コースに入っているものだけ／2=コースの線だけ）。表示だけ・保存しない・コースを開くと 0
 let _ptHideTypes = new Set();   // v241：種類ごとに隠す（ボタンの長押しで開く設定）。LS.ptHideTypes に端末ごとに覚える
 let _ptGuardUntil = 0;     // v241：長押しで開いた直後は、指を離したときの「タップ」で外側を押したことにしない（この時刻まで）
+let _declT = null;         // v243：束ね直しをまとめて1回にするための待ち（_declutterSoon）
+var _isMobC = null;        // v243：isMobile() の答えの控え（1回の処理の間だけ使う。画面の大きさが変わったらすぐ捨てる）
+window.addEventListener('resize', () => { _isMobC = null; });   // ほかの resize の処理より先に登録する（回転したときに古い答えを使わない）
 let _moveWp = null;        // 「場所を動かす」中のスポット（v164）。null なら動かしていない
 let _hold = null, _holdHintShown = false, _viaTapHint = false;   // ルート調整の長押し（v169）
 let _wpAdd = null, _lastTouchAt = 0, _tapHintAt = 0;   // スポットを置く確認（v171）
@@ -2762,7 +2765,7 @@ function _photoGet(id){ return _idbDo('readonly',  st => st.get(id)); }
 function _photoDel(id){ return _idbDo('readwrite', st => st.delete(id)); }
 function _photoKeys(){ return _idbDo('readonly',   st => st.getAllKeys()); }
 
-function _isPhotoRef(p){ return typeof p === 'string' && p.indexOf(PHOTO_REF) === 0; }
+function _isPhotoRef(p){ return typeof p === 'string' && p.startsWith(PHOTO_REF); }   // v243：先頭だけ見る（indexOf は約8万字の写真を端から端まで調べていた）
 function _newPhotoId(){ return 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
 
 // 参照なら実体(データURI)を取り出す。実体ならそのまま返す。
@@ -3413,7 +3416,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 手描きの道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した手描きの道id（直前取り消し用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v242';
+const APP_VERSION = 'v243';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -8715,7 +8718,7 @@ async function _ensureStickerSrc(p, onDone){   // p＝写真（参照か実体�
 }
 async function _ensureSticker(wp){
   const p = wp.photos && wp.photos[0]; if (!p) return '';
-  return _ensureStickerSrc(p, () => { if (wp.marker && wps.includes(wp)) { wp.marker.setIcon(wpIcon(wp)); updateTooltip(wp); _clusterStickers(); } });
+  return _ensureStickerSrc(p, () => { if (wp.marker && wps.includes(wp)) { wp.marker.setIcon(wpIcon(wp)); updateTooltip(wp); _declutterSoon(); } });   // v243：束ね直しはまとめて1回
 }
 function toggleStickers(){
   courseInfo.stickers = !courseInfo.stickers; _markDirty();
@@ -8735,11 +8738,13 @@ function _declutter(){
   // v241：「ポイントの表示」で隠すものは束ねる前に外す（隠した印のぶん「+n」を数えない・押せない）
   const vis = list.filter(w => { w._ptHidden = !_ptShown(w); if (w._ptHidden) show(w, false); return !w._ptHidden; });
   // 優先順：S・G → 歩く順の番号（小さい順）→ 種類だけの地点
-  const pri = w => _isStart(w) ? 0 : _isGoal(w) ? 1 : _isNumbered(w) ? 10 + (courseNum(w) || 9999) : 100000;
-  const base = _wpSize()[0];
-  const sizeOf = w => (_stickerOn() && w.photos && w.photos[0] && _stickerOf(w.photos[0])) ? _stickerSize()[0] : base;
+  const numOf = new Map(); wps.filter(_isNumbered).forEach((w, i) => numOf.set(w, i + 1));   // v243：番号は1回だけ数える（並べ替えで比べるたびに全部を数え直していた）
+  const pri = w => _isStart(w) ? 0 : _isGoal(w) ? 1 : _isNumbered(w) ? 10 + (numOf.get(w) || 9999) : 100000;
+  const prv = new Map(vis.map(w => [w, pri(w)]));
+  const base = _wpSize()[0], stOn = _stickerOn(), stk = stOn ? _stickerSize()[0] : base;   // v243：大きさも1回だけ求める
+  const sizeOf = w => (stOn && w.photos && w.photos[0] && _stickerOf(w.photos[0])) ? stk : base;
   const leaders = [];
-  vis.slice().sort((a, b) => pri(a) - pri(b)).forEach(w => {
+  vis.slice().sort((a, b) => prv.get(a) - prv.get(b)).forEach(w => {
     const pt = leafMap.latLngToLayerPoint([w.lat, w.lng]), sw = sizeOf(w);
     const isSG = _hasRole(w);
     const near = leaders.find(l => l.pt.distanceTo(pt) < ((l.size + sw) / 2) * DECL_OVERLAP);
@@ -8750,6 +8755,8 @@ function _declutter(){
   vps.forEach(vp => _applyVpVis(vp, z));
 }
 function _clusterStickers(){ _declutter(); }   // 旧名（呼び出し側は据え置き）
+/* v243：シールが1枚できるたびに全部を束ね直していた（写真の枚数ぶん）。少し待ってまとめて1回にする */
+function _declutterSoon(){ if (_declT) return; _declT = setTimeout(() => { _declT = null; _declutter(); }, 40); }
 /* 調整点（調整点）の見え方（v178・オーナー指示「ルート調整を押すと、間の調整点が表示されて動かせるように」）：
    「ルート調整」を選んでいる間だけ、まるい調整点が出て、指でつまんで動かせる。押すと「消す」などの設定。
    ふだん（スポットなど）は見えない。分岐・注意の案内を付けた点だけは、いつでも印が出る */
@@ -12107,7 +12114,13 @@ function importCourseFromFile(input) {
 /* ============================================================
    HELPERS
    ============================================================ */
-function isMobile() { return window.innerWidth <= 700; }
+/* v243（オーナー報告「みんなのマップを開くと固まる」）：window.innerWidth は読むたびにブラウザが画面の配置を計算し直す。
+   印を描き直す処理の中で印1つごとに読んでいたため、写真つきのコースを開くと**スマホ相当で30秒以上**固まっていた。
+   1回の処理の中では幅は変わらないので、最初に読んだ値をその処理が終わるまで使い回す（次の処理では読み直す） */
+function isMobile() {
+  if (_isMobC === null || _isMobC === undefined) { _isMobC = window.innerWidth <= 700; setTimeout(() => { _isMobC = null; }, 0); }
+  return _isMobC;
+}
 
 // 画像保存の倍率。Canvas上限(総画素・一辺)を超えない整数倍率を返す。
 // ・整数に丸める＝旧版で座標ズレを招いた非整数(devicePixelRatio)を避ける

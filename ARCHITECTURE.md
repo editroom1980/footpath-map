@@ -518,3 +518,9 @@ CONSTANTS(904) → STATE(968) → STORAGE(1015) → 版のお知らせ(1021) →
 - 補う：`_backfill_photos()` が、`library/` にあって写真の無い `box-<ID>.json` に、箱に残っている写真を写す（調べたら `phChecked`）。
 - 作者の端末（合言葉あり）から出したときも `_boxMirror([entry])` を通す（写真なしの写しを別に作らない）。
 - 配るリンクの `icon` は実物（data URI）を入れる（`_makeDataLink`）。`idb:` のままだと他の端末では出ない。
+
+## 重くしないための約束（v243）
+- **`window.innerWidth` などの配置に関わる値をループの中で読まない**。読むとブラウザは画面の配置を計算し直す（直前に見た目を書き換えていると毎回）。`isMobile()` は1回の処理の間だけ答えを使い回す（`_isMobC`。`setTimeout(0)` と `resize` で捨てる）。新しく画面の大きさを使う関数を作るときも、ループの外で1回だけ求めること。
+- **写真（data URI・数万〜数十万字）に `indexOf` を使わない**。先頭を見るなら `startsWith`。`_isPhotoRef` は印を描くたびに呼ばれる。
+- **印1つの出来上がりごとに全部をやり直さない**。シールの出来上がりは `_declutterSoon()`（まとめて1回）。
+- 測り方：`scratchpad` の `perf_local.py` のように、CPU を4倍遅くして（`Emulation.setCPUThrottlingRate`）コースを開き、50ms を超える処理（longtask）の最長と合計を見る。WebKit は longtask が無いので setInterval の止まりで測る。

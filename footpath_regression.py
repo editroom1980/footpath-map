@@ -447,6 +447,14 @@ def static_checks(src):
     # --- v157: 番号の丸と種類の丸を横に並べる（オーナー指摘：iPhone で片方しか見えない）---
     chk('静的', '番号つきで種類がある地点：地図は「種類の丸＋右上に番号の小丸」、一覧・並べ替え・印刷用シート・カードは番号と種類を並べて出す',
         'class="wp-num"' in src and 'class="wp-dot cat"' in src and 'class="ro-badge cat"' in src and 'class="sh-cat"' in src and 'class="vip-dot vip-dot2"' in src and '_catBadge' not in src and 'wp-pair' not in src)
+    # --- v243: 開くと固まる（オーナー報告「みんなのマップで見ようとすると固まる」）---
+    chk('静的', '固まらない：画面の幅は1回の処理の間だけ使い回し（配置の計算し直しを何万回も起こさない）、写真かどうかは先頭だけ見る。シールができても束ね直しはまとめて1回、番号と大きさは1回だけ求める',
+        'function isMobile() {' in src and "if (_isMobC === null || _isMobC === undefined) { _isMobC = window.innerWidth <= 700; setTimeout(() => { _isMobC = null; }, 0); }" in src
+        and "window.addEventListener('resize', () => { _isMobC = null; });" in src
+        and src.index("window.addEventListener('resize', () => { _isMobC = null; });") < src.index("window.addEventListener('resize', _scheduleRecalc);")   # ほかの resize より先
+        and "return typeof p === 'string' && p.startsWith(PHOTO_REF);" in src and 'p.indexOf(PHOTO_REF) === 0' not in src
+        and 'function _declutterSoon' in src and 'updateTooltip(wp); _declutterSoon(); }' in src
+        and 'const numOf = new Map(); wps.filter(_isNumbered)' in src and 'stOn ? _stickerSize()[0] : base' in src)
     # --- v242: みんなのマップの写真（オーナー報告「写真もアップしているのに1〜2個しか表示されない」）---
     chk('静的', 'みんなのマップの写真：付けた写真は全部（1スポット12枚・約600万字まで）を約70万字ずつに分けて置き、見る側は全部つないで貼る',
         'const SHARE_PH_PER_SPOT = PHOTO_MAX_PER_SPOT, SHARE_PH_TOTAL = 6000000;' in src and 'const SHARE_PH_CHUNK = 700000;' in src
@@ -463,7 +471,7 @@ def static_checks(src):
         'id="mobilePtsBtn" data-pts="1"' in src and 'id="btnPts" data-pts="1"' in src and 'onclick="closePcPops();openPtSheet()"' in src
         and 'const PT_HOLD_MS = 550;' in src and "ptHideTypes: 'fp_pt_hide_types'" in src
         and 'const vis = list.filter(w => { w._ptHidden = !_ptShown(w); if (w._ptHidden) show(w, false); return !w._ptHidden; });' in src
-        and 'vis.slice().sort((a, b) => pri(a) - pri(b))' in src
+        and 'vis.slice().sort((a, b) => prv.get(a) - prv.get(b))' in src   # v243：優先順は1回だけ求めた値で並べる（並べるのは隠したものを除いた vis）
         and '&& (_ptLevel < 2 || _vpEditing());' in src
         and '_ptInit();                              // ポイントの表示ボタン' in src
         and 'try { _ptReset(); } catch(_) {}' in src
@@ -2584,6 +2592,33 @@ def functional_checks(index_path):
             and bp.get('chunkMax', 9e9) <= 700100 and bp.get('got') == '4,4,4' and bp.get('order') and bp.get('oldForm')
             and bp.get('mirror') and bp.get('noPartial') and bp.get('delAll') and bp.get('icon'),
             str(bp)[:400])
+
+        # v243: 写真つきのコースを開いても固まらない（オーナー報告「みんなのマップで見ようとすると固まる／自分のマップを開く時も」）
+        fz = page.evaluate("""async ()=>{ try{
+            const out = {};
+            /* ① 画面の幅は1回の処理の中で1回しか読まない（印を描き直す処理で何万回も読んで、配置の計算し直しで止まっていた） */
+            const orig = window.isMobile; let misses = 0, calls = 0;
+            _isMobC = null;                                         // 新しい処理の始まりと同じ状態から測る
+            window.isMobile = function(){ calls++; if (_isMobC === null || _isMobC === undefined) misses++; return orig(); };
+            refreshIcons(); _declutter(); wps.forEach(w => { if (w.marker) wpIcon(w); });
+            window.isMobile = orig;
+            out.widthReads = misses; out.calls = calls;
+            out.fresh = false;                                     // 次の処理では読み直す（控えが捨てられる）
+            for (let i = 0; i < 50 && !out.fresh; i++) { await new Promise(r => setTimeout(r, 2)); out.fresh = _isMobC === null; }
+            /* ② 写真かどうかの判定は先頭だけ見る（約8万字の写真を端から端まで調べていた） */
+            const big = 'data:image/jpeg;base64,' + 'A'.repeat(5000000);
+            const t0 = performance.now(); let k = 0; for (let i = 0; i < 100; i++) if (_isPhotoRef(big)) k++;
+            out.refMs = Math.round(performance.now() - t0); out.refOk = k === 0 && _isPhotoRef('idb:p1') === true && _isPhotoRef(null) === false;
+            /* ③ シールが何枚できても、束ね直しはまとめて1回 */
+            const od = window._declutter; let n = 0; window._declutter = function(){ n++; return od(); };
+            for (let i = 0; i < 12; i++) _declutterSoon();
+            await new Promise(r => setTimeout(r, 120));
+            window._declutter = od; out.declOnce = n === 1;
+            return out;
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        chk('機能', '固まらない：描き直し1回で画面の幅を読むのは1回だけ、写真の判定は長い写真でも一瞬、シールが何枚できても束ね直しは1回',
+            isinstance(fz, dict) and fz.get('widthReads') == 1 and fz.get('calls', 0) >= 5 and fz.get('fresh')
+            and fz.get('refOk') and fz.get('refMs', 999) < 30 and fz.get('declOnce'), str(fz))
 
         # v237: 一覧まで案内し、みんなのマップを見える所まで送る
         gv = page.evaluate("""async ()=>{ try{
