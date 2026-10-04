@@ -159,8 +159,8 @@ def static_checks(src):
     chk('静的', 'GPX書き出し exportGpx 存在', 'function exportGpx' in src)
     chk('静的', 'GPXのXMLエスケープ _escXml 存在', 'function _escXml' in src)
     chk('静的', 'GPXは表示用でなく実データを使う', '_lastRouteCoords' in src and 'buildDisplayCoords()' not in src.split('function buildGpx')[1][:900])
-    chk('静的', 'PC・スマホ両方から「配る」でGPXに届く',
-        "shareExit('gpx')" in src and 'class="hbtn hbtn-share"' in src and 'class="mob-share tap"' in src)
+    chk('静的', 'PC・スマホ両方から「公開」でGPXに届く',
+        "shareExit('gpx')" in src and 'class="hbtn hbtn-share"' in src and 'class="mrb mob-share tap"' in src)
     chk('静的', '一括バックアップ buildBackupData/applyBackupData 存在',
         'function buildBackupData' in src and 'function applyBackupData' in src)
     chk('静的', 'バックアップUI（書き出し・復元）', 'exportAllCourses()' in src and 'importBackupFile(this)' in src)
@@ -178,8 +178,8 @@ def static_checks(src):
     chk('静的', '印刷レイアウト（A4横）', '@media print' in src and 'size:A4landscape' in src.replace(' ', ''))
     chk('静的', '印刷時は印刷用シートだけを出す', 'body > *:not(#sheetOver){display:none!important}' in src)
     chk('静的', '色を印刷に反映（print-color-adjust）', 'print-color-adjust:exact' in src)
-    chk('静的', 'PC・スマホ両方から「配る」で印刷用シートに届く',
-        "shareExit('sheet')" in src and 'class="hbtn hbtn-share"' in src and 'class="mob-share tap"' in src)
+    chk('静的', 'PC・スマホ両方から「公開」で印刷用シートに届く',
+        "shareExit('sheet')" in src and 'class="hbtn hbtn-share"' in src and 'class="mrb mob-share tap"' in src)
     # --- v86: 未保存のまま閉じる前の確認 ---
     chk('静的', '未保存フラグ _dirty を持つ', 'let   _dirty' in src)
     chk('静的', '編集で未保存フラグが立つ（saveSnapshot）', '_dirty = true;' in src)
@@ -396,9 +396,10 @@ def static_checks(src):
     chk('静的', '配るシートがある（開閉・出口・載る情報）',
         'id="shareSheet"' in src and 'function openShareSheet' in src and 'function shareExit' in src
         and 'function renderShareInfo' in src)
-    chk('静的', '編集画面の上バーに「配る」がある（PC・スマホとも）',
-        'class="mob-share tap" onclick="openShareSheet()">配る' in src
-        and 'class="hbtn hbtn-share" onclick="openShareSheet()"' in src)
+    chk('静的', '編集画面に「公開」（v247：配る→公開）がある（PC は上バー・スマホは右の列のアイコン）',
+        'class="mrb mob-share tap" onclick="openShareSheet()" aria-label="公開"' in src
+        and 'class="hbtn hbtn-share" onclick="openShareSheet()" title="公開' in src and '>公開</button>' in src
+        and '<div class="ss-t">公開</div>' in src and '公開前の確認' in src)
     chk('静的', '4つの出口がそれぞれ既存の機能を呼ぶ（中身は変えない）',
         all(f'shareExit(\'{k}\')' in src for k in ('image', 'sheet', 'link', 'gpx'))
         and "if (kind === 'image') saveMapAsImage();" in src and "else if (kind === 'sheet') openPrintSheet();" in src
@@ -662,10 +663,10 @@ def static_checks(src):
         and '<span id="btnViewTxt">閲覧モード</span>' in src and '<span class="mm-tog-l">閲覧モード</span>' in src
         and '閲覧モードにしました' in src and '編集モードにもどりました' in src
         and '>削除</button>' in src and '消します。' not in src)
-    chk('静的', '地図の右のボタンは 次のスポット・現在地・カメラ・モード切替 の順（＋−は廃止）。追いかけは専用ボタン',
+    chk('静的', '地図の右のボタンは 保存・公開・現在地（追いかける）・ポイント・カメラ・モード切替 の順（＋−は廃止。v247：◎ をまとめ、保存・公開を上の段から移した）',
         'leafMap&&leafMap.zoomIn()' not in src and 'leafMap&&leafMap.zoomOut()' not in src
-        and 'id="mobileNextBtn"' in src and 'id="mobileModeBtn"' in src
-        and src.index('id="mobileNextBtn"') < src.index('class="mrb gps tap"') < src.index('id="mobileFindBtn"') < src.index('id="mobileModeBtn"')
+        and 'id="mobileNextBtn"' in src and 'id="mobileModeBtn"' in src and 'class="mrb gps tap"' not in src
+        and src.index('class="mrb mob-save tap"') < src.index('class="mrb mob-share tap"') < src.index('id="mobileNextBtn"') < src.index('id="mobilePtsBtn"') < src.index('id="mobileFindBtn"') < src.index('id="mobileModeBtn"')
         and src.index('id="mobileModeBtn"') < src.index('id="mobileUndoBtn"')
         and "document.querySelectorAll('.mrb.next')" in src and 'const ICON_VIEW' in src and 'const ICON_EDIT' in src
         and 'body.viewonly #mobileModeBtn{display:none!important}' in src)
@@ -1005,6 +1006,23 @@ def static_checks(src):
         'html,body{touch-action:manipulation;min-height:calc(100% + var(--sat0));' in src
         and "document.documentElement.style.setProperty('--sat0', v + 'px')" in src
         and 'class="sat-band"' not in src and 'viewport-fit=cover">' in src)
+    # --- v247: 保存・公開を右の列のアイコンに／現在地は「追いかける」1つ（オーナー指示）---
+    _tb = src[src.index('<div id="mobileTopBar">'):src.index('<div id="modeHint"')]
+    chk('静的', 'スマホの上の段は「戻る」だけ。保存・公開（配る→公開）は右の列のアイコン（絵つき・名前つき）。◎（現在地へ）はスマホに無い',
+        'mob-share' not in _tb and 'mob-save' not in _tb and 'mob-back' in _tb
+        and re.search(r'<button class="mrb mob-save tap" onclick="saveCourse\(\)" aria-label="保存" title="保存"><svg', src)
+        and re.search(r'<button class="mrb mob-share tap" onclick="openShareSheet\(\)" aria-label="公開" title="公開[^"]*"><svg', src)
+        and 'gotoCurrentLocation()' not in src[src.index('<div id="mobileRbtns">'):src.index('<div id="firstTip"')]
+        and "if (b.classList.contains('mrb')) b.setAttribute('aria-label', t);" in src)
+    chk('静的', '追いかけるボタンは編集・閲覧どちらでも出し、追いかけている間は青く塗る（aria-pressed）。コース範囲外は1回だけ知らせる',
+        "nb2.hidden" not in src and 'id="mobileNextBtn" onclick="toggleFollowMode()" aria-label="現在地を追いかける" aria-pressed="false"' in src
+        and '.mrb.next.on{background:#2563EB!important;color:#fff!important;border-color:#2563EB!important}' in src
+        and "b.setAttribute('aria-pressed', _followOn ? 'true' : 'false')" in src
+        and "if (!_followOutWarned) { _followOutWarned = true; showToast('現在地はコース範囲外です（地図は移動しません）'); }" in src)
+    chk('静的', '「配る」の名前は「公開」に揃えた（ボタン・窓の題・確認の見出し・案内）。リンクを手渡す意味の「配る」は残す',
+        '「配る」' not in src and '>配る<' not in src and 'aria-label="配る"' not in src and '配る前の確認' not in src
+        and '「公開」→「みんなのマップに出す」' in src and 'コースは「公開」からも渡せます' in src
+        and 'かんたん：このリンクをそのまま配る' in src)
     # --- v153: 画面の骨組みの検査（閉じ忘れを二度と出さない）＋小さな手直し ---
     _a = src.index('<body'); _b = src.index('<script src=', _a)
     _mk = re.sub(r'<script\b.*?</script>', '', src[_a:_b], flags=re.S)
@@ -1157,7 +1175,7 @@ def static_checks(src):
     chk('静的', '位置の入口は _onWalkerPos の1つ（◎と追従の両方から）',
         src.count('_onWalkerPos(lat, lng, acc);') == 1 and src.count('_onWalkerPos(lat, lng, pos.coords.accuracy || 0);') == 1
         and 'function _routeProgress' in src and 'function _bearing' in src)
-    chk('静的', '追いかけは専用ボタン（v214：現在地ボタンとは別。1回きりでは距離が更新されないため）',
+    chk('静的', 'スマホの現在地は「追いかける」ボタン1つ（v247：◎ 現在地へ をまとめた。追いかけていれば距離が更新され続ける）',
         'id="mobileNextBtn" onclick="toggleFollowMode()"' in src and '次のスポットまでの距離が出ます（もう一度押すと止まります）' in src)
     chk('静的', 'コンパスは押したときだけ許可を求める', 'function enableCompass' in src and 'DeviceOrientationEvent.requestPermission' in src)
     # --- v131: PC・スマホの機能を揃える（ロードマップ 段階1-6）---
@@ -1168,9 +1186,10 @@ def static_checks(src):
     _feats = {"なぞり描き": "setMode('draw')", "手描きの道": 'toggleCustomMode()', "現在地": 'gotoCurrentLocation()', "並べ替え画面": 'openReorderSheet()',
               "手描きの道を使う": 'toggleCustomFeature()', "手描きの道に合わせる": 'toggleCustomSnap()', "道なりに引く": 'toggleManualMode()',
               "地名とスポット": 'toggleMapLabels()', "文字の大きさ": 'setLabelSize(', "印の大きさ": 'setWpSize(',
-              "ルートを引き直す": 'openFixRouteSheet()', "背景地図": "setBaseMap(", "閲覧モード": 'toggleViewMode()', "配る": 'openShareSheet()', "保存": 'saveCourse()', "取り消し": 'undoLast()',
+              "ルートを引き直す": 'openFixRouteSheet()', "背景地図": "setBaseMap(", "閲覧モード": 'toggleViewMode()', "公開": 'openShareSheet()', "保存": 'saveCourse()', "取り消し": 'undoLast()',
               "やり直し": 'redoAction()', "すべて削除": 'clearAll()', "ファイルに保存": 'exportCourse()'}
-    _missing = [f"{k}(PC)" for k, v in _feats.items() if v not in _pc] + [f"{k}(スマホ)" for k, v in _feats.items() if v not in _mob]
+    _feats_mob = dict(_feats, 現在地='toggleFollowMode()')   # v247：スマホの現在地は「追いかける」1つ（◎ をまとめた。オーナー指示）
+    _missing = [f"{k}(PC)" for k, v in _feats.items() if v not in _pc] + [f"{k}(スマホ)" for k, v in _feats_mob.items() if v not in _mob]
     chk('静的', '機種だけで使えない機能が0（圏外用に保存・現在地追従はスマホ専用でよい）', not _missing, str(_missing)[:200])
     chk('静的', 'PCの左の道具に「なぞる」「道を足す」、下に「現在地」、左の欄に「並べ替え」がある',
         'id="btnDraw" onclick="setMode(\'draw\')"' in src and 'id="btnCustom" onclick="toggleCustomMode()"' in src
@@ -2083,7 +2102,7 @@ def functional_checks(index_path):
             and a11y.get('zoomAllowed') is True and a11y.get('mapTouch') == 'none'
             and a11y.get('leafletPinch') is True, str(a11y)[:190])
 
-        # v123: 「配る」＝上バーの小さなボタン1回＋出口1回の2タップで、4つの出口すべてに届く
+        # v123: 「公開」（v247：配る→公開・右の列のアイコン）1回＋出口1回の2タップで、4つの出口すべてに届く
         sh = page.evaluate("""()=>{ return (async()=>{ try{
             const keep = {img: saveMapAsImage, sheet: openPrintSheet, gpx: exportGpx, dlg: openShareDialog,
                           save: saveCourse, dirty: _dirty, desc: document.getElementById('iDesc').value};
@@ -2094,7 +2113,7 @@ def functional_checks(index_path):
             openShareDialog = c => calls.push('link:' + (c && c.name));
             saveCourse      = async () => { calls.push('save'); _dirty = false; return true; };
             const r = {taps: {}, box: {}, warnEmpty: null, okWritten: null, photo: {}, hidden: null};
-            const btn = document.querySelector('#mobileTopBar .mob-share');
+            const btn = document.querySelector('#mobileRbtns .mob-share');
             r.entryVisible = !!btn && btn.getBoundingClientRect().height >= 40
                              && getComputedStyle(btn).display !== 'none';
             const sheet = document.getElementById('shareSheet');
@@ -2151,9 +2170,9 @@ def functional_checks(index_path):
                  and sh.get('imageClosed') and sh.get('sheetClosed') and sh.get('gpxClosed') and sh.get('linkClosed')
                  and sh.get('calls') == ['image', 'sheet', 'gpx', 'save', 'link:' + (sh.get('name', '').split('／')[0])]
                  and all(v <= 3 for v in sh.get('taps', {}).values()) and sh.get('hidden'))
-        chk('機能', '「配る」は2タップで4つの出口に届き、説明の空・写真の数を先に見せる', bool(_shOk), str(sh)[:220])
+        chk('機能', '「公開」は2タップで4つの出口に届き、説明の空・写真の数を先に見せる', bool(_shOk), str(sh)[:220])
 
-        # v123: パソコンでは「配る」が上バーにあり、シートは画面の中央に1枚で出る
+        # v123: パソコンでは「公開」が上バーにあり、シートは画面の中央に1枚で出る
         page.set_viewport_size({'width': 1280, 'height': 800})
         pc = page.evaluate("""()=>{ try{
             leafMap.invalidateSize();
@@ -2167,7 +2186,7 @@ def functional_checks(index_path):
           }catch(e){ return 'ERR:'+e.message; } }""")
         page.set_viewport_size({'width': 390, 'height': 812})
         page.evaluate("()=>{ leafMap.invalidateSize(); }")
-        chk('機能', 'パソコンでも上バーの「配る」から同じ1枚が中央に出る',
+        chk('機能', 'パソコンでも上バーの「公開」から同じ1枚が中央に出る',
             isinstance(pc, dict) and pc.get('vis') and pc.get('open') and pc.get('centered') and 400 <= pc.get('w', 0) <= 480,
             str(pc)[:160])
 
@@ -2216,6 +2235,60 @@ def functional_checks(index_path):
         chk('機能', '右の列（ポイントの表示を足した）は横向き・小さい画面でも下の帯に重ならず画面の中',
             all(isinstance(v, dict) and v.get('pts') and v.get('n', 0) >= 4 and v.get('inView') and v.get('bottom', 9999) <= v.get('shelf', 0)
                 for v in _col.values()), str(_col)[:300])
+
+        # v247: 保存・公開は右の列のアイコン（上の段は「戻る」だけ）。保存は状態で色と名前が変わる。現在地は「追いかける」1つで、押すと青く光る
+        rc = page.evaluate("""async ()=>{ try{
+            const vis = e => { if (!e) return false; const s = getComputedStyle(e); return s.display !== 'none' && s.visibility !== 'hidden' && e.getBoundingClientRect().width > 0; };
+            const out = {};
+            const col = [...document.querySelectorAll('#mobileRbtns > *')].filter(vis);
+            const back = document.querySelector('#mobileTopBar .mob-back');
+            out.top = [...document.querySelectorAll('#mobileTopBar > *')].filter(vis).length;
+            out.order = col.slice(0, 3).map(e => e.getAttribute('aria-label'));
+            out.aligned = Math.abs(col[0].getBoundingClientRect().top - back.getBoundingClientRect().top) < 1
+                          && new Set(col.map(e => Math.round(e.getBoundingClientRect().left))).size === 1;
+            out.noGps = !document.querySelector('#mobileRbtns [onclick="gotoCurrentLocation()"]');
+            // 保存：まだ＝色付き・保存済み＝白・失敗＝赤。絵は消えない。押すと保存を呼ぶ
+            const sv = document.querySelector('#mobileRbtns .mob-save'), keepSt = _saveState, keepSave = saveCourse;
+            const st = k => { _setSaveState(k); const c = getComputedStyle(sv); return {l: sv.getAttribute('aria-label'), img: c.backgroundImage !== 'none', bg: c.backgroundColor, svg: !!sv.querySelector('svg')}; };
+            out.dirty = st('dirty'); out.saved = st('saved'); out.err = st('error');
+            let called = 0; saveCourse = async () => { called++; return true; };
+            sv.click(); out.saveCalls = called; saveCourse = keepSave; _setSaveState(keepSt);
+            // 公開：右の列から「公開」の窓が開く
+            document.querySelector('#mobileRbtns .mob-share').click();
+            const sh = document.getElementById('shareSheet');
+            out.share = getComputedStyle(sh).display !== 'none' && sh.querySelector('.ss-t').textContent === '公開';
+            closeShareSheet();
+            // 追いかける：位置は検査用に差し替える（最初のスポットの場所）。範囲外の知らせは1回だけ
+            const w0 = wps.find(w => w.type !== 'node'), geo = navigator.geolocation;
+            const keepW = geo.watchPosition, keepC = geo.clearWatch, keepT = showToast; let cb = null; const toasts = [];
+            geo.watchPosition = ok => { cb = ok; return 91; }; geo.clearWatch = () => {};
+            showToast = m => toasts.push(m);
+            const nb = document.getElementById('mobileNextBtn');
+            nb.click(); cb({coords: {latitude: w0.lat, longitude: w0.lng, accuracy: 8}});
+            await new Promise(r => setTimeout(r, 60));
+            const c1 = getComputedStyle(nb);
+            out.on = _followOn && nb.classList.contains('on') && nb.getAttribute('aria-pressed') === 'true' && c1.backgroundColor === 'rgb(37, 99, 235)'
+                     && c1.color === 'rgb(255, 255, 255)' && !!_gpsMarker;
+            toasts.length = 0;
+            cb({coords: {latitude: w0.lat + 3, longitude: w0.lng + 3, accuracy: 8}}); cb({coords: {latitude: w0.lat + 3, longitude: w0.lng + 3, accuracy: 8}});
+            out.outOnce = toasts.filter(m => m.indexOf('コース範囲外') >= 0).length === 1;
+            nb.click();
+            out.off = !_followOn && !nb.classList.contains('on') && nb.getAttribute('aria-pressed') === 'false' && getComputedStyle(nb).backgroundColor !== 'rgb(37, 99, 235)';
+            geo.watchPosition = keepW; geo.clearWatch = keepC; showToast = keepT;
+            // 閲覧モード：保存は隠れ、公開・追いかけるは残る
+            toggleViewMode(); await new Promise(r => setTimeout(r, 200));
+            out.view = !vis(sv) && vis(document.querySelector('#mobileRbtns .mob-share')) && vis(nb);
+            toggleViewMode();
+            return out;
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        chk('機能', '右の列：保存・公開・追いかけるの順で「戻る」と同じ高さから1列。保存は まだ＝色・済み＝白・失敗＝赤（絵は残る）。公開は窓が開く。◎ は無い',
+            isinstance(rc, dict) and rc.get('top') == 1 and rc.get('order') == ['保存済み' if rc.get('order', [''])[0] == '保存済み' else '保存', '公開', '現在地を追いかける']
+            and rc.get('aligned') and rc.get('noGps') and rc.get('saveCalls') == 1 and rc.get('share')
+            and rc['dirty'] == {'l': '保存', 'img': True, 'bg': rc['dirty']['bg'], 'svg': True}
+            and rc['saved']['l'] == '保存済み' and not rc['saved']['img'] and rc['saved']['svg']
+            and rc['err']['l'] == '保存できず' and rc['err']['bg'] == 'rgb(183, 28, 28)', str(rc)[:300])
+        chk('機能', '現在地は「追いかける」1つ：押すと青く光って現在地の印が出る。もう一度押すと止まる。範囲外は1回だけ知らせる。閲覧モードでも出る',
+            isinstance(rc, dict) and rc.get('on') and rc.get('off') and rc.get('outOnce') and rc.get('view'), str(rc)[:300])
 
         # v125: 390×844 でメニューが1画面に収まり、2階層目と「上級者向け」が動く
         page.set_viewport_size({'width': 390, 'height': 844})
@@ -3135,7 +3208,7 @@ def functional_checks(index_path):
             out.second = document.getElementById('tourStep').textContent === '2 / ' + TOUR.length;
             openTour(TOUR.length - 1);
             out.last = document.getElementById('tourNext').textContent === 'コースを作る'
-                       && /みんなのマップ|配る/.test(document.getElementById('tourD').textContent + document.getElementById('tourT').textContent);
+                       && /みんなのマップ|公開/.test(document.getElementById('tourD').textContent + document.getElementById('tourT').textContent);   // v247：配る→公開
             closeTour();
             out.closed = !document.getElementById('tourSheet').classList.contains('show');
             out.seen = localStorage.getItem(LS.tourSeen) === '1';
@@ -3891,11 +3964,11 @@ def functional_checks(index_path):
             window.__noAutoSave = false; courseInfo.name = courseInfo.name || '保存検査';
             const before = JSON.stringify(getCourses());
             _markDirty();
-            const out = {dirtyLabel: document.querySelector('.mob-save').textContent === '保存', noTimer: !_autoSaveT && typeof window.scheduleAutoSave === 'undefined'};
+            const out = {dirtyLabel: document.querySelector('.mob-save').getAttribute('aria-label') === '保存', noTimer: !_autoSaveT && typeof window.scheduleAutoSave === 'undefined'};
             await new Promise(r => setTimeout(r, 2500));
             out.notSaved = _dirty === true && _saveState === 'dirty' && JSON.stringify(getCourses()) === before;
             await saveCourse();
-            out.saved = _dirty === false && _saveState === 'saved' && document.querySelector('.mob-save').textContent === '保存済み' && getCourses().some(c => c.id === currentCourseId);
+            out.saved = _dirty === false && _saveState === 'saved' && document.querySelector('.mob-save').getAttribute('aria-label') === '保存済み' && getCourses().some(c => c.id === currentCourseId);
             // 一覧に戻る：未保存なら確認が出る。キャンセルで戻らない／保存せずに戻るで戻る
             _markDirty(); await backToS1();
             const dlg = document.getElementById('saveBackDlg');
@@ -5331,6 +5404,28 @@ def webkit_checks(index_path):
             page.evaluate("() => { if (viewMode) toggleViewMode(); }"); page.wait_for_timeout(200)
             chk('WebKit', 'ノッチ（安全域59px）の閲覧モードでも、次のスポットの帯は安全域より下で、➤・戻る・配る・スタンプの札に重ならない',
                 r6.get('bar') and r6['bar'][1] >= 59 and not r6['hit'] and r6.get('next'), str(r6)[:200])
+            # v247：保存・公開を右の列に入れても、編集画面の右の列は1列で、ほかの部品・下の棚・画面の外に重ならない（縦・狭い横向き・広い横向き）
+            COL = """() => { const vis = e => { if (!e) return false; const s = getComputedStyle(e); return s.display !== 'none' && s.visibility !== 'hidden' && e.getBoundingClientRect().width > 0; };
+                const col = [...document.querySelectorAll('#mobileRbtns > *')].filter(vis), back = document.querySelector('#mobileTopBar .mob-back');
+                const others = [...document.querySelectorAll('#mobileTopBar > *')].filter(vis);
+                const lows = [document.getElementById('mobileShelf'), document.getElementById('mobileElevBand')].filter(vis).map(e => e.getBoundingClientRect());
+                const hit = [];
+                col.forEach(e => { const r = e.getBoundingClientRect();
+                  others.concat(col.filter(x => x !== e)).forEach(o => { const q = o.getBoundingClientRect(); if (r.left < q.right && r.right > q.left && r.top < q.bottom && r.bottom > q.top) hit.push(e.getAttribute('aria-label')); });
+                  lows.forEach(q => { if (r.left < q.right && r.right > q.left && r.top < q.bottom + 4 && r.bottom + 4 > q.top) hit.push('棚:' + e.getAttribute('aria-label')); });
+                  if (r.right > innerWidth + 0.5 || r.bottom > innerHeight + 0.5) hit.push('外:' + e.getAttribute('aria-label')); });
+                return {n: col.length, first: col.slice(0, 3).map(e => (e.getAttribute('aria-label') || '').slice(0, 2)).join('|'),
+                        topSame: Math.abs(col[0].getBoundingClientRect().top - back.getBoundingClientRect().top) < 1, hit: hit}; }"""
+            col_res = {}
+            for vw, vh in ((390, 812), (667, 375), (812, 375), (844, 390)):
+                # iPhone の横向きは、上のノッチが 0（横に来る）・下のホームバーが 21px。検査用の ?safe=59（縦向き：上59・下34）を、横向きの間だけ合わせる
+                page.evaluate("(l) => { const d = document.documentElement.style; d.setProperty('--sat0', l ? '0px' : '59px'); d.setProperty('--sab', l ? '21px' : '34px'); }", vw > vh)
+                page.set_viewport_size({'width': vw, 'height': vh}); page.wait_for_timeout(350)
+                col_res[f'{vw}x{vh}'] = page.evaluate(COL)
+            page.evaluate("() => { const d = document.documentElement.style; d.setProperty('--sat0', '59px'); d.setProperty('--sab', '34px'); }")
+            page.set_viewport_size({'width': 390, 'height': 812}); page.wait_for_timeout(200)
+            chk('WebKit', '編集画面の右の列（保存・公開・追いかける…）は「戻る」と同じ高さから1列で、重ならず・下の棚から4px以上空き・画面の中（縦・横向き SE／mini／標準。横向きはホームバー21px）',
+                all(v.get('n') == 7 and v.get('first') == '保存|公開|現在' and v.get('topSame') and not v.get('hit') for v in col_res.values()), str(col_res)[:300])
             b.close()
     except Exception as e:
         chk('WebKit', 'WebKit の検査が最後まで走る', False, str(e).splitlines()[0][:160])

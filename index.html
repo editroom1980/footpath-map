@@ -138,7 +138,7 @@ html,body{touch-action:manipulation;min-height:calc(100% + var(--sat0));font-fam
 
 /* ====== SCREEN 2 ====== */
 #s2{height:100vh;display:none;flex-direction:column}
-/* 上バー（v126・図4）：左＝一覧・コース名、右＝閲覧モード・その他・保存・配る */
+/* 上バー（v126・図4）：左＝一覧・コース名、右＝閲覧モード・その他・保存・公開（v247：配る→公開） */
 #hdr{position:relative;background:#fff;color:#231C14;padding:0 12px;height:52px;display:flex;align-items:center;gap:8px;flex-shrink:0;border-bottom:1px solid #E3DCD1;z-index:1200}
 #cnDisp{font-size:15.5px;font-weight:800;color:#231C14;flex:1;min-width:0;line-height:1.25;white-space:normal;overflow-wrap:anywhere;
   display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}   /* v182：2行まで出す（1行で切らない） */
@@ -150,7 +150,7 @@ html,body{touch-action:manipulation;min-height:calc(100% + var(--sat0));font-fam
 .hbtn-save:hover{background:var(--brand-lite)}
 .hbtn-save.is-saved{background:#fff;border-color:#E3DCD1;color:var(--t-sub)}   /* 自動保存済み＝目立たせない（v148） */
 .hbtn-save.is-error,.mob-save.is-error{background:#B71C1C!important;color:#fff!important}
-.mob-save.is-saved{background:#EEE9E1!important;color:var(--t-sub)!important;box-shadow:none!important}
+.mob-save.is-saved{background:rgba(255,255,255,0.92)!important;color:var(--t-sub)!important;box-shadow:none!important}   /* v247：保存済みは右の列のほかのボタンと同じ白（まだのときだけ色が付く） */
 .hbtn-back{background:#F4F0E9;border-color:#F4F0E9;color:#4A2E0E}
 #main{flex:1;display:flex;overflow:hidden;min-height:0}
 #sidebar{width:240px;flex-shrink:0;background:#FAF6EE;border-right:1px solid #D4C4A8;display:flex;flex-direction:column;overflow:hidden}
@@ -1023,10 +1023,8 @@ body.embed #nextBar{display:none!important}
 }
 .wp-ro-btn{margin-left:6px;border:1px solid #D4C4A8;background:#fff;border-radius:6px;font-size:10.5px;padding:2px 7px;cursor:pointer;font-family:inherit;color:#4A2E0E}
 .wp-ro-btn:hover{background:var(--brand-soft);border-color:var(--brand)}
-/* 上バーの「配る」：白い小さなボタン（ふだんは目立たない） */
-.mob-share{background:rgba(255,255,255,.95);color:#231C14;font-size:12.5px;font-weight:700;min-height:40px;padding:0 13px;
-  display:inline-flex;align-items:center;border-radius:20px;border:0.5px solid rgba(0,0,0,.1);cursor:pointer;font-family:inherit;
-  flex-shrink:0;box-shadow:0 2px 8px rgba(0,0,0,.18);margin-left:auto;margin-right:8px}
+/* 右の列の「公開」（v247：上の段の配るボタンを「公開」にして、ほかと同じアイコンに） */
+.mrb.mob-share{color:#231C14}
 .hbtn-share{background:#8E3406;border-color:#8E3406;color:#fff}
 .hbtn-share:hover{background:var(--brand);border-color:var(--brand)}
 body.viewonly .mob-share, body.embed .mob-share{display:none!important}
@@ -1068,21 +1066,20 @@ body.viewonly .mob-share, body.embed .mob-share{display:none!important}
   #mapArea{position:absolute;inset:0;display:block}
   #mapWrap{position:absolute;inset:0}
   #map{width:100%;height:100%}
-  /* 上部：戻る/保存を個別フロート（白帯なし） */
+  /* 上部：戻るだけを浮かせる（白帯なし。v247：保存・公開は右の列へ） */
   #mobileTopBar{display:flex!important;justify-content:space-between;background:transparent!important;
     padding:max(8px,var(--sat)) max(8px,env(safe-area-inset-right)) 0 max(8px,env(safe-area-inset-left))!important;pointer-events:none}
   #mobileTopBar > *{pointer-events:auto}
   #mobileCourseTitle{display:none!important}
   .mob-back{background:rgba(255,255,255,0.95)!important;box-shadow:0 2px 8px rgba(0,0,0,0.18)}
   .mob-save{box-shadow:0 2px 8px rgba(0,0,0,0.22)}
-  #mobileRbtns{display:flex!important;top:calc(58px + var(--sat))!important;bottom:auto;right:max(8px,env(safe-area-inset-right))}
+  #mobileRbtns{display:flex!important;top:max(8px,var(--sat))!important;bottom:auto;right:max(8px,env(safe-area-inset-right))}   /* v247：上の段の右が空いたので「戻る」と同じ高さから */
   /* スタンプ表示は、下のカードの「…」ボタンに重なっていたので左上へ出す（v106で実測して判明）*/
   #stampBar{left:max(8px,env(safe-area-inset-left));right:auto;bottom:auto;
     top:calc(max(8px,var(--sat)) + 50px)}
   #nextBar:not([hidden]) ~ #stampBar{top:calc(max(8px,var(--sat)) + var(--nb-h,68px) + 8px)}   /* 次のスポットの帯の下（v133。v245：帯の高さ --nb-h は JS が測る） */
   /* v245：次のスポットの帯が出ている間は、右の列（➤ ほか）を帯のすぐ下から並べる（帯が ➤ に重なっていた・オーナー指摘） */
   body.viewing #nextBar:not([hidden]) ~ #mobileRbtns{top:calc(max(8px,var(--sat)) + var(--nb-h,68px) + 8px)!important}
-  body.viewing #nextBar:not([hidden]) ~ #mobileTopBar .mob-share{visibility:hidden}   /* 帯の下に隠れて押せない「配る」が透けて見えていた（v245） */
   /* 下部：モード行（下段）＋簡易高低差（上段）を1つのカードとしてフローティング */
   #mobileShelf{display:flex!important;position:absolute;left:max(8px,env(safe-area-inset-left));right:max(8px,env(safe-area-inset-right));
     bottom:max(8px,var(--sab));width:auto;height:48px!important;box-sizing:border-box;
@@ -1108,6 +1105,12 @@ body.viewonly .mob-share, body.embed .mob-share{display:none!important}
   .wp-row{padding:7px 10px}
 }
 
+/* v247：横向きで縦が 380px 以下（iPhone SE・X・XS・11 Pro・12 mini・13 mini）は、右の列が7つ（保存・公開を足した）だと
+   下のホームバーぶん上がった棚に届く（X〜13 mini は v246 でも 10px 重なっていた）。ボタンの見た目だけ 36px にして1列に収める。
+   押せる範囲は .tap::after で 44px のまま */
+@media (orientation: landscape) and (max-height: 380px) {
+  #mobileRbtns .mrb{width:36px;height:36px}
+}
 /* ━━━ 横向き（低い画面＝スマホ横）専用：地図を全画面にして各UIをフローティング ━━━ */
 /* PC（縦に高い画面）・縦向きには影響しない */
 /* 幅399px以下：折り返した時に「·」だけ残らないよう区切りを消す（v124）。ボタンは44pxのまま（隣と当たりが重なるため詰めない） */
@@ -1137,13 +1140,12 @@ body.viewonly .mob-share, body.embed .mob-share{display:none!important}
   #mobileCourseTitle{display:none!important}  /* タイトルは隠して地図を最大化 */
   .mob-back{background:rgba(255,255,255,0.95)!important;box-shadow:0 2px 8px rgba(0,0,0,0.18)}
   .mob-save{box-shadow:0 2px 8px rgba(0,0,0,0.22)}
-  #mobileRbtns{display:flex!important;top:calc(50px + var(--sat))!important;bottom:auto;right:max(8px,env(safe-area-inset-right))}
-  #mobileRbtns{gap:5px!important}#mobileRbtns .mrb.mt{margin-top:5px}   /* v241：横向きは縦が短い。ボタンが1つ増えても下の帯に重ならないように間を詰める */
+  #mobileRbtns{display:flex!important;top:max(8px,var(--sat))!important;bottom:auto;right:max(8px,env(safe-area-inset-right))}   /* v247：「戻る」と同じ高さから */
+  #mobileRbtns{gap:4px!important}#mobileRbtns .mrb.mt{margin-top:4px}   /* v241：横向きは縦が短い。ボタンが1つ増えても下の帯に重ならないように間を詰める（v247：保存・公開が入ったので 4px＝押せる範囲 44px がちょうど並ぶ最小） */
   /* v245：横向きは縦が短いので右の列は下げず、次のスポットの帯を「戻る」と右の列の間に置く。
-     幅の広い横向き（PC 向けの左上・幅 380px の決まりが効く）では、帯が「戻る」に重なっていた。幅は「配る」に届かない 440px まで */
+     幅の広い横向き（PC 向けの左上・幅 380px の決まりが効く）では、帯が「戻る」に重なっていた。幅は 440px まで（読みやすさ） */
   #nextBar{left:calc(max(8px,env(safe-area-inset-left)) + 48px);right:calc(max(8px,env(safe-area-inset-right)) + 56px);top:max(8px,var(--sat));width:auto;max-width:440px}
-  body.viewing #nextBar:not([hidden]) ~ #mobileRbtns{top:calc(50px + var(--sat))!important}
-  body.viewing #nextBar:not([hidden]) ~ #mobileTopBar .mob-share{visibility:visible}   /* 横向きは帯が「配る」に届かないので隠さない */
+  body.viewing #nextBar:not([hidden]) ~ #mobileRbtns{top:max(8px,var(--sat))!important}
   #mobileShelf{display:flex!important}
   #mobileElevBand{display:block!important}
 
@@ -1195,7 +1197,7 @@ body.viewonly .mob-share, body.embed .mob-share{display:none!important}
 .mob-back i{font-size:15px;color:#1C1917}
 #mobileCourseTitle{flex:1;font-size:13px;font-weight:700;color:#1C1917;text-align:center;line-height:1.25;white-space:normal;overflow-wrap:anywhere;
   display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}   /* v182：2行まで */
-.mob-save{background:var(--brand);color:#fff;font-size:12px;font-weight:700;min-height:40px;padding:0 16px;display:inline-flex;align-items:center;border-radius:20px;border:none;cursor:pointer;flex-shrink:0}
+.mrb.mob-save{color:#fff;border-color:transparent}   /* v247：右の列の「保存」。まだ保存していないときは色付き（下の「保存・戻るボタン グラデーション」）、保存済みは .is-saved で白 */
 #mobileRbtns{position:absolute;right:10px;top:60px;z-index:1000;flex-direction:column;gap:8px}
 #modeHint{display:none;position:absolute;left:12px;right:64px;top:calc(60px + var(--sat));z-index:1000;background:rgba(74,46,14,.92);color:#fff;font-size:12.5px;line-height:1.45;padding:8px 12px;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.2)}
 #modeHint .mh-t{display:block;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -1324,8 +1326,10 @@ body.viewing #modeHint,body.viewonly #modeHint{display:none!important}
 /* シェルフのモードボタン洗練 */
 .mob-more{width:40px;height:40px;border-radius:12px;background:#F7F3ED;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#6A645E;font-size:19px;border:none;cursor:pointer}
 .mob-mode.lbl{gap:5px;padding:0 11px}
-.mrb.gps.on{background:var(--brand)!important;color:#fff!important}
-.mrb.gps{color:#3B82F6}
+/* 現在地を追いかける（v247：◎ 現在地へ と1つにまとめた）。青＝地図の現在地の印と同じ仲間の色。追いかけている間は塗りつぶす */
+.mrb.next{color:#2563EB}
+.mrb.next.on{background:#2563EB!important;color:#fff!important;border-color:#2563EB!important}
+.mrb.next.on svg{fill:currentColor}
 /* ポイントの表示（v241）：絵と小さな文字で今の見せ方が分かる。何か隠しているときは色が付く。長押しで文字が選ばれないように */
 .mrb.pts{flex-direction:column;gap:1px;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
 .mrb.pts .svgi{width:17px;height:17px}
@@ -1471,7 +1475,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
     <button class="hbtn" id="btnView" onclick="toggleViewMode()" title="閲覧モード（歩く人と同じ見え方）&#10;スポットを押すと写真・解説が出ます"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" /> <path d="M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6" /></svg><span id="btnViewTxt">閲覧モード</span></button>
     <button class="hbtn" id="btnMore" onclick="togglePcPop('popMore', this)" aria-expanded="false" aria-controls="popMore" title="その他&#10;JSON・座標・文字なし保存・操作ガイド・詳細"><svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg><span>その他</span></button>
     <button class="hbtn hbtn-save" onclick="saveCourse()" title="保存"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M6 4h10l4 4v10a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2" /> <path d="M10 14a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /> <path d="M14 4l0 4l-6 0l0 -4" /></svg><span>保存</span></button>
-    <button class="hbtn hbtn-share" onclick="openShareSheet()" title="配る&#10;画像・印刷用シート・リンク・GPX">配る</button>
+    <button class="hbtn hbtn-share" onclick="openShareSheet()" title="公開&#10;画像・印刷用シート・リンク・GPX・みんなのマップ">公開</button>
     <!-- その他（v126）：使う頻度の低いものと詳細。編集の項目は .ed（閲覧中は隠す）-->
     <div class="pc-pop" id="popMore" role="menu">
       <button class="pp-row ed" onclick="closePcPops();openRenameSheet()" title="このコースの名前とエリアを変える">コースの名前を変える</button>
@@ -1572,7 +1576,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
           </div>
           <div class="pc-pop" id="popLegend"><div class="pp-sec">このコースの凡例</div><div class="sh-legend" id="pcLegendBody"></div></div>
         </div>
-        <!-- 歩く人の画面（v132）：次のスポットまでの距離と向き。◎か追従で位置が入ると出る -->
+        <!-- 歩く人の画面（v132）：次のスポットまでの距離と向き。追いかける（PC は「現在地」）で位置が入ると出る -->
         <div id="nextBar" hidden>
           <div class="nb-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M12 2 L19 21 L12 17 L5 21 Z"/></svg></div>
           <div class="nb-main" role="button" tabindex="0" onclick="nextBarTap()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();nextBarTap();}" title="押すと、次のスポットの写真と解説"><div class="nb-l" id="nbLabel">次のスポット</div><div class="nb-t" id="nbText" aria-live="polite"></div></div>
@@ -1588,13 +1592,14 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
         <div id="mobileTopBar">
           <div class="mob-back tap" onclick="backToS1()" aria-label="一覧へ戻る"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l14 0" /> <path d="M5 12l6 6" /> <path d="M5 12l6 -6" /></svg></div>
           <span id="mobileCourseTitle"></span>
-          <button class="mob-share tap" onclick="openShareSheet()">配る</button>
-          <button class="mob-save tap" onclick="saveCourse()">保存</button>
         </div>
         <div id="modeHint" role="status" hidden></div>   <!-- v156：いまの道具の案内（スマホ） -->
         <div id="mobileRbtns">
-          <button class="mrb next tap" id="mobileNextBtn" onclick="toggleFollowMode()" aria-label="次のスポットまでの距離" title="次のスポットまでの距離（現在地を追いかけます）" hidden><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l19 -9l-9 19l-2 -8z" /></svg></button>
-          <button class="mrb gps tap" onclick="gotoCurrentLocation()" aria-label="現在地" title="現在地へ"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12a3 3 0 1 0 6 0a3 3 0 1 0 -6 0" /> <path d="M4 12a8 8 0 1 0 16 0a8 8 0 1 0 -16 0" /> <path d="M12 2l0 2" /> <path d="M12 20l0 2" /> <path d="M20 12l2 0" /> <path d="M2 12l2 0" /></svg></button>
+          <!-- v247：保存・公開も右の列に、ほかと同じアイコンで（オーナー指示。上の段は「戻る」だけ）。保存は、まだのときだけ色が付く -->
+          <button class="mrb mob-save tap" onclick="saveCourse()" aria-label="保存" title="保存"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h10l4 4v10a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2" /> <path d="M10 14a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /> <path d="M14 4l0 4l-6 0l0 -4" /></svg></button>
+          <button class="mrb mob-share tap" onclick="openShareSheet()" aria-label="公開" title="公開（画像・印刷用シート・リンク・GPX・みんなのマップ）"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 9h-1a2 2 0 0 0 -2 2v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-8a2 2 0 0 0 -2 -2h-1" /> <path d="M12 14v-11" /> <path d="M9 6l3 -3l3 3" /></svg></button>
+          <!-- v247：現在地は「追いかける」1つ（◎ 現在地へ をまとめた。オーナー指示「追従だけでいい」）。追いかけている間は青く塗る -->
+          <button class="mrb next tap" id="mobileNextBtn" onclick="toggleFollowMode()" aria-label="現在地を追いかける" aria-pressed="false" title="現在地を追いかける（もう一度押すと止まります）。閲覧モードでは次のスポットまでの距離も出ます"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l19 -9l-9 19l-2 -8z" /></svg></button>
           <!-- v241：ポイントの表示。押すたびに 全部→コース→線だけ。長押しで種類を選ぶ（_ptBindHold） -->
           <button class="mrb pts tap" id="mobilePtsBtn" data-pts="1" aria-label="ポイントの表示：全部（押すと切り替え・長押しで種類を選ぶ）" title="ポイントの表示：押すたびに 全部→コースだけ→線だけ。長押しで種類を選ぶ"><span class="pts-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17c3.5 0 4.5-6 8.5-6S16 15 21 13"/><circle cx="5" cy="16.6" r="1.9" fill="currentColor"/><circle cx="12" cy="11" r="1.9" fill="currentColor"/><circle cx="19.5" cy="13.4" r="1.9" fill="currentColor"/><circle cx="17" cy="5" r="1.9" fill="currentColor"/><circle cx="6" cy="6.5" r="1.9" fill="currentColor"/></svg></span><span class="pts-l">全部</span></button>
           <button class="mrb tap find" id="mobileFindBtn" onclick="openFindSheet()" aria-label="発見を貼る" title="見つけたものを貼る" hidden><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h1a2 2 0 0 0 2 -2a1 1 0 0 1 1 -1h6a1 1 0 0 1 1 1a2 2 0 0 0 2 2h1a2 2 0 0 1 2 2v9a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-9a2 2 0 0 1 2 -2" /><path d="M9 13a3 3 0 1 0 6 0a3 3 0 0 0 -6 0" /></svg></button>
@@ -1817,10 +1822,10 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
 
       <!-- 配る（v123）：4つの出口と「この地図に載る情報」を1枚に -->
       <div id="shareScrim" onclick="closeShareSheet()"></div>
-      <div id="shareSheet" role="dialog" aria-label="配る">
+      <div id="shareSheet" role="dialog" aria-label="公開">
         <div class="ss-dh"></div>
         <div class="ss-hd">
-          <div class="ss-t">配る</div>
+          <div class="ss-t">公開</div>
           <button class="ss-x" onclick="closeShareSheet()" aria-label="閉じる">✕</button>
         </div>
         <div class="ss-n" id="ssName"></div>
@@ -1841,7 +1846,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
           <button class="ss-li" onclick="toggleNoEdit()" title="配布ファイルを、他の人が自分のアプリに取り込んで直せるかどうか">他の人による改変<span class="ch" id="ssEdit">—</span></button>
         </div>
         <div class="ss-hint">リンクと印刷用シートには、上の内容がそのまま載ります</div>
-        <div class="ss-sec">配る前の確認<span class="ss-n2" id="ssCheckN"></span></div>
+        <div class="ss-sec">公開前の確認<span class="ss-n2" id="ssCheckN"></span></div>
         <div class="ss-list" id="ssChecks"></div>
         <div class="ss-hint">歩く権利と私有地への配慮、安全の確認は、フットパスを続けるための土台です。✓はコースに保存されます</div>
       </div>
@@ -1851,7 +1856,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
       <div id="mobileMenuSheet">
         <div class="mm-dh"></div>
         <div class="mm-t">メニュー<button class="mm-close tap" onclick="closeMobileMenu()" aria-label="閉じる"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6l-12 12" /> <path d="M6 6l12 12" /></svg></button></div>
-        <!-- v125: コース → 歩くとき → 地図の見せ方 → 詳細（畳む）。選択肢は「›」の先（#mmSub）。書き出しは「配る」へ -->
+        <!-- v125: コース → 歩くとき → 地図の見せ方 → 詳細（畳む）。選択肢は「›」の先（#mmSub）。書き出しは「公開」へ（v247：配る→公開） -->
         <div id="mmMain">
         <div class="mm-sec">コース</div>
         <div class="mm-maplist">
@@ -2309,7 +2314,7 @@ const THEMES = [
 ];
 const THEME_ROUTE_COLORS = ['#E84040', '#D84315', '#F57F17', '#2E7D32', '#1976D2', '#6A1B9A', '#AD1457', '#222222'];
 const THEME_WIDTHS = {thin:0.75, std:1, thick:1.4};
-/* 配る前の確認（v146・フットパス特化 F9）。英国のフットパス運営（歩く権利・私有地・安全）に倣い、配る前に作者が確かめること。
+/* 公開前の確認（v146・フットパス特化 F9）。英国のフットパス運営（歩く権利・私有地・安全）に倣い、配る前に作者が確かめること。
    own＝手で✓する（コースに保存 courseInfo.check）。auto＝コースの中身から自動で見る（押すと書く画面へ） */
 const SHARE_CHECKS = [
   {k:'walked',  l:'実際に歩いて確かめた（通れる・危ない所がない）', own:true},
@@ -2486,6 +2491,7 @@ let   _routerDeadUntil = 0;  // 全部だめだった時刻＋クールダウン
 let   _routerDead     = [];  // サーバごとの「しばらく使わない」時刻。1度だめなら区間ごとに試さない
 let   _visits         = {};    // いま開いているコースのスタンプ {wpId: 時刻}
 let   _followOn       = false;  // 現在地を追いかけているか
+let   _followOutWarned = false; // v247：追いかけ中に「コース範囲外」を知らせたか（1回だけ出す）
 let   _followWatchId  = null;   // watchPosition のID
 let   _gpsCircle      = null;   // 現在地の精度を表す円
 let   _followLast     = null;   // 直近に地図を寄せた位置
@@ -2536,7 +2542,7 @@ let _wpPickerLatlng = null; // WPタイプピッカー表示中の座標（現�
 let _placeHintCount = 0;    // 1タップで置いたあとの案内を出した回数（このセッションで2回まで）（v128）
 let _typeMoreOpen   = false; // 編集画面の「その他の種類」を開いているか（v128）
 let _delPending     = null;  // 削除して「元に戻す」待ちのコース {course, index}（v130）
-let _walkPos        = null;  // 歩く人のいまの位置 {lat,lng,acc}。◎か追従で入る（v132）
+let _walkPos        = null;  // 歩く人のいまの位置 {lat,lng,acc}。追いかける（PC は「現在地」）で入る（v132・v247）
 let _walkHeading    = null;  // 端末のコンパスの向き（度・北=0）。許可が取れたときだけ（v132）
 let _routeCumRef    = null, _routeCum = null;   // _lastRouteCoords ごとの累積距離（v132）
 let _showMapLabels  = true;  // 地図ラベル表示フラグ
@@ -3446,7 +3452,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 手描きの道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した手描きの道id（直前取り消し用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v246';
+const APP_VERSION = 'v247';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat0', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -3882,7 +3888,7 @@ function renderShareInfo(){
   const iEl = document.getElementById('ssInfo');
   if (iEl) { const n = _courseInfoCount(); iEl.textContent = `${n} / ${COURSE_INFO_FIELDS.length} 記入 ›`; iEl.classList.toggle('warn', n === 0); }
   const eEl = document.getElementById('ssEdit'); if (eEl) eEl.textContent = courseInfo.noEdit ? 'そのまま使ってもらう ›' : '取り込んで直してよい ›';   // v147
-  _renderShareChecks();                                    // 配る前の確認（v146）
+  _renderShareChecks();                                    // 公開前の確認（v146）
 }
 async function shareExit(kind){
   if (kind === 'link') {
@@ -5228,7 +5234,7 @@ function _showGpsHere(lat, lng, accuracy){
   }
 }
 function _syncFollowBtn(){
-  document.querySelectorAll('.mrb.next').forEach(b => b.classList.toggle('on', _followOn));   // v214：追いかけ中はこのボタンが光る
+  document.querySelectorAll('.mrb.next').forEach(b => { b.classList.toggle('on', _followOn); b.setAttribute('aria-pressed', _followOn ? 'true' : 'false'); });   // v214：追いかけ中はこのボタンが光る（v247：光る見た目を足した）
   const sw = document.getElementById('mmSwFollow');
   if (sw) sw.classList.toggle('on', _followOn);
 }
@@ -5243,7 +5249,7 @@ function toggleFollowMode(){
   if (_followOn) { stopFollowMode(); return; }
   if (!navigator.geolocation) { showToast('この端末では位置情報を利用できません'); return; }
   if (!leafMap) return;
-  _followOn = true; _followLast = null; _syncFollowBtn();
+  _followOn = true; _followLast = null; _followOutWarned = false; _syncFollowBtn();
   showToast('📍 現在地を追いかけます（電池を使います）');
   _followWatchId = navigator.geolocation.watchPosition(
     function(pos){
@@ -5251,7 +5257,10 @@ function toggleFollowMode(){
       const lat = pos.coords.latitude, lng = pos.coords.longitude;
       const acc = pos.coords.accuracy || 0;
       if (!_maxBounds) { const ctr = leafMap.getCenter(); _setAnchor(ctr.lat, ctr.lng, true); }
-      if (!_inAllowedArea(lat, lng)) return;          // 範囲外では動かさない（既存の方針と同じ）
+      if (!_inAllowedArea(lat, lng)) {                // 範囲外では動かさない（既存の方針と同じ）
+        if (!_followOutWarned) { _followOutWarned = true; showToast('現在地はコース範囲外です（地図は移動しません）'); }   // v247：◎ と同じ知らせを1回だけ
+        return;
+      }
       _showGpsHere(lat, lng, acc);
       _onWalkerPos(lat, lng, acc);                        // 次のスポットまでの距離（v132）
       if (!_followLast || _distM(_followLast, [lat, lng]) >= FOLLOW_MIN_MOVE_M) {
@@ -7296,9 +7305,9 @@ const TOUR = [
   {ic:'📷', t:'3. 写真と説明を入れる', d:'地図のスポット（○）を押すと、名前・種類・写真・説明を書けます。<br>写真は歩く人のカードに<b>シールのように</b>貼られ、みんなのマップに出すときも一緒に届きます。'},
   {ic:'✏️', t:'4. 道順を整える', d:'スポットを2つ以上置くと、道なりに赤い線が引かれます。<br>・<b>ルート調整</b>…線をつまんで通したい道へ動かす<br>・<b>手描き</b>…指でなぞってそのとおりに引く<br>・<b>道を足す</b>…地図に無いあぜ道などを描き足す'},
   {ic:'📝', t:'5. コースの情報を書く', d:'メニューの <b>「コースのことを書く」</b> から、アクセス・トイレ・駐車場・見どころ・歩く人の心得を書けます。<br>「まわりの施設を探す」で取り込むと、トイレや駐車場は自動で書き込まれます。'},
-  {ic:'💾', t:'6. 保存する', d:'右上の <b>「保存」</b> を押すと、この端末に保存されます（勝手には保存しません）。<br>一覧に戻るときも「保存しますか？」と確認します。'},
-  {ic:'📖', t:'7. みんなのマップに出す', d:'<b>「配る」→「みんなのマップに出す」</b>。<br>出す人の名前と、見た人にできること（<b>見るだけ</b>／<b>編集できる</b>）を選んで <b>「出す」</b> を押すだけ。<br>登録も合言葉もいりません。押した瞬間に全員の一覧に並びます。'},
-  {ic:'🔗', t:'8. 歩く人に渡す', d:'「配る」からは、ほかにも<br>・<b>共有リンク</b>…LINE やメールでそのまま送れます<br>・<b>印刷用シート</b>…A4 で刷って配れます<br>・<b>画像</b>…地図の絵だけ保存<br><br>お疲れさまでした。さっそく作ってみましょう。'}
+  {ic:'💾', t:'6. 保存する', d:'右の列のいちばん上の <b>「保存」</b> を押すと、この端末に保存されます（勝手には保存しません）。<br>一覧に戻るときも「保存しますか？」と確認します。'},
+  {ic:'📖', t:'7. みんなのマップに出す', d:'<b>「公開」→「みんなのマップに出す」</b>。<br>出す人の名前と、見た人にできること（<b>見るだけ</b>／<b>編集できる</b>）を選んで <b>「出す」</b> を押すだけ。<br>登録も合言葉もいりません。押した瞬間に全員の一覧に並びます。'},
+  {ic:'🔗', t:'8. 歩く人に渡す', d:'「公開」からは、ほかにも<br>・<b>共有リンク</b>…LINE やメールでそのまま送れます<br>・<b>印刷用シート</b>…A4 で刷って配れます<br>・<b>画像</b>…地図の絵だけ保存<br><br>お疲れさまでした。さっそく作ってみましょう。'}
 ];
 let _tourI = 0;
 /* ===== さわりながら覚える案内（v228・オーナー指示）=====
@@ -7343,7 +7352,7 @@ const GUIDE = [
    '<b>スポット</b>＝置く／<b>手描き</b>＝なぞって引く／<b>ルート調整</b>＝線を動かす／<b>道を足す</b>＝地図に無い道'},
   {scr:'map', sel:'#map', big:1, t:'⑦ 2つ目を置くと道順が引かれます', d:'○を押すと、名前・写真・説明を書けます。',
    done:() => wps.filter(w => w && w.type !== 'node' && _onRouteOf(w)).length > 1},
-  {scr:'map', sel:'.mob-save', t:'⑧ 保存します', d:'勝手には保存しません。《b|保存》 を押してこの端末に残します。', done:() => !_dirty},
+  {scr:'map', sel:'.mob-save', t:'⑧ 保存します', d:'勝手には保存しません。右の列のいちばん上の 《b|保存》 を押して、この端末に残します。', done:() => !_dirty},
   {scr:'map', sel:'.mob-back', t:'⑨ 一覧にもどります', d:'左上の 《b|←》 を押すと、保存したコースの一覧にもどります。',
    done:() => _vis('#s1'), must:'左上の 《b|←》 を押して一覧にもどってください'},
   {scr:'list', sel:'#courseList', t:'⑩ 作ったコースはここに並びます', d:'押すと、また地図の画面が開いて続きを作れます。'},
@@ -7354,7 +7363,7 @@ const GUIDE = [
   {scr:'pub', sel:null, t:'名前と公開の仕方を選んで出します', d:
    '<b>見るだけ</b>／<b>編集できる</b> を選んで 《b:#pubGo|出す》 を押します。あとで自動的に保存先にも控えが残ります。'},
   {scr:'list', sel:null, last:1, t:'これでひと通りです', d:
-   'コースは「配る」からも渡せます（共有リンク・印刷用シート・画像）。<br>この案内は、一覧の「はじめての方へ」からいつでも見られます。'}
+   'コースは「公開」からも渡せます（共有リンク・印刷用シート・画像）。<br>この案内は、一覧の「はじめての方へ」からいつでも見られます。'}
 ];
 /* いま出ている画面（上にあるものほど優先） */
 function _gdScreen(){
@@ -8236,7 +8245,8 @@ function _setSaveState(st){
   const t = st === 'saved' ? '保存済み' : st === 'saving' ? '保存中…' : st === 'error' ? '保存できず' : '保存';
   document.querySelectorAll('.hbtn-save, .mob-save').forEach(b => {
     b.classList.toggle('is-saved', st === 'saved'); b.classList.toggle('is-error', st === 'error');
-    const sp = b.querySelector('span'); if (sp) sp.textContent = t; else b.textContent = t;
+    if (b.classList.contains('mrb')) b.setAttribute('aria-label', t);   // v247：右の列のアイコン。絵は消さず、名前だけ変える
+    else { const sp = b.querySelector('span'); if (sp) sp.textContent = t; else b.textContent = t; }
     b.title = st === 'saved' ? 'この内容は保存されています' : st === 'error' ? '保存できませんでした。押してもう一度' : 'まだ保存していません。押すと保存します（一覧に戻るときにも確認します）';
   });
 }
@@ -9018,7 +9028,7 @@ async function shareGoalPhoto(){
   showToast('保存しました');
 }
 
-/* ===== 配る前の確認（v146）===== */
+/* ===== 公開前の確認（v146）===== */
 function _shareCheckState(k){
   const own = courseInfo.check || {}, info = courseInfo.info || {};
   switch (k) {
@@ -9757,7 +9767,6 @@ function _syncFindUi(){
   const n = finds.length, on = !!viewMode;
   const b = document.getElementById('btnFind'); if (b) { b.hidden = !on; const sp = b.querySelector('span'); if (sp) sp.textContent = n ? '発見 ' + n : '発見'; }
   const mb = document.getElementById('mobileFindBtn'); if (mb) mb.hidden = !on;
-  const nb2 = document.getElementById('mobileNextBtn'); if (nb2) nb2.hidden = !on;   // v214：次のスポットまでの距離（閲覧モードのとき）
   const row = document.getElementById('mmFindsRow'); if (row) row.hidden = !on;
   const v = document.getElementById('mmFinds'); if (v) v.textContent = n + ' 件 ›';
   const gr = document.getElementById('mmGoalRow'); if (gr) gr.hidden = !on;   // ゴールの記念写真（v147）
@@ -10616,7 +10625,7 @@ function buildCurrentSaveData() {
     icon:     courseInfo.icon || undefined,             // 一覧に出す絵（v190）。無ければ最初の写真
     stickers: courseInfo.stickers ? true : undefined,   // 写真のある印をシールで見せる（v142）。OFF のときは書かない
     theme:    courseInfo.theme || undefined,            // 地図の色（v145）。標準のときは書かない
-    check:    _courseCheckClean(),                      // 配る前の確認の✓（手で付けるものだけ・v146）
+    check:    _courseCheckClean(),                      // 公開前の確認の✓（手で付けるものだけ・v146）
     noEdit:   courseInfo.noEdit ? true : undefined,     // 他の人による改変を断る（配布ファイルにだけ効く・v147）
     origin:   courseInfo.origin || undefined,          // 作者の印（v220）。取り込んでも消さない
     center:  leafMap ? {lat:leafMap.getCenter().lat, lng:leafMap.getCenter().lng} : null,
