@@ -29,7 +29,11 @@
 <link rel="dns-prefetch" href="https://basemaps.cartocdn.com">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <style>
-:root{--sat:env(safe-area-inset-top,0px);--sab:env(safe-area-inset-bottom,0px)}   /* 安全域（ノッチ・ホームバー）。v161：押す部品はこれで下げ、地図はその下まで広げる */
+:root{--sat0:env(safe-area-inset-top,0px);--sat:max(calc(var(--sat0) + min(36px, var(--sat0) * 1000)), min(98px, var(--sat0) * 1000));--sab:env(safe-area-inset-bottom,0px)}
+/* 安全域（ノッチ・ホームバー）。v161：押す部品は --sat で下げ、地図はノッチの下まで広げる。
+   v246：--sat0 はノッチ（ステータスバー）そのものの高さ。--sat は「押す部品を置き始める高さ」＝ノッチ＋36pt（少なくとも上から 98pt）。
+   iOS 27 のホーム画面のアプリは、ノッチの下に出した物を上から約 95pt までぼかす（iOS 側の効果で、ページから止める設定は無い）。
+   部品はそのぼかしの下に置き、地図はノッチの下まで出したままにする（塗りつぶさない）。ノッチが無い画面（PC・横向き・Safari）は 0 のまま */
 *{box-sizing:border-box;margin:0;padding:0}
 
 /* ══ 配色の基準 ═══════════════════════════════════════════════════
@@ -52,7 +56,7 @@
 /* ページ全体の拡大は許す（文字を大きくして読む人のため・v122）。地図の上だけはブラウザの拡大を止め、
    ピンチや二本指の操作を Leaflet に渡す＝地図の拡大縮小と二重にならない */
 #map{touch-action:none}
-html,body{touch-action:manipulation;min-height:calc(100% + var(--sat));font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:13px;color:#2C1B0E;overflow:hidden;background:#E8D8B8}
+html,body{touch-action:manipulation;min-height:calc(100% + var(--sat0));font-family:'Hiragino Sans','Meiryo',sans-serif;font-size:13px;color:#2C1B0E;overflow:hidden;background:#E8D8B8}
 
 /* ====== SCREEN 1 ====== */
 #s1{height:100vh;height:100dvh;overflow-y:auto;background:linear-gradient(135deg,#F5EDD8,#E8D8B8);display:flex;flex-direction:column;align-items:center;padding:max(20px,var(--sat)) 12px max(40px,var(--sab))}
@@ -3442,8 +3446,8 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 手描きの道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した手描きの道id（直前取り消し用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v245';
-(function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
+const APP_VERSION = 'v246';
+(function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat0', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
 }catch(_){} });

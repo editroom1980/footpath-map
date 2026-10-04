@@ -995,11 +995,16 @@ def static_checks(src):
     chk('静的', 'スポットの編集：番号のスイッチ（道順に入れる）を上に出す', 'class="m-switch"' in src and src.index('id="mOnRoute"') < src.index('id="mName"'))
     # --- v154: ノッチ／ステータスバーに重ならない（致命的・オーナー指摘）---
     chk('静的', '地図はノッチの下まで広げ（viewport-fit=cover・透明ステータスバー）、押す部品は全部 --sat で下げる。印刷用シートは外側タップと Esc で閉じる',
-        'viewport-fit=cover' in src and 'content="black-translucent"' in src and ':root{--sat:env(safe-area-inset-top,0px);--sab:env(safe-area-inset-bottom,0px)}' in src
+        'viewport-fit=cover' in src and 'content="black-translucent"' in src and ':root{--sat0:env(safe-area-inset-top,0px);--sat:max(calc(var(--sat0) + min(36px, var(--sat0) * 1000)), min(98px, var(--sat0) * 1000));--sab:env(safe-area-inset-bottom,0px)}' in src
         and all(re.search(r'#' + i + r'\{[^}]*var\(--sat\)', src) for i in ('modeHint', 'offlineBadge', 'crFinishBar', 'sheetOver', 'nextBar', 'updBar'))
         and re.search(r'#mobileTopBar\{[^}]*var\(--sat\)', src) and 'padding:var(--sat) 0 var(--sab)' in src
         and src.split("get('debug')")[0].count('env(safe-area-inset-top') == 1   # :root の定義だけ（他は var(--sat) 経由）
         and "if (e.target === ov) closePrintSheet();" in src and "e.key === 'Escape'" in src)
+    # --- v246: 押す部品は iOS 27 のぼかし（ノッチの下 約95pt まで）の下に置く。地図はノッチの下まで（塗りつぶさない）---
+    chk('静的', '押す部品を置き始める高さ（--sat）はノッチ＋36pt・少なくとも98pt。ノッチが無い画面では0。ページの高さの補いはノッチそのもの（--sat0）で、検査用の ?safe= も --sat0 を偽装する',
+        'html,body{touch-action:manipulation;min-height:calc(100% + var(--sat0));' in src
+        and "document.documentElement.style.setProperty('--sat0', v + 'px')" in src
+        and 'class="sat-band"' not in src and 'viewport-fit=cover">' in src)
     # --- v153: 画面の骨組みの検査（閉じ忘れを二度と出さない）＋小さな手直し ---
     _a = src.index('<body'); _b = src.index('<script src=', _a)
     _mk = re.sub(r'<script\b.*?</script>', '', src[_a:_b], flags=re.S)
@@ -5319,6 +5324,8 @@ def webkit_checks(index_path):
                 return {mapTop: Math.round(map.top), minTop: Math.min(...tops), n: tops.length, hintTop: Math.round(hint.top), sat: getComputedStyle(document.documentElement).getPropertyValue('--sat').trim()}; }""")
             chk('WebKit', 'ノッチ（安全域59px）でも地図は上端から広がり、上のボタンと道具の案内は安全域より下に出る',
                 r3['mapTop'] <= 0 and r3['n'] >= 3 and r3['minTop'] >= 59 and r3['hintTop'] >= 59 + 44, str(r3)[:200])
+            chk('WebKit', 'ノッチ（安全域59px）では、上のボタンを iOS 27 のぼかし（ノッチの下 約34pt）の下に置く。地図はノッチの下まで',
+                r3['mapTop'] <= 0 and r3['minTop'] >= 59 + 34 and r3['minTop'] <= 59 + 50, str(r3)[:200])
             page.evaluate("() => { if (!viewMode) toggleViewMode(); }"); page.wait_for_timeout(500)
             r6 = page.evaluate(NB_OVER)
             page.evaluate("() => { if (viewMode) toggleViewMode(); }"); page.wait_for_timeout(200)
