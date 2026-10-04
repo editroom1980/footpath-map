@@ -1075,7 +1075,10 @@ body.viewonly .mob-share, body.embed .mob-share{display:none!important}
   /* スタンプ表示は、下のカードの「…」ボタンに重なっていたので左上へ出す（v106で実測して判明）*/
   #stampBar{left:max(8px,env(safe-area-inset-left));right:auto;bottom:auto;
     top:calc(max(8px,var(--sat)) + 50px)}
-  #nextBar:not([hidden]) ~ #stampBar{top:calc(max(8px,var(--sat)) + 76px)}   /* 次のスポットの帯（2行）の下（v133） */
+  #nextBar:not([hidden]) ~ #stampBar{top:calc(max(8px,var(--sat)) + var(--nb-h,68px) + 8px)}   /* 次のスポットの帯の下（v133。v245：帯の高さ --nb-h は JS が測る） */
+  /* v245：次のスポットの帯が出ている間は、右の列（➤ ほか）を帯のすぐ下から並べる（帯が ➤ に重なっていた・オーナー指摘） */
+  body.viewing #nextBar:not([hidden]) ~ #mobileRbtns{top:calc(max(8px,var(--sat)) + var(--nb-h,68px) + 8px)!important}
+  body.viewing #nextBar:not([hidden]) ~ #mobileTopBar .mob-share{visibility:hidden}   /* 帯の下に隠れて押せない「配る」が透けて見えていた（v245） */
   /* 下部：モード行（下段）＋簡易高低差（上段）を1つのカードとしてフローティング */
   #mobileShelf{display:flex!important;position:absolute;left:max(8px,env(safe-area-inset-left));right:max(8px,env(safe-area-inset-right));
     bottom:max(8px,var(--sab));width:auto;height:48px!important;box-sizing:border-box;
@@ -1132,6 +1135,11 @@ body.viewonly .mob-share, body.embed .mob-share{display:none!important}
   .mob-save{box-shadow:0 2px 8px rgba(0,0,0,0.22)}
   #mobileRbtns{display:flex!important;top:calc(50px + var(--sat))!important;bottom:auto;right:max(8px,env(safe-area-inset-right))}
   #mobileRbtns{gap:5px!important}#mobileRbtns .mrb.mt{margin-top:5px}   /* v241：横向きは縦が短い。ボタンが1つ増えても下の帯に重ならないように間を詰める */
+  /* v245：横向きは縦が短いので右の列は下げず、次のスポットの帯を「戻る」と右の列の間に置く。
+     幅の広い横向き（PC 向けの左上・幅 380px の決まりが効く）では、帯が「戻る」に重なっていた。幅は「配る」に届かない 440px まで */
+  #nextBar{left:calc(max(8px,env(safe-area-inset-left)) + 48px);right:calc(max(8px,env(safe-area-inset-right)) + 56px);top:max(8px,var(--sat));width:auto;max-width:440px}
+  body.viewing #nextBar:not([hidden]) ~ #mobileRbtns{top:calc(50px + var(--sat))!important}
+  body.viewing #nextBar:not([hidden]) ~ #mobileTopBar .mob-share{visibility:visible}   /* 横向きは帯が「配る」に届かないので隠さない */
   #mobileShelf{display:flex!important}
   #mobileElevBand{display:block!important}
 
@@ -3434,7 +3442,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 手描きの道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した手描きの道id（直前取り消し用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v244';
+const APP_VERSION = 'v245';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -4938,6 +4946,9 @@ function nextBarTap() {
   const id = _nextWpId; if (id == null) return;
   if (typeof showViewInfo === 'function') showViewInfo(id);
 }
+// v245：次のスポットの帯の高さを --nb-h に入れる（右の列とスタンプの札をその下に並べる。文字が折り返して帯が伸びても重ならない）
+(function () { const bar = document.getElementById('nextBar'); if (!bar || !window.ResizeObserver) return;
+  new ResizeObserver(() => { const h = bar.offsetHeight; if (h > 0) document.documentElement.style.setProperty('--nb-h', h + 'px'); }).observe(bar); })();
 function renderNextBar() {
   const bar = document.getElementById('nextBar'); if (!bar) return;
   const on = viewMode && !document.body.classList.contains('embed') && _stampTargets().length > 0;

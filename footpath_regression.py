@@ -1138,6 +1138,12 @@ def static_checks(src):
         'class="ev-here"' in src and 'function _elevHerePoint' in src and 'function _drawElevHere' in src
         and src.index('stroke="#C0A882" stroke-width="0.8"/>`+\n    here + _scrubSvg(') > 0)   # v166：なぞりの印は「いまここ」の後（一番上）
     chk('静的', 'スタンプの札は次のスポットの帯の下', '#nextBar:not([hidden]) ~ #stampBar{top:' in src)
+    # --- v245: 次のスポットの帯が右の列（➤）・「戻る」に重ならない（オーナー指摘）---
+    chk('静的', '次のスポットの帯の高さを測り（--nb-h）、右の列とスタンプの札をその下に並べる。横向きは帯を「戻る」と右の列の間に置く',
+        "document.documentElement.style.setProperty('--nb-h', h + 'px')" in src
+        and 'body.viewing #nextBar:not([hidden]) ~ #mobileRbtns{top:calc(max(8px,var(--sat)) + var(--nb-h,68px) + 8px)!important}' in src
+        and '#nextBar:not([hidden]) ~ #stampBar{top:calc(max(8px,var(--sat)) + var(--nb-h,68px) + 8px)}' in src
+        and '#nextBar{left:calc(max(8px,env(safe-area-inset-left)) + 48px);right:calc(max(8px,env(safe-area-inset-right)) + 56px);top:max(8px,var(--sat));width:auto;max-width:440px}' in src)
     chk('静的', '往復コースでも進みを取り違えない（候補を束ね、前回の進みに近いものを選ぶ）',
         'function _routeCandidates' in src and 'const ROUTE_AMBIG_M' in src and "_routeProgress(lat, lng, _walkPos ? _walkPos.along : null)" in src)
     # --- v132: 次のスポットまでの距離と向き（ロードマップ 段階2-1）---
@@ -5237,6 +5243,20 @@ def webkit_checks(index_path):
             r['bar'] = page.evaluate("() => !document.getElementById('nextBar').hidden && /次/.test(document.getElementById('nbText').textContent)")
             chk('WebKit', 'iPhone と同じエンジンで共有リンクが開き、はみ出す部品がなく、歩く人の帯が出る',
                 r['wps'] > 5 and not r['bad'] and r['sw'] <= r['iw'] + 1 and r['bar'] and not errs, str(r)[:200] + (' err:' + errs[0][:80] if errs else ''))
+            # v245：次のスポットの帯が、右の列（➤ ほか）・上の段（戻る・配る）・スタンプの札に重ならない（縦・狭い横向き・広い横向き）
+            NB_OVER = """() => { const vis = b => { if (!b) return false; const s = getComputedStyle(b); if (s.display === 'none' || s.visibility === 'hidden') return false; const r = b.getBoundingClientRect(); return r.width > 0 && r.height > 0; };
+                const nb = document.getElementById('nextBar'); if (!vis(nb)) return {bar: false, hit: []};
+                const a = nb.getBoundingClientRect(), hit = [];
+                [...document.querySelectorAll('#mobileRbtns > *, #mobileTopBar > *'), document.getElementById('stampBar')].filter(vis).forEach(e => { const r = e.getBoundingClientRect();
+                  if (r.left < a.right && r.right > a.left && r.top < a.bottom && r.bottom > a.top) hit.push((e.id || e.className) + '@' + Math.round(r.left) + ',' + Math.round(r.top)); });
+                return {bar: [Math.round(a.left), Math.round(a.top), Math.round(a.right), Math.round(a.bottom)], hit: hit, next: vis(document.getElementById('mobileNextBtn'))}; }"""
+            nb_res = {}
+            for vw, vh in ((390, 812), (667, 375), (844, 390)):
+                page.set_viewport_size({'width': vw, 'height': vh}); page.wait_for_timeout(350)
+                nb_res[f'{vw}x{vh}'] = page.evaluate(NB_OVER)
+            page.set_viewport_size({'width': 390, 'height': 812}); page.wait_for_timeout(200)
+            chk('WebKit', '次のスポットの帯が、右の列（➤ ほか）・戻る・配る・スタンプの札に重ならない（縦・狭い横向き・広い横向き）',
+                all(v.get('bar') and not v['hit'] for v in nb_res.values()) and nb_res['390x812'].get('next'), str(nb_res)[:260])
             # 編集画面（サンプルを開く）＋メニュー
             page.goto(url + '?nosw=1', wait_until='domcontentloaded')
             page.wait_for_function("() => { try { return getCourses().length > 0; } catch(e){ return false; } }", timeout=30000)
@@ -5299,6 +5319,11 @@ def webkit_checks(index_path):
                 return {mapTop: Math.round(map.top), minTop: Math.min(...tops), n: tops.length, hintTop: Math.round(hint.top), sat: getComputedStyle(document.documentElement).getPropertyValue('--sat').trim()}; }""")
             chk('WebKit', 'ノッチ（安全域59px）でも地図は上端から広がり、上のボタンと道具の案内は安全域より下に出る',
                 r3['mapTop'] <= 0 and r3['n'] >= 3 and r3['minTop'] >= 59 and r3['hintTop'] >= 59 + 44, str(r3)[:200])
+            page.evaluate("() => { if (!viewMode) toggleViewMode(); }"); page.wait_for_timeout(500)
+            r6 = page.evaluate(NB_OVER)
+            page.evaluate("() => { if (viewMode) toggleViewMode(); }"); page.wait_for_timeout(200)
+            chk('WebKit', 'ノッチ（安全域59px）の閲覧モードでも、次のスポットの帯は安全域より下で、➤・戻る・配る・スタンプの札に重ならない',
+                r6.get('bar') and r6['bar'][1] >= 59 and not r6['hit'] and r6.get('next'), str(r6)[:200])
             b.close()
     except Exception as e:
         chk('WebKit', 'WebKit の検査が最後まで走る', False, str(e).splitlines()[0][:160])
