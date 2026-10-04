@@ -119,6 +119,8 @@ html,body{touch-action:manipulation;min-height:calc(100% + var(--sat));font-fami
 #newCourseSheet.show{display:block}
 .ncs-dh{width:40px;height:5px;background:#E5E7EB;border-radius:3px;margin:0 auto 14px}
 .ncs-t{font-family:'Plus Jakarta Sans','Hiragino Sans',sans-serif;font-size:17px;font-weight:800;color:#1C1917;margin-bottom:18px;text-align:center}
+.ncs-hd{display:flex;align-items:center;gap:8px;margin-bottom:18px}.ncs-hd .ncs-t{flex:1;margin:0;text-align:left}   /* v244：題名の右に「閉じる」 */
+.ncs-x{flex:none;min-height:38px;padding:0 16px;border:0;border-radius:19px;background:#F1ECE3;color:#4A2E0E;font-family:inherit;font-size:13px;font-weight:800;cursor:pointer}
 .ncs-fld{margin-bottom:14px}
 .ncs-l{font-size:12px;font-weight:700;color:#5A554E;margin-bottom:6px;display:flex;align-items:center;gap:5px}
 .ncs-l .req{color:var(--brand);font-size:10px}
@@ -515,6 +517,9 @@ body.viewonly #descSec.view-desc textarea{background:#F9F7F4;border-color:#E6DCC
 #checkOver{position:fixed;inset:0;z-index:6800;display:none;overflow:auto;background:rgba(40,30,20,.55);padding:16px}
 #checkBox{max-width:520px;margin:0 auto;background:#fff;border-radius:16px;padding:18px 16px calc(16px + var(--sab));box-shadow:0 12px 40px rgba(0,0,0,.35)}
 #checkBox h3{font-size:16px;font-weight:700;color:#4A2E0E;margin-bottom:2px}
+#checkBox .ck-top{position:sticky;top:-16px;z-index:2;display:flex;align-items:center;gap:8px;background:#fff;margin:-18px -16px 4px;padding:12px 16px 8px;border-radius:16px 16px 0 0;box-shadow:0 1px 0 rgba(0,0,0,.06)}
+#checkBox .ck-top h3{flex:1;margin:0}
+#checkBox .ck-x{flex:none;min-height:38px;padding:0 16px;border:0;border-radius:19px;background:var(--brand);color:#fff;font-family:inherit;font-size:13px;font-weight:800;cursor:pointer}
 #checkBox .ck-sub{font-size:11.5px;color:#7A6A55;line-height:1.6;margin-bottom:12px}
 .ck-row{display:flex;gap:9px;align-items:flex-start;padding:9px 0;border-bottom:1px solid #F0EBE2}
 .ck-row:last-of-type{border-bottom:none}
@@ -986,6 +991,19 @@ body.embed #nextBar{display:none!important}
 .sd-t{font-size:13px;font-weight:700;color:#4A2E0E}
 .sd-n{font-size:11px;color:#6A645E;line-height:1.6;margin-top:6px}
 .sd-btn{border:none;border-radius:10px;padding:11px;font-size:14px;font-weight:700;background:var(--brand-grad);color:#fff;font-family:inherit;cursor:pointer;min-height:var(--tap);width:100%}
+/* v244：リンクを作る窓は中身が長い。題名と「閉じる」を上に貼り付け、流しても右上に残す */
+.sd-top{position:sticky;top:-20px;z-index:3;display:flex;align-items:center;gap:8px;background:#fff;margin:-20px -18px 6px;padding:14px 18px 8px;border-radius:16px 16px 0 0;box-shadow:0 1px 0 rgba(0,0,0,.06)}
+.sd-top-t{flex:1;min-width:0;font-size:16px;font-weight:700;color:#4A2E0E}
+.sd-top-x{flex:none;min-height:38px;padding:0 16px;border:0;border-radius:19px;background:var(--brand);color:#fff;font-family:inherit;font-size:13px;font-weight:800;cursor:pointer}
+/* v244：写真を画面いっぱいに（アプリの中に重ねる。新しい窓は開かない）。閉じるはノッチより下の右上 */
+#photoView{position:fixed;inset:0;z-index:9500;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.94);cursor:zoom-out;touch-action:none}
+#photoView.show{display:flex}
+#photoView img{max-width:100%;max-height:100%;object-fit:contain;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+#photoView .pv-x{position:absolute;top:calc(10px + var(--sat));right:calc(10px + env(safe-area-inset-right));min-height:44px;padding:0 18px;border:1.5px solid rgba(255,255,255,.7);border-radius:22px;background:rgba(0,0,0,.55);color:#fff;font-family:inherit;font-size:15px;font-weight:800;cursor:pointer}
+#photoView .pv-hint{position:absolute;left:0;right:0;bottom:calc(14px + var(--sab));text-align:center;color:rgba(255,255,255,.75);font-size:12px;pointer-events:none}
+/* v244：下のボタンの段（閉じる・決める）は窓の下に貼り付ける。中身が長いと、流さないと閉じるボタンに届かなかった */
+.fsh > .ds-row, #descSheet > .ds-row, #kokoroeSheet > .ds-row, #infoSheet > .ds-row, #guideSheet > .ds-row, #renameSheet > .ds-row{
+  position:sticky;bottom:calc(-1 * max(16px, var(--sab)));z-index:2;background:#fff;margin-left:-16px;margin-right:-16px;padding:10px 16px max(16px, var(--sab));box-shadow:0 -1px 0 rgba(0,0,0,.06)}
 .sd-btn.ghost{background:#EEE5D8;color:#4A2E0E}
 .sd-btn[hidden]{display:none!important}
 .sd-more{border:1px solid #E6DCCB;border-radius:10px;padding:0 10px;margin-top:4px;background:#FCFAF6}
@@ -1417,7 +1435,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
   <div id="newCourseScrim" onclick="closeNewCourseSheet()"></div>
   <div id="newCourseSheet">
     <div class="ncs-dh"></div>
-    <div class="ncs-t">新しいコース</div>
+    <div class="ncs-hd"><div class="ncs-t">新しいコース</div><button type="button" class="ncs-x tap" onclick="closeNewCourseSheet()">閉じる</button></div>   <!-- v244：外側を押す以外に閉じる手段が無かった（キーボードが出ると外側がほとんど見えない） -->
     <div class="ncs-fld">
       <div class="ncs-l"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 19a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" /> <path d="M19 7a2 2 0 1 0 0 -4a2 2 0 0 0 0 4" /> <path d="M11 19h5.5a3.5 3.5 0 0 0 0 -7h-8a3.5 3.5 0 0 1 0 -7h4.5" /></svg>コース名<span class="req">必須</span></div>
       <input class="s1-input" id="s1Name" placeholder="例：飯見の棚田おにぎりウォーク">
@@ -3416,7 +3434,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 手描きの道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した手描きの道id（直前取り消し用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v243';
+const APP_VERSION = 'v244';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -3927,7 +3945,7 @@ function openFixRouteSheet(){
   _closeAllPopups();
   let sh = document.getElementById('fixRouteSheet');
   if (!sh) { sh = document.createElement('div'); sh.id = 'fixRouteSheet'; document.body.appendChild(sh); }
-  _renderFixRoute(); sh.style.display = 'block';
+  sh.style.display = 'block'; _renderFixRoute();   // v244：先に出してから描く（逆だと2回目から「閉じている」とみなして描かず、前の区間の一覧が残っていた）
 }
 function closeFixRouteSheet(){ const sh = document.getElementById('fixRouteSheet'); if (sh) sh.style.display = 'none'; }
 function _renderFixRoute(){
@@ -7917,7 +7935,7 @@ async function openSelfCheck(){
   if (!ov) {
     ov = document.createElement('div'); ov.id = 'checkOver';
     ov.innerHTML = '<div id="checkBox">'
-      + '<h3>動作確認</h3>'
+      + '<div class="ck-top"><h3>動作確認</h3><button type="button" class="ck-x tap" onclick="closeSelfCheck()">閉じる</button></div>'   // v244：上に貼り付けた「閉じる」（横向きでは下の閉じるが画面の外だった）
       + '<div class="ck-sub">この端末で正しく動いているかを実際に調べます。</div>'
       + '<div id="ckList"></div>'
       + '<div class="ck-guide"><b>圏外での確認のしかた</b><br>'
@@ -8391,7 +8409,16 @@ async function openViewMode() {
   const data = buildCurrentSaveData();
   if (!data) return;
   const url = location.origin + location.pathname + '?view=' + encodeURIComponent(data.id);
-  window.open(url, '_blank');
+  _openInApp(url);
+}
+/* 同じアプリの別の画面（共有リンク・確認用リンク）を開く（v244）。
+   ホーム画面から開いたアプリで新しい窓を開くと「戻る」も「閉じる」も無く、出られなくなる。その場合はこの画面で開く（左上の ← で一覧に戻れる）。
+   ブラウザで開いているときは今までどおり新しいタブ */
+function _openInApp(url){
+  if (!_a2Standalone()) { window.open(url, '_blank'); return; }
+  const base = String(url).split('#')[0];
+  if (base === location.href.split('#')[0] && String(url).indexOf('#') >= 0) { location.hash = String(url).slice(String(url).indexOf('#')); location.reload(); return; }
+  location.href = url;
 }
 
 // URLの閲覧パラメータ。file=共有リンク(誰でも開ける) / id=同じ端末での確認用
@@ -8503,7 +8530,7 @@ function showViewInfo(wpId) {
   let html2 = `<div class="vip-handle"></div><div class="vip-hdr">
     <div class="vip-dot" style="background:${_isNumbered(wp) ? _spotColor() : t.c}">${_wpMarkHtml(wp, 18)}</div>${(_isNumbered(wp) && _hasCatIcon(wp)) ? `<div class="vip-dot vip-dot2" style="background:${t.c}">${_typeSvg(wp.type, 16)}</div>` : ''}
     <div class="vip-name">${escHtml(wp.name || t.l)}${catLine}</div>
-    <button class="vip-close" onclick="closeViewInfo()">✕</button>
+    <button class="vip-close" onclick="closeViewInfo()" aria-label="閉じる">✕</button>
   </div>`;
   if (wp.photos && wp.photos.length) {
     html2 += '<div class="vip-photos">';
@@ -9787,7 +9814,7 @@ function showFindInfo(id){
   const panel = document.getElementById('viewInfoPanel'); if (!panel) return;
   let h = '<div class="vip-handle"></div><div class="vip-hdr"><div class="vip-dot" style="background:' + FIND_COLOR + '">発</div>'
         + '<div class="vip-name">' + escHtml(f.word || '発見') + '<div style="font-size:12px;font-weight:500;color:#666;margin-top:2px">' + escHtml((f.by ? f.by + '・' : '') + _fmtFindDate(f.at)) + '</div></div>'
-        + '<button class="vip-close" onclick="closeViewInfo()">✕</button></div>';
+        + '<button class="vip-close" onclick="closeViewInfo()" aria-label="閉じる">✕</button></div>';
   if (f.photos && f.photos[0]) h += '<div class="vip-photos"><img ' + _photoAttr(f.photos[0]) + ' onclick="openFullPhoto(this.src)" alt="発見の写真"></div>';
   h += '<div class="vip-acts"><button class="tap danger" onclick="deleteFind(\'' + f.id + '\')">🗑 この発見を削除</button></div>'
      + '<div class="vip-note">印を長押しして動かすと、場所を直せます。発見はこの端末にだけ残ります</div>';
@@ -9920,7 +9947,7 @@ function showGuideInfo(vpId) {
   const g = vp.guide, panel = document.getElementById('viewInfoPanel'); if (!panel) return;
   let h = '<div class="vip-handle"></div><div class="vip-hdr"><div class="vip-gdir"' + (g.kind === 'caution' ? ' style="color:#B87503"' : '') + '>' + escHtml(_guideGlyph(g)) + '</div>'
         + '<div class="vip-name">' + escHtml(_guideText(g)) + (g.note ? '<div style="font-size:13px;font-weight:500;color:#444;margin-top:2px">' + escHtml(g.note) + '</div>' : '') + '</div>'
-        + '<button class="vip-close" onclick="closeViewInfo()">✕</button></div>';
+        + '<button class="vip-close" onclick="closeViewInfo()" aria-label="閉じる">✕</button></div>';
   if (g.photos && g.photos.length) h += '<div class="vip-photos"><img ' + _photoAttr(g.photos[0]) + ' alt="分岐の写真"></div>';
   panel.innerHTML = h; _fillPhotoImgs(panel); panel.classList.add('show');
 }
@@ -10024,11 +10051,27 @@ function saveInfoSheet() {
   closeInfoSheet(); _syncMmValues(); renderShareInfo(); _renderDifficulty(_lastRouteDistM);
   showToast(_courseInfoCount() ? 'コースの情報を書き込みました（保存はまだです）' : 'コースの情報は空のままです');
 }
+/* 写真を画面いっぱいに見る（v244・オーナー報告「閲覧モードで写真を押すと全画面になるが、閉じることができなくて操作不能」）。
+   以前は新しい窓（window.open＋document.write）を開いていた。ホーム画面から開いたアプリには「戻る」も「タブを閉じる」も無いので、
+   その窓から出られなくなっていた。→ アプリの中に重ねて出す。右上の「閉じる」・どこかを押す・Esc・下へはらう、のどれでも閉じる */
 function openFullPhoto(src) {
-  const w2 = window.open('', '_blank');
-  w2.document.write(`<!doctype html><html><body style="margin:0;background:#000;display:flex;align-items:center;justify-content:center;min-height:100vh"><img src="${src}" style="max-width:100%;max-height:100vh;object-fit:contain"></body></html>`);;
-  w2.document.close();
+  if (!src) return;
+  let ov = document.getElementById('photoView');
+  if (!ov) {
+    ov = document.createElement('div'); ov.id = 'photoView';
+    ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-label', '写真（押すと閉じる）');
+    ov.innerHTML = '<img id="pvImg" alt="写真"><button type="button" class="pv-x tap" id="pvClose">閉じる</button><div class="pv-hint">押すと閉じます</div>';
+    document.body.appendChild(ov);
+    ov.addEventListener('click', closeFullPhoto);                      // 写真でも外側でも、押せば閉じる
+    let y0 = null;
+    ov.addEventListener('touchstart', e => { y0 = e.touches && e.touches[0] ? e.touches[0].clientY : null; }, {passive: true});
+    ov.addEventListener('touchend', e => { const t = e.changedTouches && e.changedTouches[0]; if (y0 !== null && t && Math.abs(t.clientY - y0) > 70) closeFullPhoto(); y0 = null; });   // 上か下へはらう
+  }
+  ov.querySelector('#pvImg').src = src;
+  ov.classList.add('show');
 }
+function closeFullPhoto(){ const ov = document.getElementById('photoView'); if (ov) { ov.classList.remove('show'); const im = ov.querySelector('#pvImg'); if (im) im.removeAttribute('src'); } }
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeFullPhoto(); });
 
 
 /* ============================================================
@@ -11061,6 +11104,8 @@ function importBackupFile(input) {
 
 // 「共有リンクを作る」ダイアログ。
 // ①ファイル名を決める → ②その名前でJSONを書き出す → ③同じ場所に置く → ④リンクを配る
+/* v244：名前のある閉じる関数にした＝画面を移るとき（_closeAllSheets）に閉じられる。これまでは残ったまま次の画面を覆っていた */
+function closeShareDialog(){ const ov = document.getElementById('shareDlg'); if (ov) ov.style.display = 'none'; }
 function openShareDialog(course) {
   let ov = document.getElementById('shareDlg');
   if (!ov) {
@@ -11068,7 +11113,7 @@ function openShareDialog(course) {
     ov.style.cssText = 'position:fixed;inset:0;z-index:6000;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.45);padding:20px';
     ov.innerHTML =
       '<div style="background:#fff;border-radius:16px;max-width:440px;width:100%;padding:20px 18px;box-shadow:0 10px 40px rgba(0,0,0,.3);max-height:86vh;overflow-y:auto">'
-      + '<div style="font-size:16px;font-weight:700;color:#4A2E0E;margin-bottom:3px">スマホで見てもらうリンクを作る</div>'
+      + '<div class="sd-top"><div class="sd-top-t">スマホで見てもらうリンクを作る</div><button type="button" id="shCloseTop" class="sd-top-x tap">閉じる</button></div>'
       + '<div id="shName" style="font-size:12px;color:#6A645E;margin-bottom:14px"></div>'
       + '<div class="sd-quick"><div class="sd-t">かんたん：このリンクをそのまま配る</div>'
       +   '<div class="sd-n" id="shQuickNote">リンクの中にコースが入っています。保存先の用意は要りません。<b>写真は入りません</b>（写真も配るときは下の「写真も配る」へ）</div>'
@@ -11094,7 +11139,8 @@ function openShareDialog(course) {
       + '<button id="shClose" class="sd-btn ghost" style="width:100%;margin-top:12px;background:#F5F1EA;color:#6A645E">閉じる</button>'
       + '</div>';
     document.body.appendChild(ov);
-    ov.addEventListener('click', e => { if (e.target === ov) ov.style.display = 'none'; });
+    ov.addEventListener('click', e => { if (e.target === ov) closeShareDialog(); });
+    ov.querySelector('#shCloseTop').addEventListener('click', closeShareDialog);   // v244：上の右隅にも閉じる
   }
   const fileEl = ov.querySelector('#shFile'), urlEl = ov.querySelector('#shUrl');
   const embedEl = ov.querySelector('#shEmbed');
@@ -11121,7 +11167,7 @@ function openShareDialog(course) {
     else showToast('コピーできませんでした');
   };
   if (qSend) qSend.onclick = async () => { if (!quick) return; try { await navigator.share({title: course.name || 'フットパスのコース', url: quick}); } catch(_) {} };
-  if (qOpen) qOpen.onclick = () => { if (quick) window.open(quick, '_blank'); };
+  if (qOpen) qOpen.onclick = () => { if (quick) _openInApp(quick); };   // v244：ホーム画面のアプリでは新しい窓を開かない
   const gh = _ghUploadUrl(), ghBtn = ov.querySelector('#shGh'), ghNote = ov.querySelector('#shGhNote');   // GitHub Pages なら保存先へ1回で行ける（v150）
   if (ghBtn) { ghBtn.hidden = !gh; ghBtn.onclick = () => window.open(gh, '_blank'); }
   if (ghNote && gh) ghNote.textContent = '開いた画面で「Add file › Upload files」→ 書き出したファイルを入れて「Commit changes」。1〜2分で公開され、下のリンクで開けます';
@@ -11143,11 +11189,11 @@ function openShareDialog(course) {
     else showToast('リンクを長押しでコピーしてください');
   };
   ov.querySelector('#shPreview').onclick = () => {
-    window.open(location.origin + location.pathname + '?view=' + encodeURIComponent(course.id), '_blank');
+    _openInApp(location.origin + location.pathname + '?view=' + encodeURIComponent(course.id));   // v244
   };
   const libBtn = ov.querySelector('#shLib');
   if (libBtn) { libBtn.hidden = false; libBtn.onclick = () => { ov.style.display = 'none'; openPublishSheet(course); }; }
-  ov.querySelector('#shClose').onclick = () => { ov.style.display = 'none'; };
+  ov.querySelector('#shClose').onclick = closeShareDialog;
   ov.style.display = 'flex';
 }
 

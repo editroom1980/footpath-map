@@ -447,6 +447,20 @@ def static_checks(src):
     # --- v157: 番号の丸と種類の丸を横に並べる（オーナー指摘：iPhone で片方しか見えない）---
     chk('静的', '番号つきで種類がある地点：地図は「種類の丸＋右上に番号の小丸」、一覧・並べ替え・印刷用シート・カードは番号と種類を並べて出す',
         'class="wp-num"' in src and 'class="wp-dot cat"' in src and 'class="ro-badge cat"' in src and 'class="sh-cat"' in src and 'class="vip-dot vip-dot2"' in src and '_catBadge' not in src and 'wp-pair' not in src)
+    # --- v244: 閉じられない画面（オーナー報告「閲覧モードで写真を押すと全画面になるが、閉じられず操作不能」）---
+    _fp = src[src.index('function openFullPhoto'):src.index('function closeFullPhoto')]
+    chk('静的', '写真の全画面はアプリの中に重ねる（新しい窓を開かない）。閉じる・押す・Esc・はらうで閉じる。同じアプリの画面を新しい窓で開かない',
+        'window.open' not in _fp and 'document.write' not in _fp and "ov.id = 'photoView'" in src and 'id="pvClose"' in src
+        and "ov.addEventListener('click', closeFullPhoto);" in src and "if (e.key === 'Escape') closeFullPhoto();" in src
+        and '#photoView .pv-x{position:absolute;top:calc(10px + var(--sat))' in src
+        and "window.open('', '_blank')" not in src and 'function _openInApp' in src and "if (quick) _openInApp(quick);" in src
+        and len(re.findall(r"window\.open\(location\.origin", src)) == 0)
+    chk('静的', '閉じるボタンはいつも見える：下のボタンの段は窓の下に貼り付け、長い窓（リンクを作る・動作確認・新しいコース）は上の右隅に「閉じる」',
+        '.fsh > .ds-row, #descSheet > .ds-row, #kokoroeSheet > .ds-row, #infoSheet > .ds-row, #guideSheet > .ds-row, #renameSheet > .ds-row{' in src
+        and 'position:sticky;bottom:calc(-1 * max(16px, var(--sab)))' in src
+        and 'id="shCloseTop" class="sd-top-x tap">閉じる</button>' in src and 'function closeShareDialog(){' in src   # 引数なし＝画面を移るときに閉じる
+        and 'class="ncs-x tap" onclick="closeNewCourseSheet()">閉じる</button>' in src
+        and 'class="ck-x tap" onclick="closeSelfCheck()">閉じる</button>' in src)
     # --- v243: 開くと固まる（オーナー報告「みんなのマップで見ようとすると固まる」）---
     chk('静的', '固まらない：画面の幅は1回の処理の間だけ使い回し（配置の計算し直しを何万回も起こさない）、写真かどうかは先頭だけ見る。シールができても束ね直しはまとめて1回、番号と大きさは1回だけ求める',
         'function isMobile() {' in src and "if (_isMobC === null || _isMobC === undefined) { _isMobC = window.innerWidth <= 700; setTimeout(() => { _isMobC = null; }, 0); }" in src
@@ -2619,6 +2633,77 @@ def functional_checks(index_path):
         chk('機能', '固まらない：描き直し1回で画面の幅を読むのは1回だけ、写真の判定は長い写真でも一瞬、シールが何枚できても束ね直しは1回',
             isinstance(fz, dict) and fz.get('widthReads') == 1 and fz.get('calls', 0) >= 5 and fz.get('fresh')
             and fz.get('refOk') and fz.get('refMs', 999) < 30 and fz.get('declOnce'), str(fz))
+
+        # v244: 閉じられない画面を出さない（オーナー報告「閲覧モードで写真を押すと全画面になるが、閉じることができなくて操作不能」）
+        #   主な窓を1つずつ開き、押せる位置に閉じるボタンがあり、押すと消え、消えたあと地図が触れることを実際に押して確かめる
+        AUD = r"""(() => { window.__aud = {
+          vis(el){ if (!el || !el.isConnected) return false; const cs = getComputedStyle(el); if (cs.display === 'none' || cs.visibility === 'hidden' || parseFloat(cs.opacity) < 0.05) return false; const r = el.getBoundingClientRect(); return r.width > 2 && r.height > 2; },
+          blockers(){ const out = [], A = innerWidth * innerHeight;
+            document.querySelectorAll('body *').forEach(el => {
+              if (el.closest('#map') || el.closest('#toastBox') || /Scrim$/.test(el.id || '')) return;
+              const cs = getComputedStyle(el); if (cs.position !== 'fixed' && cs.position !== 'absolute') return; if (cs.pointerEvents === 'none' || !__aud.vis(el)) return;
+              const r = el.getBoundingClientRect(); const a = Math.max(0, Math.min(r.right, innerWidth) - Math.max(r.left, 0)) * Math.max(0, Math.min(r.bottom, innerHeight) - Math.max(r.top, 0));
+              if (a < A * 0.18) return; if (cs.position === 'absolute' && (parseInt(cs.zIndex, 10) || 0) < 1000) return;
+              if (['s1','s2','mapWrap','main','mapArea','sidebar'].indexOf(el.id) >= 0) return; out.push(el); });
+            return out.filter(el => !out.some(o => o !== el && o.contains(el))); },
+          name(el){ return el.id ? '#' + el.id : (typeof el.className === 'string' && el.className ? '.' + el.className.split(' ')[0] : el.tagName); },
+          closer(root){ const re = /^(閉じる|完了|キャンセル|やめる|わかった|✕|×)$|閉じる/;
+            const c = [...root.querySelectorAll('button, [role=button], .tap')].filter(b => __aud.vis(b) && !b.closest('.m-photos, #mPhotos, .vip-photos')
+              && (re.test((b.textContent || '').trim().slice(0, 12)) || /閉じる/.test(b.getAttribute('aria-label') || '')));
+            const best = c.find(b => /^(閉じる|完了|キャンセル|やめる)$/.test((b.textContent || '').trim())) || c[0]; if (!best) return null;
+            const r = best.getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2, t = document.elementFromPoint(x, y);
+            return {x, y, top: r.top, bottom: r.bottom, ok: !!t && (t === best || best.contains(t)), t: (best.textContent || '').trim().slice(0, 8) || best.getAttribute('aria-label')}; },
+          mapFree(){ const m = document.getElementById('map'); const r = m.getBoundingClientRect(); const t = document.elementFromPoint(r.left + r.width * 0.5, r.top + r.height * 0.45); return !!t && !!t.closest('#map'); }
+        }; })()"""
+        page.evaluate("()=>{ " + AUD[AUD.index('{')+1:AUD.rindex('}')] + " }")
+        page.evaluate("""()=>{ document.getElementById('s1').style.display = 'none'; document.getElementById('s2').style.display = 'flex';
+            ['closeModal','hideWpPicker','closeMobileMenu','stopGuide'].forEach(f => { try { window[f](); } catch(_){} });
+            const w = wps.find(x => x && x.type !== 'node'); if (w) { window.__keepPh = w.photos; w.photos = ['data:image/gif;base64,R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==']; } }""")
+        cases = [('edit', 'openMobileMenu()'), ('edit', 'openShareSheet()'), ('edit', 'openReorderSheet()'), ('edit', 'openPtSheet()'),
+                 ('edit', 'openThemeSheet()'), ('edit', 'openNearbySheet()'), ('edit', "openInfoSheet('edit')"), ('edit', "openKokoroeSheet('edit')"),
+                 ('edit', 'openDescSheet()'), ('edit', 'openRenameSheet(currentCourseId)'), ('edit', 'openGotSheet()'), ('edit', 'openFixRouteSheet()'),
+                 ('edit', 'openShareDialog(getCourses().find(c => c.id === currentCourseId) || getCourses()[0])'), ('edit', 'openSelfCheck()'),
+                 ('view', 'showViewInfo(wps.find(x => x && x.type !== "node").id)'), ('view', "openInfoSheet('view')"), ('view', "openKokoroeSheet('view')"),
+                 ('view', 'openFindSheet()'), ('view', 'openFindsSheet()'), ('view', 'openMobileMenu()')]
+        bad, done, pages0 = [], 0, len(ctx.pages)
+        for md, call in cases:
+            page.evaluate("(md) => { if ((md === 'view') !== !!viewMode) toggleViewMode(); window.__before = __aud.blockers(); }", md)
+            page.evaluate("async () => { try { " + call + " } catch(e) { window.__err = String(e); } }"); page.wait_for_timeout(350)
+            neu = page.evaluate("() => __aud.blockers().filter(e => __before.indexOf(e) < 0).map(e => ({n: __aud.name(e), c: __aud.closer(e)}))")
+            if not neu: bad.append(md + ':' + call[:24] + ' 開かない'); page.evaluate("() => { try { _closeAllSheets(); } catch(_){} }"); continue
+            ov = neu[0]; c = ov['c']
+            if not c: bad.append(md + ':' + ov['n'] + ' 閉じるボタンなし')
+            elif not (c['ok'] and c['top'] >= 0 and c['bottom'] <= 812): bad.append(md + ':' + ov['n'] + ' 閉じるに届かない ' + str(round(c['top'])))
+            else:
+                page.mouse.click(c['x'], c['y']); page.wait_for_timeout(300)
+                st = page.evaluate("(n) => ({still: __aud.blockers().some(e => __aud.name(e) === n), scrim: [...document.querySelectorAll('[id$=Scrim]')].some(__aud.vis), free: __aud.mapFree()})", ov['n'])
+                if st['still']: bad.append(md + ':' + ov['n'] + ' 押しても閉じない')
+                elif st['scrim'] or not st['free']: bad.append(md + ':' + ov['n'] + ' 閉じても地図が触れない')
+                else: done += 1
+            page.evaluate("() => { try { _closeAllSheets(); } catch(_){} }")
+        # 写真を押す：アプリの中で全画面、閉じる（押す／Esc でも）。新しい窓は開かない
+        page.evaluate("() => { if (!viewMode) toggleViewMode(); showViewInfo(wps.find(x => x && x.type !== 'node').id); }"); page.wait_for_timeout(500)
+        im = page.evaluate("() => { const im = document.querySelector('#viewInfoPanel .vip-photos img'); if (!im) return null; im.scrollIntoView({block: 'center'}); const r = im.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; }")
+        ph = {'img': bool(im)}
+        if im:
+            page.mouse.click(im[0], im[1]); page.wait_for_timeout(300)
+            ph['open'] = page.evaluate("() => !!document.querySelector('#photoView.show')")
+            c = page.evaluate("() => { const b = document.getElementById('pvClose'); if (!b) return null; const r = b.getBoundingClientRect(); const t = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2); return {x: r.left + r.width / 2, y: r.top + r.height / 2, ok: t === b}; }")
+            ph['btn'] = bool(c and c['ok'])
+            if c: page.mouse.click(c['x'], c['y']); page.wait_for_timeout(250)
+            ph['closedBtn'] = page.evaluate("() => !document.querySelector('#photoView.show')")
+            page.mouse.click(im[0], im[1]); page.wait_for_timeout(250); page.mouse.click(195, 300); page.wait_for_timeout(250)
+            ph['closedTap'] = page.evaluate("() => !document.querySelector('#photoView.show')")
+            page.mouse.click(im[0], im[1]); page.wait_for_timeout(250); page.keyboard.press('Escape'); page.wait_for_timeout(200)
+            ph['closedEsc'] = page.evaluate("() => !document.querySelector('#photoView.show')")
+        ph['noWindow'] = len(ctx.pages) == pages0
+        # 画面を移ると、開いていた窓は全部閉じる（リンクを作る窓も）
+        page.evaluate("() => { openShareDialog(getCourses().find(c => c.id === currentCourseId) || getCourses()[0]); openFullPhoto('data:image/gif;base64,R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw=='); _closeAllSheets(); }")
+        ph['allClosed'] = page.evaluate("() => getComputedStyle(document.getElementById('shareDlg')).display === 'none' && !document.querySelector('#photoView.show')")
+        page.evaluate("() => { if (viewMode) toggleViewMode(); const w = wps.find(x => x && x.type !== 'node'); if (w && window.__keepPh !== undefined) w.photos = __keepPh; _closeAllSheets(); document.querySelectorAll('#toastBox .toast').forEach(e => e.remove()); }")
+        chk('機能', '閉じられない画面が無い：主な窓（編集14・閲覧6）は押せる位置の閉じるで消え、地図が触れる。写真は新しい窓を開かずアプリの中で全画面（閉じる・押す・Esc で閉じる）。画面を移ると全部閉じる',
+            not bad and done == len(cases) and all(ph.get(k) for k in ('img', 'open', 'btn', 'closedBtn', 'closedTap', 'closedEsc', 'noWindow', 'allClosed')),
+            str(bad)[:300] + ' ' + str(ph))
 
         # v237: 一覧まで案内し、みんなのマップを見える所まで送る
         gv = page.evaluate("""async ()=>{ try{
@@ -5185,6 +5270,24 @@ def webkit_checks(index_path):
                 and w3['lvl'] == 0 and w3['hidden'] == 0 and w4['open'] and w4['lvl'] == 0 and not w4['bad'] and w4['sw'] <= w4['iw'] + 1
                 and w5['rows'] == w5['want'] and w5['hit'] and w5['corner'] and not errs,
                 str([w1, w2, w3])[:200] + ' ' + str(w4)[:80] + ' ' + str(w5) + (' err:' + errs[0][:80] if errs else ''))
+            # v244: iPhone と同じエンジンで、写真を押すとアプリの中で全画面になり（新しい窓を開かない）、閉じるで戻れる
+            page.goto(url + '?nosw=1&safe=59&course=sample.json&offauto=0', wait_until='domcontentloaded')
+            page.wait_for_function("() => document.body.classList.contains('viewonly') && typeof wps !== 'undefined' && wps.length > 5", timeout=30000)
+            page.wait_for_timeout(800)
+            npg = len(ctx.pages)
+            page.evaluate("() => { try { dismissWalkTip(); } catch(e){} const w = wps.find(x => x.photos && x.photos.length); if (w) showViewInfo(w.id); }"); page.wait_for_timeout(1200)
+            pim = page.evaluate("() => { const im = document.querySelector('#viewInfoPanel .vip-photos img'); if (!im) return null; im.scrollIntoView({block: 'center'}); const r = im.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; }")
+            r5 = {'img': bool(pim)}
+            if pim:
+                page.mouse.click(pim[0], pim[1]); page.wait_for_timeout(500)
+                r5['open'] = page.evaluate("() => !!document.querySelector('#photoView.show')")
+                pc = page.evaluate("() => { const b = document.getElementById('pvClose'); const r = b.getBoundingClientRect(); const t = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2); return {x: r.left + r.width / 2, y: r.top + r.height / 2, top: r.top, ok: t === b}; }")
+                r5['below'] = pc['top'] >= 59 and pc['ok']
+                page.mouse.click(pc['x'], pc['y']); page.wait_for_timeout(400)
+                r5['closed'] = page.evaluate("() => !document.querySelector('#photoView.show')")
+            r5['noWindow'] = len(ctx.pages) == npg
+            chk('WebKit', 'iPhone と同じエンジンで、写真を押すとアプリの中で全画面（新しい窓は開かない）。閉じるはノッチより下で、押すと戻る',
+                all(r5.get(k) for k in ('img', 'open', 'below', 'closed', 'noWindow')) and not errs, str(r5) + (' err:' + errs[0][:80] if errs else ''))
             # v161: ノッチ（安全域 59px）を偽装：地図は上端から、押す部品は 59px より下
             page.goto(url + '?nosw=1&safe=59', wait_until='domcontentloaded')
             page.wait_for_function("() => { try { return getCourses().length > 0; } catch(e){ return false; } }", timeout=30000)
