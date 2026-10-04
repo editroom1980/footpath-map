@@ -924,7 +924,7 @@ body.viewonly #firstTip,body.embed #firstTip{display:none!important}
 body.viewonly .hbtn-back{display:none!important}   /* PCで共有リンクを開いた人に「一覧」（作る人の画面）を見せない（A5・v137） */
 /* 配る（v123）：画像・印刷用シート・リンク・GPX の4つの出口を1枚に。編集画面から2タップで届く */
 /* 次のスポット（v132）：歩く人の画面の上。矢印は北=0で回す（コンパス許可後は体の向き基準） */
-#nextBar{display:none;position:absolute;left:64px;right:12px;top:max(8px,var(--sat));z-index:1001;background:rgba(255,255,255,.96);
+#nextBar{display:none;position:absolute;left:calc(max(8px,env(safe-area-inset-left)) + 48px);right:calc(max(8px,env(safe-area-inset-right)) + 48px);top:max(8px,var(--sat));z-index:1001;background:rgba(255,255,255,.96);
   border-radius:14px;box-shadow:0 2px 10px rgba(0,0,0,.18);padding:7px 8px 7px 10px;align-items:center;gap:9px;min-height:var(--tap)}
 body.viewing #nextBar:not([hidden]){display:flex}
 body.embed #nextBar{display:none!important}
@@ -1078,8 +1078,9 @@ body.viewonly .mob-share, body.embed .mob-share{display:none!important}
   #stampBar{left:max(8px,env(safe-area-inset-left));right:auto;bottom:auto;
     top:calc(max(8px,var(--sat)) + 50px)}
   #nextBar:not([hidden]) ~ #stampBar{top:calc(max(8px,var(--sat)) + var(--nb-h,68px) + 8px)}   /* 次のスポットの帯の下（v133。v245：帯の高さ --nb-h は JS が測る） */
-  /* v245：次のスポットの帯が出ている間は、右の列（➤ ほか）を帯のすぐ下から並べる（帯が ➤ に重なっていた・オーナー指摘） */
-  body.viewing #nextBar:not([hidden]) ~ #mobileRbtns{top:calc(max(8px,var(--sat)) + var(--nb-h,68px) + 8px)!important}
+  /* v248：次のスポットの帯は「戻る」と右の列の間に、左右同じすきまで真ん中に出す（上の #nextBar の left・right）。
+     右の列は編集のときと同じく「戻る」の高さから（オーナー指示「帯の幅を短くして中央に表示し、右のアイコン列を上に上げろ」）。
+     v245 で右の列を帯の下へ下げていたのはやめた */
   /* 下部：モード行（下段）＋簡易高低差（上段）を1つのカードとしてフローティング */
   #mobileShelf{display:flex!important;position:absolute;left:max(8px,env(safe-area-inset-left));right:max(8px,env(safe-area-inset-right));
     bottom:max(8px,var(--sab));width:auto;height:48px!important;box-sizing:border-box;
@@ -1142,10 +1143,9 @@ body.viewonly .mob-share, body.embed .mob-share{display:none!important}
   .mob-save{box-shadow:0 2px 8px rgba(0,0,0,0.22)}
   #mobileRbtns{display:flex!important;top:max(8px,var(--sat))!important;bottom:auto;right:max(8px,env(safe-area-inset-right))}   /* v247：「戻る」と同じ高さから */
   #mobileRbtns{gap:4px!important}#mobileRbtns .mrb.mt{margin-top:4px}   /* v241：横向きは縦が短い。ボタンが1つ増えても下の帯に重ならないように間を詰める（v247：保存・公開が入ったので 4px＝押せる範囲 44px がちょうど並ぶ最小） */
-  /* v245：横向きは縦が短いので右の列は下げず、次のスポットの帯を「戻る」と右の列の間に置く。
-     幅の広い横向き（PC 向けの左上・幅 380px の決まりが効く）では、帯が「戻る」に重なっていた。幅は 440px まで（読みやすさ） */
-  #nextBar{left:calc(max(8px,env(safe-area-inset-left)) + 48px);right:calc(max(8px,env(safe-area-inset-right)) + 56px);top:max(8px,var(--sat));width:auto;max-width:440px}
-  body.viewing #nextBar:not([hidden]) ~ #mobileRbtns{top:max(8px,var(--sat))!important}
+  /* v245：横向きも次のスポットの帯を「戻る」と右の列の間に置く（幅の広い横向きでは PC 向けの左上・幅 380px の決まりが効き、帯が「戻る」に重なっていた）。
+     v248：幅は 440px までにして、余りは左右に等しく＝真ん中に出す */
+  #nextBar{left:calc(max(8px,env(safe-area-inset-left)) + 48px);right:calc(max(8px,env(safe-area-inset-right)) + 48px);top:max(8px,var(--sat));width:auto;max-width:440px;margin:0 auto}
   #mobileShelf{display:flex!important}
   #mobileElevBand{display:block!important}
 
@@ -3452,7 +3452,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 手描きの道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した手描きの道id（直前取り消し用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v247';
+const APP_VERSION = 'v248';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat0', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -4956,7 +4956,7 @@ function nextBarTap() {
   const id = _nextWpId; if (id == null) return;
   if (typeof showViewInfo === 'function') showViewInfo(id);
 }
-// v245：次のスポットの帯の高さを --nb-h に入れる（右の列とスタンプの札をその下に並べる。文字が折り返して帯が伸びても重ならない）
+// v245：次のスポットの帯の高さを --nb-h に入れる（スタンプの札をその下に並べる。文字が折り返して帯が伸びても重ならない）
 (function () { const bar = document.getElementById('nextBar'); if (!bar || !window.ResizeObserver) return;
   new ResizeObserver(() => { const h = bar.offsetHeight; if (h > 0) document.documentElement.style.setProperty('--nb-h', h + 'px'); }).observe(bar); })();
 function renderNextBar() {
@@ -4977,7 +4977,7 @@ function renderNextBar() {
   const ci = gi ? null : _nextCueInfo(info ? (info.along != null ? info.along : null) : null);   // 分岐の案内が無いときだけ曲がり角（v167）
   _guidePassCheck();
   if (gi) { _guideShown[gi.vp.id] = true; _activeGuideId = gi.vp.id; } else _activeGuideId = null;
-  if (!info) { tx.textContent = _walkPos ? (here ? _spotLabel(here) + '　ゴールに着きました' : 'ゴールに着きました') : '右の ➤ を押すと、次のスポットまでの距離が出ます'; ar.style.visibility = _walkPos ? 'visible' : 'hidden'; ar.style.transform = '';
+  if (!info) { tx.textContent = _walkPos ? (here ? _spotLabel(here) + '　ゴールに着きました' : 'ゴールに着きました') : '右の ➤ を押すと、次のスポットまでの距離が出ます'; ar.style.display = _walkPos ? '' : 'none'; ar.style.transform = '';   // v248：出さないときは場所も取らない（帯の左に余白が残っていた・オーナー指摘）
     if (_walkPos && !_goalToastShown) { _goalToastShown = true; showToast('ゴール！おつかれさまでした。帯を押すと記念の1枚を作れます'); }   // v147
     return; }
   tx.innerHTML = (here ? '<div class="nb-name"><b>' + escHtml(_spotLabel(here)) + '</b>　次：' + escHtml(info.label) + '</div>'
@@ -4985,7 +4985,7 @@ function renderNextBar() {
                + (gi ? '<div class="nb-guide' + (gi.g.kind === 'caution' ? ' caution' : '') + '">' + escHtml(_guideGlyph(gi.g)) + ' <b>' + (gi.here ? escHtml(_guideText(gi.g)) : (gi.g.kind === 'caution' ? 'この先' + Math.round(gi.dist / 10) * 10 + 'm ' + escHtml(_guideText(gi.g)) : Math.round(gi.dist / 10) * 10 + 'm先 ' + escHtml(GUIDE_DIRS[gi.g.dir] || 'まっすぐ'))) + '</b>' + (gi.g.note ? '：' + escHtml(gi.g.note) : '') + '</div>'
                      : ci ? '<div class="nb-cue">' + escHtml(ci.q.glyph) + ' <b>' + Math.round(ci.dist / 10) * 10 + 'm先 ' + escHtml(ci.q.text) + '</b></div>'
                : '<div class="nb-dist"> まで <b>' + info.distText + '</b>' + (info.straight ? '（直線）' : '') + '・約' + info.min + '分<span class="nb-dir">' + info.dirText + '</span></div>');
-  ar.style.visibility = 'visible';
+  ar.style.display = '';
   ar.style.transform = 'rotate(' + Math.round(info.rot) + 'deg)';
 }
 setInterval(() => { if (viewMode && _walkPos) renderNextBar(); }, 15000);   // 古い位置を薄くする（v138）

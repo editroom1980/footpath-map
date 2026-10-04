@@ -1161,12 +1161,15 @@ def static_checks(src):
         'class="ev-here"' in src and 'function _elevHerePoint' in src and 'function _drawElevHere' in src
         and src.index('stroke="#C0A882" stroke-width="0.8"/>`+\n    here + _scrubSvg(') > 0)   # v166：なぞりの印は「いまここ」の後（一番上）
     chk('静的', 'スタンプの札は次のスポットの帯の下', '#nextBar:not([hidden]) ~ #stampBar{top:' in src)
+    chk('静的', '次のスポットの帯：向きの矢印を出さないときは場所も取らない（display。visibility で隠すと左に余白が残る・v248）',
+        "ar.style.display = _walkPos ? '' : 'none';" in src and 'ar.style.visibility' not in src)
     # --- v245: 次のスポットの帯が右の列（➤）・「戻る」に重ならない（オーナー指摘）---
-    chk('静的', '次のスポットの帯の高さを測り（--nb-h）、右の列とスタンプの札をその下に並べる。横向きは帯を「戻る」と右の列の間に置く',
+    chk('静的', '次のスポットの帯は「戻る」と右の列の間に左右同じすきまで（真ん中）。右の列は帯の下へ下げない（v248）。帯の高さ（--nb-h）を測ってスタンプの札をその下に。横向きは幅 440px まで真ん中',
         "document.documentElement.style.setProperty('--nb-h', h + 'px')" in src
-        and 'body.viewing #nextBar:not([hidden]) ~ #mobileRbtns{top:calc(max(8px,var(--sat)) + var(--nb-h,68px) + 8px)!important}' in src
+        and '~ #mobileRbtns{top:calc(max(8px,var(--sat)) + var(--nb-h' not in src
+        and '#nextBar{display:none;position:absolute;left:calc(max(8px,env(safe-area-inset-left)) + 48px);right:calc(max(8px,env(safe-area-inset-right)) + 48px);top:max(8px,var(--sat));' in src
         and '#nextBar:not([hidden]) ~ #stampBar{top:calc(max(8px,var(--sat)) + var(--nb-h,68px) + 8px)}' in src
-        and '#nextBar{left:calc(max(8px,env(safe-area-inset-left)) + 48px);right:calc(max(8px,env(safe-area-inset-right)) + 56px);top:max(8px,var(--sat));width:auto;max-width:440px}' in src)
+        and '#nextBar{left:calc(max(8px,env(safe-area-inset-left)) + 48px);right:calc(max(8px,env(safe-area-inset-right)) + 48px);top:max(8px,var(--sat));width:auto;max-width:440px;margin:0 auto}' in src)
     chk('静的', '往復コースでも進みを取り違えない（候補を束ね、前回の進みに近いものを選ぶ）',
         'function _routeCandidates' in src and 'const ROUTE_AMBIG_M' in src and "_routeProgress(lat, lng, _walkPos ? _walkPos.along : null)" in src)
     # --- v132: 次のスポットまでの距離と向き（ロードマップ 段階2-1）---
@@ -5315,8 +5318,16 @@ def webkit_checks(index_path):
             try: page.wait_for_function("() => _lastRouteCoords && _lastRouteCoords.length > 50", timeout=20000)
             except Exception: pass
             page.wait_for_timeout(800)
-            page.evaluate("() => { try { dismissWalkTip(); } catch(e){} const c = _lastRouteCoords; if (c && c.length > 2) { const i = Math.floor(c.length * 0.3); _onWalkerPos(c[i][0], c[i][1], 6); } }")
+            # v248：歩く前は向きの矢印を出さず、場所も取らない（帯の左に余白が残っていた・オーナー指摘）。歩きはじめたら矢印が出る
+            NB_PAD = """() => { const b = document.getElementById('nextBar'), m = b.querySelector('.nb-main');
+                return {pad: Math.round(m.getBoundingClientRect().left - b.getBoundingClientRect().left), ar: getComputedStyle(b.querySelector('.nb-arrow')).display}; }"""
+            page.evaluate("() => { try { dismissWalkTip(); } catch(e){} }")
+            pad0 = page.evaluate(NB_PAD)
+            page.evaluate("() => { const c = _lastRouteCoords; if (c && c.length > 2) { const i = Math.floor(c.length * 0.3); _onWalkerPos(c[i][0], c[i][1], 6); } }")
             page.wait_for_timeout(300)
+            pad1 = page.evaluate(NB_PAD)
+            chk('WebKit', '次のスポットの帯：歩く前は向きの矢印を出さず、文字は帯の左端から（余白を残さない）。歩きはじめたら矢印が出る',
+                pad0['ar'] == 'none' and pad0['pad'] <= 12 and pad1['ar'] == 'flex' and pad1['pad'] > 30, str({'before': pad0, 'walking': pad1}))
             r = page.evaluate(OVERFLOW)
             r['bar'] = page.evaluate("() => !document.getElementById('nextBar').hidden && /次/.test(document.getElementById('nbText').textContent)")
             chk('WebKit', 'iPhone と同じエンジンで共有リンクが開き、はみ出す部品がなく、歩く人の帯が出る',
@@ -5327,14 +5338,18 @@ def webkit_checks(index_path):
                 const a = nb.getBoundingClientRect(), hit = [];
                 [...document.querySelectorAll('#mobileRbtns > *, #mobileTopBar > *'), document.getElementById('stampBar')].filter(vis).forEach(e => { const r = e.getBoundingClientRect();
                   if (r.left < a.right && r.right > a.left && r.top < a.bottom && r.bottom > a.top) hit.push((e.id || e.className) + '@' + Math.round(r.left) + ',' + Math.round(r.top)); });
-                return {bar: [Math.round(a.left), Math.round(a.top), Math.round(a.right), Math.round(a.bottom)], hit: hit, next: vis(document.getElementById('mobileNextBtn'))}; }"""
+                const bk = document.querySelector('#mobileTopBar .mob-back').getBoundingClientRect();
+                const c0 = [...document.querySelectorAll('#mobileRbtns > *')].filter(vis)[0].getBoundingClientRect();
+                const mid = Math.abs((a.left + a.right) / 2 - innerWidth / 2) < 1.5 && a.left >= bk.right + 4 && a.right <= c0.left - 4;   // v248：真ん中で「戻る」と右の列の間
+                return {bar: [Math.round(a.left), Math.round(a.top), Math.round(a.right), Math.round(a.bottom)], hit: hit, next: vis(document.getElementById('mobileNextBtn')),
+                        mid: mid, colUp: Math.abs(c0.top - bk.top) < 1}; }"""
             nb_res = {}
             for vw, vh in ((390, 812), (667, 375), (844, 390)):
                 page.set_viewport_size({'width': vw, 'height': vh}); page.wait_for_timeout(350)
                 nb_res[f'{vw}x{vh}'] = page.evaluate(NB_OVER)
             page.set_viewport_size({'width': 390, 'height': 812}); page.wait_for_timeout(200)
-            chk('WebKit', '次のスポットの帯が、右の列（➤ ほか）・戻る・配る・スタンプの札に重ならない（縦・狭い横向き・広い横向き）',
-                all(v.get('bar') and not v['hit'] for v in nb_res.values()) and nb_res['390x812'].get('next'), str(nb_res)[:260])
+            chk('WebKit', '次のスポットの帯は「戻る」と右の列の真ん中に出て、右の列（➤ ほか）は「戻る」と同じ高さ。帯は右の列・戻る・スタンプの札に重ならない（縦・狭い横向き・広い横向き。v248）',
+                all(v.get('bar') and not v['hit'] and v.get('mid') and v.get('colUp') for v in nb_res.values()) and nb_res['390x812'].get('next'), str(nb_res)[:260])
             # 編集画面（サンプルを開く）＋メニュー
             page.goto(url + '?nosw=1', wait_until='domcontentloaded')
             page.wait_for_function("() => { try { return getCourses().length > 0; } catch(e){ return false; } }", timeout=30000)
@@ -5402,8 +5417,8 @@ def webkit_checks(index_path):
             page.evaluate("() => { if (!viewMode) toggleViewMode(); }"); page.wait_for_timeout(500)
             r6 = page.evaluate(NB_OVER)
             page.evaluate("() => { if (viewMode) toggleViewMode(); }"); page.wait_for_timeout(200)
-            chk('WebKit', 'ノッチ（安全域59px）の閲覧モードでも、次のスポットの帯は安全域より下で、➤・戻る・配る・スタンプの札に重ならない',
-                r6.get('bar') and r6['bar'][1] >= 59 and not r6['hit'] and r6.get('next'), str(r6)[:200])
+            chk('WebKit', 'ノッチ（安全域59px）の閲覧モードでも、次のスポットの帯は安全域より下の真ん中で、右の列は「戻る」と同じ高さ。何にも重ならない',
+                r6.get('bar') and r6['bar'][1] >= 59 and not r6['hit'] and r6.get('next') and r6.get('mid') and r6.get('colUp'), str(r6)[:200])
             # v247：保存・公開を右の列に入れても、編集画面の右の列は1列で、ほかの部品・下の棚・画面の外に重ならない（縦・狭い横向き・広い横向き）
             COL = """() => { const vis = e => { if (!e) return false; const s = getComputedStyle(e); return s.display !== 'none' && s.visibility !== 'hidden' && e.getBoundingClientRect().width > 0; };
                 const col = [...document.querySelectorAll('#mobileRbtns > *')].filter(vis), back = document.querySelector('#mobileTopBar .mob-back');
