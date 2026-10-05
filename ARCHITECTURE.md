@@ -544,3 +544,8 @@ CONSTANTS(904) → STATE(968) → STORAGE(1015) → 版のお知らせ(1021) →
 - `--sat0`＝ノッチそのものの高さ（`env(safe-area-inset-top)`）。`--sat`＝押す部品を置き始める高さ＝ノッチ＋36pt・少なくとも 98pt（ノッチが無ければ 0）。iOS 27 のぼかし（上から約 95pt）にかからないため（v246）。上に固定する部品を足すときは必ず `--sat` を使う。ページの大きさの計算には `--sat0` を使う。
 - iOS 27 のホーム画面のアプリでは、ノッチの下（上から約 100pt）に iOS がぼかしを重ねる。ページから消す設定は無い（WebKit `WKWebView _shouldHideTopScrollPocket`：上の帯の色で置き換えて消せるのは、ページがノッチの下に描いていないときだけ）。ぼかしの色はページの地の色（`html,body` の background）に寄る。
 
+## スタンプラリー（v100→v250）
+- 押す仕組み：閲覧モードで位置が入ったとき（➤ 追いかける）、`VISIT_RADIUS_M`（50m）以内のスポットに記録（`_visits`・この端末の `LS.visits` だけ）。
+- 見せ方（v250）：スタンプの絵は `_stampSvg`（枠 `STAMP_FRAMES`×色 `STAMP_INKS` を歩く順で回す・真ん中は `_stampKanji`）。押した瞬間 `_stampFx`（順番待ち `_stampFxQ`）、全部そろったら最後のあとに `_stampDoneFx`（完歩之印 `_stampSealSvg`・紙吹雪）。スタンプ帳 `openStampSheet`。記念の1枚は `_goalSeal`。
+- 演出は `.st-fx`／`.st-done` を body に足して出す（`close〜` 関数があるので画面を移ると消える）。検査で `_checkVisits` を呼んだら、後の検査の画面を覆わないよう `closeStampFx()`・`closeStampDone()` で片づける。
+

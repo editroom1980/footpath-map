@@ -372,7 +372,7 @@ body.embed #s2, body.embed #mapArea, body.embed #mapWrap{height:100%!important;m
 #stampBar{position:absolute;right:8px;bottom:8px;z-index:1200;display:none;background:rgba(255,255,255,.94);
   color:#4A2E0E;font-size:12px;font-weight:700;padding:6px 11px;border-radius:14px;
   box-shadow:0 2px 10px rgba(0,0,0,.18);cursor:pointer}
-#stampBar.done{background:var(--ok);color:#fff}
+#stampBar.done{background:#C2302A;color:#fff}   /* v250：完歩之印の朱 */
 /* シール（v142）：写真を地図の印にする。角丸の写真＋左上に種別の小さな○、束ねたら右下に +n */
 .wp-sticker{position:relative;border-radius:10px;border:2.5px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.45);background:#E8E2D8 center/cover no-repeat;cursor:pointer}
 .wp-stk-badge{position:absolute;left:-7px;top:-7px;border-radius:50%;color:#fff;font-weight:bold;text-align:center;border:1.5px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.4)}
@@ -1334,11 +1334,71 @@ body.viewing #modeHint,body.viewonly #modeHint{display:none!important}
 .mrb.pts .svgi{width:17px;height:17px}
 .mrb.pts .pts-l{font-size:9px;font-weight:800;line-height:1;letter-spacing:-.02em;white-space:nowrap}
 .mrb.pts.on{background:var(--brand)!important;color:#fff!important}
+/* スタンプ帳（v250・オーナー指摘「スタンプの表示はセンスがない。参考を探して、達成感・特別感が出るように演出しろ」）
+   参考：JR 東日本の駅スタンプ（家紋に倣う枠 丸・六角・八角・四つ丸、色は5色、駅名の一文字と土地の印）／
+   エキタグ（全部集めると限定のスタンプ）／御朱印帳（白い和紙に朱印と墨書・日付）／達成の演出は「その場ですぐ・何をしたかを言う」。
+   ・スタンプ帳は和紙の頁。まだのスポットは薄い点線の枠（歩く順の数・発・着・種類の絵）、押したスポットはインクのスタンプ
+   ・押した瞬間は、スタンプが上から落ちて紙に押される（.st-fx）。全部そろうと「完歩之印」（朱の角印）と紙吹雪（.st-done）
+   ・動きを減らす設定の端末では動かさない */
+#stampSheet, .st-fx, .st-done{--mincho:"Hiragino Mincho ProN","Hiragino Mincho Pro","Yu Mincho","YuMincho","Noto Serif JP",serif;--paper:#FBF6EA;--paper-tex:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .45  0 0 0 0 .38  0 0 0 0 .28  0 0 0 .07 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23f)'/%3E%3C/svg%3E")}
+#stampSheet{background:#EFE7D8}
+#stampSheet .ds-dh{background:#CDBFA6}
+.sb-page{position:relative;background-color:var(--paper);background-image:var(--paper-tex);border-radius:14px;padding:16px 12px 14px;box-shadow:0 1px 0 #E4D9C4,0 6px 18px rgba(60,40,10,.14)}
+.sb-hd{position:relative;display:flex;align-items:flex-end;justify-content:space-between;gap:10px;border-bottom:1px solid #E3D8C3;padding:0 4px 10px;margin-bottom:10px;min-height:58px}
+.sb-t{font-family:var(--mincho);font-weight:700;font-size:18px;color:#2B1D10;letter-spacing:.04em;line-height:1.3}
+.sb-s{font-family:var(--mincho);font-size:11.5px;color:#8A7A62;margin-top:3px;letter-spacing:.25em}
+.sb-n{flex:none;font-family:var(--mincho);font-weight:700;color:#A8263A;font-size:30px;line-height:1;font-variant-numeric:tabular-nums}
+.sb-n small{font-size:14px;color:#8A7A62;font-weight:600}
+.sb-seal{flex:none;width:78px;height:78px;margin:-14px -2px -8px 0}
+.sb-seal svg{width:100%;height:100%;overflow:visible}
+.sb-now{display:flex;align-items:center;gap:10px;border-radius:12px;padding:8px 10px;margin:0 2px 12px;font-size:12px;line-height:1.5;background:rgba(74,46,14,.06);color:#4A2E0E}
+.sb-now.on{background:#E8EFFD;color:#1E3A8A}
+.sb-now.done{background:rgba(194,48,42,.08);color:#8E2A1F;font-weight:700}
+.sb-now span{flex:1;min-width:0}
+.sb-now button{flex:none;min-height:var(--tap);border:none;border-radius:10px;background:#2563EB;color:#fff;font-family:inherit;font-weight:800;font-size:12.5px;padding:0 12px;cursor:pointer}
+.sb-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px 2px}
+.sb-cell{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:0}
+.sb-slot{width:72px;height:72px;position:relative}
+.sb-slot svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.sb-nm{font-family:var(--mincho);font-size:10.5px;color:#4A3A26;text-align:center;line-height:1.25;max-width:80px;min-height:2.5em;overflow:hidden;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.sb-cell.todo .sb-nm{color:#B3A68E}
+.sb-how{font-family:var(--mincho);font-size:11px;line-height:1.7;color:#8A7A62;border-top:1px solid #E3D8C3;margin-top:12px;padding:8px 4px 0}
+.sb-how b{color:#4A2E0E}
+.st-ink{mix-blend-mode:multiply}
+/* 押した瞬間 */
+.st-fx,.st-done{position:fixed;inset:0;z-index:9400;display:flex;align-items:center;justify-content:center;padding:var(--sat) 16px var(--sab);background:rgba(25,18,10,.5);opacity:0;transition:opacity .2s}
+.st-fx.show,.st-done.show{opacity:1}
+.st-card{width:min(300px,100%);padding:20px 18px 16px;border-radius:18px;text-align:center;background-color:var(--paper);background-image:var(--paper-tex);box-shadow:0 18px 50px rgba(0,0,0,.35);position:relative}
+.st-card .k{font-family:var(--mincho);font-size:12px;letter-spacing:.4em;color:#8A7A62}
+.st-card .t{font-family:var(--mincho);font-weight:700;font-size:20px;color:#2B1D10;margin:4px 0 2px;line-height:1.35}
+.st-big{width:200px;height:200px;margin:0 auto;position:relative}
+.st-big svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.st-big .ring{position:absolute;inset:14%;border-radius:50%;border:3px solid currentColor;opacity:0;animation:stRing .6s .27s ease-out both}
+.st-big .drop{position:absolute;inset:0;animation:stDrop .42s cubic-bezier(.2,.7,.25,1) both}
+.st-card.thud{animation:stThud .28s .26s ease-out both}
+.st-card .p{font-family:var(--mincho);font-size:15px;color:#2B1D10;margin-top:4px;opacity:0;transition:opacity .3s .45s}
+.st-card .p b{color:#A8263A;font-size:24px;font-variant-numeric:tabular-nums}
+.st-fx.show .st-card .p,.st-done.show .st-card .p{opacity:1}
+.st-card .h{font-size:11px;color:#8A7A62;margin-top:8px}
+@keyframes stDrop{0%{transform:translateY(-26px) scale(1.9);opacity:0;filter:blur(3px)}62%{transform:scale(.93);opacity:1;filter:blur(0)}80%{transform:scale(1.03)}100%{transform:scale(1)}}
+@keyframes stThud{0%{transform:translate(0,0)}25%{transform:translate(2px,3px)}50%{transform:translate(-2px,-1px)}75%{transform:translate(1px,1px)}100%{transform:translate(0,0)}}
+@keyframes stRing{0%{transform:scale(.7);opacity:.55}100%{transform:scale(1.35);opacity:0}}
+/* 完歩 */
+.st-done .seal{width:150px;height:150px;margin:6px auto 2px;animation:stSeal .55s .15s cubic-bezier(.2,.7,.25,1) both}
+.st-done .seal svg{width:100%;height:100%;overflow:visible}
+@keyframes stSeal{0%{transform:translateY(-40px) scale(2.2) rotate(-14deg);opacity:0}60%{transform:scale(.92) rotate(-6deg);opacity:1}100%{transform:scale(1) rotate(-6deg);opacity:1}}
+.st-done .row{display:flex;gap:8px;margin-top:14px}
+.st-done .row button{flex:1;min-height:var(--tap);border:none;border-radius:12px;font-family:inherit;font-size:14px;font-weight:800;cursor:pointer;background:var(--brand-grad);color:#fff}
+.st-done .row button.ghost{background:#EFE7D8;color:#4A2E0E}
+.st-confetti{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:9401}
+.st-confetti i{position:absolute;top:-24px;width:8px;height:12px;border-radius:2px;opacity:.95;animation:stFall linear forwards}
+@keyframes stFall{0%{transform:translate3d(0,0,0) rotate(0)}100%{transform:translate3d(var(--dx),110vh,0) rotate(var(--r))}}
+@media (prefers-reduced-motion: reduce){.st-big .ring,.st-big .drop,.st-card.thud,.st-done .seal{animation:none!important}.st-confetti{display:none}}
 /* スタンプ（v249）：絵と小さな数（押した数/全部）。全部押せたら緑 */
 .mrb.stamp{flex-direction:column;gap:1px;color:#4A2E0E}
 .mrb.stamp .svgi{width:17px;height:17px}
 .mrb.stamp .st-l{font-size:9px;font-weight:800;line-height:1;letter-spacing:-.02em;white-space:nowrap;font-variant-numeric:tabular-nums}
-.mrb.stamp.done{background:var(--ok)!important;color:#fff!important}
+.mrb.stamp.done{background:#C2302A!important;color:#fff!important}   /* v250：完歩之印の朱 */
 #btnPts{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
 #btnPts .svgi{width:15px;height:15px}
 #btnPts .pc-val{font-size:11.5px;font-weight:800;color:var(--brand)}
@@ -1604,8 +1664,8 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
           <button class="mrb mob-share tap" onclick="openShareSheet()" aria-label="公開" title="公開（画像・印刷用シート・リンク・GPX・みんなのマップ）"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 9h-1a2 2 0 0 0 -2 2v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-8a2 2 0 0 0 -2 -2h-1" /> <path d="M12 14v-11" /> <path d="M9 6l3 -3l3 3" /></svg></button>
           <!-- v247：現在地は「追いかける」1つ（◎ 現在地へ をまとめた。オーナー指示「追従だけでいい」）。追いかけている間は青く塗る -->
           <button class="mrb next tap" id="mobileNextBtn" onclick="toggleFollowMode()" aria-label="現在地を追いかける" aria-pressed="false" title="現在地を追いかける（もう一度押すと止まります）。閲覧モードでは次のスポットまでの距離も出ます"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l19 -9l-9 19l-2 -8z" /></svg></button>
-          <!-- v249：スタンプも右の列のアイコンに（オーナー指示）。数は下の小さな文字。閲覧モードでスポットがあるときだけ出る。押すと「全部消しますか？」（前の札と同じ） -->
-          <button class="mrb stamp tap" id="mobileStampBtn" onclick="_stampTap()" aria-label="スタンプ" title="スタンプ（押すと全部消せます）" hidden><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 17.85h-18c0 -4.05 1.421 -4.05 3.79 -4.05c5.21 0 1.21 -4.59 1.21 -6.8a4 4 0 1 1 8 0c0 2.21 -4 6.8 1.21 6.8c2.369 0 3.79 0 3.79 4.05z" /> <path d="M5 21h14" /></svg><span class="st-l"></span></button>
+          <!-- v249：スタンプも右の列のアイコンに（オーナー指示）。数は下の小さな文字。閲覧モードでスポットがあるときだけ出る。押すとスタンプ帳（v250） -->
+          <button class="mrb stamp tap" id="mobileStampBtn" onclick="openStampSheet()" aria-label="スタンプ帳" title="スタンプ帳（押し方・いくつ押したか）" hidden><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 17.85h-18c0 -4.05 1.421 -4.05 3.79 -4.05c5.21 0 1.21 -4.59 1.21 -6.8a4 4 0 1 1 8 0c0 2.21 -4 6.8 1.21 6.8c2.369 0 3.79 0 3.79 4.05z" /> <path d="M5 21h14" /></svg><span class="st-l"></span></button>
           <!-- v241：ポイントの表示。押すたびに 全部→コース→線だけ。長押しで種類を選ぶ（_ptBindHold） -->
           <button class="mrb pts tap" id="mobilePtsBtn" data-pts="1" aria-label="ポイントの表示：全部（押すと切り替え・長押しで種類を選ぶ）" title="ポイントの表示：押すたびに 全部→コースだけ→線だけ。長押しで種類を選ぶ"><span class="pts-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17c3.5 0 4.5-6 8.5-6S16 15 21 13"/><circle cx="5" cy="16.6" r="1.9" fill="currentColor"/><circle cx="12" cy="11" r="1.9" fill="currentColor"/><circle cx="19.5" cy="13.4" r="1.9" fill="currentColor"/><circle cx="17" cy="5" r="1.9" fill="currentColor"/><circle cx="6" cy="6.5" r="1.9" fill="currentColor"/></svg></span><span class="pts-l">全部</span></button>
           <button class="mrb tap find" id="mobileFindBtn" onclick="openFindSheet()" aria-label="発見を貼る" title="見つけたものを貼る" hidden><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h1a2 2 0 0 0 2 -2a1 1 0 0 1 1 -1h6a1 1 0 0 1 1 1a2 2 0 0 0 2 2h1a2 2 0 0 1 2 2v9a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-9a2 2 0 0 1 2 -2" /><path d="M9 13a3 3 0 1 0 6 0a3 3 0 0 0 -6 0" /></svg></button>
@@ -1629,7 +1689,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
       <div id="walkTip">
         <div class="ft-ic">🚶</div>
         <div class="ft-t">この地図の使いかた</div>
-        <div class="ft-d">・○をタップすると、写真と解説が見られます<br>・スポットに近づくと、スタンプが付きます<br>・右の ➤ を押すと、いまの場所を追いかけて、次のスポットまでの距離が出ます（もう一度押すと止まります）<br>・田畑や私有地には入らない、ゴミは持ち帰る、動植物や農作物は採らない（心得）<br>・見つけたもの（植物・マンホールの蓋…）は 📷 で写真とひとことを貼れます（この端末にだけ残ります）</div>
+        <div class="ft-d">・○をタップすると、写真と解説が見られます<br>・<b>➤ を押して歩く</b>と、スポットに 50m まで近づいたときにスタンプが押されます（右の列のスタンプで一覧）<br>・右の ➤ を押すと、いまの場所を追いかけて、次のスポットまでの距離が出ます（もう一度押すと止まります）<br>・田畑や私有地には入らない、ゴミは持ち帰る、動植物や農作物は採らない（心得）<br>・見つけたもの（植物・マンホールの蓋…）は 📷 で写真とひとことを貼れます（この端末にだけ残ります）</div>
         <button class="ft-b ghost" onclick="dismissWalkTip();openKokoroeSheet('view')">心得を読む</button>
         <button class="ft-b" onclick="dismissWalkTip()">わかった</button>
         <div class="ft-n">この案内は最初の1回だけ出ます</div>
@@ -1711,6 +1771,28 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
         <div class="ds-row">
           <button class="ds-btn ghost" onclick="closeInfoSheet()">閉じる</button>
           <button class="ds-btn" id="ciSave" onclick="saveInfoSheet()" hidden>この内容にする</button>
+        </div>
+      </div>
+
+      <!-- スタンプ帳（v250）：和紙の頁に、スポットごとの枠。押したところはインクのスタンプ。全部そろうと「完歩之印」。
+           押し方は頁の下に小さく（オーナー指摘「どう押されていくのか、全部そろったらどうなのか分かりづらい」「センスがない」） -->
+      <div id="stampScrim" class="fsh-scrim" onclick="closeStampSheet()"></div>
+      <div id="stampSheet" class="fsh" role="dialog" aria-label="スタンプ帳">
+        <div class="ds-dh"></div>
+        <div class="sb-page">
+          <div class="sb-hd">
+            <div><div class="sb-t" id="stTitle"></div><div class="sb-s" id="stSub">スタンプ帳</div></div>
+            <div class="sb-n" id="stCount"></div>
+            <div class="sb-seal" id="stSeal" hidden></div>
+          </div>
+          <div class="sb-now" id="stNow"></div>
+          <div class="sb-grid" id="stGrid"></div>
+          <div class="sb-how">押し方：右の <b>➤</b>（現在地を追いかける）を押して歩くと、スポットに <b>50m</b> まで近づいたとき自動でスタンプが押されます。全部そろうと<b>完歩</b>。記念の1枚（写真）に完歩之印が入ります。</div>
+        </div>
+        <div class="ds-row">
+          <button class="ds-btn ghost" onclick="closeStampSheet()">閉じる</button>
+          <button class="ds-btn danger" id="stClear" onclick="_stampClearAsk()">消す</button>
+          <button class="ds-btn" id="stGoal" onclick="closeStampSheet();openGoalCard()" hidden>記念の1枚を作る</button>
         </div>
       </div>
 
@@ -2413,6 +2495,11 @@ const NEXT_STALE_MS = 30000;               // これより古い位置は薄く�
 const CLIMB_MIN_PER_100M = 10;
 // --- スタンプラリー（歩いた人の記録。閲覧モードのときだけ働く）---
 const VISIT_RADIUS_M = 50;    // これだけ近づいたら「訪れた」とみなす(m)。GPSの誤差を見込む
+const STAMP_INKS   = ['#C43E28', '#A8263A', '#2C7350', '#284C88', '#6A428C'];   // v250：スタンプのインク（朱・紅・緑・藍・紫。駅スタンプの5色に倣う）
+const STAMP_FRAMES = ['circle', 'hex', 'oct', 'rings'];                       // v250：枠（丸・六角・八角・四つ丸。同じく駅スタンプの4つの枠）
+const STAMP_SEAL   = '#C2302A';                                                // v250：完歩之印の朱
+const STAMP_FX_MS  = 2600;                                                     // v250：押した瞬間の演出を出しておく長さ（押せばすぐ閉じる）
+const STAMP_BAD_KANJI = '落失死亡損敗苦病悪終';                                 // v250：スタンプの真ん中の一文字に使わない字
 // --- 地名ラベルの自動配置（重なりを避ける）---
 const LABEL_DIRS   = ['top', 'right', 'bottom', 'left'];  // 試す向きの順番
 const LABEL_GAP_PX = 2;                                   // ラベル同士のすき間(px)
@@ -3458,7 +3545,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 手描きの道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した手描きの道id（直前取り消し用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v249';
+const APP_VERSION = 'v250';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat0', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -4833,6 +4920,7 @@ function toggleViewMode() {
     closeViewInfo();           // 閲覧パネルを閉じて編集に復帰
   }
   loadVisits(); renderStampBar(); refreshIcons();    // 閲覧モードの切替でスタンプ表示も切り替える
+  if (!viewMode) closeStampSheet();                  // v250：スタンプ帳は閲覧モードのもの
   loadFinds();                                        // 発見は歩く人の画面でだけ出す（v143）
   if (viewMode) hideWpPicker();
   _applyViewLock();                                  // 編集の操作を隠し、印を動かせなくする
@@ -5152,22 +5240,178 @@ function visitCount(){
 function _checkVisits(lat, lng){
   if (!viewMode) return 0;
   let got = 0;
+  const v0 = visitCount(), was = v0.total > 0 && v0.done === v0.total;
   _stampTargets().forEach(w => {
     if (_visits[w.id]) return;
     if (_distM([lat, lng], [w.lat, w.lng]) > VISIT_RADIUS_M) return;
     _visits[w.id] = Date.now();
     got++;
-    if (typeof showToast === 'function') showToast('🏁 スタンプ獲得：' + (w.name || 'スポット'));
+    _stampFx(w);   // v250：押した瞬間（スタンプが落ちて紙に押される・何個目か）
   });
-  if (got) { _saveVisits(); refreshIcons(); renderStampBar(); }
+  if (got) {
+    _saveVisits(); refreshIcons(); renderStampBar();
+    if (_stampOpen()) _renderStampSheet();
+    const v1 = visitCount();
+    if (!was && v1.total > 0 && v1.done === v1.total) { _stampDoneWait = true; if (!document.querySelector('.st-fx')) _stampFxStep(); }   // v250：全部そろったら、最後のスタンプのあとに「完歩」
+  }
   return got;
 }
 function clearVisits(){
   _visits = {}; _saveVisits(); refreshIcons(); renderStampBar();
+  if (_stampOpen()) _renderStampSheet();
   if (typeof showToast === 'function') showToast('スタンプを消しました');
 }
-// 画面上の「スタンプ n/m」。閲覧モードでスポットがあるときだけ出す。PC は右下の札、スマホは右の列のアイコン（v249）
-function _stampTap(){ if (confirm('スタンプを全部消しますか？')) clearVisits(); }
+/* スタンプ帳（v250）。スポットは 歩く順（S・①②…・G）→ 立ち寄り先 の順に並べる */
+function _stampOpen(){ const sh = document.getElementById('stampSheet'); return !!sh && sh.style.display === 'block'; }
+function openStampSheet(){
+  if (!viewMode) return;
+  _renderStampSheet();
+  document.getElementById('stampScrim').style.display = 'block'; document.getElementById('stampSheet').style.display = 'block';
+}
+function closeStampSheet(){ const a = document.getElementById('stampScrim'), b = document.getElementById('stampSheet'); if (a) a.style.display = 'none'; if (b) b.style.display = 'none'; }
+function _stampClearAsk(){ if (confirm('スタンプを全部消しますか？（この端末の記録だけが消えます）')) clearVisits(); }
+function _stampFollow(){ if (!_followOn) toggleFollowMode(); _renderStampSheet(); }
+function _stampOrder(){
+  const key = w => _isStart(w) ? -1 : _isNumbered(w) ? courseNum(w) : _isGoal(w) ? 1e6 : 2e6;
+  return _stampTargets().slice().sort((a, b) => key(a) - key(b));
+}
+function _ymd(t){ const d = new Date(t || Date.now()); return d.getFullYear() + '.' + (d.getMonth() + 1) + '.' + d.getDate(); }
+function _stampHash(s){ let h = 2166136261; for (let k = 0; k < s.length; k++) h = Math.imul(h ^ s.charCodeAt(k), 16777619); return h >>> 0; }
+/* スタンプのデザイン：枠と色は歩く順で回し（隣どうしが同じにならない）、真ん中は名前の最後の漢字（社・跡・景…）と種類の絵。
+   上の弧に名前、下に押した日。インクのかすれ（SVG のフィルタ）と、少し傾いた押し跡で「押した」感じ */
+function _stampLook(w, i){
+  const h = _stampHash(String(w.id));
+  return {ink: STAMP_INKS[i % STAMP_INKS.length], frame: STAMP_FRAMES[(i + Math.floor(i / STAMP_INKS.length)) % STAMP_FRAMES.length],
+          rot: (h % 19) - 9, dx: ((h >>> 5) % 5) - 2, dy: ((h >>> 9) % 5) - 2, seed: (h % 89) + 2};
+}
+function _stampKanji(w){
+  if (_isStart(w) && !_isGoal(w)) return '発';
+  if (_isGoal(w) && !_isStart(w)) return '着';
+  const nm = String(w.name || '').split('\n')[0];
+  const ks = (nm.match(/[一-鿿]/g) || []).filter(ch => STAMP_BAD_KANJI.indexOf(ch) < 0);
+  return ks.length ? ks[ks.length - 1] : (nm.charAt(0) || '歩');
+}
+function _stampPoly(n, r, rot){ const p = []; for (let k = 0; k < n; k++) { const a = rot + k * 2 * Math.PI / n; p.push((60 + r * Math.cos(a)).toFixed(1) + ',' + (60 + r * Math.sin(a)).toFixed(1)); } return p.join(' '); }
+function _stampFrameSvg(kind, r, sw, extra){
+  if (kind === 'hex') return `<polygon points="${_stampPoly(6, r, 0)}" fill="none" stroke-width="${sw}" stroke-linejoin="round"${extra || ''}/>`;
+  if (kind === 'oct') return `<polygon points="${_stampPoly(8, r, Math.PI / 8)}" fill="none" stroke-width="${sw}" stroke-linejoin="round"${extra || ''}/>`;
+  return `<circle cx="60" cy="60" r="${r}" fill="none" stroke-width="${sw}"${extra || ''}/>`;
+}
+function _stampFilter(id, seed, disp){
+  return `<filter id="${id}" x="-15%" y="-15%" width="130%" height="130%">`
+    + `<feTurbulence type="fractalNoise" baseFrequency=".75" numOctaves="2" seed="${seed}" result="n"/>`
+    + `<feDisplacementMap in="SourceGraphic" in2="n" scale="${disp}" xChannelSelector="R" yChannelSelector="G" result="d"/>`
+    + `<feTurbulence type="fractalNoise" baseFrequency=".045" numOctaves="3" seed="${seed * 7 + 1}" result="b"/>`
+    + `<feColorMatrix in="b" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -1.7 1.6" result="m"/>`
+    + `<feTurbulence type="fractalNoise" baseFrequency="1.4" numOctaves="1" seed="${seed * 3 + 5}" result="g"/>`
+    + `<feColorMatrix in="g" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -2.6 2.35" result="g2"/>`
+    + `<feComposite in="m" in2="g2" operator="arithmetic" k1="1" result="mm"/><feComposite in="d" in2="mm" operator="in"/></filter>`;
+}
+function _stampSvg(w, i, big){
+  const L = _stampLook(w, i), uid = 'stp' + _stampHash(String(w.id) + (big ? 'b' : 's')), c = L.ink, k = L.frame;
+  const arcR = k === 'hex' ? 32 : k === 'oct' ? 35 : 38;
+  const nm0 = (w.name || (WT.find(x => x.v === w.type) || WT[0]).l).split('\n')[0];
+  const nm = nm0.length > 14 ? nm0.slice(0, 13) + '…' : nm0;
+  const fs = Math.max(6.5, Math.min(k === 'hex' ? 9.5 : 10.5, Math.PI * arcR * 0.8 / nm.length - 1)).toFixed(1);
+  const ic = TYPE_ICON[_normType(w.type)], kj = _stampKanji(w);
+  const pic = ic ? `<g transform="translate(51 ${60 - arcR + 6}) scale(.75)"${ic.fill ? ' stroke-width="1"' : ' fill="none" stroke-width="2.4"'} stroke-linecap="round" stroke-linejoin="round">${ic.d}</g>` : '';
+  const dots = k === 'rings' ? [45, 135, 225, 315].map(d => { const a = d * Math.PI / 180, x = (60 + 55 * Math.cos(a)).toFixed(1), y = (60 + 55 * Math.sin(a)).toFixed(1);
+    return `<circle cx="${x}" cy="${y}" r="5.4" fill="var(--paper)" stroke-width="2.4"/><circle cx="${x}" cy="${y}" r="1.9" stroke="none"/>`; }).join('') : '';
+  const tf = big ? 'rotate(-4deg)' : `rotate(${L.rot}deg) translate(${L.dx}px,${L.dy}px)`;
+  return `<svg viewBox="0 0 120 120" class="st-ink" style="transform:${tf}" aria-hidden="true"><defs>${_stampFilter(uid + 'f', L.seed, 1.3)}`
+    + `<path id="${uid}a" d="M ${60 - arcR} 60 A ${arcR} ${arcR} 0 0 1 ${60 + arcR} 60"/></defs>`
+    + `<g filter="url(#${uid}f)" stroke="${c}" fill="${c}" opacity=".9">`
+    + _stampFrameSvg(k, 55, 5) + _stampFrameSvg(k, k === 'circle' || k === 'rings' ? 49.5 : 48.5, 1.3) + dots
+    + `<text font-family="Hiragino Mincho ProN, Yu Mincho, YuMincho, serif" font-weight="700" font-size="${fs}" letter-spacing="1" stroke="none"><textPath href="#${uid}a" startOffset="50%" text-anchor="middle">${escHtml(nm)}</textPath></text>`
+    + pic
+    + `<text x="60" y="${ic ? 84 : 78}" text-anchor="middle" font-family="Hiragino Mincho ProN, Yu Mincho, YuMincho, serif" font-weight="800" font-size="${ic ? 30 : 40}" stroke="none">${escHtml(kj)}</text>`
+    + `<text x="60" y="98" text-anchor="middle" font-family="Hiragino Sans, sans-serif" font-weight="700" font-size="8.5" letter-spacing=".6" stroke="none">${_ymd(_visits[w.id])}</text>`
+    + `</g></svg>`;
+}
+/* 完歩之印（全部そろったときだけ）：朱の角印に白抜きの4文字（右から 完歩・之印） */
+function _stampSealSvg(tag){
+  const uid = 'seal' + tag;
+  return `<svg viewBox="0 0 120 120" class="st-ink" aria-label="完歩之印"><defs>${_stampFilter(uid + 'f', 9, 1.6)}`
+    + `<mask id="${uid}m"><rect width="120" height="120" fill="#fff"/><g font-family="Hiragino Mincho ProN, Yu Mincho, YuMincho, serif" font-weight="800" font-size="40" fill="#000" text-anchor="middle">`
+    + `<text x="83" y="55">完</text><text x="83" y="99">歩</text><text x="37" y="55">之</text><text x="37" y="99">印</text></g></mask></defs>`
+    + `<g filter="url(#${uid}f)" opacity=".93"><rect x="8" y="8" width="104" height="104" rx="7" fill="${STAMP_SEAL}" mask="url(#${uid}m)"/>`
+    + `<rect x="13.5" y="13.5" width="93" height="93" rx="4" fill="none" stroke="var(--paper)" stroke-width="1.8"/></g></svg>`;
+}
+function _renderStampSheet(){
+  const list = _stampOrder(), vc = visitCount(), all = vc.total > 0 && vc.done === vc.total;
+  const last = list.reduce((m, w) => Math.max(m, _visits[w.id] || 0), 0);
+  document.getElementById('stTitle').textContent = courseInfo.name || 'フットパス';
+  document.getElementById('stSub').textContent = all ? '完歩　' + _ymd(last) : 'スタンプ帳　あと ' + (vc.total - vc.done) + ' か所';
+  const cnt = document.getElementById('stCount'); cnt.innerHTML = vc.done + '<small> / ' + vc.total + '</small>'; cnt.hidden = all;
+  const seal = document.getElementById('stSeal'); seal.hidden = !all; seal.innerHTML = all ? _stampSealSvg('book') : '';
+  const now = document.getElementById('stNow');
+  now.className = 'sb-now' + (all ? ' done' : _followOn ? ' on' : '');
+  now.innerHTML = all ? '<span>全 ' + vc.total + ' か所を歩きました。記念の1枚（写真）に完歩之印が入ります</span>'
+    : _followOn ? '<span>📍 現在地を追いかけています。スポットに 50m まで近づくと押されます</span>'
+    : '<span>いまは位置を見ていません。歩くときは ➤ を押してください</span><button type="button" class="tap" onclick="_stampFollow()">➤ 追いかける</button>';
+  document.getElementById('stGrid').innerHTML = list.map((w, i) => {
+    const got = !!_visits[w.id], nm = (w.name || (WT.find(x => x.v === w.type) || WT[0]).l).split('\n')[0];
+    let slot;
+    if (got) slot = _stampSvg(w, i);
+    else {
+      const L = _stampLook(w, i), n = _isNumbered(w) ? courseNum(w) : null, ic = TYPE_ICON[_normType(w.type)];
+      const mark = _isStart(w) && !_isGoal(w) ? '発' : _isGoal(w) && !_isStart(w) ? '着' : n ? String(n) : '';
+      slot = `<svg viewBox="0 0 120 120" aria-hidden="true"><g stroke="#D3C5AA" stroke-width="1.6" stroke-dasharray="4 4" fill="none">${_stampFrameSvg(L.frame, 54, 1.6)}</g>`
+        + (mark ? `<text x="60" y="69" text-anchor="middle" font-family="Hiragino Mincho ProN, Yu Mincho, serif" font-size="24" fill="#D6C8AE" font-weight="700">${mark}</text>`
+                : ic ? `<g transform="translate(46 46) scale(1.15)"${ic.fill ? ' fill="#D6C8AE" stroke="#D6C8AE" stroke-width="1"' : ' fill="none" stroke="#D6C8AE" stroke-width="2"'} stroke-linecap="round" stroke-linejoin="round">${ic.d}</g>` : '') + '</svg>';
+    }
+    return '<div class="sb-cell' + (got ? ' got' : ' todo') + '"><div class="sb-slot">' + slot + '</div><div class="sb-nm">' + escHtml(nm) + '</div></div>';
+  }).join('');
+  document.getElementById('stGoal').hidden = !all;
+  document.getElementById('stClear').hidden = vc.done === 0;
+}
+/* 押した瞬間（v250）：スタンプが上から落ちて紙に押される。少しして消える（押せばすぐ）。続けて押されたら順に出す。
+   全部そろったら、最後のスタンプのあとに「完歩」 */
+let _stampFxQ = [], _stampFxT = null, _stampDoneWait = false;
+function _stampFx(w){ _stampFxQ.push(w.id); if (!document.querySelector('.st-fx')) _stampFxNext(); }
+function _stampFxNext(){
+  const id = _stampFxQ.shift();
+  const list = _stampOrder(), i = list.findIndex(w => w.id === id), w = list[i];
+  if (!w) { if (_stampFxQ.length) return _stampFxNext(); if (_stampDoneWait) { _stampDoneWait = false; _stampDoneFx(); } return; }
+  const vc = visitCount(), L = _stampLook(w, i);
+  const fx = document.createElement('div'); fx.className = 'st-fx'; fx.setAttribute('role', 'status'); fx.setAttribute('aria-live', 'polite');
+  fx.innerHTML = '<div class="st-card thud"><div class="k">スタンプ獲得</div><div class="t">' + escHtml((w.name || '').split('\n')[0] || 'スポット') + '</div>'
+    + '<div class="st-big" style="color:' + L.ink + '"><div class="ring"></div><div class="drop">' + _stampSvg(w, i, true) + '</div></div>'
+    + '<div class="p"><b>' + vc.done + '</b> / ' + vc.total + (vc.done < vc.total ? '　あと ' + (vc.total - vc.done) + ' か所' : '　そろいました！') + '</div>'
+    + '<div class="h">押すと閉じます</div></div>';
+  fx.addEventListener('click', _stampFxStep);
+  document.body.appendChild(fx);
+  requestAnimationFrame(() => fx.classList.add('show'));
+  try { if (navigator.vibrate) navigator.vibrate([18, 40, 30]); } catch(_) {}
+  clearTimeout(_stampFxT); _stampFxT = setTimeout(_stampFxStep, STAMP_FX_MS);
+}
+function _stampFxStep(){
+  clearTimeout(_stampFxT); _stampFxT = null;
+  document.querySelectorAll('.st-fx').forEach(e => e.remove());
+  if (_stampFxQ.length) { _stampFxNext(); return; }
+  if (_stampDoneWait) { _stampDoneWait = false; _stampDoneFx(); }
+}
+function closeStampFx(){ clearTimeout(_stampFxT); _stampFxT = null; _stampFxQ = []; _stampDoneWait = false; document.querySelectorAll('.st-fx').forEach(e => e.remove()); }
+function _stampDoneFx(){
+  closeStampDone();
+  const vc = visitCount(), last = _stampTargets().reduce((m, w) => Math.max(m, _visits[w.id] || 0), 0);
+  const el = document.createElement('div'); el.className = 'st-done'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', '完歩');
+  el.innerHTML = '<div class="st-card thud"><div class="k">スタンプラリー</div><div class="seal">' + _stampSealSvg('done') + '</div>'
+    + '<div class="t">完歩おめでとうございます</div>'
+    + '<div class="p"><b>' + vc.total + '</b> か所すべて歩きました</div>'
+    + '<div class="h">' + escHtml(courseInfo.name || '') + '　' + _ymd(last) + '</div>'
+    + '<div class="row"><button type="button" class="ghost tap" onclick="closeStampDone();openStampSheet()">スタンプ帳を見る</button>'
+    + '<button type="button" class="tap" onclick="closeStampDone();openGoalCard()">記念の1枚を作る</button></div></div>';
+  el.addEventListener('click', e => { if (e.target === el) closeStampDone(); });
+  document.body.appendChild(el);
+  const cf = document.createElement('div'); cf.className = 'st-confetti';
+  cf.innerHTML = Array.from({length: 48}, (_, k) => `<i style="left:${(k * 37) % 100}%;background:${k % 6 === 5 ? STAMP_SEAL : STAMP_INKS[k % 5]};animation-duration:${(1.7 + (k % 7) * .2).toFixed(2)}s;animation-delay:${(k % 9) * .07}s;--dx:${((k * 53) % 90) - 45}px;--r:${(k * 97) % 720}deg"></i>`).join('');
+  document.body.appendChild(cf); setTimeout(() => cf.remove(), 3600);
+  requestAnimationFrame(() => el.classList.add('show'));
+  try { if (navigator.vibrate) navigator.vibrate([30, 60, 30, 60, 90]); } catch(_) {}
+}
+function closeStampDone(){ document.querySelectorAll('.st-done, .st-confetti').forEach(e => e.remove()); }
+// 画面上の「スタンプ n/m」。閲覧モードでスポットがあるときだけ出す。PC は右下の札、スマホは右の列のアイコン（v249）。押すとスタンプ帳（v250）
 function renderStampBar(){
   let el = document.getElementById('stampBar');
   const mb = document.getElementById('mobileStampBtn');
@@ -5176,7 +5420,7 @@ function renderStampBar(){
   if (!show) { if (el) el.style.display = 'none'; return; }
   if (!el) {
     el = document.createElement('div'); el.id = 'stampBar';
-    el.onclick = _stampTap;
+    el.onclick = openStampSheet;
     (document.getElementById('mapWrap') || document.body).appendChild(el);
   }
   const c = visitCount(), all = c.done > 0 && c.done === c.total;
@@ -5186,7 +5430,7 @@ function renderStampBar(){
   if (mb) {
     mb.querySelector('.st-l').textContent = c.done + '/' + c.total;
     mb.classList.toggle('done', all);
-    mb.setAttribute('aria-label', 'スタンプ ' + c.done + ' / ' + c.total + '（押すと全部消せます）');
+    mb.setAttribute('aria-label', 'スタンプ ' + c.done + ' / ' + c.total + '（押すとスタンプ帳）');
   }
 }
 
@@ -9027,7 +9271,21 @@ async function _goalCompose(src){   // 写真の下に帯を敷き、コース�
   g.fillText(line1, pad, h - band * 0.52);
   g.font = Math.round(band * 0.26) + 'px sans-serif'; g.fillText(line2, pad, h - band * 0.16);
   g.font = Math.round(band * 0.18) + 'px sans-serif'; g.textAlign = 'right'; g.globalAlpha = .85; g.fillText('Footpath Mapmaker', w - pad, h - band * 0.16); g.textAlign = 'left'; g.globalAlpha = 1;
+  if (vc.total > 0 && vc.done === vc.total) _goalSeal(g, w);   // v250：全部そろっていたら完歩之印
   return cv;
+}
+// 完歩之印を写真の右上に押す（キャンバスに直接描く。朱の角印に白抜きの4文字）
+function _goalSeal(g, w){
+  const S = Math.round(w * 0.2), x = w - S * 0.62 - Math.round(w * 0.04), y = S * 0.62 + Math.round(w * 0.04);
+  g.save(); g.translate(x, y); g.rotate(-6 * Math.PI / 180); g.globalAlpha = .92; g.shadowColor = 'transparent';
+  const r = S * 0.06, a = -S / 2;
+  g.beginPath(); g.moveTo(a + r, a); g.arcTo(-a, a, -a, -a, r); g.arcTo(-a, -a, a, -a, r); g.arcTo(a, -a, a, a, r); g.arcTo(a, a, -a, a, r); g.closePath();
+  g.fillStyle = STAMP_SEAL; g.fill();
+  g.strokeStyle = '#FBF6EA'; g.lineWidth = Math.max(1, S * 0.015); g.strokeRect(a + S * 0.05, a + S * 0.05, S * 0.9, S * 0.9);
+  g.fillStyle = '#FBF6EA'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.font = '800 ' + Math.round(S * 0.34) + 'px "Hiragino Mincho ProN", "Yu Mincho", YuMincho, serif';
+  g.fillText('完', S * 0.19, -S * 0.19); g.fillText('歩', S * 0.19, S * 0.19); g.fillText('之', -S * 0.19, -S * 0.19); g.fillText('印', -S * 0.19, S * 0.19);
+  g.restore();
 }
 async function shareGoalPhoto(){
   if (!_goalImg) return;

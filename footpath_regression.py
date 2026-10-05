@@ -1160,12 +1160,30 @@ def static_checks(src):
     chk('静的', '高低差の帯に「いまここ」の丸がある（位置が入ったときだけ・一番上に描く）',
         'class="ev-here"' in src and 'function _elevHerePoint' in src and 'function _drawElevHere' in src
         and src.index('stroke="#C0A882" stroke-width="0.8"/>`+\n    here + _scrubSvg(') > 0)   # v166：なぞりの印は「いまここ」の後（一番上）
-    chk('静的', 'スタンプはスマホでは右の列のアイコン（追いかけるの次・絵と数）。左上の札は出さない。PC は右下の札。押すと全部消すか聞く（v249）',
-        '<button class="mrb stamp tap" id="mobileStampBtn" onclick="_stampTap()"' in src
+    chk('静的', 'スタンプはスマホでは右の列のアイコン（追いかけるの次・絵と数）。左上の札は出さない。PC は右下の札。押すとスタンプ帳（v249・v250）',
+        '<button class="mrb stamp tap" id="mobileStampBtn" onclick="openStampSheet()"' in src
         and src.index('id="mobileNextBtn"') < src.index('id="mobileStampBtn"') < src.index('id="mobilePtsBtn"')
         and '#mobileStampBtn[hidden]' in src and src.count('#stampBar{display:none!important}') == 2
-        and "function _stampTap(){ if (confirm('スタンプを全部消しますか？')) clearVisits(); }" in src
+        and "el.onclick = openStampSheet;" in src and '_stampTap' not in src
         and "mb.querySelector('.st-l').textContent = c.done + '/' + c.total;" in src and '#nextBar:not([hidden]) ~ #stampBar' not in src)
+    # --- v250: スタンプ帳（オーナー指摘「どう押されていくのか、全部そろったらどうなるのか分かりづらい」「センスがない。参考を探して達成感・特別感を」）---
+    chk('静的', 'スタンプ帳：和紙の頁にスポットごとの枠・押し方は頁の下・いまの状態（止まっていれば追いかけるボタン）・全部そろえば完歩之印と記念の1枚・消すは聞いてから',
+        'id="stampSheet"' in src and 'class="sb-page"' in src and 'function openStampSheet' in src and 'function closeStampSheet' in src and 'function _renderStampSheet' in src
+        and '押し方：右の <b>➤</b>（現在地を追いかける）を押して歩くと、スポットに <b>50m</b> まで近づいたとき自動でスタンプが押されます' in src
+        and 'onclick="_stampFollow()">➤ 追いかける</button>' in src and "confirm('スタンプを全部消しますか？（この端末の記録だけが消えます）')" in src
+        and 'onclick="closeStampSheet();openGoalCard()" hidden>記念の1枚を作る</button>' in src and "seal.innerHTML = all ? _stampSealSvg('book') : '';" in src)
+    chk('静的', 'スタンプのデザイン：駅スタンプに倣い 枠4種（丸・六角・八角・四つ丸）×インク5色を歩く順で回す。真ん中は名前の最後の漢字（縁起の悪い字は避ける・S は発・G は着）と種類の絵、弧に名前、下に押した日',
+        "const STAMP_INKS   = ['#C43E28', '#A8263A', '#2C7350', '#284C88', '#6A428C'];" in src and "const STAMP_FRAMES = ['circle', 'hex', 'oct', 'rings'];" in src
+        and "if (_isStart(w) && !_isGoal(w)) return '発';" in src and "if (_isGoal(w) && !_isStart(w)) return '着';" in src
+        and "filter(ch => STAMP_BAD_KANJI.indexOf(ch) < 0)" in src and '<textPath href="#${uid}a"' in src and '${_ymd(_visits[w.id])}</text>' in src
+        and 'feTurbulence' in src[src.index('function _stampFilter'):src.index('function _stampSvg')])
+    chk('静的', '押した瞬間はスタンプが落ちて押される演出（何個目か・あと何か所）。全部そろえば最後のあとに完歩（完歩之印・紙吹雪・何か所歩いたか）。動きを減らす設定では動かさない。最初の案内に ➤ が要ることを書く',
+        '_stampFx(w);   // v250' in src and '_stampDoneWait = true;' in src and "function _stampDoneFx" in src and 'か所すべて歩きました' in src
+        and '.st-confetti' in src and '@media (prefers-reduced-motion: reduce){.st-big .ring,.st-big .drop,.st-card.thud,.st-done .seal{animation:none!important}.st-confetti{display:none}}' in src
+        and 'function closeStampFx' in src and 'function closeStampDone' in src
+        and '<b>➤ を押して歩く</b>と、スポットに 50m まで近づいたときにスタンプが押されます' in src)
+    chk('静的', '記念の1枚：全部そろっていたら写真の右上に完歩之印（キャンバスに直接描く）',
+        'if (vc.total > 0 && vc.done === vc.total) _goalSeal(g, w);' in src and 'function _goalSeal(g, w)' in src)
     chk('静的', '次のスポットの帯：向きの矢印を出さないときは場所も取らない（display。visibility で隠すと左に余白が残る・v248）',
         "ar.style.display = _walkPos ? '' : 'none';" in src and 'ar.style.visibility' not in src)
     # --- v245: 次のスポットの帯が右の列（➤）・「戻る」に重ならない（オーナー指摘）---
@@ -1844,6 +1862,7 @@ def functional_checks(index_path):
             const mbText = document.querySelector('#mobileStampBtn .st-l').textContent;   // v249：右の列のアイコンの数
             clearVisits();
             const afterClear = visitCount();
+            closeStampFx(); closeStampDone();   // v250：押した瞬間の演出を残さない（後の検査の画面を覆う）
             wps.forEach(w => { if (w.marker) leafMap.removeLayer(w.marker); });
             wps.length = 0; keepW.forEach(w => wps.push(w));
             viewMode = keepView; currentCourseId = keepId; loadVisits(); renderStampBar();
@@ -1857,6 +1876,67 @@ def functional_checks(index_path):
                  and st.get('storedKeys') == 1 and st.get('icon') is True
                  and '1 / 2' in st.get('barText', '') and st.get('mbText') == '1/2' and st.get('afterClear') == 0)
         chk('機能', 'スタンプが近づいたときだけ付き、消せる', ok_st, str(st)[:190])
+
+        # v250: スタンプ：押した瞬間の演出（何個目か）→ スタンプ帳（スポットごとの枠・押したところはスタンプ）→ 最後の1つのあとに完歩（完歩之印）→ 記念の1枚。消すは聞いてから
+        sb = page.evaluate("""async ()=>{ try{
+            closeStampFx(); closeStampDone();   // 前の検査の演出が残っていれば閉じる
+            const keepW = wps.slice(), keepView = viewMode, keepId = currentCourseId;
+            // 検査用に、2km ずつ離れた3つのスポットだけのコースにする（50m 以内に2つあると一度に2つ押されるため）
+            wps.length = 0;
+            const c = leafMap.getCenter(); _resetBounds(); _setAnchor(c.lat, c.lng, true);
+            ['甲', '乙', '丙'].forEach((nm, i) => { const w = addWp(c.lat + i * 0.02, c.lng, 'course'); w.name = 'スタンプ帳' + nm; });
+            viewMode = true; currentCourseId = 'stamp-book-test'; _visits = {}; renderStampBar();
+            const vis = id => getComputedStyle(document.getElementById(id)).display !== 'none';
+            const t = _stampOrder(), out = {n: t.length};
+            // 1つ目：押した瞬間の演出が出て、押すと閉じる
+            _checkVisits(t[0].lat, t[0].lng);
+            const fx = document.querySelector('.st-fx');
+            out.fx = !!fx && fx.textContent.indexOf('スタンプ獲得') >= 0 && fx.textContent.indexOf('1 / 3') >= 0 && fx.textContent.indexOf('あと 2 か所') >= 0 && !!fx.querySelector('.st-big svg');
+            fx && fx.click(); out.fxClosed = !document.querySelector('.st-fx');
+            // スタンプ帳：3つの枠、押したのは1つ（インクのスタンプ）、まだのところは点線
+            openStampSheet();
+            out.partial = {open: vis('stampSheet'), title: document.getElementById('stTitle').textContent, count: document.getElementById('stCount').textContent,
+                           cells: document.querySelectorAll('#stGrid .sb-cell').length, got: document.querySelectorAll('#stGrid .sb-cell.got .st-ink').length,
+                           todo: document.querySelectorAll('#stGrid .sb-cell.todo [stroke-dasharray]').length, sealHidden: document.getElementById('stSeal').hidden,
+                           goalHidden: document.getElementById('stGoal').hidden, followBtn: !!document.querySelector('#stNow button')};
+            closeStampSheet();
+            // 隣どうしのスタンプは色も枠も違う
+            const L0 = _stampLook(t[0], 0), L1 = _stampLook(t[1], 1);
+            out.vary = L0.ink !== L1.ink && L0.frame !== L1.frame;
+            // 真ん中の一文字：名前の最後の漢字（縁起の悪い字は避ける）
+            out.kanji = [_stampKanji({name: '加茂神明神社'}), _stampKanji({name: '引原川と皆木集落'}), _stampKanji({name: 'ひとのわ'})].join('');
+            // 2つ目・3つ目（最後）：最後の演出のあとに完歩が出る
+            _checkVisits(t[1].lat, t[1].lng); _stampFxStep();
+            out.notYet = !document.querySelector('.st-done');
+            _checkVisits(t[2].lat, t[2].lng);
+            out.lastFx = !!document.querySelector('.st-fx') && !document.querySelector('.st-done');
+            _stampFxStep();
+            const dn = document.querySelector('.st-done');
+            out.done = !!dn && dn.textContent.indexOf('完歩おめでとうございます') >= 0 && dn.textContent.indexOf('3 か所すべて歩きました') >= 0
+                       && !!dn.querySelector('[aria-label="完歩之印"]') && !!document.querySelector('.st-confetti');
+            // 完歩のスタンプ帳：数の代わりに完歩之印、記念の1枚のボタン
+            dn.querySelectorAll('button')[0].click();
+            out.book = vis('stampSheet') && !document.getElementById('stSeal').hidden && document.getElementById('stCount').hidden && !document.getElementById('stGoal').hidden
+                       && document.getElementById('stSub').textContent.indexOf('完歩') === 0 && !document.querySelector('.st-done');
+            document.getElementById('stGoal').click();
+            out.goalCard = vis('goalSheet') && !vis('stampSheet') && /スタンプ \d+ \/ \d+/.test(document.getElementById('goalStats').textContent);
+            closeGoalCard(); openStampSheet();
+            const kc = window.confirm; let asked = ''; window.confirm = m => { asked = m; return false; };
+            document.getElementById('stClear').click();
+            out.askKeep = asked.indexOf('消しますか') >= 0 && visitCount().done === t.length;   // 「いいえ」なら消えない
+            window.confirm = kc; closeStampSheet(); closeStampFx(); closeStampDone();
+            wps.forEach(w => { if (w.marker) leafMap.removeLayer(w.marker); });
+            wps.length = 0; keepW.forEach(w => wps.push(w));
+            viewMode = keepView; currentCourseId = keepId; loadVisits(); renderStampBar(); refreshIcons();
+            try { const all = JSON.parse(localStorage.getItem(LS.visits) || '{}'); delete all['stamp-book-test']; localStorage.setItem(LS.visits, JSON.stringify(all)); } catch(_){}
+            return out;
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        chk('機能', 'スタンプ：押した瞬間に「スタンプ獲得・n / m・あと何か所」の演出（押すと閉じる）。スタンプ帳は枠とインクのスタンプ・止まっていれば追いかけるボタン。隣どうしは色も枠も違う',
+            isinstance(sb, dict) and sb.get('n') == 3 and sb.get('fx') and sb.get('fxClosed')
+            and sb['partial']['open'] and sb['partial']['count'] == '1 / 3' and sb['partial']['cells'] == 3 and sb['partial']['got'] == 1 and sb['partial']['todo'] == 2
+            and sb['partial']['sealHidden'] and sb['partial']['goalHidden'] and sb['partial']['followBtn'] and sb.get('vary') and sb.get('kanji') == '社集ひ', str(sb)[:300])
+        chk('機能', 'スタンプ：最後の1つの演出のあとに「完歩おめでとうございます・n か所すべて歩きました」と完歩之印・紙吹雪。スタンプ帳は数の代わりに完歩之印、記念の1枚へ進める。消すは聞いてから',
+            isinstance(sb, dict) and sb.get('notYet') and sb.get('lastFx') and sb.get('done') and sb.get('book') and sb.get('goalCard') and sb.get('askKeep'), str(sb)[:300])
 
         # INV-AM: 密集したラベルの重なりが自動配置で減る
         lb = page.evaluate("""()=>{ try{
@@ -2755,7 +2835,7 @@ def functional_checks(index_path):
                  ('edit', 'openDescSheet()'), ('edit', 'openRenameSheet(currentCourseId)'), ('edit', 'openGotSheet()'), ('edit', 'openFixRouteSheet()'),
                  ('edit', 'openShareDialog(getCourses().find(c => c.id === currentCourseId) || getCourses()[0])'), ('edit', 'openSelfCheck()'),
                  ('view', 'showViewInfo(wps.find(x => x && x.type !== "node").id)'), ('view', "openInfoSheet('view')"), ('view', "openKokoroeSheet('view')"),
-                 ('view', 'openFindSheet()'), ('view', 'openFindsSheet()'), ('view', 'openMobileMenu()')]
+                 ('view', 'openFindSheet()'), ('view', 'openFindsSheet()'), ('view', 'openMobileMenu()'), ('view', 'openStampSheet()')]
         bad, done, pages0 = [], 0, len(ctx.pages)
         for md, call in cases:
             page.evaluate("(md) => { if ((md === 'view') !== !!viewMode) toggleViewMode(); window.__before = __aud.blockers(); }", md)
@@ -2792,7 +2872,7 @@ def functional_checks(index_path):
         page.evaluate("() => { openShareDialog(getCourses().find(c => c.id === currentCourseId) || getCourses()[0]); openFullPhoto('data:image/gif;base64,R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw=='); _closeAllSheets(); }")
         ph['allClosed'] = page.evaluate("() => getComputedStyle(document.getElementById('shareDlg')).display === 'none' && !document.querySelector('#photoView.show')")
         page.evaluate("() => { if (viewMode) toggleViewMode(); const w = wps.find(x => x && x.type !== 'node'); if (w && window.__keepPh !== undefined) w.photos = __keepPh; _closeAllSheets(); document.querySelectorAll('#toastBox .toast').forEach(e => e.remove()); }")
-        chk('機能', '閉じられない画面が無い：主な窓（編集14・閲覧6）は押せる位置の閉じるで消え、地図が触れる。写真は新しい窓を開かずアプリの中で全画面（閉じる・押す・Esc で閉じる）。画面を移ると全部閉じる',
+        chk('機能', '閉じられない画面が無い：主な窓（編集14・閲覧7）は押せる位置の閉じるで消え、地図が触れる。写真は新しい窓を開かずアプリの中で全画面（閉じる・押す・Esc で閉じる）。画面を移ると全部閉じる',
             not bad and done == len(cases) and all(ph.get(k) for k in ('img', 'open', 'btn', 'closedBtn', 'closedTap', 'closedEsc', 'noWindow', 'allClosed')),
             str(bad)[:300] + ' ' + str(ph))
 
