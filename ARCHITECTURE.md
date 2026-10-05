@@ -549,6 +549,14 @@ CONSTANTS(904) → STATE(968) → STORAGE(1015) → 版のお知らせ(1021) →
 - 見せ方（v250）：スタンプの絵は `_stampSvg`（枠 `STAMP_FRAMES`×色 `STAMP_INKS` を歩く順で回す・真ん中は `_stampKanji`）。押した瞬間 `_stampFx`（順番待ち `_stampFxQ`）、全部そろったら最後のあとに `_stampDoneFx`（完歩之印 `_stampSealSvg`・紙吹雪）。スタンプ帳 `openStampSheet`。記念の1枚は `_goalSeal`。
 - 演出は `.st-fx`／`.st-done` を body に足して出す（`close〜` 関数があるので画面を移ると消える）。検査で `_checkVisits` を呼んだら、後の検査の画面を覆わないよう `closeStampFx()`・`closeStampDone()` で片づける。
 
+## わたしの写真（v253）
+- 歩いた人の写真は `LS.myPhotos`（{コースのキー: [{id, wp, at, nm, cv?, put?}]}。キーは `_myKey()`＝コースID、無ければ 'n:'+コース名）に一覧、写真そのものは IndexedDB（`id`＝長辺1600、`'mt:'+id`＝小さい見本360）。`gcPhotos` は両方を残す。
+- 入れる：`myCam(wpId, pick)` → 隠した input（`#myCam` は capture／`#myPick` は multiple）→ `_myAdd` → `compressImageTo` → `_myAddData(full, wpId, quiet)`。検査は `_myAddData` を直接呼ぶ。input の `click()` は押したその場で呼ぶ（あとから呼ぶと iPhone は開かない）。
+- 見る：カード `_myCardHtml`、スタンプ帳の枠 `.sb-myph`、アルバム `openMyAlbum`、全画面 `openMyStory(i)`（`_myStoryShow`・`_myStoryTick`（rAF）・`_myStoryPause`・`_myStoryGo`）。保存 `_myStorySave`（`navigator.share({files})`、できなければダウンロード）、消す `_myStoryDel`。
+- カードの写真の入れ替え：`_vipCoverPick` → `#myCover` → `_vipCoverAdd`／全画面の `_myStoryCover`。歩く人（`body.viewonly`）は印 `cv`（`_myCoverOf`）でカードに出すだけ（コースのデータは変えない）。自分のコースは `_vipCoverCourse` で `wp.photos` の先頭に入れる（前の写真は残す。写真は `restoreSnapshot` の対象外＝取り消しで戻らないので、消さない）。
+- `compressImage(file)` は引数1つのまま（`toAdd.map(compressImage)` から呼ばれる。引数を足すと map の番号が大きさになる）。大きさを選ぶのは `compressImageTo(file, px, q)`。
+- `.tap{position:relative}` は CSS の後ろの方にある。`.tap` を付けた部品を `position:absolute` にするときは選び方を強くする（例 `.vip-photos .vip-more`）。
+
 ## スポットの解説を名前から探す（v252）
 - `_descLookup(名前, 緯度, 経度, force)` → `_descFind`：ウィキペディアの地理検索（`_descGeoList`・約5km四方ごとに1回）で名前が同じ近くの記事 → 名前で検索（同じ名前で、座標が `DESC_NEAR_M` 以内か本文に `_descAreaWords()` の市町村名）→ ウィキデータ（座標が近いもの）。ネットは `_descGet` の1か所（検査で差し替える）。
 - 説明の扱いは `_descKind`（empty／note＝取り込みのメモ「（情報：…）」／own＝書いてある説明）と `_descMerge`。own は上書きしない。

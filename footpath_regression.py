@@ -1096,7 +1096,8 @@ def static_checks(src):
     # --- v142: 写真を軽く多く・シール（A）---
     chk('静的', '写真は長辺1024px・1スポット12枚まで。シールは72px角（v251：96→72・画質0.6で軽く）、46px以内で束ねる',
         'const PHOTO_MAX_PX = 1024, PHOTO_QUALITY = 0.66, PHOTO_MAX_PER_SPOT = 12;' in src and 'const STICKER_PX = 72, STICKER_QUALITY = 0.6, STICKER_CLUSTER_PX = 46;' in src
-        and 'const MAX = PHOTO_MAX_PX;' in src and 'PHOTO_MAX_PER_SPOT - _modalPhotos.length' in src)
+        and 'function compressImage(file) { return compressImageTo(file, PHOTO_MAX_PX, PHOTO_QUALITY); }' in src and 'const MAX = maxPx;' in src
+        and 'Promise.all(toAdd.map(compressImage))' in src and 'PHOTO_MAX_PER_SPOT - _modalPhotos.length' in src)   # v253：compressImage は引数1つのまま（map の番号を大きさにしない）
     chk('静的', 'シールは wpIcon の枝で描き、名札の位置はシールの大きさに合わせ、束ねた印を押すと中身から選べる（v189）',
         'class="wp-sticker" data-sticker="1"' in src and '_wpIconSize(wp)[1] / 2 + 4' in src and 'if (wp._clusterN > 1) { openClusterPicker(wp); return; }' in src
         and '      _declutter();\n' in src)   # v159→v173: ズームの処理は _applyViewUpdate の中の _declutter にまとめた
@@ -1166,6 +1167,29 @@ def static_checks(src):
         and '#mobileStampBtn[hidden]' in src and src.count('#stampBar{display:none!important}') == 2
         and "el.onclick = openStampSheet;" in src and '_stampTap' not in src
         and "mb.querySelector('.st-l').textContent = c.done + '/' + c.total;" in src and '#nextBar:not([hidden]) ~ #stampBar' not in src)
+    # --- v253: わたしの写真（オーナー指示「歩いた人が写真を撮って、自分の端末に保存でき、タップで表示できる。表示は他のアプリを参考に、見やすく楽しく」）---
+    chk('静的', 'わたしの写真：カードの「📷 撮る」「🖼 写真から選ぶ」（何枚でも）とスタンプの瞬間の「📷 記念に撮る」。写真は IndexedDB、一覧は LS.myPhotos（コースごと・この端末だけ）。片づけで消さない',
+        '<input type="file" accept="image/*" capture="environment" id="myCam" hidden onchange="_myAdd(this)">' in src
+        and '<input type="file" accept="image/*" id="myPick" hidden multiple onchange="_myAdd(this)">' in src
+        and "onclick=\"myCam(' + JSON.stringify(wp.id) + ',1)\">🖼 写真から選ぶ</button>'" in src and 'MY_PICK_MAX = 20' in src
+        and "myPhotos:    'fp_my_photos'" in src and 'function _myAddData' in src and 'function _myCardHtml' in src and "html2 += _myCardHtml(wp);" in src
+        and "onclick=\"myCam(' + JSON.stringify(wp.id) + ')\">📷 撮る</button>" in src
+        and "onclick=\"event.stopPropagation();_stampFxStep();myCam(' + JSON.stringify(w.id) + ')\">📷 記念に撮る</button>" in src
+        and "used.add(m.id); used.add('mt:' + m.id);" in src and 'function _myKey' in src)
+    chk('静的', 'わたしの写真を見る：アルバム（貼ったポラロイド・スタンプを重ねる）と全画面のストーリー（枚数の棒・右で次・左で前・押さえて止める・下へはらって閉じる・ゆっくり寄る）。閉じるボタン・Esc・動きを減らす設定',
+        'function openMyAlbum' in src and 'function closeMyAlbum' in src and 'function openMyStory' in src and 'function closeMyStory' in src
+        and 'class="ms-x tap" id="msClose">閉じる</button>' in src and "if (dy > 80 && Math.abs(dy) > Math.abs(dx)) { closeMyStory(); return; }" in src
+        and "if (e.key === 'Escape') closeMyStory();" in src and '@media (prefers-reduced-motion: reduce){.ms-img.kb,.ms-img.kb2{animation:none!important}}' in src
+        and 'id="stMy" aria-label="わたしの写真（アルバム）" onclick="closeStampSheet();openMyAlbum()"' in src and "onclick=\"closeStampDone();openMyAlbum()\">📷 わたしの写真（" in src)
+    chk('静的', 'カードの写真（解説の横）を自分の写真に入れ替えられる：写真の下に「📷 入れ替える」、全画面に「カードの写真にする」。歩く人はこの端末だけ（「元の写真に戻す」）、自分のコースはスポットの写真の1枚目に（前の写真は残す）',
+        '<input type="file" accept="image/*" id="myCover" hidden onchange="_vipCoverAdd(this)">' in src
+        and all(('function ' + f) in src for f in ('_vipCoverPick', '_vipCoverAdd', '_vipCoverSet', '_vipCoverClear', '_vipCoverCourse', '_myStoryCover', '_myCoverOf'))
+        and 'onclick="_vipCoverPick(${wid})">📷 入れ替える</button>' in src and 'onclick="_vipCoverClear(${wid})">元の写真に戻す</button>' in src
+        and 'id="msCover">カードの写真にする</button>' in src and 'wp.photos = [d].concat(wp.photos || []);' in src
+        and '.vip-photos .vip-more{position:absolute;right:-6px;bottom:-4px;' in src)
+    chk('静的', 'わたしの写真を残す・消す：「写真に保存」は共有の画面（画像を保存）へ、できない端末はダウンロード。「消す」は聞いてから（写真も小さい見本も消す）',
+        'function _myStorySave' in src and "navigator.canShare({files: [file]})" in src and 'function _myStoryDel' in src
+        and "confirm('この写真を消しますか？（この端末から消えます）')" in src and "await _photoDel(m.id); await _photoDel('mt:' + m.id);" in src)
     # --- v252: スポットの解説を名前から探して入れる・あとから直せる（オーナー指示）---
     chk('静的', '解説は名前から探す：ウィキペディア（近くの記事・同じ名前で場所が近いか本文に市町村名）→ ウィキデータ（場所が近い）。Google は使わない。出典を付ける',
         'function _descFind' in src and 'function _descLookup' in src and "const DESC_NEAR_M = 3000" in src and "const DESC_SUFFIX_RE = /(線路跡|跡地|跡|全景|入口|入り口)$/;" in src
@@ -1189,7 +1213,7 @@ def static_checks(src):
         'const VISIT_RADIUS_M = 10;' in src and "'<span>📍 現在地を追いかけています。スポットに ' + VISIT_RADIUS_M + 'm まで近づくと押されます</span>'" in src
         and '50m まで' not in src and '<b>50m</b>' not in src)
     chk('静的', '歩く人のカード：写真は1枚目を小さく左に（いまの3分の1）、その隣に名前と解説。押すとそのスポットの写真を全部大きく（左右にはらって次へ・枚数）',
-        '<div class="vip-row${ph.length ? ' in src and '${photoHtml}<div class="vip-main"><div class="vip-hdr">' in src
+        '<div class="vip-row${lead ? ' in src and '${photoHtml}<div class="vip-main"><div class="vip-hdr">' in src
         and 'function _vipOpenPh' in src and 'function openPhotoSet' in src and 'function _pvGo' in src
         and 'id="pvPrev"' in src and 'id="pvNext"' in src and 'id="pvCap"' in src and '.vip-row{display:flex;gap:14px;align-items:flex-start}' in src)
     # --- v250: スタンプ帳（オーナー指摘「どう押されていくのか、全部そろったらどうなるのか分かりづらい」「センスがない。参考を探して達成感・特別感を」）---
@@ -1902,6 +1926,170 @@ def functional_checks(index_path):
                  and st.get('storedKeys') == 1 and st.get('icon') is True
                  and '1 / 2' in st.get('barText', '') and st.get('mbText') == '1/2' and st.get('afterClear') == 0)
         chk('機能', 'スタンプが近づいたときだけ付き、消せる', ok_st, str(st)[:190])
+
+        # v253: わたしの写真（撮った写真をスポットに結びつけて、この端末だけに残す。カード・スタンプ帳・アルバム・ストーリーで見る。写真アプリへ保存・消す）
+        mp = page.evaluate("""async ()=>{ try{
+            closeStampFx(); closeStampDone();
+            const sl = ms => new Promise(r => setTimeout(r, ms));
+            const keepW = wps.slice(), keepView = viewMode, keepId = currentCourseId, keepConf = window.confirm, keepShare = navigator.share, keepCan = navigator.canShare;
+            wps.length = 0;
+            const c = leafMap.getCenter(); _resetBounds(); _setAnchor(c.lat, c.lng, true);
+            const a = addWp(c.lat, c.lng, 'course'); a.name = '写真の甲';
+            const b = addWp(c.lat + 0.02, c.lng, 'course'); b.name = '写真の乙';
+            refreshIcons();
+            viewMode = true; currentCourseId = 'my-photo-test'; _visits = {}; renderStampBar();
+            const out = {};
+            // 写真がまだ無いアルバム：案内だけ（「思い出を見る」と注意書きは出さない）
+            openMyAlbum(); await sl(100);
+            out.empty = {txt: (document.querySelector('#maGrid .ma-empty') || {}).textContent || '', play: document.getElementById('maPlay').hidden, note: document.getElementById('maNote').hidden};
+            closeMyAlbum();
+            // カメラで撮った写真（2400×1800）→ 1600 に縮めて入れる。小さい見本は 360
+            const cv = document.createElement('canvas'); cv.width = 2400; cv.height = 1800; const g = cv.getContext('2d'); g.fillStyle = '#c33'; g.fillRect(0, 0, 2400, 1800);
+            const blob = await new Promise(r => cv.toBlob(r, 'image/jpeg', 0.9)), file = new File([blob], 'cam.jpg', {type: 'image/jpeg'});
+            const dims = async src => { const im = new Image(); im.src = src; await im.decode(); return [im.naturalWidth, im.naturalHeight]; };
+            _myCamWp = a.id; await _myAdd({files: [file], value: 'x'});
+            const m1 = _myList()[0];
+            out.first = {n: _myList().length, wp: !!m1 && m1.wp === a.id, nm: m1 && m1.nm, full: await dims(await _photoGet(m1.id)), th: await dims(await _photoGet('mt:' + m1.id))};
+            // スポットの編集で写真をいっぺんに選んだとき：2枚目も今までどおりの大きさ（map から呼ばれても番号が大きさにならない）
+            const two = await Promise.all([file, file].map(compressImage));
+            out.multi = [await dims(two[0]), await dims(two[1])]; out.maxPx = PHOTO_MAX_PX;
+            // あと2枚（甲にもう1枚・乙に1枚）
+            const mk = col => { const k = document.createElement('canvas'); k.width = 600; k.height = 800; const q = k.getContext('2d'); q.fillStyle = col; q.fillRect(0, 0, 600, 800); return k.toDataURL('image/jpeg', 0.8); };
+            await sl(5); await _myAddData(mk('#3a3'), a.id); await sl(5); await _myAddData(mk('#33a'), b.id);
+            out.n3 = _myList().length;
+            // カード：「わたしの写真 2」・小さい写真2枚・「📷 撮る」
+            showViewInfo(a.id); await sl(400);
+            const pan = document.getElementById('viewInfoPanel');
+            const row = [...pan.querySelectorAll('.vip-my-row > *')].map(e => e.classList.contains('vip-my-add') ? e.textContent : 'ph');
+            out.card = {hd: (pan.querySelector('.vip-my-hd') || {}).textContent || '', ph: pan.querySelectorAll('.vip-my-ph img[src^="data:"]').length, row: row.join('|')};
+            // 押すと、その写真から全画面（ストーリー）
+            pan.querySelectorAll('.vip-my-ph')[1].click(); await sl(400);
+            const ov = document.getElementById('myStory'), ttl = () => document.getElementById('msTtl').textContent;
+            out.story = {open: ov.classList.contains('show'), bars: ov.querySelectorAll('#msBars span').length, ttl: ttl(), img: (document.getElementById('msImg').getAttribute('src') || '').slice(0, 11), kb: document.getElementById('msImg').className};
+            _myStoryGo(1); await sl(100); out.next = ttl();
+            _myStoryGo(-1); _myStoryGo(-1); _myStoryGo(-1); await sl(100); out.prev = ttl();
+            const bar = () => ov.querySelectorAll('#msBars span i')[0].style.width;
+            await sl(300); _myStoryPause(true); const w0 = bar(); await sl(400); out.paused = bar() === w0;
+            _myStoryPause(false); await sl(400); out.resumed = bar() !== w0;
+            _myStoryGo(1); _myStoryGo(1); _myStoryGo(1); out.endClosed = !ov.classList.contains('show');   // 最後の次は閉じる
+            closeViewInfo();
+            // スタンプを押した甲：スタンプ帳の枠に写真の印（2枚）と「わたしの写真 3 枚」。枠を押すとその写真から
+            _visits[a.id] = Date.now();
+            openStampSheet(); await sl(400);
+            out.book = {badges: document.querySelectorAll('#stGrid .sb-myph').length, two: (document.querySelector('#stGrid .sb-myph b') || {}).textContent || '', my: document.getElementById('stMy').textContent};
+            document.querySelectorAll('#stGrid .sb-cell')[0].click(); await sl(300);
+            out.bookTap = ov.classList.contains('show') && ttl().indexOf('1 / 3') >= 0 && !_stampOpen(); closeMyStory();
+            // アルバム：3枚のポラロイド、スタンプを押した甲の2枚にはスタンプ。押すとその写真から
+            openMyAlbum(); await sl(400);
+            out.album = {open: _myAlbumOpen(), ph: document.querySelectorAll('#maGrid .ma-ph').length, st: document.querySelectorAll('#maGrid .ma-ph.st .ma-stamp svg').length,
+                         img: document.querySelectorAll('#maGrid .ma-ph img[src^="data:"]').length, sub: document.getElementById('maSub').textContent, note: !document.getElementById('maNote').hidden, play: !document.getElementById('maPlay').hidden};
+            document.querySelectorAll('#maGrid .ma-ph')[2].click(); await sl(300);
+            out.albumTap = !_myAlbumOpen() && ov.classList.contains('show') && ttl().indexOf('写真の乙') >= 0 && ttl().indexOf('3 / 3') >= 0;
+            out.storyStamp = !!document.querySelector('#msStamp svg') === false;   // 乙はまだスタンプなし
+            // 写真に保存：共有の画面へ（jpg を1つ）
+            let shared = null; navigator.share = async d => { shared = d; }; navigator.canShare = () => true;
+            await _myStorySave();
+            out.save = !!shared && !!shared.files && shared.files.length === 1 && /^footpath_.*_[0-9]{8}[.]jpg$/.test(shared.files[0].name) && shared.files[0].type === 'image/jpeg';
+            navigator.share = keepShare; navigator.canShare = keepCan;
+            // 消す：聞いてから。いいえ → 残る、はい → 写真も小さい見本も消える
+            window.confirm = () => false; await _myStoryDel(); out.keepOnNo = _myList().length === 3;
+            window.confirm = () => true; const delId = _myStoryList[_myStoryI].id; await _myStoryDel();
+            out.del = {n: _myList().length, full: !!(await _photoGet(delId)), th: !!(await _photoGet('mt:' + delId)), bars: ov.querySelectorAll('#msBars span').length};
+            window.confirm = keepConf; closeMyStory();
+            // 片づけ（使っていない写真を消す）でも、わたしの写真は消さない（ほかの検査の写真に触れないよう、消すものを書き留めるだけ）
+            const keepDel = _photoDel, gone = []; window._photoDel = async k => { gone.push(k); return true; };
+            try { await gcPhotos(); } finally { window._photoDel = keepDel; }
+            const ids = _myList().map(m => m.id);
+            out.gcKeep = ids.length === 2 && ids.every(i => gone.indexOf(i) < 0 && gone.indexOf('mt:' + i) < 0);
+            // 別のコースには出ない
+            currentCourseId = 'my-photo-other'; out.other = _myList().length; currentCourseId = 'my-photo-test';
+            // 後片づけ
+            for (const i of ids) { await _photoDel(i); await _photoDel('mt:' + i); }
+            try { const all = JSON.parse(localStorage.getItem(LS.myPhotos) || '{}'); delete all['my-photo-test']; localStorage.setItem(LS.myPhotos, JSON.stringify(all));
+                  const v = JSON.parse(localStorage.getItem(LS.visits) || '{}'); delete v['my-photo-test']; localStorage.setItem(LS.visits, JSON.stringify(v)); } catch(_){}
+            closeMyAlbum(); closeStampSheet();
+            wps.forEach(w => { if (w.marker) leafMap.removeLayer(w.marker); });
+            wps.length = 0; keepW.forEach(w => wps.push(w));
+            viewMode = keepView; currentCourseId = keepId; loadVisits(); renderStampBar(); refreshIcons();
+            document.querySelectorAll('#toastBox .toast').forEach(x => x.remove());
+            return out;
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        chk('機能', 'わたしの写真を撮る：カメラの写真は 1600 に縮めてそのスポットに結びつき、小さい見本は 360。写真がまだ無いアルバムは案内だけ。スポットの編集で写真をいっぺんに選んでも2枚目が小さくならない',
+            isinstance(mp, dict) and 'まだ写真はありません' in mp.get('empty', {}).get('txt', '') and mp['empty'].get('play') and mp['empty'].get('note')
+            and mp.get('first', {}).get('n') == 1 and mp['first'].get('wp') and mp['first'].get('nm') == '写真の甲'
+            and mp['first'].get('full') == [1600, 1200] and mp['first'].get('th') == [360, 270]
+            and mp.get('multi') == [[mp.get('maxPx'), mp.get('maxPx') * 3 // 4]] * 2 and mp.get('n3') == 3, str(mp)[:300])
+        chk('機能', 'わたしの写真を見る：カードに「わたしの写真 2」、左に「📷 撮る」「🖼 写真から選ぶ」（写真が増えても隠れない）、その右に小さい写真。押すとその写真から全画面（枚数の棒・名前と何枚目・次へ・前へ・押さえて止まる・最後の次で閉じる）',
+            isinstance(mp, dict) and mp.get('card', {}).get('hd', '').startswith('わたしの写真 2') and mp['card'].get('ph') == 2 and mp['card'].get('row') == '📷 撮る|🖼 写真から選ぶ|ph|ph'
+            and mp.get('story', {}).get('open') and mp['story'].get('bars') == 3 and '写真の甲' in mp['story'].get('ttl', '') and '2 / 3' in mp['story'].get('ttl', '')
+            and mp['story'].get('img', '').startswith('data:image') and 'kb' in mp['story'].get('kb', '')
+            and '写真の乙' in mp.get('next', '') and '3 / 3' in mp.get('next', '') and '1 / 3' in mp.get('prev', '')
+            and mp.get('paused') and mp.get('resumed') and mp.get('endClosed'), str({k: mp.get(k) for k in ('card', 'story', 'next', 'prev', 'paused', 'resumed', 'endClosed')} if isinstance(mp, dict) else mp)[:400])
+        chk('機能', 'わたしの写真：スタンプ帳の枠に写真の印（枚数）と「わたしの写真 3 枚」、押すとその写真から。アルバムはポラロイド3枚（スタンプを押した所はスタンプ付き）で押すとその写真から。写真に保存は共有の画面へ（jpg）',
+            isinstance(mp, dict) and mp.get('book', {}).get('badges') == 2 and mp['book'].get('two') == '2' and 'わたしの写真 3 枚' in mp['book'].get('my', '') and mp.get('bookTap')
+            and mp.get('album', {}).get('open') and mp['album'].get('ph') == 3 and mp['album'].get('st') == 2 and mp['album'].get('img') == 3
+            and 'わたしの写真　3 枚' in mp['album'].get('sub', '') and mp['album'].get('note') and mp['album'].get('play')
+            and mp.get('albumTap') and mp.get('storyStamp') and mp.get('save'), str({k: mp.get(k) for k in ('book', 'bookTap', 'album', 'albumTap', 'storyStamp', 'save')} if isinstance(mp, dict) else mp)[:400])
+        chk('機能', 'わたしの写真を消す：聞いてから（いいえなら残る）、写真も小さい見本も消える。片づけでも消えない。ほかのコースには出ない',
+            isinstance(mp, dict) and mp.get('keepOnNo') and mp.get('del') == {'n': 2, 'full': False, 'th': False, 'bars': 2}
+            and mp.get('gcKeep') and mp.get('other') == 0, str({k: mp.get(k) for k in ('keepOnNo', 'del', 'gcKeep', 'other')} if isinstance(mp, dict) else mp)[:400])
+
+        # v253: カードの写真（解説の横）を自分の写真に入れ替える（歩く人：この端末だけ・元に戻せる／自分のコース：スポットの写真の1枚目に、前の写真は残す）
+        mc = page.evaluate("""async ()=>{ try{
+            closeStampFx(); closeStampDone();
+            const sl = ms => new Promise(r => setTimeout(r, ms));
+            const keepW = wps.slice(), keepView = viewMode, keepId = currentCourseId, keepD = _dirty, keepCls = document.body.classList.contains('viewonly');
+            wps.length = 0;
+            const c = leafMap.getCenter(); _resetBounds(); _setAnchor(c.lat, c.lng, true);
+            const a = addWp(c.lat, c.lng, 'course'); a.name = '入れ替えの甲';
+            a.photos = ['data:image/gif;base64,R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw=='];
+            refreshIcons();
+            viewMode = true; currentCourseId = 'my-cover-test';
+            const cv = document.createElement('canvas'); cv.width = 1600; cv.height = 1200; const g = cv.getContext('2d'); g.fillStyle = '#7a7'; g.fillRect(0, 0, 1600, 1200);
+            const file = new File([await new Promise(r => cv.toBlob(r, 'image/jpeg', 0.9))], 'c.jpg', {type: 'image/jpeg'});
+            const dims = async src => { const im = new Image(); im.src = src; await im.decode(); return [im.naturalWidth, im.naturalHeight]; };
+            const pan = document.getElementById('viewInfoPanel');
+            const card = () => { const m = pan.querySelector('.vip-more'), p = pan.querySelector('.vip-ph'); const mr = m && m.getBoundingClientRect(), pr = p && p.getBoundingClientRect();
+              return {mine: !!pan.querySelector('.vip-ph.mine'), img: ((pan.querySelector('.vip-photos img') || {}).getAttribute ? pan.querySelector('.vip-photos img').getAttribute('src') || '' : '').slice(0, 15),
+                      act: (pan.querySelector('.vip-cv') || {}).textContent || '', more: m ? m.textContent : '', corner: !!m && getComputedStyle(m).position === 'absolute' && Math.abs(mr.right - pr.right) < 12 && Math.abs(mr.bottom - pr.bottom) < 12}; };
+            const out = {};
+            // 歩く人（共有リンク）：この端末だけ入れ替わり、元の写真は「+1」、戻せる
+            document.body.classList.add('viewonly');
+            showViewInfo(a.id); await sl(300); out.w0 = card();
+            _vipCoverWp = a.id; await _vipCoverAdd({files: [file], value: 'x'}); await sl(400);
+            out.w1 = card(); out.w1.list = _myList().map(m => (m.wp === a.id ? 'a' : '?') + (m.cv ? '*' : ''));
+            out.wData = a.photos.length;   // コースのデータは変えない
+            openMyStory(0); await sl(200); const lbl = () => document.getElementById('msCover').textContent;
+            out.s1 = lbl(); await _myStoryCover(); await sl(300); out.s2 = lbl(); out.w2 = card(); await _myStoryCover(); await sl(300); out.s3 = lbl(); closeMyStory();
+            pan.querySelector('.vip-cv').click(); await sl(300); out.w3 = card();
+            document.body.classList.remove('viewonly');
+            // 自分のコース：スポットの写真の1枚目に（長辺1024）、前の写真は2枚目に残す。保存していない印
+            _dirty = false; showViewInfo(a.id); await sl(300);
+            _vipCoverWp = a.id; await _vipCoverAdd({files: [file], value: 'x'}); await sl(400);
+            out.o1 = {n: a.photos.length, first: await dims(a.photos[0]), keep: a.photos[1] === 'data:image/gif;base64,R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==', dirty: _dirty, card: card(), my: _myList().length};
+            // 全画面の「カードの写真にする」（わたしの写真から）：1回だけ。押したあとは「カードの写真にしました」
+            openMyStory(0); await sl(200); out.o2a = lbl(); await _myStoryCover(); await sl(300);
+            out.o2 = {n: a.photos.length, lbl: lbl(), dis: document.getElementById('msCover').disabled}; closeMyStory();
+            // 後片づけ
+            for (const m of _myList()) { await _photoDel(m.id); await _photoDel('mt:' + m.id); }
+            try { const all = JSON.parse(localStorage.getItem(LS.myPhotos) || '{}'); delete all['my-cover-test']; localStorage.setItem(LS.myPhotos, JSON.stringify(all)); } catch(_){}
+            closeViewInfo(); if (keepCls) document.body.classList.add('viewonly');
+            wps.forEach(w => { if (w.marker) leafMap.removeLayer(w.marker); });
+            wps.length = 0; keepW.forEach(w => wps.push(w));
+            viewMode = keepView; currentCourseId = keepId; _dirty = keepD; refreshIcons();
+            document.querySelectorAll('#toastBox .toast').forEach(x => x.remove());
+            return out;
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        chk('機能', 'カードの写真を入れ替える（歩く人）：「📷 入れ替える」で選んだ写真がカードに出て、元の写真は「+1」（写真の右下の角）。コースのデータは変えない。全画面の「カードの写真にする／やめる」で切り替わり、「元の写真に戻す」で戻る',
+            isinstance(mc, dict) and mc.get('w0', {}).get('act') == '📷 入れ替える' and not mc['w0'].get('mine') and mc['w0'].get('more') == ''
+            and mc.get('w1', {}).get('mine') and mc['w1'].get('img', '').startswith('data:image/jpe') and mc['w1'].get('act') == '元の写真に戻す' and mc['w1'].get('more') == '+1' and mc['w1'].get('corner')
+            and mc['w1'].get('list') == ['a*'] and mc.get('wData') == 1
+            and mc.get('s1') == 'カードの写真をやめる' and mc.get('s2') == 'カードの写真にする' and not mc.get('w2', {}).get('mine') and mc.get('s3') == 'カードの写真をやめる'
+            and not mc.get('w3', {}).get('mine') and mc['w3'].get('act') == '📷 入れ替える', str(mc)[:400])
+        chk('機能', 'カードの写真を入れ替える（自分のコース）：選んだ写真はスポットの写真の1枚目（長辺1024）になり、前の写真は2枚目に残る。保存していない印が付く。全画面の「カードの写真にする」は1回だけ',
+            isinstance(mc, dict) and mc.get('o1', {}).get('n') == 2 and mc['o1'].get('first') == [1024, 768] and mc['o1'].get('keep') and mc['o1'].get('dirty')
+            and mc['o1'].get('card', {}).get('act') == '📷 入れ替える' and mc['o1']['card'].get('more') == '+1' and mc['o1'].get('my') == 1
+            and mc.get('o2a') == 'カードの写真にする' and mc.get('o2', {}).get('n') == 3 and mc['o2'].get('lbl') == 'カードの写真にしました' and mc['o2'].get('dis'), str(mc)[:400])
 
         # v252: 解説を名前から探す（ネットの代わりに決まった答えを返して確かめる）
         ds = page.evaluate("""async ()=>{ try{
@@ -2977,7 +3165,7 @@ def functional_checks(index_path):
                  ('edit', 'openDescSheet()'), ('edit', 'openRenameSheet(currentCourseId)'), ('edit', 'openGotSheet()'), ('edit', 'openFixRouteSheet()'),
                  ('edit', 'openShareDialog(getCourses().find(c => c.id === currentCourseId) || getCourses()[0])'), ('edit', 'openSelfCheck()'),
                  ('view', 'showViewInfo(wps.find(x => x && x.type !== "node").id)'), ('view', "openInfoSheet('view')"), ('view', "openKokoroeSheet('view')"),
-                 ('view', 'openFindSheet()'), ('view', 'openFindsSheet()'), ('view', 'openMobileMenu()'), ('view', 'openStampSheet()')]
+                 ('view', 'openFindSheet()'), ('view', 'openFindsSheet()'), ('view', 'openMobileMenu()'), ('view', 'openStampSheet()'), ('view', 'openMyAlbum()')]
         bad, done, pages0 = [], 0, len(ctx.pages)
         for md, call in cases:
             page.evaluate("(md) => { if ((md === 'view') !== !!viewMode) toggleViewMode(); window.__before = __aud.blockers(); }", md)
@@ -3014,7 +3202,7 @@ def functional_checks(index_path):
         page.evaluate("() => { openShareDialog(getCourses().find(c => c.id === currentCourseId) || getCourses()[0]); openFullPhoto('data:image/gif;base64,R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw=='); _closeAllSheets(); }")
         ph['allClosed'] = page.evaluate("() => getComputedStyle(document.getElementById('shareDlg')).display === 'none' && !document.querySelector('#photoView.show')")
         page.evaluate("() => { if (viewMode) toggleViewMode(); const w = wps.find(x => x && x.type !== 'node'); if (w && window.__keepPh !== undefined) w.photos = __keepPh; _closeAllSheets(); document.querySelectorAll('#toastBox .toast').forEach(e => e.remove()); }")
-        chk('機能', '閉じられない画面が無い：主な窓（編集14・閲覧7）は押せる位置の閉じるで消え、地図が触れる。写真は新しい窓を開かずアプリの中で全画面（閉じる・押す・Esc で閉じる）。画面を移ると全部閉じる',
+        chk('機能', '閉じられない画面が無い：主な窓（編集14・閲覧8）は押せる位置の閉じるで消え、地図が触れる。写真は新しい窓を開かずアプリの中で全画面（閉じる・押す・Esc で閉じる）。画面を移ると全部閉じる',
             not bad and done == len(cases) and all(ph.get(k) for k in ('img', 'open', 'btn', 'closedBtn', 'closedTap', 'closedEsc', 'noWindow', 'allClosed')),
             str(bad)[:300] + ' ' + str(ph))
 
@@ -5380,7 +5568,7 @@ def offline_checks(index_path):
     handler = functools.partial(http.server.SimpleHTTPRequestHandler, directory=here)
     socketserver.TCPServer.allow_reuse_address = True
     try:
-        httpd = socketserver.TCPServer(('127.0.0.1', 0), handler)
+        httpd = socketserver.ThreadingTCPServer(('127.0.0.1', 0), handler); httpd.daemon_threads = True   # v253：1本ずつだと、先に開いたまま使わない接続で次の読み込みが待たされることがある
     except Exception as e:
         chk('オフライン', 'ローカル配信を起動できる', False, str(e)); return
     port = httpd.server_address[1]
@@ -5521,7 +5709,7 @@ def webkit_checks(index_path):
     handler = functools.partial(http.server.SimpleHTTPRequestHandler, directory=here)
     socketserver.TCPServer.allow_reuse_address = True
     try:
-        httpd = socketserver.TCPServer(('127.0.0.1', 0), handler)
+        httpd = socketserver.ThreadingTCPServer(('127.0.0.1', 0), handler); httpd.daemon_threads = True   # v253：1本ずつだと、先に開いたまま使わない接続で次の読み込みが待たされることがある
     except Exception as e:
         chk('WebKit', 'ローカル配信を起動できる', False, str(e)); return
     port = httpd.server_address[1]
@@ -5638,6 +5826,78 @@ def webkit_checks(index_path):
             r5['noWindow'] = len(ctx.pages) == npg
             chk('WebKit', 'iPhone と同じエンジンで、写真を押すとアプリの中で全画面（新しい窓は開かない）。閉じるはノッチより下で、押すと戻る',
                 all(r5.get(k) for k in ('img', 'open', 'below', 'closed', 'noWindow')) and not errs, str(r5) + (' err:' + errs[0][:80] if errs else ''))
+            # v253: iPhone と同じエンジンで、わたしの写真：カードの「📷 撮る」「🖼 写真から選ぶ」で写真を選ぶ画面が開き、選んだ写真（何枚でも）がそのスポットに入る。
+            #   全画面（ストーリー）は右を押すと次・左で前（1回で1枚）、閉じるはぼかし（ノッチの下 約34pt）より下で押せて戻る。アルバムも閉じられる
+            import base64
+            page.evaluate("() => { closeFullPhoto(); closeViewInfo(); window.__wkKeepId = currentCourseId; currentCourseId = 'wk-my-test'; showViewInfo(_stampOrder()[0].id); }")
+            page.wait_for_timeout(700)
+            jpg = base64.b64decode(page.evaluate("() => { const k = document.createElement('canvas'); k.width = 1200; k.height = 900; const q = k.getContext('2d'); q.fillStyle = '#c33'; q.fillRect(0, 0, 1200, 900); return k.toDataURL('image/jpeg', 0.85).split(',')[1]; }"))
+            BTN = """(i) => { const b = document.querySelectorAll('#viewInfoPanel .vip-my-add')[i]; if (!b) return null; b.scrollIntoView({block: 'center'}); const r = b.getBoundingClientRect();
+                const t = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2); return {x: r.left + r.width / 2, y: r.top + r.height / 2, h: Math.round(r.height), ok: !!t && (t === b || b.contains(t)), txt: b.textContent}; }"""
+            r7 = {}
+            for i, files in ((0, [{'name': 'cam.jpg', 'mimeType': 'image/jpeg', 'buffer': jpg}]),
+                             (1, [{'name': 'lib1.jpg', 'mimeType': 'image/jpeg', 'buffer': jpg}, {'name': 'lib2.jpg', 'mimeType': 'image/jpeg', 'buffer': jpg}])):
+                bt = page.evaluate(BTN, i)
+                r7[f'b{i}'] = bt and {'ok': bt['ok'], 'h': bt['h'], 'txt': bt['txt']}
+                if not bt: continue
+                try:
+                    with page.expect_file_chooser(timeout=5000) as fc:
+                        page.touchscreen.tap(bt['x'], bt['y'])
+                    r7[f'multi{i}'] = fc.value.is_multiple()
+                    fc.value.set_files(files)
+                    page.wait_for_timeout(1800)
+                except Exception as e:
+                    r7[f'err{i}'] = str(e).splitlines()[0][:80]
+            r7.update(page.evaluate("() => { const w = _stampOrder()[0], l = _myList(); return {n: l.length, wp: l.every(m => m.wp === w.id), card: document.querySelectorAll('#viewInfoPanel .vip-my-ph').length}; }"))
+            page.evaluate("() => { closeViewInfo(); document.querySelectorAll('#toastBox .toast').forEach(x => x.remove()); openMyStory(0); }")
+            page.wait_for_timeout(600)
+            G = """() => { const r = id => { const b = document.getElementById(id).getBoundingClientRect(); return {x: b.left + b.width / 2, y: b.top + b.height / 2, top: Math.round(b.top), h: Math.round(b.height)}; };
+                const c = r('msClose'), t = document.elementFromPoint(c.x, c.y);
+                return {open: document.getElementById('myStory').classList.contains('show'), ttl: document.getElementById('msTtl').textContent, close: c, closeHit: !!t && t.id === 'msClose',
+                        next: r('msNext'), prev: r('msPrev'), saveH: r('msSave').h, bars: Math.round(document.getElementById('msBars').getBoundingClientRect().top)}; }"""
+            s0 = page.evaluate(G)
+            page.touchscreen.tap(s0['next']['x'], s0['next']['y']); page.wait_for_timeout(300); s1 = page.evaluate(G)
+            page.touchscreen.tap(s0['prev']['x'], s0['prev']['y']); page.wait_for_timeout(300); s2 = page.evaluate(G)
+            page.touchscreen.tap(s0['close']['x'], s0['close']['y']); page.wait_for_timeout(300); s3 = page.evaluate(G)
+            page.evaluate("() => openMyAlbum()"); page.wait_for_timeout(500)
+            ac = page.evaluate("""() => { const b = [...document.querySelectorAll('#myAlbum button')].find(x => x.textContent.trim() === '閉じる'); const r = b.getBoundingClientRect();
+                const t = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2); return {x: r.left + r.width / 2, y: r.top + r.height / 2, ok: !!t && (t === b || b.contains(t)), in: r.bottom <= innerHeight,
+                ph: document.querySelectorAll('#maGrid .ma-ph img[src^="data:"]').length}; }""")
+            page.touchscreen.tap(ac['x'], ac['y']); page.wait_for_timeout(300)
+            r7['albumClosed'] = page.evaluate("() => !_myAlbumOpen()")
+            # カードの写真を入れ替える：写真のあるスポットのカードで「📷 入れ替える」→ 写真を選ぶ画面（1枚）→ カードの写真が自分の写真になり「元の写真に戻す」
+            cvb = page.evaluate("""() => { const w = wps.find(x => x && x.type !== 'node' && x.photos && x.photos.length); if (!w) return null; showViewInfo(w.id); return w.id; }""")
+            page.wait_for_timeout(700)
+            r7['cover'] = None
+            if cvb is not None:
+                cb = page.evaluate("""() => { const b = document.querySelector('#viewInfoPanel .vip-cv'); if (!b) return null; b.scrollIntoView({block: 'center'}); const r = b.getBoundingClientRect();
+                    const t = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2); return {x: r.left + r.width / 2, y: r.top + r.height / 2, h: Math.round(r.height), ok: !!t && (t === b || b.contains(t)), txt: b.textContent}; }""")
+                try:
+                    with page.expect_file_chooser(timeout=5000) as fc:
+                        page.touchscreen.tap(cb['x'], cb['y'])
+                    multi = fc.value.is_multiple()
+                    fc.value.set_files([{'name': 'cover.jpg', 'mimeType': 'image/jpeg', 'buffer': jpg}])
+                    page.wait_for_timeout(1800)
+                    r7['cover'] = page.evaluate("""(m) => { const p = document.getElementById('viewInfoPanel'); return {before: m, mine: !!p.querySelector('.vip-ph.mine img[src^="data:image/jpeg"]'),
+                        act: (p.querySelector('.vip-cv') || {}).textContent, more: (p.querySelector('.vip-more') || {}).textContent}; }""", {'ok': cb['ok'], 'h': cb['h'], 'txt': cb['txt'], 'multi': multi})
+                except Exception as e:
+                    r7['cover'] = 'ERR ' + str(e).splitlines()[0][:80]
+                page.evaluate("() => closeViewInfo()")
+            page.evaluate("""async () => { for (const m of _myList()) { await _photoDel(m.id); await _photoDel('mt:' + m.id); }
+                try { const all = JSON.parse(localStorage.getItem(LS.myPhotos) || '{}'); delete all['wk-my-test']; localStorage.setItem(LS.myPhotos, JSON.stringify(all)); } catch(_){}
+                currentCourseId = window.__wkKeepId; document.querySelectorAll('#toastBox .toast').forEach(x => x.remove()); }""")
+            r7.update({'s0': [s0['open'], s0['ttl'][-5:], s0['close']['top'], s0['closeHit'], s0['bars'], s0['saveH']], 's1': s1['ttl'][-5:], 's2': s2['ttl'][-5:], 's3': s3['open'], 'album': [ac['ok'], ac['in'], ac['ph']]})
+            chk('WebKit', 'iPhone と同じエンジンで、わたしの写真：カードの「📷 撮る」「🖼 写真から選ぶ」（何枚でも）で選んだ写真がそのスポットに入る。全画面は右を押すと次・左で前（1回で1枚）、閉じるはぼかしより下で押せて戻る。アルバムも閉じられる（v253）',
+                (r7.get('b0') or {}).get('ok') and r7['b0']['h'] >= 44 and r7['b0']['txt'] == '📷 撮る' and r7.get('multi0') is False
+                and (r7.get('b1') or {}).get('ok') and r7['b1']['txt'] == '🖼 写真から選ぶ' and r7.get('multi1') is True
+                and r7.get('n') == 3 and r7.get('wp') and r7.get('card') == 3
+                and s0['open'] and s0['ttl'].endswith('1 / 3') and s0['close']['top'] >= 59 + 34 and s0['closeHit'] and s0['bars'] >= 59 + 34 and s0['saveH'] >= 44
+                and s1['ttl'].endswith('2 / 3') and s2['ttl'].endswith('1 / 3') and not s3['open']
+                and ac['ok'] and ac['in'] and ac['ph'] == 3 and r7['albumClosed'] and not errs, str(r7)[:320] + (' err:' + errs[0][:80] if errs else ''))
+            cvr = r7.get('cover') if isinstance(r7.get('cover'), dict) else {}
+            chk('WebKit', 'iPhone と同じエンジンで、カードの写真の下の「📷 入れ替える」を押すと写真を選ぶ画面（1枚）が開き、選んだ写真がカードの写真になって「元の写真に戻す」が出る（元の写真は「+n」）（v253）',
+                cvr.get('before', {}).get('ok') and cvr['before'].get('h', 0) >= 44 and cvr['before'].get('txt') == '📷 入れ替える' and cvr['before'].get('multi') is False
+                and cvr.get('mine') and cvr.get('act') == '元の写真に戻す' and (cvr.get('more') or '').startswith('+') and not errs, str(r7.get('cover'))[:300])
             # v161: ノッチ（安全域 59px）を偽装：地図は上端から、押す部品は 59px より下
             page.goto(url + '?nosw=1&safe=59', wait_until='domcontentloaded')
             page.wait_for_function("() => { try { return getCourses().length > 0; } catch(e){ return false; } }", timeout=30000)

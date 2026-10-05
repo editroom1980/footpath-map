@@ -368,7 +368,9 @@ body.moving #modeHint{display:none!important}
 .vip-ph::before{content:'';position:absolute;left:50%;top:-7px;width:36px;height:12px;margin-left:-18px;border-radius:2px;
   background:linear-gradient(180deg,rgba(233,199,142,.9),rgba(212,168,104,.8));box-shadow:0 1px 2px rgba(0,0,0,.14);transform:rotate(3deg)}
 .vip-photos img{display:block;width:100%;aspect-ratio:4/3;height:auto;object-fit:cover;border-radius:2px;cursor:zoom-in;background:#F3EEE6}
-.vip-more{position:absolute;right:-6px;bottom:-4px;min-width:30px;height:24px;padding:0 7px;border:none;border-radius:12px;background:rgba(35,28,20,.82);color:#fff;font-family:inherit;font-size:12px;font-weight:800;cursor:pointer}
+.vip-phw{position:relative}
+.vip-cv{display:block;width:100%;margin-top:9px;min-height:var(--tap);padding:0 4px;border:1.5px dashed #CDBFA6;border-radius:10px;background:#FBF6EA;color:#4A2E0E;font-family:inherit;font-size:11.5px;font-weight:800;line-height:1.25;cursor:pointer}   /* v253 */
+.vip-photos .vip-more{position:absolute;right:-6px;bottom:-4px;min-width:30px;height:24px;padding:0 7px;border:none;border-radius:12px;background:rgba(35,28,20,.82);color:#fff;font-family:inherit;font-size:12px;font-weight:800;cursor:pointer}   /* v253：後ろの .tap{position:relative} に負けて写真の下に落ちていたので、.vip-photos を付けて強くする */
 .vip-row.has-ph .vip-hdr{margin-bottom:6px}
 .vip-row.has-ph .vip-dot{width:28px;height:28px}
 .vip-row.has-ph .vip-dot2{width:22px;height:22px}
@@ -1408,6 +1410,68 @@ body.viewing #modeHint,body.viewonly #modeHint{display:none!important}
 .st-confetti i{position:absolute;top:-24px;width:8px;height:12px;border-radius:2px;opacity:.95;animation:stFall linear forwards}
 @keyframes stFall{0%{transform:translate3d(0,0,0) rotate(0)}100%{transform:translate3d(var(--dx),110vh,0) rotate(var(--r))}}
 @media (prefers-reduced-motion: reduce){.st-big .ring,.st-big .drop,.st-card.thud,.st-done .seal{animation:none!important}.st-confetti{display:none}}
+/* わたしの写真（v253）：カード・スタンプ帳・アルバム（貼ったポラロイド＋スタンプ）・全画面のストーリー */
+.vip-my{margin-top:12px;padding-top:10px;border-top:1px dashed #E3DCD1}
+.vip-my-hd{font-size:12px;font-weight:800;color:#4A2E0E;display:flex;align-items:baseline;gap:6px;margin-bottom:6px}
+.vip-my-hd b{color:var(--brand)}
+.vip-my-hd small{margin-left:auto;font-size:10.5px;font-weight:600;color:var(--t-sub)}
+.vip-my-row{display:flex;gap:8px;overflow-x:auto;padding:4px 2px 6px;scrollbar-width:none}
+.vip-my-row::-webkit-scrollbar{display:none}
+.vip-my-ph{flex:none;width:62px;height:62px;padding:3px 3px 9px;background:#fff;border:none;border-radius:3px;box-shadow:0 1px 3px rgba(0,0,0,.18);transform:rotate(-2deg);cursor:pointer}
+.vip-my-ph:nth-child(even){transform:rotate(2deg)}
+.vip-my-ph img{display:block;width:100%;height:100%;object-fit:cover;border-radius:1px;background:#F3EEE6}
+.vip-my-add{flex:none;min-width:84px;min-height:var(--tap);border:1.5px dashed #CDBFA6;border-radius:10px;background:#FBF6EA;color:#4A2E0E;font-family:inherit;font-size:13px;font-weight:800;cursor:pointer;padding:0 10px}
+.st-card .st-cam{margin-top:10px;min-height:var(--tap);padding:0 16px;border:none;border-radius:22px;background:#2B1D10;color:#FBF6EA;font-family:inherit;font-size:14px;font-weight:800;cursor:pointer}
+.st-done .st-my{display:block;margin:10px auto 0;min-height:var(--tap);border:none;background:none;color:var(--brand);font-family:inherit;font-size:13px;font-weight:800;cursor:pointer}
+.sb-cell{border:none;background:none;padding:0;font-family:inherit;cursor:pointer}
+.sb-myph{position:absolute;right:-6px;bottom:-4px;width:30px;height:30px;padding:2px 2px 6px;background:#fff;border-radius:2px;box-shadow:0 1px 3px rgba(0,0,0,.25);transform:rotate(6deg)}
+.sb-myph img{display:block;width:100%;height:100%;object-fit:cover}
+.sb-myph b{position:absolute;right:-6px;top:-6px;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:var(--brand);color:#fff;font-size:10px;line-height:16px;text-align:center}
+.sb-my{display:block;width:100%;margin-top:12px;min-height:var(--tap);border:1px solid #E3D8C3;border-radius:12px;background:rgba(255,255,255,.55);font-family:inherit;font-size:13px;color:#4A2E0E;cursor:pointer}
+.sb-my b{color:var(--brand)}
+#myAlbum, #myStory{--mincho:"Hiragino Mincho ProN","Hiragino Mincho Pro","Yu Mincho","YuMincho","Noto Serif JP",serif;--paper:#FBF6EA;--paper-tex:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .45  0 0 0 0 .38  0 0 0 0 .28  0 0 0 .07 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23f)'/%3E%3C/svg%3E")}
+#myAlbum{background:#EFE7D8}
+.ma-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px 14px;padding:6px 4px 8px}
+.ma-ph{position:relative;display:block;padding:6px 6px 34px;border:none;background:#fff;border-radius:3px;box-shadow:0 2px 4px rgba(0,0,0,.14),0 6px 14px rgba(60,40,10,.14);transform:rotate(var(--r,0deg));cursor:pointer;font-family:inherit;text-align:left}
+.ma-ph::before{content:'';position:absolute;left:50%;top:-8px;width:44px;height:14px;margin-left:-22px;border-radius:2px;background:linear-gradient(180deg,rgba(233,199,142,.9),rgba(212,168,104,.8));box-shadow:0 1px 2px rgba(0,0,0,.14);transform:rotate(-3deg)}
+.ma-ph img{display:block;width:100%;aspect-ratio:1/1;object-fit:cover;background:#F3EEE6}
+.ma-cap{position:absolute;left:8px;right:8px;bottom:4px;font-family:var(--mincho);font-size:10.5px;line-height:1.35;color:#4A3A26}
+.ma-ph.st .ma-cap{right:40px}
+.ma-cap b{display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ma-cap small{display:block;font-size:9.5px;color:#8A7A62}
+.ma-stamp{position:absolute;right:-10px;bottom:6px;width:58px;height:58px;pointer-events:none}
+.ma-stamp svg{width:100%;height:100%;overflow:visible}
+.ma-note{margin:10px 4px 2px;font-size:11px;line-height:1.6;color:#8A7A62}
+.ma-empty{grid-column:1 / -1;font-family:var(--mincho);font-size:13px;line-height:1.8;color:#8A7A62;text-align:center;padding:26px 8px}
+#myStory{position:fixed;inset:0;z-index:9450;display:none;background:#0d0b09;color:#fff;overflow:hidden;touch-action:none}
+#myStory.show{display:block}
+.ms-stage{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.ms-img{max-width:100%;max-height:100%;object-fit:contain;will-change:transform}
+.ms-img.kb{animation:msKb 6s ease-out both}
+.ms-img.kb2{animation:msKb2 6s ease-out both}
+@keyframes msKb{from{transform:scale(1)}to{transform:scale(1.09) translate(-1.5%,-1%)}}
+@keyframes msKb2{from{transform:scale(1.09) translate(1.5%,1%)}to{transform:scale(1)}}
+.ms-shade{position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(0,0,0,.55) 0,rgba(0,0,0,0) 22%,rgba(0,0,0,0) 62%,rgba(0,0,0,.72) 100%)}
+.ms-bars{position:absolute;left:10px;right:10px;top:calc(8px + var(--sat));display:flex;gap:4px;z-index:3}
+.ms-bars span{flex:1;height:3px;border-radius:2px;background:rgba(255,255,255,.35);overflow:hidden}
+.ms-bars span i{display:block;height:100%;width:0;background:#fff}
+.ms-top{position:absolute;left:14px;right:10px;top:calc(18px + var(--sat));display:flex;align-items:center;gap:10px;z-index:3}
+.ms-ttl{flex:1;min-width:0;font-family:var(--mincho);font-weight:700;font-size:16px;text-shadow:0 1px 4px rgba(0,0,0,.6);line-height:1.35}
+.ms-ttl small{display:block;font-family:-apple-system,"Hiragino Sans",sans-serif;font-weight:600;font-size:11.5px;opacity:.85}
+.ms-x{flex:none;min-height:44px;padding:0 16px;border:1.5px solid rgba(255,255,255,.7);border-radius:22px;background:rgba(0,0,0,.4);color:#fff;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer}
+.ms-zone{position:absolute;top:calc(80px + var(--sat));bottom:calc(120px + var(--sab));z-index:2}
+.ms-zone.prev{left:0;width:34%}
+.ms-zone.next{right:0;width:66%}
+.ms-foot{position:absolute;left:14px;right:14px;bottom:calc(14px + var(--sab));display:flex;align-items:flex-end;gap:10px;z-index:3}
+.ms-stamp{flex:none;width:70px;height:70px;filter:drop-shadow(0 1px 3px rgba(0,0,0,.5))}
+.ms-stamp:empty{display:none}
+.ms-stamp svg{width:100%;height:100%;overflow:visible;mix-blend-mode:normal}
+.ms-cap{flex:1;min-width:0;font-size:12px;opacity:.9;text-shadow:0 1px 3px rgba(0,0,0,.6);padding-bottom:12px}
+.ms-acts{flex:none;display:flex;flex-direction:column;gap:6px}
+.ms-btn{min-height:44px;padding:0 14px;border:none;border-radius:20px;background:#fff;color:#2B1D10;font-family:inherit;font-size:13px;font-weight:800;cursor:pointer}
+.ms-btn.ghost{background:rgba(255,255,255,.18);color:#fff}
+.ms-btn:disabled{opacity:.6;cursor:default}
+@media (prefers-reduced-motion: reduce){.ms-img.kb,.ms-img.kb2{animation:none!important}}
 /* スタンプ（v249）：絵と小さな数（押した数/全部）。全部押せたら緑 */
 .mrb.stamp{flex-direction:column;gap:1px;color:#4A2E0E}
 .mrb.stamp .svgi{width:17px;height:17px}
@@ -1703,7 +1767,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
       <div id="walkTip">
         <div class="ft-ic">🚶</div>
         <div class="ft-t">この地図の使いかた</div>
-        <div class="ft-d">・○をタップすると、写真と解説が見られます<br>・<b>➤ を押して歩く</b>と、コースのスポットに 10m まで近づいたときにスタンプが押されます（右の列のスタンプで一覧）<br>・右の ➤ を押すと、いまの場所を追いかけて、次のスポットまでの距離が出ます（もう一度押すと止まります）<br>・田畑や私有地には入らない、ゴミは持ち帰る、動植物や農作物は採らない（心得）<br>・見つけたもの（植物・マンホールの蓋…）は 📷 で写真とひとことを貼れます（この端末にだけ残ります）</div>
+        <div class="ft-d">・○をタップすると、写真と解説が見られます<br>・<b>➤ を押して歩く</b>と、コースのスポットに 10m まで近づいたときにスタンプが押されます（右の列のスタンプで一覧）<br>・右の ➤ を押すと、いまの場所を追いかけて、次のスポットまでの距離が出ます（もう一度押すと止まります）<br>・田畑や私有地には入らない、ゴミは持ち帰る、動植物や農作物は採らない（心得）<br>・スポットのカードの「📷 撮る」で、自分の写真を残せます（「わたしの写真」・この端末だけ）<br>・見つけたもの（植物・マンホールの蓋…）は 📷 で写真とひとことを貼れます（この端末にだけ残ります）</div>
         <button class="ft-b ghost" onclick="dismissWalkTip();openKokoroeSheet('view')">心得を読む</button>
         <button class="ft-b" onclick="dismissWalkTip()">わかった</button>
         <div class="ft-n">この案内は最初の1回だけ出ます</div>
@@ -1801,6 +1865,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
           </div>
           <div class="sb-now" id="stNow"></div>
           <div class="sb-grid" id="stGrid"></div>
+          <button type="button" class="sb-my tap" id="stMy" aria-label="わたしの写真（アルバム）" onclick="closeStampSheet();openMyAlbum()"></button>
           <div class="sb-how">押し方：右の <b>➤</b>（現在地を追いかける）を押して歩くと、コースのスポット（S・番号・G）に <b>10m</b> まで近づいたとき自動でスタンプが押されます。全部そろうと<b>完歩</b>。記念の1枚（写真）に完歩之印が入ります。</div>
         </div>
         <div class="ds-row">
@@ -2124,6 +2189,9 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
 
 <!-- View Mode Info Panel -->
 <div id="viewInfoPanel"></div>
+<input type="file" accept="image/*" capture="environment" id="myCam" hidden onchange="_myAdd(this)">   <!-- v253：わたしの写真を撮る -->
+<input type="file" accept="image/*" id="myPick" hidden multiple onchange="_myAdd(this)">   <!-- v253：カメラのアプリで撮った写真から選ぶ -->
+<input type="file" accept="image/*" id="myCover" hidden onchange="_vipCoverAdd(this)">   <!-- v253：カードの写真を自分の写真に入れ替える（撮る・選ぶは iPhone の画面で選べる） -->
 <div id="offlineBadge">📴 オフライン（保存した地図を表示中）</div>
 
 <!-- WPタイプピッカー -->
@@ -2587,6 +2655,7 @@ const LS = {
   ptHideTypes: 'fp_pt_hide_types', // ポイントの表示で隠す種類（v241・この端末だけ。コースには入れない）
   descCache:   'fp_desc_cache',    // v252：名前から探した解説（同じ名前・場所はもう聞かない。見つからなかったことも）
   descDone:    'fp_desc_done',     // v252：自動で探したスポット（コース・スポット → 名前）。同じ名前ではもう自動で探さない
+  myPhotos:    'fp_my_photos',     // v253：歩いた人が撮った写真の一覧（コースごと・この端末だけ）。写真そのものは IndexedDB
 };
 // --- サンプルコース（初回起動時に一度だけ取り込む。削除したら復活しない）---
 const SAMPLE_URL = 'sample.json';   // index.html と同じ場所に置く
@@ -3004,6 +3073,7 @@ async function gcPhotos(){
   getCourses().forEach(c => (c && c.wps || []).forEach(w => (w.photos || []).forEach(keep)));
   getCourses().forEach(c => (c && c.vps || []).forEach(v => (v && v.guide && v.guide.photos || []).forEach(keep)));   // 分岐の写真（v141）
   Object.values(_allFinds()).forEach(list => (list || []).forEach(f => (f && f.photos || []).forEach(keep)));           // 発見の写真（v143）
+  Object.values(_myAll()).forEach(list => (list || []).forEach(m => { if (m && m.id) { used.add(m.id); used.add('mt:' + m.id); } }));   // わたしの写真（v253）と小さい見本
   let del = 0;
   for (const k of keys) if (!used.has(k)) { await _photoDel(k); del++; }
   return del;
@@ -3563,7 +3633,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 手描きの道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した手描きの道id（直前取り消し用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v252';
+const APP_VERSION = 'v253';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat0', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -5384,8 +5454,14 @@ function _renderStampSheet(){
         + (mark ? `<text x="60" y="69" text-anchor="middle" font-family="Hiragino Mincho ProN, Yu Mincho, serif" font-size="24" fill="#D6C8AE" font-weight="700">${mark}</text>`
                 : ic ? `<g transform="translate(46 46) scale(1.15)"${ic.fill ? ' fill="#D6C8AE" stroke="#D6C8AE" stroke-width="1"' : ' fill="none" stroke="#D6C8AE" stroke-width="2"'} stroke-linecap="round" stroke-linejoin="round">${ic.d}</g>` : '') + '</svg>';
     }
-    return '<div class="sb-cell' + (got ? ' got' : ' todo') + '"><div class="sb-slot">' + slot + '</div><div class="sb-nm">' + escHtml(nm) + '</div></div>';
+    const my = _myOfSpot(w.id), all = _myList();   // v253：そのスポットで撮った写真（押すと見る）。無ければカードへ
+    const myHtml = my.length ? '<span class="sb-myph" data-myw="1"><img data-my="' + my[0].id + '" alt="">' + (my.length > 1 ? '<b>' + my.length + '</b>' : '') + '</span>' : '';
+    const tap = my.length ? 'closeStampSheet();openMyStory(' + all.findIndex(x => x.id === my[0].id) + ')' : 'closeStampSheet();showViewInfo(' + JSON.stringify(w.id) + ');if(leafMap)leafMap.panTo([' + w.lat + ',' + w.lng + '])';
+    return '<button type="button" class="sb-cell tap' + (got ? ' got' : ' todo') + '" onclick="' + escHtml(tap) + '"><div class="sb-slot">' + slot + myHtml + '</div><div class="sb-nm">' + escHtml(nm) + '</div></button>';
   }).join('');
+  const myN = _myList().length, stMy = document.getElementById('stMy');
+  if (stMy) stMy.innerHTML = '📷 わたしの写真 <b>' + myN + '</b> 枚' + (myN ? '　アルバムを見る ›' : '　（スポットのカードの「撮る」で残せます）');
+  _myFillThumbs(document.getElementById('stGrid'));
   document.getElementById('stGoal').hidden = !all;
   document.getElementById('stClear').hidden = vc.done === 0;
 }
@@ -5402,6 +5478,7 @@ function _stampFxNext(){
   fx.innerHTML = '<div class="st-card thud"><div class="k">スタンプ獲得</div><div class="t">' + escHtml((w.name || '').split('\n')[0] || 'スポット') + '</div>'
     + '<div class="st-big" style="color:' + L.ink + '"><div class="ring"></div><div class="drop">' + _stampSvg(w, i, true) + '</div></div>'
     + '<div class="p"><b>' + vc.done + '</b> / ' + vc.total + (vc.done < vc.total ? '　あと ' + (vc.total - vc.done) + ' か所' : '　そろいました！') + '</div>'
+    + '<button type="button" class="st-cam tap" onclick="event.stopPropagation();_stampFxStep();myCam(' + JSON.stringify(w.id) + ')">📷 記念に撮る</button>'   // v253
     + '<div class="h">押すと閉じます</div></div>';
   fx.addEventListener('click', _stampFxStep);
   document.body.appendChild(fx);
@@ -5425,7 +5502,8 @@ function _stampDoneFx(){
     + '<div class="p"><b>' + vc.total + '</b> か所すべて歩きました</div>'
     + '<div class="h">' + escHtml(courseInfo.name || '') + '　' + _ymd(last) + '</div>'
     + '<div class="row"><button type="button" class="ghost tap" onclick="closeStampDone();openStampSheet()">スタンプ帳を見る</button>'
-    + '<button type="button" class="tap" onclick="closeStampDone();openGoalCard()">記念の1枚を作る</button></div></div>';
+    + '<button type="button" class="tap" onclick="closeStampDone();openGoalCard()">記念の1枚を作る</button></div>'
+    + (_myList().length ? '<button type="button" class="st-my tap" onclick="closeStampDone();openMyAlbum()">📷 わたしの写真（' + _myList().length + '枚）を見る</button>' : '') + '</div>';
   el.addEventListener('click', e => { if (e.target === el) closeStampDone(); });
   document.body.appendChild(el);
   const cf = document.createElement('div'); cf.className = 'st-confetti';
@@ -8650,13 +8728,15 @@ function ctxConvertToWp() {
 /* ============================================================
    写真 圧縮・管理
    ============================================================ */
-function compressImage(file) {
+// 引数は file だけ（toAdd.map(compressImage) から呼ばれるので、2つ目以降を受け取ると番号が大きさになってしまう）
+function compressImage(file) { return compressImageTo(file, PHOTO_MAX_PX, PHOTO_QUALITY); }
+function compressImageTo(file, maxPx, quality) {   // v253：大きさと画質を選ぶ（わたしの写真）
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = e => {
       const img = new Image();
       img.onload = () => {
-        const MAX = PHOTO_MAX_PX;
+        const MAX = maxPx;
         let w=img.width, h=img.height;
         if (w>MAX || h>MAX) {
           if (w>=h) { h=Math.round(h*MAX/w); w=MAX; }
@@ -8665,7 +8745,7 @@ function compressImage(file) {
         const cv = document.createElement('canvas');
         cv.width=w; cv.height=h;
         cv.getContext('2d').drawImage(img, 0, 0, w, h);
-        resolve(cv.toDataURL('image/jpeg', PHOTO_QUALITY));
+        resolve(cv.toDataURL('image/jpeg', quality));
       };
       img.onerror = reject;
       img.src = e.target.result;
@@ -8837,10 +8917,16 @@ function showViewInfo(wpId) {
 
   /* v251（オーナー指示「タップして表示される写真はいまの3分の1にし、左に配置、その隣にスポットの名前と解説」）：
      写真は1枚目だけを小さく左に（貼った写真の見た目のまま）。2枚目からは「+n」。押すと全部を大きく見られる（左右にはらって次へ）。 */
-  const ph = (wp.photos || []).filter(Boolean);
-  const photoHtml = ph.length ? `<div class="vip-photos"><span class="vip-ph"><img ${_photoAttr(ph[0])} alt="${escHtml(wp.name || t.l)}の写真" onclick="event.stopPropagation();_vipOpenPh(${JSON.stringify(wp.id)}, 0)"></span>`
-    + (ph.length > 1 ? `<button type="button" class="vip-more tap" onclick="_vipOpenPh(${JSON.stringify(wp.id)}, 1)" aria-label="ほかの写真 ${ph.length - 1} 枚">+${ph.length - 1}</button>` : '') + '</div>' : '';
-  let html2 = `<div class="vip-handle"></div><div class="vip-row${ph.length ? ' has-ph' : ''}">${photoHtml}<div class="vip-main"><div class="vip-hdr">
+  const ph = (wp.photos || []).filter(Boolean), cv = _myCoverOf(wp.id), wid = JSON.stringify(wp.id);
+  /* v253（オーナー指示「解説の横の写真は自分で撮った写真に入れ替えられるように」）：歩く人が入れ替えた写真（この端末だけ）があれば、それを出す。
+     元の写真は「+n」で見られ、「元の写真に戻す」で戻る。写真の下に「📷 入れ替える」 */
+  const lead = cv ? `<span class="vip-ph mine"><img data-my="${cv.id}" alt="わたしの写真" onclick="event.stopPropagation();openMyStory(${_myList().findIndex(x => x.id === cv.id)})"></span>`
+    : ph.length ? `<span class="vip-ph"><img ${_photoAttr(ph[0])} alt="${escHtml(wp.name || t.l)}の写真" onclick="event.stopPropagation();_vipOpenPh(${wid}, 0)"></span>` : '';
+  const moreN = cv ? ph.length : ph.length - 1;
+  const photoHtml = lead ? `<div class="vip-photos"><div class="vip-phw">${lead}`
+    + (moreN > 0 ? `<button type="button" class="vip-more tap" onclick="_vipOpenPh(${wid}, ${cv ? 0 : 1})" aria-label="${cv ? '元の写真' : 'ほかの写真'} ${moreN} 枚">+${moreN}</button>` : '') + '</div>'
+    + (cv ? `<button type="button" class="vip-cv tap" onclick="_vipCoverClear(${wid})">元の写真に戻す</button>` : `<button type="button" class="vip-cv tap" onclick="_vipCoverPick(${wid})">📷 入れ替える</button>`) + '</div>' : '';
+  let html2 = `<div class="vip-handle"></div><div class="vip-row${lead ? ' has-ph' : ''}">${photoHtml}<div class="vip-main"><div class="vip-hdr">
     <div class="vip-dot" style="background:${_isNumbered(wp) ? _spotColor() : t.c}">${_wpMarkHtml(wp, 18)}</div>${(_isNumbered(wp) && _hasCatIcon(wp)) ? `<div class="vip-dot vip-dot2" style="background:${t.c}">${_typeSvg(wp.type, 16)}</div>` : ''}
     <div class="vip-name">${escHtml(wp.name || t.l)}${catLine}</div>
     <button class="vip-close" onclick="closeViewInfo()" aria-label="閉じる">✕</button>
@@ -8849,11 +8935,13 @@ function showViewInfo(wpId) {
   if (wp.tel)  html2 += `<div class="vip-tel"><a href="tel:${escHtml(wp.tel)}">${escHtml(wp.tel)}</a></div>`;
   if (!document.body.classList.contains('viewonly')) html2 += `<button type="button" class="vip-edit tap" onclick="_vipEdit(${JSON.stringify(wp.id)})">✎ ${wp.desc ? '説明を直す' : '説明を書く'}</button>`;   // v252：自分のコースなら、ここから直せる
   html2 += '</div></div>';
+  html2 += _myCardHtml(wp);   // v253：わたしの写真（撮る・見る）
 
   const panel = document.getElementById('viewInfoPanel');   // 表示後に参照写真を流し込む（_fillPhotoImgs）
   panel.innerHTML = html2;
   _onSwipe(panel, () => _viewInfoStep(1), () => _viewInfoStep(-1));   // v230：フリックで次／前のスポット
   _fillPhotoImgs(panel);        // 参照(idb:)の写真を取り出して表示
+  _myFillThumbs(panel);         // v253：わたしの写真
   panel.classList.add('show');
 }
 
@@ -9942,6 +10030,240 @@ function addNearbySelected(){
   setTimeout(() => _startPickAuto(), 700);   // v227：取り込んだら、まずスタート地点を決める
   setTimeout(() => descFillAll(false), DESC_AUTO_DELAY_MS);   // v252：取り込んだスポットの解説を、名前から探して入れる
 }
+/* ===== わたしの写真（v253・オーナー指示「歩いた人が写真を撮って、自分の端末に保存でき、タップで表示できる。
+   表示は他のアプリを参考に、見やすく楽しく」）=====
+   ・撮る：スポットのカードの「📷 撮る」「🖼 写真から選ぶ」（カメラのアプリで撮った写真）と、スタンプを押した瞬間の「📷 記念に撮る」。写真はそのスポットに結びつく
+   ・残す：この端末だけ（写真は IndexedDB、一覧は LS.myPhotos）。iPhone のカメラで撮った写真は写真アプリに入らないので、
+     見るときの「写真に保存」で写真アプリへ（共有の画面の「画像を保存」）
+   ・見る：カードの小さな写真・スタンプ帳の枠の写真・アルバム（貼ったポラロイドに、そのスポットのスタンプ）→ 押すと全画面で順に見る
+     （Instagram・Google フォトの「ストーリー」：上に枚数ぶんの棒、右を押すと次・左で前・押さえている間は止まる、下へはらうと閉じる。
+      Apple の「メモリー」のように、写真がゆっくり寄っていく） */
+const MY_PH_PX = 1600, MY_PH_Q = 0.82, MY_TH_PX = 360, MY_TH_Q = 0.7, MY_STORY_MS = 4500, MY_HOLD_MS = 220, MY_PICK_MAX = 20;
+let _myCamWp = null;      // カメラで撮った写真を結びつけるスポット
+let _myStoryI = 0, _myStoryT0 = 0, _myStoryPausedAt = 0, _myStoryRaf = 0, _myStoryList = [];
+function _myAll(){ try { return JSON.parse(localStorage.getItem(LS.myPhotos) || '{}') || {}; } catch(_) { return {}; } }
+function _myKey(){ return currentCourseId != null ? String(currentCourseId) : 'n:' + ((courseInfo && courseInfo.name) || ''); }   // コースIDの無い手作りのファイルは名前で分ける
+function _myList(){ return ((_myAll()[_myKey()]) || []).slice().sort((a, b) => a.at - b.at); }
+function _mySave(list){ try { const all = _myAll(), k = _myKey(); if (list.length) all[k] = list; else delete all[k]; localStorage.setItem(LS.myPhotos, JSON.stringify(all)); } catch(_) {} }
+function _myOfSpot(wpId){ return _myList().filter(m => m.wp === wpId); }
+function _myTime(t){ const d = new Date(t); return (d.getMonth() + 1) + '/' + d.getDate() + ' ' + d.getHours() + ':' + String(d.getMinutes()).padStart(2, '0'); }
+function myCam(wpId, pick){ _myCamWp = wpId; const el = document.getElementById(pick ? 'myPick' : 'myCam'); if (el) el.click(); }   // 押したその場で開く（あとから開くと iPhone は止める）。pick＝写真から選ぶ
+async function _myAdd(input){
+  const fs = Array.from((input && input.files) || []).slice(0, MY_PICK_MAX); if (input) input.value = ''; if (!fs.length) return;
+  let n = 0;
+  for (const f of fs) {
+    let full = '';
+    try { full = await compressImageTo(f, MY_PH_PX, MY_PH_Q); } catch(_) {}
+    if (full && await _myAddData(full, _myCamWp, true)) n++;
+  }
+  if (!n) { showToast('写真を読み込めませんでした'); return; }
+  showToast('📷 ' + (n > 1 ? n + ' 枚を' : '') + '「わたしの写真」に残しました（この端末だけ・全部で ' + _myList().length + ' 枚）');
+}
+async function _myAddData(full, wpId, quiet){   // 写真（data URI）を「わたしの写真」に入れる。検査からも呼ぶ
+  const th = (await _shrinkDataUrl(full, MY_TH_PX, MY_TH_Q)) || full;
+  const id = 'm' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  const ok = await _photoPut(id, full);
+  if (!ok) { showToast('この端末では写真を残せませんでした（空き容量をご確認ください）'); return null; }
+  await _photoPut('mt:' + id, th);
+  _photoMem['mt:' + id] = th;
+  const wp = wps.find(w => w.id === wpId);
+  const list = _myList(); list.push({id, wp: wpId == null ? null : wpId, at: Date.now(), nm: wp ? (wp.name || '').split('\n')[0] : ''}); _mySave(list);
+  if (_viewInfoId != null && _viewInfoId === wpId) showViewInfo(wpId);
+  if (_stampOpen()) _renderStampSheet();
+  if (_myAlbumOpen()) _renderMyAlbum();
+  if (!quiet) showToast('📷 「わたしの写真」に残しました（この端末だけ・全部で ' + list.length + ' 枚）');
+  return id;
+}
+async function _myThumb(m){ const k = 'mt:' + m.id; if (_photoMem[k]) return _photoMem[k]; const v = (await _photoGet(k)) || (await _photoGet(m.id)) || ''; if (v) _photoMem[k] = v; return v; }
+async function _myFillThumbs(root){
+  const els = (root || document).querySelectorAll('img[data-my]');
+  for (const el of els) { const m = _myList().find(x => x.id === el.getAttribute('data-my')); const src = m ? await _myThumb(m) : ''; if (src) el.src = src; else el.closest('[data-myw]') ? el.closest('[data-myw]').remove() : el.remove(); el.removeAttribute('data-my'); }
+}
+/* カードの「わたしの写真」：「📷 撮る」「🖼 写真から選ぶ」と、撮った写真を小さく並べる。押すとその写真から順に見る */
+function _myCardHtml(wp){
+  const mine = _myOfSpot(wp.id), all = _myList();
+  return '<div class="vip-my"><div class="vip-my-hd">わたしの写真' + (mine.length ? ' <b>' + mine.length + '</b>' : '') + '<small>この端末だけ</small></div><div class="vip-my-row">'
+    + '<button type="button" class="vip-my-add tap" onclick="myCam(' + JSON.stringify(wp.id) + ')">📷 撮る</button>'   // 撮る・選ぶは左に（写真が増えても隠れない）
+    + '<button type="button" class="vip-my-add tap" onclick="myCam(' + JSON.stringify(wp.id) + ',1)">🖼 写真から選ぶ</button>'
+    + mine.map(m => '<button type="button" class="vip-my-ph tap" data-myw="1" onclick="openMyStory(' + all.findIndex(x => x.id === m.id) + ')" aria-label="わたしの写真を見る"><img data-my="' + m.id + '" alt=""></button>').join('')
+    + '</div></div>';
+}
+/* カードの写真（解説の横）を自分の写真に入れ替える（v253・オーナー指示「解説の横に入っている写真は自分で撮った写真に入れ替えられるように」）
+   ・歩く人（共有リンクで開いた人）：この端末だけ。写真は「わたしの写真」に入れ、カードにはその写真を出す（印 cv）。「元の写真に戻す」で戻る
+   ・自分のコース：スポットの写真の1枚目に入れ、歩く人にも出す。前の写真は2枚目以降に残す（写真は「取り消し」の対象外なので、消さない） */
+let _vipCoverWp = null;   // 入れ替える写真を選んでいるスポット
+function _isWalker(){ return document.body.classList.contains('viewonly'); }
+function _myCoverOf(wpId){ return _isWalker() ? (_myOfSpot(wpId).find(m => m.cv) || null) : null; }
+function _vipCoverPick(wpId){ _vipCoverWp = wpId; const el = document.getElementById('myCover'); if (el) el.click(); }   // 押したその場で開く
+async function _vipCoverAdd(input){
+  const f = input && input.files && input.files[0]; if (input) input.value = ''; if (!f || _vipCoverWp == null) return;
+  let full = ''; try { full = await compressImageTo(f, MY_PH_PX, MY_PH_Q); } catch(_) {}
+  if (!full) { showToast('写真を読み込めませんでした'); return; }
+  if (!_isWalker()) { await _vipCoverCourse(_vipCoverWp, full); return; }
+  const id = await _myAddData(full, _vipCoverWp, true); if (id) await _vipCoverSet(_vipCoverWp, id);
+}
+async function _vipCoverSet(wpId, myId){   // わたしの写真を、カードの写真にする
+  const list = _myList(), m = list.find(x => x.id === myId); if (!m) return;
+  if (!_isWalker()) { const src = await _photoGet(myId); if (src && await _vipCoverCourse(wpId, src)) { m.put = 1; _mySave(list); } return; }
+  list.forEach(x => { if (x.wp === wpId) delete x.cv; }); m.cv = 1; _mySave(list);
+  if (_viewInfoId === wpId) showViewInfo(wpId);
+  showToast('カードの写真を、自分の写真に入れ替えました（この端末だけ・「元の写真に戻す」で戻せます）');
+}
+function _vipCoverClear(wpId){
+  const list = _myList(); list.forEach(x => { if (x.wp === wpId) delete x.cv; }); _mySave(list);
+  if (_viewInfoId === wpId) showViewInfo(wpId);
+  showToast('元の写真に戻しました');
+}
+async function _vipCoverCourse(wpId, src){   // 自分のコース：スポットの写真の1枚目に（大きさは他の写真と同じ長辺 PHOTO_MAX_PX）
+  const wp = wps.find(w => w.id === wpId); if (!wp) return false;
+  if ((wp.photos || []).length >= PHOTO_MAX_PER_SPOT) { showToast('写真は1つのスポットに最大' + PHOTO_MAX_PER_SPOT + '枚です（スポットの編集で減らしてから）'); return false; }
+  const d = (await _shrinkDataUrl(src, PHOTO_MAX_PX, PHOTO_QUALITY)) || src;
+  wp.photos = [d].concat(wp.photos || []);
+  _markDirty(); refreshIcons();
+  if (_viewInfoId === wpId) showViewInfo(wpId);
+  showToast('スポットの写真の1枚目にしました（前の写真は2枚目に残しています・「保存」で歩く人にも出ます）');
+  return true;
+}
+/* アルバム（わたしの写真）：和紙の頁に、貼ったポラロイド。スタンプを押したスポットの写真には、そのスタンプを重ねる */
+function _myAlbumOpen(){ const sh = document.getElementById('myAlbum'); return !!sh && sh.style.display === 'block'; }
+function openMyAlbum(){
+  let sh = document.getElementById('myAlbum');
+  if (!sh) {
+    const sc = document.createElement('div'); sc.id = 'myAlbumScrim'; sc.className = 'fsh-scrim'; sc.onclick = closeMyAlbum; document.body.appendChild(sc);
+    sh = document.createElement('div'); sh.id = 'myAlbum'; sh.className = 'fsh'; sh.setAttribute('role', 'dialog'); sh.setAttribute('aria-label', 'わたしの写真');
+    sh.innerHTML = '<div class="ds-dh"></div><div class="sb-page ma-page"><div class="sb-hd"><div><div class="sb-t" id="maTitle"></div><div class="sb-s" id="maSub"></div></div></div>'
+      + '<div class="ma-grid" id="maGrid"></div><div class="ma-note" id="maNote">写真はこの端末の中だけにあります。残したい写真は、開いて「写真に保存」で写真アプリへ。</div></div>'
+      + '<div class="ds-row"><button class="ds-btn ghost" onclick="closeMyAlbum()">閉じる</button><button class="ds-btn" id="maPlay" onclick="closeMyAlbum();openMyStory(0)">▶ 思い出を見る</button></div>';
+    document.body.appendChild(sh);
+  }
+  _renderMyAlbum();
+  document.getElementById('myAlbumScrim').style.display = 'block'; sh.style.display = 'block';
+}
+function closeMyAlbum(){ const a = document.getElementById('myAlbumScrim'), b = document.getElementById('myAlbum'); if (a) a.style.display = 'none'; if (b) b.style.display = 'none'; }
+function _renderMyAlbum(){
+  const list = _myList(), order = _stampOrder();
+  document.getElementById('maTitle').textContent = (courseInfo && courseInfo.name) || 'フットパス';
+  document.getElementById('maSub').textContent = list.length ? 'わたしの写真　' + list.length + ' 枚　' + _ymd(list[0].at) + (list.length > 1 && _ymd(list[list.length - 1].at) !== _ymd(list[0].at) ? '〜' + _ymd(list[list.length - 1].at) : '') : 'わたしの写真';
+  document.getElementById('maPlay').hidden = !list.length; document.getElementById('maNote').hidden = !list.length;
+  const grid = document.getElementById('maGrid');
+  if (!list.length) { grid.innerHTML = '<div class="ma-empty">まだ写真はありません。<br>スポットの○を押して、カードの「📷 撮る」で撮るか「🖼 写真から選ぶ」と、ここに貼られます（この端末だけ）。</div>'; return; }
+  grid.innerHTML = list.map((m, i) => {
+    const wp = wps.find(w => w.id === m.wp), k = wp ? order.indexOf(wp) : -1;
+    const stamp = (wp && k >= 0 && _visits[wp.id]) ? '<div class="ma-stamp">' + _stampSvg(wp, k) + '</div>' : '';
+    const label = wp ? _spotLabel(wp) : (m.nm || 'コースで');
+    return '<button type="button" class="ma-ph tap' + (stamp ? ' st' : '') + '" data-myw="1" style="--r:' + ((i % 2 ? 1 : -1) * (1.2 + (i * 7 % 3) * 0.6)).toFixed(1) + 'deg" onclick="closeMyAlbum();openMyStory(' + i + ')">'
+      + '<img data-my="' + m.id + '" alt="' + escHtml(label) + '"><span class="ma-cap"><b>' + escHtml(label) + '</b><small>' + _myTime(m.at) + '</small></span>' + stamp + '</button>';
+  }).join('');
+  _myFillThumbs(grid);
+}
+/* 全画面で順に見る（ストーリー） */
+function openMyStory(i){
+  _myStoryList = _myList(); if (!_myStoryList.length) return;
+  let ov = document.getElementById('myStory');
+  if (!ov) {
+    ov = document.createElement('div'); ov.id = 'myStory'; ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-label', 'わたしの写真');
+    ov.innerHTML = '<div class="ms-stage"><img class="ms-img" id="msImg" alt=""></div><div class="ms-shade"></div>'
+      + '<div class="ms-bars" id="msBars"></div>'
+      + '<div class="ms-top"><div class="ms-ttl" id="msTtl"></div><button type="button" class="ms-x tap" id="msClose">閉じる</button></div>'
+      + '<div class="ms-zone prev" id="msPrev"></div><div class="ms-zone next" id="msNext"></div>'
+      + '<div class="ms-foot"><div class="ms-stamp" id="msStamp"></div><div class="ms-cap" id="msCap"></div>'
+      + '<div class="ms-acts"><button type="button" class="ms-btn tap" id="msCover">カードの写真にする</button><button type="button" class="ms-btn tap" id="msSave">写真に保存</button><button type="button" class="ms-btn ghost tap" id="msDel">消す</button></div></div>';
+    document.body.appendChild(ov);
+    ov.querySelector('#msClose').addEventListener('click', e => { e.stopPropagation(); closeMyStory(); });
+    ov.querySelector('#msSave').addEventListener('click', e => { e.stopPropagation(); _myStorySave(); });
+    ov.querySelector('#msCover').addEventListener('click', e => { e.stopPropagation(); _myStoryCover(); });
+    ov.querySelector('#msDel').addEventListener('click', e => { e.stopPropagation(); _myStoryDel(); });
+    let x0 = null, y0 = null, holdT = null, held = false;
+    const down = e => { const t = e.touches ? e.touches[0] : e; x0 = t.clientX; y0 = t.clientY; held = false; clearTimeout(holdT); holdT = setTimeout(() => { held = true; _myStoryPause(true); }, MY_HOLD_MS); };
+    const up = (e, side) => { clearTimeout(holdT); const t = e.changedTouches ? e.changedTouches[0] : e; const dy = t && y0 != null ? t.clientY - y0 : 0, dx = t && x0 != null ? t.clientX - x0 : 0; x0 = y0 = null;
+      if (held) { held = false; _myStoryPause(false); return; }
+      if (dy > 80 && Math.abs(dy) > Math.abs(dx)) { closeMyStory(); return; }               // 下へはらうと閉じる
+      if (Math.abs(dx) > 50) { _myStoryGo(dx < 0 ? 1 : -1); return; }                       // 左右にはらう
+      _myStoryGo(side); };
+    [['msPrev', -1], ['msNext', 1]].forEach(([id, side]) => { const z = ov.querySelector('#' + id);
+      z.addEventListener('touchstart', down, {passive: true}); z.addEventListener('touchend', e => { e.preventDefault(); up(e, side); });
+      z.addEventListener('mousedown', down); z.addEventListener('mouseup', e => up(e, side)); });
+  }
+  ov.querySelector('#msBars').innerHTML = _myStoryList.map(() => '<span><i></i></span>').join('');
+  ov.classList.add('show');
+  _myStoryShow(Math.max(0, Math.min(i || 0, _myStoryList.length - 1)));
+}
+function closeMyStory(){ cancelAnimationFrame(_myStoryRaf); _myStoryRaf = 0; const ov = document.getElementById('myStory'); if (ov) { ov.classList.remove('show'); const im = ov.querySelector('#msImg'); if (im) im.removeAttribute('src'); } }
+async function _myStoryShow(i){
+  const ov = document.getElementById('myStory'); if (!ov || !ov.classList.contains('show')) return;
+  _myStoryI = i; const m = _myStoryList[i]; if (!m) return;
+  const wp = wps.find(w => w.id === m.wp), order = _stampOrder(), k = wp ? order.indexOf(wp) : -1;
+  ov.querySelectorAll('#msBars span').forEach((b, j) => { b.className = j < i ? 'done' : ''; b.querySelector('i').style.width = j < i ? '100%' : '0%'; });
+  document.getElementById('msTtl').innerHTML = escHtml(wp ? _spotLabel(wp) : (m.nm || 'コースで')) + '<small>' + _myTime(m.at) + '　' + (i + 1) + ' / ' + _myStoryList.length + '</small>';
+  document.getElementById('msCap').textContent = ((courseInfo && courseInfo.name) || '') + '　' + _ymd(m.at);
+  document.getElementById('msStamp').innerHTML = (wp && k >= 0 && _visits[wp.id]) ? _stampSvg(wp, k, true) : '';
+  _myStoryCoverLbl();
+  const im = document.getElementById('msImg');
+  im.classList.remove('kb', 'kb2'); im.removeAttribute('src');
+  const src = (await _photoGet(m.id)) || (await _myThumb(m));
+  if (_myStoryI !== i) return;
+  if (src) im.src = src;
+  void im.offsetWidth; im.classList.add(i % 2 ? 'kb2' : 'kb');   // ゆっくり寄っていく（Apple の「メモリー」に倣う）
+  _myStoryT0 = performance.now(); _myStoryPausedAt = 0;
+  cancelAnimationFrame(_myStoryRaf); _myStoryRaf = requestAnimationFrame(_myStoryTick);
+  const nx = _myStoryList[i + 1]; if (nx) _photoGet(nx.id);   // 次の写真を先に読んでおく
+}
+function _myStoryTick(now){
+  const ov = document.getElementById('myStory'); if (!ov || !ov.classList.contains('show')) return;
+  if (_myStoryPausedAt) { _myStoryRaf = requestAnimationFrame(_myStoryTick); return; }
+  const p = Math.min(1, (now - _myStoryT0) / MY_STORY_MS);
+  const bar = ov.querySelectorAll('#msBars span i')[_myStoryI]; if (bar) bar.style.width = (p * 100).toFixed(1) + '%';
+  if (p >= 1) { if (_myStoryI < _myStoryList.length - 1) { _myStoryShow(_myStoryI + 1); return; } _myStoryRaf = 0; return; }   // 最後は止まる
+  _myStoryRaf = requestAnimationFrame(_myStoryTick);
+}
+function _myStoryPause(on){
+  const im = document.getElementById('msImg');
+  if (on && !_myStoryPausedAt) { _myStoryPausedAt = performance.now(); if (im) im.style.animationPlayState = 'paused'; }
+  else if (!on && _myStoryPausedAt) { _myStoryT0 += performance.now() - _myStoryPausedAt; _myStoryPausedAt = 0; if (im) im.style.animationPlayState = ''; }
+}
+function _myStoryCoverLbl(){   // 「カードの写真にする」：スポットの写真だけ。歩く人は押すたびに入れ替え／戻す、自分のコースは1回だけ
+  const b = document.getElementById('msCover'), m = _myStoryList[_myStoryI]; if (!b || !m) return;
+  const wp = wps.find(w => w.id === m.wp);
+  b.hidden = !wp;
+  b.textContent = _isWalker() ? (m.cv ? 'カードの写真をやめる' : 'カードの写真にする') : (m.put ? 'カードの写真にしました' : 'カードの写真にする');
+  b.disabled = !_isWalker() && !!m.put;
+}
+async function _myStoryCover(){
+  const m = _myStoryList[_myStoryI]; if (!m || m.wp == null) return;
+  if (_isWalker() && m.cv) _vipCoverClear(m.wp); else await _vipCoverSet(m.wp, m.id);
+  _myStoryList = _myList(); _myStoryCoverLbl();
+}
+function _myStoryGo(d){
+  const n = _myStoryI + d;
+  if (n < 0) { _myStoryShow(0); return; }
+  if (n >= _myStoryList.length) { closeMyStory(); return; }   // 最後の次は閉じる（Instagram と同じ）
+  _myStoryShow(n);
+}
+async function _myStorySave(){   // 写真アプリへ（共有の画面の「画像を保存」）。共有できない端末はダウンロード
+  const m = _myStoryList[_myStoryI]; if (!m) return;
+  const src = await _photoGet(m.id); if (!src) return;
+  const d = new Date(m.at), ymd = d.getFullYear() + String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0');   // 20261005（0を付けて8けた）
+  const wp = wps.find(w => w.id === m.wp), name = 'footpath_' + _safeFileBase(((wp && wp.name) || m.nm || 'photo').split('\n')[0]) + '_' + ymd + '.jpg';
+  try {
+    const blob = await (await fetch(src)).blob(), file = new File([blob], name, {type: 'image/jpeg'});
+    if (navigator.share && navigator.canShare && navigator.canShare({files: [file]})) { _myStoryPause(true); try { await navigator.share({files: [file], title: (wp && wp.name) || ''}); } catch(_) {} _myStoryPause(false); return; }
+  } catch(_) {}
+  const a = document.createElement('a'); a.href = src; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  showToast('保存しました');
+}
+async function _myStoryDel(){
+  const m = _myStoryList[_myStoryI]; if (!m) return;
+  _myStoryPause(true);
+  if (!confirm('この写真を消しますか？（この端末から消えます）')) { _myStoryPause(false); return; }
+  _mySave(_myList().filter(x => x.id !== m.id)); await _photoDel(m.id); await _photoDel('mt:' + m.id); delete _photoMem['mt:' + m.id];
+  _myStoryList = _myList();
+  if (!_myStoryList.length) { closeMyStory(); } else { const ov = document.getElementById('myStory'); ov.querySelector('#msBars').innerHTML = _myStoryList.map(() => '<span><i></i></span>').join(''); _myStoryShow(Math.min(_myStoryI, _myStoryList.length - 1)); }
+  if (_viewInfoId != null) showViewInfo(_viewInfoId);
+  if (_stampOpen()) _renderStampSheet();
+  showToast('写真を消しました');
+}
+document.addEventListener('keydown', e => { const ov = document.getElementById('myStory'); if (!ov || !ov.classList.contains('show')) return;
+  if (e.key === 'Escape') closeMyStory(); else if (e.key === 'ArrowRight') _myStoryGo(1); else if (e.key === 'ArrowLeft') _myStoryGo(-1); });
 /* ===== スポットの解説を名前から探す（v252・オーナー指示「スポットの解説は名前から検索して自動で埋め、後から編集もできるように」）=====
    ・探す先：ウィキペディア（日本語）→ ウィキデータ。Google の情報は規約で使えないので使わない
    ・取りちがえを防ぐ：記事の場所がスポットから DESC_NEAR_M 以内か、本文にこのコースの市町村名がある記事だけを使う。
