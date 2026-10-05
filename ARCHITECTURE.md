@@ -561,4 +561,7 @@ CONSTANTS(904) → STATE(968) → STORAGE(1015) → 版のお知らせ(1021) →
 - `_descLookup(名前, 緯度, 経度, force)` → `_descFind`：ウィキペディアの地理検索（`_descGeoList`・約5km四方ごとに1回）で名前が同じ近くの記事 → 名前で検索（同じ名前で、座標が `DESC_NEAR_M` 以内か本文に `_descAreaWords()` の市町村名）→ ウィキデータ（座標が近いもの）。ネットは `_descGet` の1か所（検査で差し替える）。
 - 説明の扱いは `_descKind`（empty／note＝取り込みのメモ「（情報：…）」／own＝書いてある説明）と `_descMerge`。own は上書きしない。
 - まとめて入れるのは `descFillAll(manual)`。自動は `_descDoneGet/_descDoneSet`（コース・スポット・名前ごとに1回）。結果は `LS.descCache` に覚える。
+- v254：`_descFind` の順は ①地理検索の近い同じ名前の記事 ②同じ名前の記事（近い／本文に市町村名）③文化遺産オンライン（`DESC_JPS`＝ジャパンサーチ・`database === 'bunka'`・3km 以内・`DESC_MAIN_RE` で主屋などを先に・解説文は CC BY）④ウィキデータ ⑤ウィキペディアの本文の文（`_descSentences`・`_descSentenceOk`＝一覧の1行は使わない）。
+- `_descAreaWords` は都道府県を除く（県の名前だけでは確かめない）。`_descFreshNote` は名前を付けた地理院の記号の古いメモを直す。`DESC_VER` を覚えた結果の鍵と「自動で探した」印に入れる（探し方を変えたら上げる）。
+- 正規表現の後ろ読み（`(?<=`・`(?<!`）は使わない。古い iPhone（iOS 16.3 まで）ではインラインの JS 全体が読み込めず、アプリが動かなくなる（静的検査あり）。
 

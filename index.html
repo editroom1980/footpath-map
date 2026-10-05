@@ -3633,7 +3633,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 手描きの道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した手描きの道id（直前取り消し用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v253';
+const APP_VERSION = 'v254';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat0', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -10271,10 +10271,16 @@ document.addEventListener('keydown', e => { const ov = document.getElementById('
    ・名前の終わりの「線路跡・跡・全景・入口」は外しても探す（波賀森林鉄道線路跡 → 波賀森林鉄道）。外した名前でも上の確かめは同じ
    ・書いてある説明は上書きしない。取り込みのときの短いメモ（情報：OpenStreetMap など）は残し、その上に入れる
    ・入れた文の最後に出典（ウィキペディアの記事名）を付ける。あとから自由に直せる（スポットの編集の「説明」）
-   ・自動で探すのは、そのスポットのその名前で1回だけ（消した解説を勝手に戻さない）。「名前から探す」を押せば何度でも */
+   ・自動で探すのは、そのスポットのその名前で1回だけ（消した解説を勝手に戻さない）。「名前から探す」を押せば何度でも
+   ・v254（オーナー指示「寺院の名前など、すでにつけられているものはその名前で調べて解説を入れるように」）：探す先を足した。
+     文化遺産オンライン（文化庁・ジャパンサーチ経由。登録文化財などの解説。場所が DESC_NEAR_M 以内のものだけ）と、
+     ウィキペディアの本文に出てくる文（名前とこのコースの市町村名が同じ文にあるもの。例：「…墓所は兵庫県宍粟市山崎町上寺の大雲寺。」）。
+     名前の頭の「旧」は外しても探す（旧梶間家住宅 → 梶間家住宅）。一覧の1行だけ（「老松酒造 （宍粟市）」など）は使わない */
 const DESC_NEAR_M = 3000, DESC_MAX = 220, DESC_GAP_MS = 220, DESC_GEO_R = 10000, DESC_AUTO_DELAY_MS = 2500, DESC_CACHE_MAX = 400;
 const DESC_SUFFIX_RE = /(線路跡|跡地|跡|全景|入口|入り口)$/;
-const DESC_WIKIDATA = 'https://www.wikidata.org/w/api.php';
+const DESC_WIKIDATA = 'https://www.wikidata.org/w/api.php', DESC_JPS = 'https://jpsearch.go.jp/api/item/search/jps-cross';
+const DESC_VER = 2;               // 探し方を変えたら上げる（前の版で「見つからなかった」と覚えた結果を使わない）
+const DESC_MAIN_RE = /(主屋|本堂|本殿|拝殿|本館|母屋)$/;   // 文化遺産オンラインで同じ名前の建物がいくつかあるとき、先に選ぶもの
 const _descGeoMap = new Map();   // ウィキペディアの地理検索の結果（約5km四方ごとに1回だけ取る）
 let _descBusy = false;           // まとめて探している途中か
 function _descGet(url){ return _fetchJsonTimeout(url, null, 12000); }   // 検査で差し替えられるように1か所に
@@ -10282,11 +10288,19 @@ function _descNorm(s){ return String(s || '').split('\n')[0].replace(/\s*[（(][
 function _descVariants(name){
   const a = _descNorm(name), out = a.length >= 2 ? [a] : [];
   const b = a.replace(DESC_SUFFIX_RE, ''); if (b !== a && b.length >= 2) out.push(b);
+  out.slice().forEach(x => { const c = x.replace(/^旧/, ''); if (c !== x && c.length >= 2 && out.indexOf(c) < 0) out.push(c); });   // v254：旧梶間家住宅 → 梶間家住宅
   return out;
+}
+function _descSentences(t){   // 本文を文に分ける（改行と「。」で）
+  return String(t || '').split('\n').flatMap(l => l.match(/[^。]+。?/g) || []).map(x => x.trim()).filter(Boolean);   // 正規表現の後ろ読みは古い iPhone（iOS 16.3 まで）で全体が動かなくなるので使わない
+}
+function _descSentenceOk(x, v){   // 名前と地名を除いても中身のある文だけ（一覧の1行「老松酒造 （宍粟市）」は使わない）
+  return x.replace(v, '').replace(/[\s　（）()・\-–—:：、。]/g, '').length >= 10 && x.length <= DESC_MAX;
 }
 function _descAreaWords(){   // 本文の確かめに使う市町村名（エリア「宍粟市山崎町中広瀬」→ 宍粟市・宍粟・山崎町）
   const w = String((courseInfo && courseInfo.area) || '').match(/[^\s　、,]+?[都道府県市区町村郡]/g) || [], out = [];
-  w.forEach(x => { if (x.length >= 3) out.push(x); if (/[市郡]$/.test(x) && x.length >= 3) out.push(x.slice(0, -1)); });
+  w.forEach(x => { if (/[都道府県]$/.test(x)) return;   // v254：県の名前だけでは広すぎる（同じ県の別の町の同じ名前の寺を取りちがえる）
+    if (x.length >= 3) out.push(x); if (/[市郡]$/.test(x) && x.length >= 3) out.push(x.slice(0, -1)); });
   return out;
 }
 function _descTrim(t){
@@ -10306,7 +10320,7 @@ async function _descGeoList(lat, lng){
 async function _descFind(name, lat, lng){
   const vars = _descVariants(name); if (!vars.length) return null;
   const area = _descAreaWords(), near = (a, b) => a != null && b != null && haversine(lat, lng, a, b) <= DESC_NEAR_M;
-  const wiki = t => '\n（出典：ウィキペディア「' + t + '」）';
+  const wiki = t => '\n（出典：ウィキペディア「' + t + '」・CC BY-SA 4.0）';   // v254：ウィキペディアの文は CC BY-SA 4.0（出典と使用許諾を書く）
   // ① ウィキペディア：まわりの記事で名前が同じもの（場所がスポットの近く）
   const geo = await _descGeoList(lat, lng);
   let ids = geo.filter(a => vars.indexOf(_descNorm(a.title)) >= 0 && near(a.lat, a.lon)).map(a => a.pageid), fromGeo = ids.length > 0;
@@ -10325,7 +10339,20 @@ async function _descFind(name, lat, lng){
       if (ok) return {text: _descTrim(pg.extract) + wiki(pg.title), src: 'wikipedia'};
     }
   }
-  // ③ ウィキデータ：同じ名前で場所が近いもの（日本語の記事があればその書き出し、無ければ短い説明）
+  // ③ 文化遺産オンライン（文化庁。ジャパンサーチ経由）：同じ名前の文化財で、場所が近いもの（v254）
+  const short = area.slice().sort((a, b) => a.length - b.length)[0] || '';
+  for (const v of vars) {
+    const jj = await _descGet(DESC_JPS + '?size=20&keyword=' + encodeURIComponent(v + (short ? ' ' + short : '')));
+    const its = ((jj && jj.list) || []).filter(it => { const c = it && it.common; if (!c || c.database !== 'bunka' || !c.description || !c.title) return false;
+      const t = _descNorm(c.title), co = c.coordinates;
+      return (t.indexOf(v) >= 0 || (t.length >= 3 && v.indexOf(t) >= 0)) && (co ? near(co.lat, co.lon) : area.some(w => JSON.stringify(it).indexOf(w) >= 0)); });
+    if (!its.length) continue;
+    const rank = it => { const t = _descNorm(it.common.title), co = it.common.coordinates; return (t === v ? 0 : DESC_MAIN_RE.test(t) ? 1 : 2) * 1e7 + (co ? haversine(lat, lng, co.lat, co.lon) : 1e6); };
+    const it = its.sort((a, b) => rank(a) - rank(b))[0], ti = it.common.title, kind = String(it['bunka-11-s'] || '').replace(/[(（]([^)）(]*)[)）]/g, '・$1');   // 登録有形文化財(建造物) → 登録有形文化財・建造物
+    const lead = _descNorm(ti) === v ? (kind ? kind + '。' : '') : ti + (kind ? '（' + kind + '）' : '') + '：';   // 名前がちがう（梶間家住宅主屋など）ときは、どの文化財かを先に書く
+    return {text: lead + _descTrim(it.common.description) + '\n（出典：文化遺産オンライン「' + ti + '」・文化庁・CC BY 4.0）', src: 'bunka'};   // 解説文は CC BY（ジャパンサーチのデータベース情報「解説文：CC BY」）
+  }
+  // ④ ウィキデータ：同じ名前で場所が近いもの（日本語の記事があればその書き出し、無ければ短い説明）
   for (const v of vars) {
     const sj = await _descGet(DESC_WIKIDATA + '?action=wbsearchentities&format=json&origin=*&language=ja&uselang=ja&limit=10&search=' + encodeURIComponent(v));
     const qs = ((sj && sj.search) || []).filter(e => _descNorm(e.label) === v).map(e => e.id).slice(0, 8);
@@ -10344,6 +10371,20 @@ async function _descFind(name, lat, lng){
       if (d) return {text: d + '\n（出典：ウィキデータ）', src: 'wikidata'};
     }
   }
+  // ⑤ ウィキペディアの本文に出てくる文：名前とこのコースの市町村名が同じ文にあるもの（v254。例：本多忠鄰の記事「墓所は兵庫県宍粟市山崎町上寺の大雲寺。」）
+  if (short) for (const v of vars) {
+    const j = await _descGet(NEARBY_WIKI + '?action=query&list=search&srlimit=5&format=json&origin=*&srsearch=' + encodeURIComponent('"' + v + '" ' + short));
+    const hits = (((j && j.query) || {}).search || []).filter(a => _descNorm(a.title) !== v && area.indexOf(_descNorm(a.title)) < 0).slice(0, 3);   // 市町村そのものの記事（一覧が多い）は除く
+    for (const h of hits) {
+      const xj = await _descGet(NEARBY_WIKI + '?action=query&prop=extracts%7Cpageprops&ppprop=disambiguation&explaintext=1&exsectionformat=plain&format=json&origin=*&pageids=' + h.pageid);
+      const pg = Object.values(((xj && xj.query) || {}).pages || {})[0];
+      if (!pg || !pg.extract || (pg.pageprops && 'disambiguation' in pg.pageprops)) continue;
+      const ss = _descSentences(pg.extract), i = ss.findIndex(x => x.indexOf(v) >= 0 && area.some(w => x.indexOf(w) >= 0) && _descSentenceOk(x, v));
+      if (i < 0) continue;
+      let t = ss[i]; if (ss[i + 1] && ss[i + 1].indexOf(v) >= 0 && (t + ss[i + 1]).length <= DESC_MAX) t += ss[i + 1];   // 続く文にも名前があれば足す
+      return {text: '「' + pg.title + '」の記事より：' + t + wiki(pg.title), src: 'wikipedia-mention'};   // だれ／何の記事の文かを先に書く
+    }
+  }
   return null;
 }
 /* 調べた結果を覚えておく（同じ名前・同じ場所はもう一度ネットに聞かない）。見つからなかったことも覚える */
@@ -10354,7 +10395,7 @@ function _descCacheSet(k, t){
     localStorage.setItem(LS.descCache, JSON.stringify(c)); } catch(_) {}
 }
 async function _descLookup(name, lat, lng, force){
-  const k = _descNorm(name) + '@' + Number(lat).toFixed(3) + ',' + Number(lng).toFixed(3);
+  const k = DESC_VER + ':' + _descNorm(name) + '@' + Number(lat).toFixed(3) + ',' + Number(lng).toFixed(3);   // v254：探し方の版も鍵に入れる
   if (!force) { const c = _descCacheAll()[k]; if (c) return c.t ? {text: c.t, cached: true} : null; }
   const r = await _descFind(name, lat, lng);   // 通信に失敗したら投げる（覚えない）
   _descCacheSet(k, r ? r.text : '');
@@ -10362,14 +10403,20 @@ async function _descLookup(name, lat, lng, force){
 }
 /* 自動で探したスポット（コース・スポット・名前ごと）。同じ名前ではもう自動では探さない＝消した解説を勝手に戻さない */
 function _descDoneKey(wp){ return String(currentCourseId) + ':' + wp.id; }
-function _descDoneGet(wp){ try { return (JSON.parse(localStorage.getItem(LS.descDone) || '{}') || {})[_descDoneKey(wp)]; } catch(_) { return undefined; } }
-function _descDoneSet(wp, name){ try { const o = JSON.parse(localStorage.getItem(LS.descDone) || '{}') || {}; o[_descDoneKey(wp)] = _descNorm(name); localStorage.setItem(LS.descDone, JSON.stringify(o)); } catch(_) {} }
+function _descDoneGet(wp){ try { const v = (JSON.parse(localStorage.getItem(LS.descDone) || '{}') || {})[_descDoneKey(wp)]; return (typeof v === 'string' && v.indexOf(DESC_VER + '|') === 0) ? v.slice(String(DESC_VER).length + 1) : undefined; } catch(_) { return undefined; } }   // 前の版で探した印は使わない（探す先を足したので、もう一度探す）
+function _descDoneSet(wp, name){ try { const o = JSON.parse(localStorage.getItem(LS.descDone) || '{}') || {}; o[_descDoneKey(wp)] = DESC_VER + '|' + _descNorm(name); localStorage.setItem(LS.descDone, JSON.stringify(o)); } catch(_) {} }
 /* 説明の種類：空／取り込みのメモ（情報：…）／書いてある説明（上書きしない） */
 function _descKind(d){
   const t = String(d || '').trim(); if (!t) return 'empty';
   const m = t.match(/^([\s\S]*?)\n?（情報：[^）]*）$/);
   return (m && m[1].length <= 160) ? 'note' : 'own';
 }
+function _descFreshNote(d, name){   // v254：名前を付けたスポットの、地理院の記号の古いメモ「寺院（地図記号。名前は地図に書かれていません）」→「寺院」（出典の行は残す）
+  const t = String(d || ''), i = t.indexOf('\n'), first = i < 0 ? t : t.slice(0, i);
+  const m = first.match(/^(.+)（地図記号。名前は地図に書かれていません）$/);
+  return (m && _descNorm(name) !== _descNorm(m[1])) ? m[1] + t.slice(first.length) : t;
+}
+const DESC_SRC_NAME = {wikipedia: 'ウィキペディア', 'wikipedia-mention': 'ウィキペディア', wikidata: 'ウィキデータ', bunka: '文化遺産オンライン'};
 function _descMerge(old, found){
   const k = _descKind(old); if (k === 'own' || !found) return null;
   return k === 'empty' ? found : found + '\n' + String(old).trim();   // メモ（住所・営業時間など）は残す
@@ -10391,8 +10438,9 @@ async function descFillAll(manual){
       try { r = await _descLookup(w.name, w.lat, w.lng, manual); } catch(_) { fail++; continue; }
       if (!wps.includes(w)) continue;
       _descDoneSet(w, w.name);
-      const nd = r ? _descMerge(w.desc, r.text) : null;            // 探している間に書かれた説明は上書きしない
-      if (nd && nd !== w.desc) { if (!snap) { saveSnapshot(); snap = true; } w.desc = nd; n++; }
+      const base = _descFreshNote(w.desc, w.name);                  // v254：名前を付けたのに「名前は地図に書かれていません」と残っているメモを直す
+      const nd = r ? _descMerge(base, r.text) : (base !== w.desc ? base : null);   // 探している間に書かれた説明は上書きしない
+      if (nd && nd !== w.desc) { if (!snap) { saveSnapshot(); snap = true; } w.desc = nd; if (r) n++; }
       if (!(r && r.cached)) await new Promise(res => setTimeout(res, DESC_GAP_MS));   // 相手のサーバーに負担をかけない
     }
   } finally { _descBusy = false; }
@@ -10414,11 +10462,12 @@ async function mDescFind(manual){
   try { r = await _descLookup(name, wp.lat, wp.lng, manual); } catch(_) { if (seq === _mDescSeq) _mDescStatus('通信できなかったため、探せませんでした', 'warn'); return; }
   if (seq !== _mDescSeq || editId !== wp.id) return;                   // その間に別のスポットを開いた／名前を変えた
   _descDoneSet(wp, name);
-  if (!r) { _mDescStatus('解説は見つかりませんでした（自分で書けます）'); return; }
-  const cur = ta.value, nd = manual && _descKind(cur) === 'own' ? r.text : _descMerge(cur, r.text);
+  const cur = _descFreshNote(ta.value, name);   // v254：名前を付けたのに「名前は地図に書かれていません」と残っているメモを直す
+  if (!r) { if (cur !== ta.value) ta.value = cur; _mDescStatus('解説は見つかりませんでした（自分で書けます）'); return; }
+  const nd = manual && _descKind(cur) === 'own' ? r.text : _descMerge(cur, r.text);
   if (!nd) { _mDescStatus(''); return; }
   ta.value = nd;
-  _mDescStatus(r.src === 'wikidata' ? 'ウィキデータから入れました。直してから「保存」できます' : 'ウィキペディアから入れました。直してから「保存」できます', 'ok');
+  _mDescStatus((DESC_SRC_NAME[r.src] || 'ウィキペディア') + 'から入れました。直してから「保存」できます', 'ok');
 }
 function _mDescOnName(){ clearTimeout(_mDescT); _mDescT = setTimeout(() => mDescFind(false), 900); }
 /* スタート地点を決める（v227・オーナー指示「取り込みが終わったら、最初にスタート地点を決めることから始める」）。

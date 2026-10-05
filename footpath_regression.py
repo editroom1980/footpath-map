@@ -1167,6 +1167,15 @@ def static_checks(src):
         and '#mobileStampBtn[hidden]' in src and src.count('#stampBar{display:none!important}') == 2
         and "el.onclick = openStampSheet;" in src and '_stampTap' not in src
         and "mb.querySelector('.st-l').textContent = c.done + '/' + c.total;" in src and '#nextBar:not([hidden]) ~ #stampBar' not in src)
+    # --- v254: 名前の付いたスポットは、その名前で解説を探す先を足した（オーナー指示「寺院の名前など、すでにつけられているものはその名前で調べて解説を入れるように」）---
+    chk('静的', '解説を探す先：文化遺産オンライン（ジャパンサーチ経由・場所が近いもの）とウィキペディアの本文の文（名前と市町村名が同じ文）を足した。出典を付ける。Google は使わない',
+        "DESC_JPS = 'https://jpsearch.go.jp/api/item/search/jps-cross'" in src and "'\\n（出典：文化遺産オンライン「' + ti + '」・文化庁・CC BY 4.0）'" in src
+        and "'」の記事より：' + t + wiki(pg.title)" in src and 'function _descSentences' in src and 'function _descSentenceOk' in src
+        and "c.database !== 'bunka'" in src and 'google' not in src[src.index('function _descFind'):src.index('function _descCacheAll')].lower())
+    chk('静的', '取りちがえ・古いメモ・前の版：県の名前だけでは確かめない。名前を付けた地理院の記号の「名前は地図に書かれていません」は直す。探し方の版（DESC_VER）を覚えた結果と印に入れる',
+        "if (/[都道府県]$/.test(x)) return;" in src and 'function _descFreshNote' in src and 'const DESC_VER = 2;' in src
+        and "const k = DESC_VER + ':' + _descNorm(name)" in src and "o[_descDoneKey(wp)] = DESC_VER + '|' + _descNorm(name)" in src)
+    chk('静的', '正規表現の後ろ読み（古い iPhone で全体が動かなくなる）を使っていない', '(?<=' not in src and '(?<!' not in src)
     # --- v253: わたしの写真（オーナー指示「歩いた人が写真を撮って、自分の端末に保存でき、タップで表示できる。表示は他のアプリを参考に、見やすく楽しく」）---
     chk('静的', 'わたしの写真：カードの「📷 撮る」「🖼 写真から選ぶ」（何枚でも）とスタンプの瞬間の「📷 記念に撮る」。写真は IndexedDB、一覧は LS.myPhotos（コースごと・この端末だけ）。片づけで消さない',
         '<input type="file" accept="image/*" capture="environment" id="myCam" hidden onchange="_myAdd(this)">' in src
@@ -1193,7 +1202,7 @@ def static_checks(src):
     # --- v252: スポットの解説を名前から探して入れる・あとから直せる（オーナー指示）---
     chk('静的', '解説は名前から探す：ウィキペディア（近くの記事・同じ名前で場所が近いか本文に市町村名）→ ウィキデータ（場所が近い）。Google は使わない。出典を付ける',
         'function _descFind' in src and 'function _descLookup' in src and "const DESC_NEAR_M = 3000" in src and "const DESC_SUFFIX_RE = /(線路跡|跡地|跡|全景|入口|入り口)$/;" in src
-        and "'\\n（出典：ウィキペディア「' + t + '」）'" in src and "'\\n（出典：ウィキデータ）'" in src and "ppprop=disambiguation" in src
+        and "'\\n（出典：ウィキペディア「' + t + '」・CC BY-SA 4.0）'" in src and "'\\n（出典：ウィキデータ）'" in src and "ppprop=disambiguation" in src
         and "area.some(w => pg.extract.indexOf(w) >= 0)" in src and 'google' not in src[src.index('function _descFind'):src.index('function _descCacheAll')].lower())
     chk('静的', '解説は上書きしない（書いてある説明はそのまま、取り込みのメモは残してその上に入れる）。自動はそのスポットのその名前で1回だけ。覚える鍵は LS に',
         "function _descKind" in src and "function _descMerge" in src and "return k === 'empty' ? found : found + '\\n' + String(old).trim();" in src
@@ -2106,15 +2115,27 @@ def functional_checks(index_path):
             const e = mk('酒蔵', '', 0.003);                         // ④ ウィキデータ（場所が近い）→ 短い説明
             const f = mk('近くの寺', '自分で書いた説明', 0.004);     // ⑤ 書いてある説明は上書きしない
             const g = mk('メモの寺', '神社\\n（情報：OpenStreetMap）', 0.005);  // ⑥ 取り込みのメモ → その上に入れる
+            const h = mk('旧古い家住宅', '', 0.006);                 // ⑦ v254：文化遺産オンライン（「旧」を外す・主屋を選ぶ・遠い同じ名前は使わない）
+            const i2 = mk('山寺', '', 0.007);                        // ⑧ v254：ウィキペディアの本文の文（名前と町の名前が同じ文）
+            const j2 = mk('酒の蔵', '', 0.008);                      // ⑨ v254：一覧の1行だけ → 使わない
+            const k2 = mk('名付け寺', '寺院（地図記号。名前は地図に書かれていません）\\n（情報：国土地理院「地理院地図Vector」）', 0.009);   // ⑩ v254：名前を付けた地理院の記号 → 古いメモを直す
+            const l2 = mk('寺院', '寺院（地図記号。名前は地図に書かれていません）\\n（情報：国土地理院「地理院地図Vector」）', 0.010);       // ⑪ 名前が付いていないまま → そのまま
             const calls = [];
             _descGet = async (u) => { calls.push(u); const U = decodeURIComponent(u);
               if (U.indexOf('list=geosearch') >= 0) return {query: {geosearch: [{pageid: 1, title: '近くの寺', lat: c.lat + 0.0005, lon: c.lng}, {pageid: 6, title: 'メモの寺', lat: c.lat + 0.005, lon: c.lng}]}};
-              if (U.indexOf('list=search') >= 0) { if (U.indexOf('srsearch=同名寺') >= 0) return {query: {search: [{pageid: 2, title: '同名寺'}]}}; if (U.indexOf('srsearch=町の鉄道') >= 0 && U.indexOf('線路跡') < 0) return {query: {search: [{pageid: 3, title: '町の鉄道'}]}}; return {query: {search: []}}; }
+              if (U.indexOf('jpsearch.go.jp') >= 0) { if (U.indexOf('keyword=古い家住宅') >= 0) return {hit: 3, list: [
+                  {common: {database: 'bunka', title: '古い家住宅西蔵', description: '酒造用具を収納した蔵。', coordinates: {lat: c.lat + 0.006, lon: c.lng}}, 'bunka-11-s': '登録有形文化財(建造物)'},
+                  {common: {database: 'bunka', title: '古い家住宅主屋', description: '通りに面する旧造酒屋の主屋。地域の歴史的景観の核となる町家。', coordinates: {lat: c.lat + 0.0061, lon: c.lng}}, 'bunka-11-s': '登録有形文化財(建造物)'},
+                  {common: {database: 'bunka', title: '古い家住宅主屋', description: '遠くの別の家。', coordinates: {lat: 38.2, lon: 140.8}}}]}; return {hit: 0, list: []}; }
+              if (U.indexOf('list=search') >= 0) { if (U.indexOf('srsearch="山寺"') >= 0) return {query: {search: [{pageid: 8, title: '殿様'}]}}; if (U.indexOf('srsearch="酒の蔵"') >= 0) return {query: {search: [{pageid: 9, title: '県の一覧'}]}};
+                if (U.indexOf('srsearch=同名寺') >= 0) return {query: {search: [{pageid: 2, title: '同名寺'}]}}; if (U.indexOf('srsearch=町の鉄道') >= 0 && U.indexOf('線路跡') < 0) return {query: {search: [{pageid: 3, title: '町の鉄道'}]}}; return {query: {search: []}}; }
               if (U.indexOf('prop=extracts') >= 0 && U.indexOf('pageids=') >= 0) { const P = {
                   1: {pageid: 1, title: '近くの寺', extract: '近くの寺（ちかくのてら）は、兵庫県宍粟市にある寺院。江戸時代に建てられた。', coordinates: [{lat: c.lat + 0.0005, lon: c.lng}]},
                   2: {pageid: 2, title: '同名寺', extract: '同名寺は、宮城県仙台市にある寺院。', coordinates: [{lat: 38.2, lon: 140.8}]},
                   3: {pageid: 3, title: '町の鉄道', extract: '町の鉄道は、兵庫県宍粟市でかつて木材を運んだ鉄道。'},
-                  6: {pageid: 6, title: 'メモの寺', extract: 'メモの寺は宍粟市の古い寺。', coordinates: [{lat: c.lat + 0.005, lon: c.lng}]}};
+                  6: {pageid: 6, title: 'メモの寺', extract: 'メモの寺は宍粟市の古い寺。', coordinates: [{lat: c.lat + 0.005, lon: c.lng}]},
+                  8: {pageid: 8, title: '殿様', extract: '殿様は山崎藩主。\\n死去した。墓所は兵庫県宍粟市山崎町上寺の山寺。山寺は後に移った。\\n参考文献'},
+                  9: {pageid: 9, title: '県の一覧', extract: '一覧\\n酒の蔵 （宍粟市）\\nほかの蔵 （姫路市）'}};
                 const ids = (U.match(/pageids=([0-9|]+)/) || [])[1] || ''; const pages = {}; ids.split('|').forEach(i => { if (P[i]) pages[i] = P[i]; }); return {query: {pages}}; }
               if (U.indexOf('wbsearchentities') >= 0) return U.indexOf('search=酒蔵') >= 0 ? {search: [{id: 'Q9', label: '酒蔵'}]} : {search: []};
               if (U.indexOf('wbgetentities') >= 0) return {entities: {Q9: {claims: {P625: [{mainsnak: {datavalue: {value: {latitude: c.lat + 0.003, longitude: c.lng}}}}]}, descriptions: {ja: {value: '兵庫県宍粟市にある酒蔵'}}}}};
@@ -2125,13 +2146,23 @@ def functional_checks(index_path):
             out.suffix = (await _descLookup('町の鉄道線路跡', d.lat, d.lng, true) || {}).text || null;
             out.wd = (await _descLookup('酒蔵', e.lat, e.lng, true) || {}).text || null;
             const n0 = calls.length; await _descLookup('近くの寺', a.lat, a.lng, false); out.cached = calls.length === n0;   // 2回目はネットに聞かない
+            // v254：文化遺産オンライン・ウィキペディアの本文の文・一覧の1行は使わない・県の名前では確かめない・前の版の印は使わない
+            out.bunka = (await _descLookup('旧古い家住宅', h.lat, h.lng, true) || {}).text || null;
+            out.mention = (await _descLookup('山寺', i2.lat, i2.lng, true) || {}).text || null;
+            out.listOnly = await _descLookup('酒の蔵', j2.lat, j2.lng, true);
+            out.area = _descAreaWords().join(',');
+            try { const o = JSON.parse(localStorage.getItem(LS.descDone) || '{}'); o[_descDoneKey(a)] = '近くの寺'; localStorage.setItem(LS.descDone, JSON.stringify(o)); } catch(_){}
+            out.oldDone = _descDoneGet(a) === undefined; _descDoneSet(a, '近くの寺'); out.newDone = _descDoneGet(a) === '近くの寺';
+            try { localStorage.removeItem(LS.descDone); } catch(_){}
             out.merge = [_descMerge('', 'X'), _descMerge('自分の説明', 'X'), _descMerge('神社\\n（情報：OpenStreetMap）', 'X')];
             // まとめて入れる（ボタンから）：①③④⑥に入り、②⑤はそのまま。取り消しで戻る
             const u0 = undoStack.length;
             await descFillAll(true);
-            out.bulk = {a: a.desc.indexOf('（出典：ウィキペディア「近くの寺」）') > 0, b: b.desc === '', d: d.desc.indexOf('（出典：ウィキペディア「町の鉄道」）') > 0,
+            out.bulk = {a: a.desc.indexOf('（出典：ウィキペディア「近くの寺」・CC BY-SA 4.0）') > 0, b: b.desc === '', d: d.desc.indexOf('（出典：ウィキペディア「町の鉄道」・CC BY-SA 4.0）') > 0,
                         e: e.desc === '兵庫県宍粟市にある酒蔵\\n（出典：ウィキデータ）', f: f.desc === '自分で書いた説明',
-                        g: g.desc.indexOf('メモの寺は宍粟市の古い寺。') === 0 && /（情報：OpenStreetMap）$/.test(g.desc), undo: undoStack.length === u0 + 1};
+                        g: g.desc.indexOf('メモの寺は宍粟市の古い寺。') === 0 && /（情報：OpenStreetMap）$/.test(g.desc), undo: undoStack.length === u0 + 1,
+                        k: k2.desc === '寺院\\n（情報：国土地理院「地理院地図Vector」）', l: l2.desc === '寺院（地図記号。名前は地図に書かれていません）\\n（情報：国土地理院「地理院地図Vector」）',
+                        h: h.desc.indexOf('古い家住宅主屋（登録有形文化財・建造物）：') === 0, i: i2.desc.indexOf('「殿様」の記事より：') === 0, j: j2.desc === ''};
             undoLast(); out.undone = ((wps.find(w => w.id === a.id) || {}).desc || '') === '';
             // スポットの編集：「名前から探す」で説明の欄に入り、一言が出る。書いてある説明は聞いてから
             const a2 = wps.find(w => w.id === a.id); openModal(a2.id); await new Promise(r => setTimeout(r, 50));
@@ -2150,13 +2181,20 @@ def functional_checks(index_path):
             return out;
           }catch(e){ return 'ERR:'+e.message; } }""")
         chk('機能', '解説を名前から探す：近くの同じ名前の記事は入る・遠い同じ名前は入らない・「線路跡」を外して本文の町の名前で確かめる・ウィキデータは短い説明。2回目はネットに聞かない',
-            isinstance(ds, dict) and (ds.get('near') or '').startswith('近くの寺（ちかくのてら）は') and (ds.get('near') or '').endswith('（出典：ウィキペディア「近くの寺」）')
+            isinstance(ds, dict) and (ds.get('near') or '').startswith('近くの寺（ちかくのてら）は') and (ds.get('near') or '').endswith('（出典：ウィキペディア「近くの寺」・CC BY-SA 4.0）')
             and ds.get('far') is None and (ds.get('suffix') or '').startswith('町の鉄道は、兵庫県宍粟市') and ds.get('wd') == '兵庫県宍粟市にある酒蔵\n（出典：ウィキデータ）'
             and ds.get('cached') and ds.get('merge') == ['X', None, 'X\n神社\n（情報：OpenStreetMap）'], str(ds)[:300])
         chk('機能', '解説をまとめて入れる：空とメモだけのスポットに入り、書いてある説明と見つからないものはそのまま。取り消しで戻る。スポットの編集の「名前から探す」で入り、書いてある説明は聞いてから。公開に「スポットの解説」',
             isinstance(ds, dict) and all((ds.get('bulk') or {}).get(k) for k in ('a', 'b', 'd', 'e', 'f', 'g', 'undo')) and ds.get('undone')
             and (ds.get('modal') or {}).get('filled') and 'ウィキペディアから入れました' in (ds.get('modal') or {}).get('st', '') and ds.get('modalKeep')
             and '名前から探す' in ds.get('share', ''), str(ds)[:300])
+
+        chk('機能', '解説を名前から探す（v254）：文化遺産オンライン（「旧」を外す・主屋を選ぶ・遠い同じ名前は使わない）、ウィキペディアの本文の文（記事名を先に・続く文も）。一覧の1行だけは使わない。県の名前では確かめない。前の版で探した印は使わない',
+            isinstance(ds, dict) and ds.get('bunka') == '古い家住宅主屋（登録有形文化財・建造物）：通りに面する旧造酒屋の主屋。地域の歴史的景観の核となる町家。\n（出典：文化遺産オンライン「古い家住宅主屋」・文化庁・CC BY 4.0）'
+            and ds.get('mention') == '「殿様」の記事より：墓所は兵庫県宍粟市山崎町上寺の山寺。山寺は後に移った。\n（出典：ウィキペディア「殿様」・CC BY-SA 4.0）'
+            and ds.get('listOnly') is None and ds.get('area') == '宍粟市,宍粟,山崎町' and ds.get('oldDone') and ds.get('newDone'), str({k: ds.get(k) for k in ('bunka', 'mention', 'listOnly', 'area', 'oldDone', 'newDone')} if isinstance(ds, dict) else ds)[:400])
+        chk('機能', '解説をまとめて入れる（v254）：文化遺産オンライン・本文の文も入る。名前を付けた地理院の記号の古いメモ「（地図記号。名前は地図に書かれていません）」は直し、名前が付いていないものはそのまま',
+            isinstance(ds, dict) and all((ds.get('bulk') or {}).get(k) for k in ('h', 'i', 'j', 'k', 'l')), str((ds.get('bulk') if isinstance(ds, dict) else ds))[:400])
 
         # v251: スタンプはコースのスポットだけ（立ち寄り先は数えない）・10m 以内。カードのフリックもコースのスポットだけ。カードは写真を小さく左に、その隣に名前と解説
         cs = page.evaluate("""async ()=>{ try{
