@@ -351,19 +351,20 @@ body.moving #modeHint{display:none!important}
 .vip-desc{font-size:13px;color:#444;line-height:1.7;margin-bottom:8px;white-space:pre-wrap}
 .vip-tel a{font-size:13px;color:#1a6fc4;display:block;margin-bottom:10px}
 /* 歩く人のカードの写真（v176）：白いふちとテープで「貼ってある」見た目に。少しだけ傾ける */
-.vip-photos{display:flex;flex-wrap:wrap;gap:18px 12px;margin:18px 4px 6px;padding-top:6px}
-.vip-ph{position:relative;display:block;width:calc(50% - 12px);max-width:200px;padding:7px 7px 20px;background:#fff;border-radius:3px;
-        box-shadow:0 3px 12px rgba(60,40,20,.22),0 0 0 1px rgba(0,0,0,.05);transform:rotate(-1.8deg);transition:transform .18s ease}
-.vip-ph:nth-child(even){transform:rotate(1.7deg)}
-.vip-ph:nth-child(3n){transform:rotate(-0.7deg)}
-.vip-ph:active{transform:rotate(0deg) scale(1.03)}
-.vip-ph::before{content:'';position:absolute;left:50%;top:-8px;width:52px;height:17px;margin-left:-26px;border-radius:2px;
-        background:linear-gradient(180deg,rgba(233,199,142,.9),rgba(212,168,104,.8));box-shadow:0 1px 3px rgba(0,0,0,.16);transform:rotate(-2.5deg)}
-.vip-ph:nth-child(even)::before{transform:rotate(3deg)}
-.vip-ph:empty{display:none}
-.vip-photos img{display:block;width:100%;height:118px;object-fit:cover;border-radius:2px;cursor:pointer;background:#F3EEE6}
-.vip-ph:only-child{width:100%;max-width:100%}
-.vip-ph:only-child img{height:190px}
+/* v251：写真は小さく左に（いまの3分の1）、その隣に名前と解説。貼った写真（v176）の見た目は小さくしても残す */
+.vip-row{display:flex;gap:14px;align-items:flex-start}
+.vip-main{flex:1;min-width:0}
+.vip-photos{flex:none;position:relative;width:min(33%,150px);margin:6px 2px 4px 2px;padding-top:4px}
+.vip-ph{position:relative;display:block;width:100%;padding:4px 4px 12px;background:#fff;border-radius:3px;
+  box-shadow:0 1px 2px rgba(0,0,0,.14),0 4px 10px rgba(0,0,0,.12);transform:rotate(-2.2deg);transition:transform .15s}
+.vip-ph:active{transform:rotate(0deg) scale(1.04)}
+.vip-ph::before{content:'';position:absolute;left:50%;top:-7px;width:36px;height:12px;margin-left:-18px;border-radius:2px;
+  background:linear-gradient(180deg,rgba(233,199,142,.9),rgba(212,168,104,.8));box-shadow:0 1px 2px rgba(0,0,0,.14);transform:rotate(3deg)}
+.vip-photos img{display:block;width:100%;aspect-ratio:4/3;height:auto;object-fit:cover;border-radius:2px;cursor:zoom-in;background:#F3EEE6}
+.vip-more{position:absolute;right:-6px;bottom:-4px;min-width:30px;height:24px;padding:0 7px;border:none;border-radius:12px;background:rgba(35,28,20,.82);color:#fff;font-family:inherit;font-size:12px;font-weight:800;cursor:pointer}
+.vip-row.has-ph .vip-hdr{margin-bottom:6px}
+.vip-row.has-ph .vip-dot{width:28px;height:28px}
+.vip-row.has-ph .vip-dot2{width:22px;height:22px}
 @media (prefers-reduced-motion:reduce){.vip-ph{transition:none}}
 /* 埋め込み表示（?embed=1）：ホームページの中に置くので、地図だけを見せる */
 body.embed #hdr, body.embed #sidebar, body.embed #tbar, body.embed #pcHint, body.embed #pcTr, body.embed #pcBl, body.embed #mobileTopBar, body.embed #mobileShelf,
@@ -1005,6 +1006,12 @@ body.embed #nextBar{display:none!important}
 #photoView img{max-width:100%;max-height:100%;object-fit:contain;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 #photoView .pv-x{position:absolute;top:calc(10px + var(--sat));right:calc(10px + env(safe-area-inset-right));min-height:44px;padding:0 18px;border:1.5px solid rgba(255,255,255,.7);border-radius:22px;background:rgba(0,0,0,.55);color:#fff;font-family:inherit;font-size:15px;font-weight:800;cursor:pointer}
 #photoView .pv-hint{position:absolute;left:0;right:0;bottom:calc(14px + var(--sab));text-align:center;color:rgba(255,255,255,.75);font-size:12px;pointer-events:none}
+/* v251：何枚かあるときは ‹ › と「名前　2 / 5」 */
+#photoView .pv-nav{position:absolute;top:50%;width:44px;height:64px;margin-top:-32px;border:none;border-radius:12px;background:rgba(0,0,0,.35);color:#fff;font-size:34px;line-height:1;cursor:pointer;font-family:inherit}
+#photoView .pv-nav.prev{left:calc(6px + env(safe-area-inset-left))}
+#photoView .pv-nav.next{right:calc(6px + env(safe-area-inset-right))}
+#photoView .pv-nav[hidden],#photoView .pv-cap[hidden]{display:none}
+#photoView .pv-cap{position:absolute;left:16px;right:16px;bottom:calc(40px + var(--sab));text-align:center;color:#fff;font-size:14px;font-weight:700;text-shadow:0 1px 4px rgba(0,0,0,.6);pointer-events:none}
 /* v244：下のボタンの段（閉じる・決める）は窓の下に貼り付ける。中身が長いと、流さないと閉じるボタンに届かなかった */
 .fsh > .ds-row, #descSheet > .ds-row, #kokoroeSheet > .ds-row, #infoSheet > .ds-row, #guideSheet > .ds-row, #renameSheet > .ds-row{
   position:sticky;bottom:calc(-1 * max(16px, var(--sab)));z-index:2;background:#fff;margin-left:-16px;margin-right:-16px;padding:10px 16px max(16px, var(--sab));box-shadow:0 -1px 0 rgba(0,0,0,.06)}
@@ -1689,7 +1696,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
       <div id="walkTip">
         <div class="ft-ic">🚶</div>
         <div class="ft-t">この地図の使いかた</div>
-        <div class="ft-d">・○をタップすると、写真と解説が見られます<br>・<b>➤ を押して歩く</b>と、スポットに 50m まで近づいたときにスタンプが押されます（右の列のスタンプで一覧）<br>・右の ➤ を押すと、いまの場所を追いかけて、次のスポットまでの距離が出ます（もう一度押すと止まります）<br>・田畑や私有地には入らない、ゴミは持ち帰る、動植物や農作物は採らない（心得）<br>・見つけたもの（植物・マンホールの蓋…）は 📷 で写真とひとことを貼れます（この端末にだけ残ります）</div>
+        <div class="ft-d">・○をタップすると、写真と解説が見られます<br>・<b>➤ を押して歩く</b>と、コースのスポットに 10m まで近づいたときにスタンプが押されます（右の列のスタンプで一覧）<br>・右の ➤ を押すと、いまの場所を追いかけて、次のスポットまでの距離が出ます（もう一度押すと止まります）<br>・田畑や私有地には入らない、ゴミは持ち帰る、動植物や農作物は採らない（心得）<br>・見つけたもの（植物・マンホールの蓋…）は 📷 で写真とひとことを貼れます（この端末にだけ残ります）</div>
         <button class="ft-b ghost" onclick="dismissWalkTip();openKokoroeSheet('view')">心得を読む</button>
         <button class="ft-b" onclick="dismissWalkTip()">わかった</button>
         <div class="ft-n">この案内は最初の1回だけ出ます</div>
@@ -1787,7 +1794,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
           </div>
           <div class="sb-now" id="stNow"></div>
           <div class="sb-grid" id="stGrid"></div>
-          <div class="sb-how">押し方：右の <b>➤</b>（現在地を追いかける）を押して歩くと、スポットに <b>50m</b> まで近づいたとき自動でスタンプが押されます。全部そろうと<b>完歩</b>。記念の1枚（写真）に完歩之印が入ります。</div>
+          <div class="sb-how">押し方：右の <b>➤</b>（現在地を追いかける）を押して歩くと、コースのスポット（S・番号・G）に <b>10m</b> まで近づいたとき自動でスタンプが押されます。全部そろうと<b>完歩</b>。記念の1枚（写真）に完歩之印が入ります。</div>
         </div>
         <div class="ds-row">
           <button class="ds-btn ghost" onclick="closeStampSheet()">閉じる</button>
@@ -2329,7 +2336,7 @@ const CUE_MERGE_M = 8, CUE_SNAP_M = 30, CUE_AHEAD_M = 120, CUE_SHEET_MAX = 40;  
 /* 写真（v142）：保存は長辺 PHOTO_MAX_PX の JPEG（描き直して保存するので EXIF＝撮影場所などの情報は残らない）。
    シール＝スポットの1枚目の写真を STICKER_PX 角に切り出した地図の印。近いシールは STICKER_CLUSTER_PX 以内で束ねる */
 const PHOTO_MAX_PX = 1024, PHOTO_QUALITY = 0.66, PHOTO_MAX_PER_SPOT = 12;
-const STICKER_PX = 96, STICKER_QUALITY = 0.72, STICKER_CLUSTER_PX = 46;
+const STICKER_PX = 72, STICKER_QUALITY = 0.6, STICKER_CLUSTER_PX = 46;   // v251：96px・0.72 → 72px・0.6（オーナー指示「最初に表示される写真は解像度を抑えて軽く」。1枚約半分の重さ）
 /* 発見（v143・構想「参加者が見つけたものを貼って共有」の端末側）。歩く人がその端末に貼る。作者へはファイル（Web Share／保存）で送る */
 const FIND_COLOR = '#2E7D32', FIND_WORD_MAX = 30, FIND_BY_MAX = 12, FIND_POS_FRESH_MS = 120000;
 /* まわりの施設（v144・構想 D）。Google の情報は Google 以外の地図に載せられない（規約）ので使わない。
@@ -2488,13 +2495,13 @@ const ROUTER_COOLDOWN_MS = 60000;   // 全部だめだったあと、次に試�
 // --- 歩く速さ（所要時間の計算）---
 const WALK_SPEEDS = [3, 4, 5];   // km/h。v224：3段階に（ゆっくり／ふつう／速め）
 const WALK_SPEED_DEFAULT = 0;              // 既定は 3km/h。各地のフットパスマップは時速2.5〜3km（立ち止まる前提）で書かれている（v138）
-const ARRIVE_M = 25;                       // これ以内なら「到着」と出す（スタンプの50mより厳しめ）（v138）
+const ARRIVE_M = 25;                       // これ以内なら「到着」と出す（v138。v251 からスタンプは 10m 以内）
 const NEXT_ACC_ABOUT_M = 40;               // 位置の精度がこれより悪ければ距離に「約」を付ける（v138）
 const NEXT_STALE_MS = 30000;               // これより古い位置は薄く出す（v138）
 // 登りの時間加算：標高100mにつき+10分（登り600mで1時間。ネイスミスの法則の一般的な係数）
 const CLIMB_MIN_PER_100M = 10;
 // --- スタンプラリー（歩いた人の記録。閲覧モードのときだけ働く）---
-const VISIT_RADIUS_M = 50;    // これだけ近づいたら「訪れた」とみなす(m)。GPSの誤差を見込む
+const VISIT_RADIUS_M = 10;    // これだけ近づいたら「訪れた」とみなす(m)。v251：50→10（オーナー指示「スポットの10メートル以内」）
 const STAMP_INKS   = ['#C43E28', '#A8263A', '#2C7350', '#284C88', '#6A428C'];   // v250：スタンプのインク（朱・紅・緑・藍・紫。駅スタンプの5色に倣う）
 const STAMP_FRAMES = ['circle', 'hex', 'oct', 'rings'];                       // v250：枠（丸・六角・八角・四つ丸。同じく駅スタンプの4つの枠）
 const STAMP_SEAL   = '#C2302A';                                                // v250：完歩之印の朱
@@ -2982,7 +2989,7 @@ async function gcPhotos(){
   const keys = await _photoKeys();
   if (!keys || !keys.length) return 0;
   const used = new Set();
-  const keep = p => { if (_isPhotoRef(p)) { const id = p.slice(PHOTO_REF.length); used.add(id); used.add('s:' + id); } };   // s:＝シール（v142）
+  const keep = p => { if (_isPhotoRef(p)) { const id = p.slice(PHOTO_REF.length); used.add(id); used.add('s2:' + id); } };   // s2:＝シール（v142・v251 で 72px に）
   getCourses().forEach(c => (c && c.wps || []).forEach(w => (w.photos || []).forEach(keep)));
   getCourses().forEach(c => (c && c.vps || []).forEach(v => (v && v.guide && v.guide.photos || []).forEach(keep)));   // 分岐の写真（v141）
   Object.values(_allFinds()).forEach(list => (list || []).forEach(f => (f && f.photos || []).forEach(keep)));           // 発見の写真（v143）
@@ -3545,7 +3552,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 手描きの道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した手描きの道id（直前取り消し用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v250';
+const APP_VERSION = 'v251';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat0', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -3970,12 +3977,12 @@ function renderShareInfo(){
   const dEl = document.getElementById('ssDesc');
   dEl.textContent = desc ? '書かれています ›' : '未記入 ›';
   dEl.classList.toggle('warn', !desc);
-  const spots = _stampTargets();
+  const spots = _allSpots(), st = _stampTargets();   // v251：写真は全部のスポット、スタンプはコースのスポットだけ
   const withPhoto = spots.filter(w => Array.isArray(w.photos) && w.photos.length > 0).length;
   const pEl = document.getElementById('ssPhoto');
   pEl.textContent = `${withPhoto} / ${spots.length}`;
   pEl.classList.toggle('warn', spots.length > 0 && withPhoto === 0);
-  document.getElementById('ssStamp').textContent = spots.length ? `${spots.length}か所` : 'なし';
+  document.getElementById('ssStamp').textContent = st.length ? `${st.length}か所` : 'なし';
   const kEl = document.getElementById('ssKokoroe');
   if (kEl) kEl.textContent = (courseInfo.kokoroe || '').trim() ? '標準＋この地域の追記 ›' : '標準の文 ›';
   const iEl = document.getElementById('ssInfo');
@@ -3998,7 +4005,7 @@ async function shareExit(kind){
 }
 /* 「写真つきスポット」を押したら、写真の無いスポットの編集画面へ（B3・v140） */
 function shareInfoPhoto(){
-  const missing = _stampTargets().filter(w => !(Array.isArray(w.photos) && w.photos.length));
+  const missing = _allSpots().filter(w => !(Array.isArray(w.photos) && w.photos.length));
   closeShareSheet();
   if (!missing.length) { showToast('写真は全部のスポットに入っています'); return; }
   if (viewMode) { showToast('写真の無いスポット：あと ' + missing.length); return; }
@@ -4398,7 +4405,7 @@ function wpIcon(wp, sz, anc) {
     }
   }
   // 閲覧モードで訪問済みなら、○の右上に小さなチェックを付ける（スタンプラリー）
-  const stamp = (viewMode && _visits && _visits[wp.id]) ? '<span class="wp-visited">✓</span>' : '';
+  const stamp = (viewMode && _visits && _visits[wp.id] && (_hasRole(wp) || _isNumbered(wp))) ? '<span class="wp-visited">✓</span>' : '';   // v251：コースのスポットだけ
   if (((_isNumbered(wp) && _hasCatIcon(wp)) || _hasRole(wp)) && !(_stickerOn() && wp.photos && wp.photos[0])) {   // 番号／役＋種類：種類の丸＋右上の小丸（v158・v226）
     const bsz = Math.max(14, Math.round(sz[0] * 0.55));   // 番号の小丸（v168：小さな印でも丸からはみ出しすぎない）
     return L.divIcon({className:'',
@@ -5231,7 +5238,11 @@ function loadVisits(){
   _visits = (currentCourseId == null) ? {} : (_allVisits()[String(currentCourseId)] || {});
   return _visits;
 }
-function _stampTargets(){ return wps.filter(w => w.type !== 'node'); }
+// コースに含まれるスポット（S・歩く順の番号・G）。スタンプ・次のスポット・カードのフリックはこれだけ（v251・オーナー指示
+// 「山崎は41か所あり、コースに含まれないスポットも全部訪れないと完了しないのはダメ」）。立ち寄り先（番号の無いスポット）は数えない
+function _courseSpots(){ return wps.filter(w => w && w.type !== 'node' && (_hasRole(w) || _isNumbered(w))); }
+function _stampTargets(){ return _courseSpots(); }
+function _allSpots(){ return wps.filter(w => w && w.type !== 'node'); }   // v251：作る人の画面で使う「全部のスポット」（立ち寄り先も含む）
 function visitCount(){
   const t = _stampTargets();
   return { done: t.filter(w => _visits[w.id]).length, total: t.length };
@@ -5347,7 +5358,7 @@ function _renderStampSheet(){
   const now = document.getElementById('stNow');
   now.className = 'sb-now' + (all ? ' done' : _followOn ? ' on' : '');
   now.innerHTML = all ? '<span>全 ' + vc.total + ' か所を歩きました。記念の1枚（写真）に完歩之印が入ります</span>'
-    : _followOn ? '<span>📍 現在地を追いかけています。スポットに 50m まで近づくと押されます</span>'
+    : _followOn ? '<span>📍 現在地を追いかけています。スポットに ' + VISIT_RADIUS_M + 'm まで近づくと押されます</span>'
     : '<span>いまは位置を見ていません。歩くときは ➤ を押してください</span><button type="button" class="tap" onclick="_stampFollow()">➤ 追いかける</button>';
   document.getElementById('stGrid').innerHTML = list.map((w, i) => {
     const got = !!_visits[w.id], nm = (w.name || (WT.find(x => x.v === w.type) || WT[0]).l).split('\n')[0];
@@ -7530,20 +7541,20 @@ function saveModal() {
 
 /* スポットの削除（v140）：確認ダイアログの代わりに、すぐ消して10秒間「元に戻す」（コースの削除と同じ作法）。
    戻すのはスナップショットの取り消しなので、その間に別の操作をしていたら「取り消しボタンで」と案内する */
-let _delWpUndo = null;   // {len: 削除直後の undoStack の長さ, name}
+let _delWpUndo = null;   // {seq: 削除直後の操作の通し番号, name}
 function deleteEditing() {
   if (editId===null) return;
   const id = editId, wp = wps.find(w => w.id === id);
   const name = wp ? ((wp.name || '').split('\n')[0] || (WT.find(x => x.v === wp.type) || WT[0]).l) : 'スポット';
   closeModal();
   deleteWp(id);
-  _delWpUndo = {len: undoStack.length, name};
+  _delWpUndo = {seq: _opSeq, name};   // v251：長さではなく通し番号（30回を超えて編集したあとでも、別の操作を見分ける）
   _showUndoToast('「' + name + '」を削除しました', undoDeleteWp, DELETE_UNDO_MS);
 }
 function undoDeleteWp() {
   if (!_delWpUndo) return;
   const u = _delWpUndo; _delWpUndo = null;
-  if (undoStack.length !== u.len) { showToast('そのあとに別の操作をしたので、「取り消し」ボタンで戻してください'); return; }
+  if (_opSeq !== u.seq) { showToast('そのあとに別の操作をしたので、「取り消し」ボタンで戻してください'); return; }
   undoLast(); showToast('「' + u.name + '」を元に戻しました');
 }
 
@@ -8505,8 +8516,10 @@ function _setSaveState(st){
     b.title = st === 'saved' ? 'この内容は保存されています' : st === 'error' ? '保存できませんでした。押してもう一度' : 'まだ保存していません。押すと保存します（一覧に戻るときにも確認します）';
   });
 }
+let _opSeq = 0;   // v251：編集の操作の通し番号（undoStack の長さは上限30で止まるので、操作があったかはこれで見る）
 function saveSnapshot() {
   _markDirty();              // 編集操作は必ずここを通る＝未保存フラグの唯一の立て場所（自動保存もここから）
+  _opSeq++;
   undoStack.push(_makeSnapshot());
   if (undoStack.length > 30) undoStack.shift();
   redoStack = [];          // 新操作でやり直し履歴をクリア
@@ -8807,18 +8820,19 @@ function showViewInfo(wpId) {
   const t   = WT.find(x => x.v === wp.type) || WT[0];
   const catLine = (wp.type !== 'spot' && wp.type !== 'start' && wp.type !== 'goal') ? `<div class="vip-cat">${_typeSvg(wp.type, 12, t.c)}<span>${escHtml(t.l)}</span></div>` : '';
 
-  let html2 = `<div class="vip-handle"></div><div class="vip-hdr">
+  /* v251（オーナー指示「タップして表示される写真はいまの3分の1にし、左に配置、その隣にスポットの名前と解説」）：
+     写真は1枚目だけを小さく左に（貼った写真の見た目のまま）。2枚目からは「+n」。押すと全部を大きく見られる（左右にはらって次へ）。 */
+  const ph = (wp.photos || []).filter(Boolean);
+  const photoHtml = ph.length ? `<div class="vip-photos"><span class="vip-ph"><img ${_photoAttr(ph[0])} alt="${escHtml(wp.name || t.l)}の写真" onclick="event.stopPropagation();_vipOpenPh(${JSON.stringify(wp.id)}, 0)"></span>`
+    + (ph.length > 1 ? `<button type="button" class="vip-more tap" onclick="_vipOpenPh(${JSON.stringify(wp.id)}, 1)" aria-label="ほかの写真 ${ph.length - 1} 枚">+${ph.length - 1}</button>` : '') + '</div>' : '';
+  let html2 = `<div class="vip-handle"></div><div class="vip-row${ph.length ? ' has-ph' : ''}">${photoHtml}<div class="vip-main"><div class="vip-hdr">
     <div class="vip-dot" style="background:${_isNumbered(wp) ? _spotColor() : t.c}">${_wpMarkHtml(wp, 18)}</div>${(_isNumbered(wp) && _hasCatIcon(wp)) ? `<div class="vip-dot vip-dot2" style="background:${t.c}">${_typeSvg(wp.type, 16)}</div>` : ''}
     <div class="vip-name">${escHtml(wp.name || t.l)}${catLine}</div>
     <button class="vip-close" onclick="closeViewInfo()" aria-label="閉じる">✕</button>
   </div>`;
-  if (wp.photos && wp.photos.length) {
-    html2 += '<div class="vip-photos">';
-    wp.photos.forEach(p => { html2 += `<span class="vip-ph"><img ${_photoAttr(p)} onclick="openFullPhoto(this.src)" loading="lazy"></span>`; });   // v176：シールのように貼った見た目
-    html2 += '</div>';
-  }
   if (wp.desc) html2 += `<div class="vip-desc">${escHtml(wp.desc)}</div>`;
   if (wp.tel)  html2 += `<div class="vip-tel"><a href="tel:${escHtml(wp.tel)}">${escHtml(wp.tel)}</a></div>`;
+  html2 += '</div></div>';
 
   const panel = document.getElementById('viewInfoPanel');   // 表示後に参照写真を流し込む（_fillPhotoImgs）
   panel.innerHTML = html2;
@@ -8827,10 +8841,14 @@ function showViewInfo(wpId) {
   panel.classList.add('show');
 }
 
+async function _vipOpenPh(wpId, i){   // v251：カードの写真 → 全部を大きく（参照写真は取り出してから）
+  const wp = wps.find(w => w.id === wpId); if (!wp || !wp.photos || !wp.photos.length) return;
+  const srcs = (await Promise.all(wp.photos.map(p => _photoSrc(p)))).filter(Boolean);
+  if (srcs.length) openPhotoSet(srcs, Math.min(i || 0, srcs.length - 1), wp.name || '');
+}
 /* 歩く人のカードを左右にフリックすると、次／前のスポットへ（v230） */
 function _viewInfoStep(d){
-  const list = wps.filter(w => w && w.type !== 'node' && (_hasRole(w) || _isNumbered(w) || _onRouteOf(w) === false))
-                  .sort((a, b) => (_isStart(a) ? -1 : _isStart(b) ? 1 : 0) || ((courseNum(a) || 999) - (courseNum(b) || 999)));
+  const list = _stampOrder();   // v251：コースに含まれるスポットだけを、歩く順（S → ① → … → G）に（オーナー指示）
   if (!list.length) return;
   const i = list.findIndex(w => w.id === _viewInfoId);
   const n = list[(i < 0 ? 0 : i + d + list.length) % list.length];
@@ -8984,11 +9002,11 @@ function saveKokoroeSheet() {
 
 /* ===== シール（v142）：写真のあるスポットの印を、写真そのものにする =====
    1枚目の写真を STICKER_PX 角に切り出して divIcon の背景にする。作るのは非同期なので、できるまでは○の印。
-   参照写真（idb:）のシールは 's:'+id で IndexedDB にも置き、次回は作り直さない。実体写真（配布ファイル）は都度作る（96px なので速い） */
+   参照写真（idb:）のシールは 's2:'+id で IndexedDB にも置き、次回は作り直さない。実体写真（配布ファイル）は都度作る（72px なので速い） */
 const _stickerMem = new Map();   // 鍵→シールの実体。''＝作成中、null＝作れなかった
 const _stickerWait = new Map();  // 作成中の鍵→できたら印を置き換えるスポット（同じ写真を複数のスポットが使うことがある）
 function _stickerOn(){ return !!(courseInfo && courseInfo.stickers); }
-function _stickerKey(p){ return _isPhotoRef(p) ? 's:' + p.slice(PHOTO_REF.length) : p; }
+function _stickerKey(p){ return _isPhotoRef(p) ? 's2:' + p.slice(PHOTO_REF.length) : p; }   // v251：大きさを変えたので鍵も変える（古い s: は片づけで消える）
 function _stickerOf(p){ return _stickerMem.get(_stickerKey(p)) || ''; }
 function _stickerSize(){ const base = isMobile() ? 46 : 40; const d = Math.round(base * (WP_SIZES[_wpSizeIdx] || WP_SIZES[0]) * _zoomK()); return [d, d]; }   // v168：シールも広域では小さく
 function _wpIconSize(wp){ return (_stickerOn() && wp.type !== 'node' && wp.photos && wp.photos[0] && _stickerOf(wp.photos[0])) ? _stickerSize() : _wpSize(); }
@@ -9424,7 +9442,7 @@ async function _fetchJsonTimeout(url, opts, ms){
 }
 function _nbKinds(){ if (!_nb.kinds) _nb.kinds = new Set(NEARBY_KINDS.filter(k => !NEARBY_KIND_DEFAULT_OFF.includes(k.k)).map(k => k.k)); return _nb.kinds; }
 function _nbAnchorBounds(){
-  const pts = _stampTargets().map(w => [w.lat, w.lng]);
+  const pts = _allSpots().map(w => [w.lat, w.lng]);
   if (pts.length) return L.latLngBounds(pts);
   const c = leafMap ? leafMap.getCenter() : null; return c ? L.latLngBounds([c, c]) : null;
 }
@@ -9432,7 +9450,7 @@ function _nbDistToCourse(lat, lng){   // コース（道順の線があればそ
   let best = Infinity;
   const c = _lastRouteCoords;
   if (c && c.length > 1) { for (let i = 0; i < c.length; i += Math.max(1, Math.floor(c.length / 800))) { const d = haversine(lat, lng, c[i][0], c[i][1]); if (d < best) best = d; } }
-  _stampTargets().forEach(w => { const d = haversine(lat, lng, w.lat, w.lng); if (d < best) best = d; });
+  _allSpots().forEach(w => { const d = haversine(lat, lng, w.lat, w.lng); if (d < best) best = d; });
   if (best === Infinity && leafMap) { const c = leafMap.getCenter(); best = haversine(lat, lng, c.lat, c.lng); }   // スポットが無ければ地図の真ん中から（v165）
   return best;
 }
@@ -9783,7 +9801,7 @@ function openNearbySheet(){
   const kw = document.getElementById('nbKw'); if (kw) kw.value = '';   // v239：前に探した言葉を残さない
   const r = document.getElementById('nbRadius'); if (r && !r.children.length) r.innerHTML = NEARBY_RADII.map(v => '<button type="button" data-v="' + v + '" onclick="_nbPick(\'radius\',' + v + ')">' + (v >= 1000 ? (v / 1000) + ' km' : v + ' m') + '</button>').join('');
   _nbRenderControls(); _nbRenderList(); _nbRenderLayer();
-  const ns = document.getElementById('nbNoSpot'); if (ns) ns.hidden = _stampTargets().length > 0;   // v165
+  const ns = document.getElementById('nbNoSpot'); if (ns) ns.hidden = _allSpots().length > 0;   // v165
   if (!_nb.cands.length) _nbSetStatus('');
   document.getElementById('nearbyScrim').style.display = 'block'; document.getElementById('nearbySheet').style.display = 'block';
 }
@@ -10347,24 +10365,53 @@ function saveInfoSheet() {
 /* 写真を画面いっぱいに見る（v244・オーナー報告「閲覧モードで写真を押すと全画面になるが、閉じることができなくて操作不能」）。
    以前は新しい窓（window.open＋document.write）を開いていた。ホーム画面から開いたアプリには「戻る」も「タブを閉じる」も無いので、
    その窓から出られなくなっていた。→ アプリの中に重ねて出す。右上の「閉じる」・どこかを押す・Esc・下へはらう、のどれでも閉じる */
-function openFullPhoto(src) {
+let _pvList = [], _pvIdx = 0, _pvCap = '';   // v251：大きく見ている写真の組・何枚目か・名前
+function openFullPhoto(src, _keep) {
   if (!src) return;
+  if (!_keep) { _pvList = [src]; _pvIdx = 0; _pvCap = ''; }
   let ov = document.getElementById('photoView');
   if (!ov) {
     ov = document.createElement('div'); ov.id = 'photoView';
     ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-label', '写真（押すと閉じる）');
-    ov.innerHTML = '<img id="pvImg" alt="写真"><button type="button" class="pv-x tap" id="pvClose">閉じる</button><div class="pv-hint">押すと閉じます</div>';
+    ov.innerHTML = '<img id="pvImg" alt="写真"><button type="button" class="pv-x tap" id="pvClose">閉じる</button>'
+      + '<button type="button" class="pv-nav prev tap" id="pvPrev" aria-label="前の写真">‹</button><button type="button" class="pv-nav next tap" id="pvNext" aria-label="次の写真">›</button>'
+      + '<div class="pv-cap" id="pvCap"></div><div class="pv-hint" id="pvHint">押すと閉じます</div>';
     document.body.appendChild(ov);
     ov.addEventListener('click', closeFullPhoto);                      // 写真でも外側でも、押せば閉じる
-    let y0 = null;
-    ov.addEventListener('touchstart', e => { y0 = e.touches && e.touches[0] ? e.touches[0].clientY : null; }, {passive: true});
-    ov.addEventListener('touchend', e => { const t = e.changedTouches && e.changedTouches[0]; if (y0 !== null && t && Math.abs(t.clientY - y0) > 70) closeFullPhoto(); y0 = null; });   // 上か下へはらう
+    ov.querySelector('#pvPrev').addEventListener('click', e => { e.stopPropagation(); _pvGo(-1); });
+    ov.querySelector('#pvNext').addEventListener('click', e => { e.stopPropagation(); _pvGo(1); });
+    let x0 = null, y0 = null;
+    ov.addEventListener('touchstart', e => { const t = e.touches && e.touches[0]; x0 = t ? t.clientX : null; y0 = t ? t.clientY : null; }, {passive: true});
+    ov.addEventListener('touchend', e => { const t = e.changedTouches && e.changedTouches[0]; if (x0 === null || !t) return;
+      const dx = t.clientX - x0, dy = t.clientY - y0; x0 = y0 = null;
+      if (_pvList.length > 1 && Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) { e.preventDefault(); _pvGo(dx < 0 ? 1 : -1); return; }   // v251：左右にはらうと次・前
+      if (Math.abs(dy) > 70) closeFullPhoto(); });   // 上か下へはらうと閉じる
   }
   ov.querySelector('#pvImg').src = src;
+  _pvSync();
   ov.classList.add('show');
 }
-function closeFullPhoto(){ const ov = document.getElementById('photoView'); if (ov) { ov.classList.remove('show'); const im = ov.querySelector('#pvImg'); if (im) im.removeAttribute('src'); } }
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeFullPhoto(); });
+function openPhotoSet(srcs, i, cap){   // v251：何枚かを順に見る（i 枚目から）
+  _pvList = (srcs || []).filter(Boolean); if (!_pvList.length) return;
+  _pvIdx = Math.max(0, Math.min(i || 0, _pvList.length - 1)); _pvCap = cap || '';
+  openFullPhoto(_pvList[_pvIdx], true);
+}
+function _pvGo(d){
+  if (_pvList.length < 2) return;
+  _pvIdx = (_pvIdx + d + _pvList.length) % _pvList.length;
+  const im = document.getElementById('pvImg'); if (im) im.src = _pvList[_pvIdx];
+  _pvSync();
+}
+function _pvSync(){
+  const many = _pvList.length > 1;
+  const cap = document.getElementById('pvCap'), hint = document.getElementById('pvHint');
+  ['pvPrev', 'pvNext'].forEach(id => { const b = document.getElementById(id); if (b) b.hidden = !many; });
+  if (cap) { cap.textContent = (_pvCap ? _pvCap + (many ? '　' : '') : '') + (many ? (_pvIdx + 1) + ' / ' + _pvList.length : ''); cap.hidden = !cap.textContent; }
+  if (hint) hint.textContent = many ? '左右にはらうと次の写真・押すと閉じます' : '押すと閉じます';
+}
+function closeFullPhoto(){ const ov = document.getElementById('photoView'); if (ov) { ov.classList.remove('show'); const im = ov.querySelector('#pvImg'); if (im) im.removeAttribute('src'); } _pvList = []; _pvIdx = 0; _pvCap = ''; }
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeFullPhoto();
+  else if (document.querySelector('#photoView.show') && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) _pvGo(e.key === 'ArrowRight' ? 1 : -1); });   // v251：PC は ← → で次の写真
 
 
 /* ============================================================

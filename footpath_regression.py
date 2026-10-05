@@ -926,7 +926,7 @@ def static_checks(src):
     chk('静的', 'カードの写真は白いふち＋テープ＋少し傾けて貼った見た目。写真が取り出せなければ枠も出さない',
         'class=\\"vip-ph\\"' in src.replace('\\', '') or 'class="vip-ph"' in src)
     chk('静的', 'カードの写真の見た目（テープ・傾き・角の丸み）が CSS にある',
-        '.vip-ph::before{' in src and '.vip-ph:nth-child(even){transform:rotate(' in src and '.vip-ph:empty{display:none}' in src and '.vip-ph:only-child img{height:190px}' in src)
+        '.vip-ph::before{' in src and 'transform:rotate(-2.2deg)' in src and '.vip-photos{flex:none;position:relative;width:min(33%,150px)' in src)   # v251：小さく左に（いまの3分の1）
     # --- v174: ルートを引き直す（引き直す・まっすぐ結ぶ・手直しを消す）---
     chk('静的', 'ルートを引き直す：区間ごとに「道なり」「まっすぐ」、全部の引き直し。入口はスマホのメニューと PC の「その他」',
         'function openFixRouteSheet' in src and 'function fixSectionAuto' in src and 'function fixSectionStraight' in src and 'function fixAllRoutes' in src and 'function _routeSections' in src
@@ -1094,15 +1094,15 @@ def static_checks(src):
         "data.fpFinds === 1 && Array.isArray(data.finds)" in src and "type:'other'" in src and 'onRoute:false, lat:Number(f.lat)' in src)
     chk('静的', '歩く人の最初の案内に発見の一言', '見つけたもの（植物・マンホールの蓋…）は 📷 で' in src)
     # --- v142: 写真を軽く多く・シール（A）---
-    chk('静的', '写真は長辺1024px・1スポット12枚まで。シールは96px角、46px以内で束ねる',
-        'const PHOTO_MAX_PX = 1024, PHOTO_QUALITY = 0.66, PHOTO_MAX_PER_SPOT = 12;' in src and 'const STICKER_PX = 96, STICKER_QUALITY = 0.72, STICKER_CLUSTER_PX = 46;' in src
+    chk('静的', '写真は長辺1024px・1スポット12枚まで。シールは72px角（v251：96→72・画質0.6で軽く）、46px以内で束ねる',
+        'const PHOTO_MAX_PX = 1024, PHOTO_QUALITY = 0.66, PHOTO_MAX_PER_SPOT = 12;' in src and 'const STICKER_PX = 72, STICKER_QUALITY = 0.6, STICKER_CLUSTER_PX = 46;' in src
         and 'const MAX = PHOTO_MAX_PX;' in src and 'PHOTO_MAX_PER_SPOT - _modalPhotos.length' in src)
     chk('静的', 'シールは wpIcon の枝で描き、名札の位置はシールの大きさに合わせ、束ねた印を押すと中身から選べる（v189）',
         'class="wp-sticker" data-sticker="1"' in src and '_wpIconSize(wp)[1] / 2 + 4' in src and 'if (wp._clusterN > 1) { openClusterPicker(wp); return; }' in src
         and '      _declutter();\n' in src)   # v159→v173: ズームの処理は _applyViewUpdate の中の _declutter にまとめた
     chk('静的', 'シールの ON/OFF はコースに保存され（stickers）、PC・スマホの「地図の見せ方」に行がある',
         'stickers: courseInfo.stickers ? true : undefined' in src and 'stickers: data.stickers === true' in src and 'id="btnStickers"' in src and 'id="mmSwStickers"' in src)
-    chk('静的', 'シールの鍵（s:）は片づけで消さない・一覧に写真の枚数', "used.add('s:' + id)" in src and 'class="wp-ph"' in src)
+    chk('静的', 'シールの鍵（s2:・v251）は片づけで消さない・一覧に写真の枚数', "used.add('s2:' + id)" in src and "'s2:' + p.slice(PHOTO_REF.length)" in src and 'class="wp-ph"' in src)
     # --- v141: 分岐・注意の案内（フットパス特化 F4/F11）---
     chk('静的', '調整点に分岐（←↑→）と注意（車・滑る・圏外・獣）の案内を付けられ、保存・スナップショット・写真の同梱に入る',
         'const GUIDE_DIRS' in src and 'const GUIDE_CAUTIONS' in src and 'guide:v.guide||undefined' in src and 'guide:v.guide?JSON.parse' in src
@@ -1114,7 +1114,7 @@ def static_checks(src):
     chk('静的', '印刷用シートに「分岐・注意の案内（歩く順）」が載り、地図画像にも矢印の印が残る', 'function _sheetGuidesHtml' in src and '<div class="sh-guides">' in src and 'vps.forEach(vp => { if (vp.guide) return;' in src)
     # --- v140: スポット削除の元に戻す（B1）・写真の無いスポットへ（B3）・並べ替えの件数（B4）・種別の並び（B7）・通知の集約（C3）---
     chk('静的', 'スポットの削除は確認ダイアログではなく10秒の「元に戻す」', "confirm('このスポットを削除しますか？')" not in src and 'function undoDeleteWp' in src
-        and "if (undoStack.length !== u.len)" in src)
+        and "if (_opSeq !== u.seq)" in src and '_opSeq++;' in src)   # v251：長さではなく操作の通し番号で見分ける（取り消しの履歴は上限30で長さが止まる）
     chk('静的', '「配る」の写真つきスポットから、写真の無いスポットへ飛べる', 'function shareInfoPhoto' in src and 'onclick="shareInfoPhoto()"' in src)
     chk('静的', '並べ替えの件数は「手描きの道の点」を数えず（v241：コースに入っているものだけ）、点の行は控えめ', "v('mmReorderN', _roTargets().filter(w => w.type !== 'node').length + ' か所');" in src and "' ro-node'" in src)
     chk('静的', '種別チップの畳んだ側はこのコースで使った順', "(used[b] || 0) - (used[a] || 0)" in src)
@@ -1166,10 +1166,24 @@ def static_checks(src):
         and '#mobileStampBtn[hidden]' in src and src.count('#stampBar{display:none!important}') == 2
         and "el.onclick = openStampSheet;" in src and '_stampTap' not in src
         and "mb.querySelector('.st-l').textContent = c.done + '/' + c.total;" in src and '#nextBar:not([hidden]) ~ #stampBar' not in src)
+    # --- v251: スタンプ・次のスポット・カードのフリックはコースのスポットだけ・10m／カードの写真は小さく左に・シールを軽く（オーナー指示）---
+    chk('静的', 'スタンプ・次のスポット・到着・カードのフリックは「コースに含まれるスポット」（S・番号・G）だけ。立ち寄り先は数えない。作る人の画面（写真の数・まわりの施設）は全部のスポット',
+        "function _courseSpots(){ return wps.filter(w => w && w.type !== 'node' && (_hasRole(w) || _isNumbered(w))); }" in src
+        and 'function _stampTargets(){ return _courseSpots(); }' in src
+        and "const list = _stampOrder();   // v251" in src and '_onRouteOf(w) === false))' not in src
+        and "const spots = _allSpots(), st = _stampTargets();" in src and "const missing = _allSpots().filter(" in src and "const pts = _allSpots().map(" in src
+        and "(viewMode && _visits && _visits[wp.id] && (_hasRole(wp) || _isNumbered(wp)))" in src)
+    chk('静的', 'スタンプはスポットの 10m 以内（v251・オーナー指示）。案内の文も 10m',
+        'const VISIT_RADIUS_M = 10;' in src and "'<span>📍 現在地を追いかけています。スポットに ' + VISIT_RADIUS_M + 'm まで近づくと押されます</span>'" in src
+        and '50m まで' not in src and '<b>50m</b>' not in src)
+    chk('静的', '歩く人のカード：写真は1枚目を小さく左に（いまの3分の1）、その隣に名前と解説。押すとそのスポットの写真を全部大きく（左右にはらって次へ・枚数）',
+        '<div class="vip-row${ph.length ? ' in src and '${photoHtml}<div class="vip-main"><div class="vip-hdr">' in src
+        and 'function _vipOpenPh' in src and 'function openPhotoSet' in src and 'function _pvGo' in src
+        and 'id="pvPrev"' in src and 'id="pvNext"' in src and 'id="pvCap"' in src and '.vip-row{display:flex;gap:14px;align-items:flex-start}' in src)
     # --- v250: スタンプ帳（オーナー指摘「どう押されていくのか、全部そろったらどうなるのか分かりづらい」「センスがない。参考を探して達成感・特別感を」）---
     chk('静的', 'スタンプ帳：和紙の頁にスポットごとの枠・押し方は頁の下・いまの状態（止まっていれば追いかけるボタン）・全部そろえば完歩之印と記念の1枚・消すは聞いてから',
         'id="stampSheet"' in src and 'class="sb-page"' in src and 'function openStampSheet' in src and 'function closeStampSheet' in src and 'function _renderStampSheet' in src
-        and '押し方：右の <b>➤</b>（現在地を追いかける）を押して歩くと、スポットに <b>50m</b> まで近づいたとき自動でスタンプが押されます' in src
+        and '押し方：右の <b>➤</b>（現在地を追いかける）を押して歩くと、コースのスポット（S・番号・G）に <b>10m</b> まで近づいたとき自動でスタンプが押されます' in src
         and 'onclick="_stampFollow()">➤ 追いかける</button>' in src and "confirm('スタンプを全部消しますか？（この端末の記録だけが消えます）')" in src
         and 'onclick="closeStampSheet();openGoalCard()" hidden>記念の1枚を作る</button>' in src and "seal.innerHTML = all ? _stampSealSvg('book') : '';" in src)
     chk('静的', 'スタンプのデザイン：駅スタンプに倣い 枠4種（丸・六角・八角・四つ丸）×インク5色を歩く順で回す。真ん中は名前の最後の漢字（縁起の悪い字は避ける・S は発・G は着）と種類の絵、弧に名前、下に押した日',
@@ -1181,7 +1195,7 @@ def static_checks(src):
         '_stampFx(w);   // v250' in src and '_stampDoneWait = true;' in src and "function _stampDoneFx" in src and 'か所すべて歩きました' in src
         and '.st-confetti' in src and '@media (prefers-reduced-motion: reduce){.st-big .ring,.st-big .drop,.st-card.thud,.st-done .seal{animation:none!important}.st-confetti{display:none}}' in src
         and 'function closeStampFx' in src and 'function closeStampDone' in src
-        and '<b>➤ を押して歩く</b>と、スポットに 50m まで近づいたときにスタンプが押されます' in src)
+        and '<b>➤ を押して歩く</b>と、コースのスポットに 10m まで近づいたときにスタンプが押されます' in src)
     chk('静的', '記念の1枚：全部そろっていたら写真の右上に完歩之印（キャンバスに直接描く）',
         'if (vc.total > 0 && vc.done === vc.total) _goalSeal(g, w);' in src and 'function _goalSeal(g, w)' in src)
     chk('静的', '次のスポットの帯：向きの矢印を出さないときは場所も取らない（display。visibility で隠すと左に余白が残る・v248）',
@@ -1876,6 +1890,55 @@ def functional_checks(index_path):
                  and st.get('storedKeys') == 1 and st.get('icon') is True
                  and '1 / 2' in st.get('barText', '') and st.get('mbText') == '1/2' and st.get('afterClear') == 0)
         chk('機能', 'スタンプが近づいたときだけ付き、消せる', ok_st, str(st)[:190])
+
+        # v251: スタンプはコースのスポットだけ（立ち寄り先は数えない）・10m 以内。カードのフリックもコースのスポットだけ。カードは写真を小さく左に、その隣に名前と解説
+        cs = page.evaluate("""async ()=>{ try{
+            closeStampFx(); closeStampDone();
+            const keepW = wps.slice(), keepView = viewMode, keepId = currentCourseId, keepU = undoStack.length, keepD = _dirty;
+            wps.length = 0;
+            const c = leafMap.getCenter(); _resetBounds(); _setAnchor(c.lat, c.lng, true);
+            const a = addWp(c.lat, c.lng, 'course'); a.name = 'コースの甲';
+            const b = addWp(c.lat + 0.01, c.lng, 'course'); b.name = 'コースの乙';
+            const x = addWp(c.lat + 0.005, c.lng + 0.005, 'shrine'); x.name = '立ち寄り先の丙'; x.onRoute = false;
+            refreshIcons();
+            viewMode = true; currentCourseId = 'course-stamp-test'; _visits = {}; renderStampBar();
+            const out = {};
+            out.targets = _stampTargets().map(w => w.name).sort().join(',');
+            out.total = visitCount().total;
+            const dlat = m => m / 111320;
+            out.offRoute = _checkVisits(x.lat, x.lng);                  // 立ち寄り先の上 → 押されない
+            out.at15 = _checkVisits(a.lat + dlat(15), a.lng);         // 15m → 押されない
+            out.at8 = _checkVisits(a.lat + dlat(8), a.lng);           // 8m → 押される
+            closeStampFx(); closeStampDone();
+            // フリック：立ち寄り先のカードからでも、コースのスポットだけを回る
+            showViewInfo(x.id);
+            const seq = []; for (let k = 0; k < 4; k++) { _viewInfoStep(1); seq.push((wps.find(w => w.id === _viewInfoId) || {}).name); }
+            out.seq = seq;
+            // カード：写真は小さく左に、名前と解説はその右
+            b.photos = ['data:image/gif;base64,R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==', 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'];
+            b.desc = '検査用の解説です。';
+            showViewInfo(b.id); await new Promise(r => setTimeout(r, 300));
+            const pan = document.getElementById('viewInfoPanel'), im = pan.querySelector('.vip-photos img'), nm = pan.querySelector('.vip-name'), ds = pan.querySelector('.vip-desc');
+            const pr = pan.getBoundingClientRect(), ir = im.getBoundingClientRect(), nr = nm.getBoundingClientRect(), dr = ds.getBoundingClientRect();
+            out.card = {ratio: Math.round(ir.width / pr.width * 100), left: ir.left < nr.left && ir.right <= nr.left && ir.right <= dr.left, top: Math.abs(ir.top - nr.top) < 60,
+                        more: (pan.querySelector('.vip-more') || {}).textContent || ''};
+            // 写真を押すと2枚を大きく（左右で次へ・枚数）
+            im.click(); await new Promise(r => setTimeout(r, 300));
+            const pv = () => ({open: !!document.querySelector('#photoView.show'), cap: (document.getElementById('pvCap') || {}).textContent || ''});
+            out.pv1 = pv(); _pvGo(1); out.pv2 = pv(); closeFullPhoto(); out.pvClosed = !pv().open;
+            closeViewInfo();
+            wps.forEach(w => { if (w.marker) leafMap.removeLayer(w.marker); });
+            wps.length = 0; keepW.forEach(w => wps.push(w));
+            viewMode = keepView; currentCourseId = keepId; undoStack.length = Math.min(undoStack.length, keepU); _dirty = keepD; loadVisits(); renderStampBar(); refreshIcons();
+            try { const all = JSON.parse(localStorage.getItem(LS.visits) || '{}'); delete all['course-stamp-test']; localStorage.setItem(LS.visits, JSON.stringify(all)); } catch(_){}
+            return out;
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        chk('機能', 'スタンプはコースのスポットだけ（立ち寄り先の上では押されない）。15m では押されず、8m で押される。カードのフリックはコースのスポットだけを回る',
+            isinstance(cs, dict) and cs.get('targets') == 'コースの乙,コースの甲' and cs.get('total') == 2 and cs.get('offRoute') == 0 and cs.get('at15') == 0 and cs.get('at8') == 1
+            and set(cs.get('seq', [])) == {'コースの甲', 'コースの乙'}, str(cs)[:300])
+        chk('機能', 'カード：写真は小さく左に（カードの幅の約3分の1）、名前と解説はその右。2枚目からは「+1」。押すと大きく「名前　1 / 2」、次へで「2 / 2」、閉じられる',
+            isinstance(cs, dict) and 25 <= cs.get('card', {}).get('ratio', 0) <= 36 and cs['card'].get('left') and cs['card'].get('top') and cs['card'].get('more') == '+1'
+            and cs.get('pv1') == {'open': True, 'cap': 'コースの乙　1 / 2'} and cs.get('pv2', {}).get('cap') == 'コースの乙　2 / 2' and cs.get('pvClosed'), str(cs)[:300])
 
         # v250: スタンプ：押した瞬間の演出（何個目か）→ スタンプ帳（スポットごとの枠・押したところはスタンプ）→ 最後の1つのあとに完歩（完歩之印）→ 記念の1枚。消すは聞いてから
         sb = page.evaluate("""async ()=>{ try{
@@ -3910,6 +3973,11 @@ def functional_checks(index_path):
             openModal(id); deleteEditing(); addWp(35.1526, 134.4456, 'course'); const before = wps.length;
             document.getElementById('undoToast').querySelector('button').click();
             out.guarded = wps.length === before && !wps.some(x => x.id === id);
+            // v251：取り消しの履歴が上限（30）に達していても、別の操作をしたら戻さない（長さが変わらないので通し番号で見る）
+            while (undoStack.length < 30) undoStack.push(_makeSnapshot());
+            const w2 = addWp(35.1527, 134.4457, 'course'); w2.name = '削除検査2'; openModal(w2.id); deleteEditing(); addWp(35.1528, 134.4458, 'course'); const before2 = wps.length;
+            document.getElementById('undoToast').querySelector('button').click();
+            out.guardedFull = undoStack.length === 30 && wps.length === before2 && !wps.some(x => x.id === w2.id);
             // 通知の積み重ね
             showToast('一つ目の通知'); showToast('二つ目の通知');
             const ts = [...document.querySelectorAll('#toastBox .toast')].slice(-2).map(e => e.getBoundingClientRect());
@@ -3927,7 +3995,7 @@ def functional_checks(index_path):
             return out;
           }catch(e){ return 'ERR:'+e.message; } }""")
         chk('機能', 'スポット削除の「元に戻す」が戻し、別の操作の後は案内し、通知は重ならず、種別はこのコースで使った順',
-            isinstance(b1, dict) and all(b1.get(k) for k in ('gone', 'toast', 'back', 'guarded', 'stacked', 'order')), str(b1)[:220])
+            isinstance(b1, dict) and all(b1.get(k) for k in ('gone', 'toast', 'back', 'guarded', 'guardedFull', 'stacked', 'order')), str(b1)[:220])
 
         # v160: 名前→種類の判定／逆回りでスポットの順と S・G が入れ替わり取り消しで戻る／周回で出発点にゴールが付く
         fp = page.evaluate("""()=>{ try{
@@ -4493,13 +4561,13 @@ def functional_checks(index_path):
             const panel = document.getElementById('viewInfoPanel');
             const frames = panel.querySelectorAll('.vip-ph');
             const st = frames.length ? getComputedStyle(frames[0]) : null;
-            const out = {shown: panel.classList.contains('show'), frames: frames.length === wp.photos.length,
+            const out = {shown: panel.classList.contains('show'), frames: frames.length === 1 && (wp.photos.length < 2 || !!panel.querySelector('.vip-more')),   // v251：1枚目だけ小さく左に、2枚目からは「+n」
                          tilted: !!st && st.transform !== 'none', white: !!st && /255, 255, 255/.test(st.backgroundColor),
                          img: frames.length ? frames[0].querySelectorAll('img').length === 1 : false};
             closeViewInfo(); viewMode = keepV;
             return out;
           }catch(e){ return 'ERR:'+e.message; } }""")
-        chk('機能', '歩く人のカード：写真は1枚ずつ白い枠に入り、少し傾いて貼ってあるように出る',
+        chk('機能', '歩く人のカード：写真（1枚目）は白い枠に入り、少し傾いて貼ってあるように出る。2枚目からは「+n」',
             isinstance(vp6, dict) and all(vp6.get(k) for k in ('shown', 'frames', 'tilted', 'white', 'img')), str(vp6)[:220])
 
         # v174: ルートを引き直す：区間の一覧／道なりに引き直す（点が消える）／まっすぐ結ぶ／全部引き直す／取り消しで戻る

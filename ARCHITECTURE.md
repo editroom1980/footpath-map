@@ -545,7 +545,7 @@ CONSTANTS(904) → STATE(968) → STORAGE(1015) → 版のお知らせ(1021) →
 - iOS 27 のホーム画面のアプリでは、ノッチの下（上から約 100pt）に iOS がぼかしを重ねる。ページから消す設定は無い（WebKit `WKWebView _shouldHideTopScrollPocket`：上の帯の色で置き換えて消せるのは、ページがノッチの下に描いていないときだけ）。ぼかしの色はページの地の色（`html,body` の background）に寄る。
 
 ## スタンプラリー（v100→v250）
-- 押す仕組み：閲覧モードで位置が入ったとき（➤ 追いかける）、`VISIT_RADIUS_M`（50m）以内のスポットに記録（`_visits`・この端末の `LS.visits` だけ）。
+- 押す仕組み：閲覧モードで位置が入ったとき（➤ 追いかける）、`VISIT_RADIUS_M`（10m・v251）以内の**コースに含まれるスポット**（`_courseSpots()`＝S・番号・G）に記録（`_visits`・この端末の `LS.visits` だけ）。次のスポット・到着・カードのフリックも `_courseSpots()`。作る人の画面で全部のスポットが要るところは `_allSpots()`。
 - 見せ方（v250）：スタンプの絵は `_stampSvg`（枠 `STAMP_FRAMES`×色 `STAMP_INKS` を歩く順で回す・真ん中は `_stampKanji`）。押した瞬間 `_stampFx`（順番待ち `_stampFxQ`）、全部そろったら最後のあとに `_stampDoneFx`（完歩之印 `_stampSealSvg`・紙吹雪）。スタンプ帳 `openStampSheet`。記念の1枚は `_goalSeal`。
 - 演出は `.st-fx`／`.st-done` を body に足して出す（`close〜` 関数があるので画面を移ると消える）。検査で `_checkVisits` を呼んだら、後の検査の画面を覆わないよう `closeStampFx()`・`closeStampDone()` で片づける。
 
