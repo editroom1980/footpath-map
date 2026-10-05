@@ -350,6 +350,13 @@ body.moving #modeHint{display:none!important}
 .vip-close{width:28px;height:28px;background:#EEE8DE;border:none;border-radius:50%;font-size:14px;cursor:pointer;flex-shrink:0}
 .vip-desc{font-size:13px;color:#444;line-height:1.7;margin-bottom:8px;white-space:pre-wrap}
 .vip-tel a{font-size:13px;color:#1a6fc4;display:block;margin-bottom:10px}
+.vip-edit{margin-top:4px;min-height:var(--tap);border:none;background:none;padding:0 2px;color:var(--brand);font-family:inherit;font-size:12.5px;font-weight:700;cursor:pointer}   /* v252 */
+.m-desc-hd{display:flex;align-items:flex-end;justify-content:space-between;gap:8px}
+.m-desc-hd label{margin-bottom:2px}
+.m-desc-find{flex:none;border:1px solid #E3DCD1;background:#fff;color:var(--brand);border-radius:14px;padding:3px 10px;font-family:inherit;font-size:11.5px;font-weight:700;cursor:pointer;margin-bottom:3px}
+.m-desc-st{font-size:11px;color:var(--t-sub);margin:-2px 0 8px;line-height:1.5}
+.m-desc-st.ok{color:var(--ok)}
+.m-desc-st.warn{color:#B45309}
 /* 歩く人のカードの写真（v176）：白いふちとテープで「貼ってある」見た目に。少しだけ傾ける */
 /* v251：写真は小さく左に（いまの3分の1）、その隣に名前と解説。貼った写真（v176）の見た目は小さくしても残す */
 .vip-row{display:flex;gap:14px;align-items:flex-start}
@@ -1935,6 +1942,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
         <div class="ss-list">
           <button class="ss-li" onclick="shareInfoDesc()">コースの説明<span class="ch" id="ssDesc">—</span></button>
           <button class="ss-li" onclick="shareInfoPhoto()">写真つきスポット<span class="ch" id="ssPhoto">—</span></button>
+          <button class="ss-li" onclick="closeShareSheet();descFillAll(true)" title="解説が空いているスポットに、名前から探して入れます">スポットの解説<span class="ch" id="ssSpotDesc">—</span></button>
           <div class="ss-li">スタンプラリーの対象<span class="ch" id="ssStamp">—</span></div>
           <button class="ss-li" onclick="closeShareSheet();openKokoroeSheet('edit')">歩く人の心得<span class="ch" id="ssKokoroe">—</span></button>
           <button class="ss-li" onclick="closeShareSheet();openInfoSheet('edit')">コースの情報<span class="ch" id="ssInfo">—</span></button>
@@ -2082,7 +2090,8 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
         <button aria-label="ファイルから選択" class="photo-add-btn" onclick="document.getElementById('mPhotoFile').click()" title="ファイルから選択"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h4l3 3h7a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-11a2 2 0 0 1 2 -2" /></svg></button>
         <button aria-label="カメラで撮影" class="photo-add-btn" onclick="document.getElementById('mPhotoCamera').click()" title="カメラで撮影"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h1a2 2 0 0 0 2 -2a1 1 0 0 1 1 -1h6a1 1 0 0 1 1 1a2 2 0 0 0 2 2h1a2 2 0 0 1 2 2v9a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-9a2 2 0 0 1 2 -2" /> <path d="M9 13a3 3 0 1 0 6 0a3 3 0 0 0 -6 0" /></svg></button>
       </div>
-      <label>説明（歩く人のカードに出ます）</label><textarea id="mDesc2" placeholder="例：農水省認定・171枚の棚田が広がる"></textarea>
+      <div class="m-desc-hd"><label for="mDesc2">説明（歩く人のカードに出ます）</label><button type="button" class="m-desc-find tap" onclick="mDescFind(true)">名前から探す</button></div><textarea id="mDesc2" placeholder="例：農水省認定・171枚の棚田が広がる"></textarea>
+      <div class="m-desc-st" id="mDescSt" hidden></div>
       <details id="mMore" class="m-more">
         <summary>くわしい設定 <small>2行目の名前・電話・滞在時間・道順・名札の位置</small></summary>
         <label>名前の2行目（任意）</label><input id="mName2" placeholder="補足・カッコ書きなど">
@@ -2576,6 +2585,8 @@ const LS = {
   finds:       'fp_finds',        // 歩く人が貼った「発見」（コースIDごと・この端末だけ・v143）
   findBy:      'fp_find_by',      // 発見に添える名前（前回の入力を覚える・v143）
   ptHideTypes: 'fp_pt_hide_types', // ポイントの表示で隠す種類（v241・この端末だけ。コースには入れない）
+  descCache:   'fp_desc_cache',    // v252：名前から探した解説（同じ名前・場所はもう聞かない。見つからなかったことも）
+  descDone:    'fp_desc_done',     // v252：自動で探したスポット（コース・スポット → 名前）。同じ名前ではもう自動で探さない
 };
 // --- サンプルコース（初回起動時に一度だけ取り込む。削除したら復活しない）---
 const SAMPLE_URL = 'sample.json';   // index.html と同じ場所に置く
@@ -3552,7 +3563,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 手描きの道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した手描きの道id（直前取り消し用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v251';
+const APP_VERSION = 'v252';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat0', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -3983,6 +3994,8 @@ function renderShareInfo(){
   pEl.textContent = `${withPhoto} / ${spots.length}`;
   pEl.classList.toggle('warn', spots.length > 0 && withPhoto === 0);
   document.getElementById('ssStamp').textContent = st.length ? `${st.length}か所` : 'なし';
+  const sdEl = document.getElementById('ssSpotDesc');   // v252：解説の入っているスポット（取り込みのメモだけのものは数えない）。押すと名前から探す
+  if (sdEl) { const nd = spots.filter(w => _descKind(w.desc) === 'own').length; sdEl.textContent = `${nd} / ${spots.length}　名前から探す ›`; sdEl.classList.toggle('warn', spots.length > 0 && nd < spots.length); }
   const kEl = document.getElementById('ssKokoroe');
   if (kEl) kEl.textContent = (courseInfo.kokoroe || '').trim() ? '標準＋この地域の追記 ›' : '標準の文 ›';
   const iEl = document.getElementById('ssInfo');
@@ -7475,7 +7488,7 @@ function openModal(id) {
   document.getElementById('mType').value   = wp.type;
   _typeMoreOpen = false; _typeAuto = false; _renderTypeChips();   // よく使う4つを大きく、残りは畳む（v128）
   const _hn = document.getElementById('mTypeHint'); if (_hn) _hn.hidden = true;
-  const _nm = document.getElementById('mName'); if (_nm && !_nm._typeHooked) { _nm._typeHooked = true; _nm.addEventListener('input', _onNameInput); }   // 名前から種類（v160）
+  const _nm = document.getElementById('mName'); if (_nm && !_nm._typeHooked) { _nm._typeHooked = true; _nm.addEventListener('input', _onNameInput); _nm.addEventListener('input', _mDescOnName); }   // 名前から種類（v160）・解説（v252）
   const _nameParts = (wp.name||'').split('\n');
   document.getElementById('mName').value   = _nameParts[0] || '';
   const mN2el = document.getElementById('mName2');
@@ -7491,6 +7504,8 @@ function openModal(id) {
   document.getElementById('mLabelDir').value    = wp.labelDir  || 'auto';
   _modalPhotos = [...(wp.photos || [])];
   renderModalPhotos();
+  _mDescSeq++; clearTimeout(_mDescT); _mDescStatus('');   // v252：前のスポットで探していた結果を持ち込まない
+  setTimeout(() => { if (editId === id) mDescFind(false); }, 300);   // v252：説明が空なら、名前から探して入れる
   const _more = document.getElementById('mMore');   // くわしい設定は、何か入っているときだけ開いておく（v148）
   if (_more) _more.open = !!((_nameParts[1] || '').trim() || (wp.tel || '').trim() || (wp.dwell || 0) > 0 || (wp.labelDir && wp.labelDir !== 'auto') || wp.fitBefore === false || wp.fitAfter === false);   // 置いたときの既定（道順に入れる・道に沿う・名札は自動）から変えてあるときだけ
   document.getElementById('mOver').classList.add('show');
@@ -8832,6 +8847,7 @@ function showViewInfo(wpId) {
   </div>`;
   if (wp.desc) html2 += `<div class="vip-desc">${escHtml(wp.desc)}</div>`;
   if (wp.tel)  html2 += `<div class="vip-tel"><a href="tel:${escHtml(wp.tel)}">${escHtml(wp.tel)}</a></div>`;
+  if (!document.body.classList.contains('viewonly')) html2 += `<button type="button" class="vip-edit tap" onclick="_vipEdit(${JSON.stringify(wp.id)})">✎ ${wp.desc ? '説明を直す' : '説明を書く'}</button>`;   // v252：自分のコースなら、ここから直せる
   html2 += '</div></div>';
 
   const panel = document.getElementById('viewInfoPanel');   // 表示後に参照写真を流し込む（_fillPhotoImgs）
@@ -8841,6 +8857,7 @@ function showViewInfo(wpId) {
   panel.classList.add('show');
 }
 
+function _vipEdit(id){ closeViewInfo(); if (viewMode) toggleViewMode(); openModal(id); setTimeout(() => { const ta = document.getElementById('mDesc2'); if (ta) ta.focus(); }, 120); }   // v252：閲覧モードのカードから、そのスポットの編集へ
 async function _vipOpenPh(wpId, i){   // v251：カードの写真 → 全部を大きく（参照写真は取り出してから）
   const wp = wps.find(w => w.id === wpId); if (!wp || !wp.photos || !wp.photos.length) return;
   const srcs = (await Promise.all(wp.photos.map(p => _photoSrc(p)))).filter(Boolean);
@@ -9923,7 +9940,165 @@ function addNearbySelected(){
   showToast(n + ' 件をスポットにしました（道順には入れていません。○を押すと種類や説明を直せます・「取り消し」で戻せます）'
             + (f ? '／コースの情報に ' + f + ' 項目を自動で書きました' : ''));
   setTimeout(() => _startPickAuto(), 700);   // v227：取り込んだら、まずスタート地点を決める
+  setTimeout(() => descFillAll(false), DESC_AUTO_DELAY_MS);   // v252：取り込んだスポットの解説を、名前から探して入れる
 }
+/* ===== スポットの解説を名前から探す（v252・オーナー指示「スポットの解説は名前から検索して自動で埋め、後から編集もできるように」）=====
+   ・探す先：ウィキペディア（日本語）→ ウィキデータ。Google の情報は規約で使えないので使わない
+   ・取りちがえを防ぐ：記事の場所がスポットから DESC_NEAR_M 以内か、本文にこのコースの市町村名がある記事だけを使う。
+     名前だけで探すと、同じ名前の別の場所（仙台の大雲寺・草津の光泉寺など）が出る（山崎商店街コースで実測）
+   ・名前の終わりの「線路跡・跡・全景・入口」は外しても探す（波賀森林鉄道線路跡 → 波賀森林鉄道）。外した名前でも上の確かめは同じ
+   ・書いてある説明は上書きしない。取り込みのときの短いメモ（情報：OpenStreetMap など）は残し、その上に入れる
+   ・入れた文の最後に出典（ウィキペディアの記事名）を付ける。あとから自由に直せる（スポットの編集の「説明」）
+   ・自動で探すのは、そのスポットのその名前で1回だけ（消した解説を勝手に戻さない）。「名前から探す」を押せば何度でも */
+const DESC_NEAR_M = 3000, DESC_MAX = 220, DESC_GAP_MS = 220, DESC_GEO_R = 10000, DESC_AUTO_DELAY_MS = 2500, DESC_CACHE_MAX = 400;
+const DESC_SUFFIX_RE = /(線路跡|跡地|跡|全景|入口|入り口)$/;
+const DESC_WIKIDATA = 'https://www.wikidata.org/w/api.php';
+const _descGeoMap = new Map();   // ウィキペディアの地理検索の結果（約5km四方ごとに1回だけ取る）
+let _descBusy = false;           // まとめて探している途中か
+function _descGet(url){ return _fetchJsonTimeout(url, null, 12000); }   // 検査で差し替えられるように1か所に
+function _descNorm(s){ return String(s || '').split('\n')[0].replace(/\s*[（(][^）)(]*[）)]\s*$/, '').replace(/[\s　・･「」『』()（）]/g, ''); }   // 終わりの（兵庫県）などは外す
+function _descVariants(name){
+  const a = _descNorm(name), out = a.length >= 2 ? [a] : [];
+  const b = a.replace(DESC_SUFFIX_RE, ''); if (b !== a && b.length >= 2) out.push(b);
+  return out;
+}
+function _descAreaWords(){   // 本文の確かめに使う市町村名（エリア「宍粟市山崎町中広瀬」→ 宍粟市・宍粟・山崎町）
+  const w = String((courseInfo && courseInfo.area) || '').match(/[^\s　、,]+?[都道府県市区町村郡]/g) || [], out = [];
+  w.forEach(x => { if (x.length >= 3) out.push(x); if (/[市郡]$/.test(x) && x.length >= 3) out.push(x.slice(0, -1)); });
+  return out;
+}
+function _descTrim(t){
+  let x = String(t || '').split('\n').map(v => v.trim()).filter(Boolean)[0] || '';
+  if (x.length > DESC_MAX) { const cut = x.lastIndexOf('。', DESC_MAX); x = cut > 40 ? x.slice(0, cut + 1) : x.slice(0, DESC_MAX) + '…'; }
+  return x;
+}
+async function _descGeoList(lat, lng){
+  const k = (Math.round(lat * 20) / 20).toFixed(2) + ',' + (Math.round(lng * 20) / 20).toFixed(2);
+  if (_descGeoMap.has(k)) return _descGeoMap.get(k);
+  const [cl, cg] = k.split(',');
+  const j = await _descGet(NEARBY_WIKI + '?action=query&list=geosearch&gscoord=' + cl + '%7C' + cg + '&gsradius=' + DESC_GEO_R + '&gslimit=500&format=json&origin=*');
+  const list = ((j && j.query) || {}).geosearch || [];
+  _descGeoMap.set(k, list); return list;
+}
+/* 見つかれば {text, src}、見つからなければ null。通信できなければ投げる（覚えない） */
+async function _descFind(name, lat, lng){
+  const vars = _descVariants(name); if (!vars.length) return null;
+  const area = _descAreaWords(), near = (a, b) => a != null && b != null && haversine(lat, lng, a, b) <= DESC_NEAR_M;
+  const wiki = t => '\n（出典：ウィキペディア「' + t + '」）';
+  // ① ウィキペディア：まわりの記事で名前が同じもの（場所がスポットの近く）
+  const geo = await _descGeoList(lat, lng);
+  let ids = geo.filter(a => vars.indexOf(_descNorm(a.title)) >= 0 && near(a.lat, a.lon)).map(a => a.pageid), fromGeo = ids.length > 0;
+  // ② 名前で探す（同じ名前の記事）。場所が近いか、本文にこのコースの市町村名があるものだけ
+  if (!ids.length) for (const v of vars) {
+    const j = await _descGet(NEARBY_WIKI + '?action=query&list=search&srlimit=8&format=json&origin=*&srsearch=' + encodeURIComponent(v));
+    ids = (((j && j.query) || {}).search || []).filter(a => _descNorm(a.title) === v).map(a => a.pageid);
+    if (ids.length) break;
+  }
+  if (ids.length) {
+    const j = await _descGet(NEARBY_WIKI + '?action=query&prop=extracts%7Ccoordinates%7Cpageprops&ppprop=disambiguation&exintro=1&explaintext=1&exsentences=3&exlimit=20&pageids=' + ids.slice(0, 20).join('%7C') + '&format=json&origin=*');
+    for (const pg of Object.values(((j && j.query) || {}).pages || {})) {
+      if (!pg || !pg.extract || (pg.pageprops && 'disambiguation' in pg.pageprops)) continue;   // 同じ名前の一覧のページは使わない
+      const co = (pg.coordinates || [])[0];
+      const ok = fromGeo || (co ? near(co.lat, co.lon) : area.some(w => pg.extract.indexOf(w) >= 0));
+      if (ok) return {text: _descTrim(pg.extract) + wiki(pg.title), src: 'wikipedia'};
+    }
+  }
+  // ③ ウィキデータ：同じ名前で場所が近いもの（日本語の記事があればその書き出し、無ければ短い説明）
+  for (const v of vars) {
+    const sj = await _descGet(DESC_WIKIDATA + '?action=wbsearchentities&format=json&origin=*&language=ja&uselang=ja&limit=10&search=' + encodeURIComponent(v));
+    const qs = ((sj && sj.search) || []).filter(e => _descNorm(e.label) === v).map(e => e.id).slice(0, 8);
+    if (!qs.length) continue;
+    const ej = await _descGet(DESC_WIKIDATA + '?action=wbgetentities&format=json&origin=*&props=claims%7Cdescriptions%7Csitelinks&languages=ja&sitefilter=jawiki&ids=' + qs.join('%7C'));
+    for (const ent of Object.values((ej && ej.entities) || {})) {
+      const sn = ((((ent.claims || {}).P625 || [])[0]) || {}).mainsnak, val = sn && sn.datavalue && sn.datavalue.value;
+      if (!val || !near(val.latitude, val.longitude)) continue;
+      const jw = ent.sitelinks && ent.sitelinks.jawiki && ent.sitelinks.jawiki.title;
+      if (jw) {
+        const xj = await _descGet(NEARBY_WIKI + '?action=query&prop=extracts&exintro=1&explaintext=1&exsentences=3&format=json&origin=*&titles=' + encodeURIComponent(jw));
+        const pg = Object.values(((xj && xj.query) || {}).pages || {})[0];
+        if (pg && pg.extract) return {text: _descTrim(pg.extract) + wiki(jw), src: 'wikipedia'};
+      }
+      const d = ((ent.descriptions || {}).ja || {}).value;
+      if (d) return {text: d + '\n（出典：ウィキデータ）', src: 'wikidata'};
+    }
+  }
+  return null;
+}
+/* 調べた結果を覚えておく（同じ名前・同じ場所はもう一度ネットに聞かない）。見つからなかったことも覚える */
+function _descCacheAll(){ try { return JSON.parse(localStorage.getItem(LS.descCache) || '{}') || {}; } catch(_) { return {}; } }
+function _descCacheSet(k, t){
+  try { const c = _descCacheAll(); c[k] = {t: t || '', at: Date.now()};
+    const ks = Object.keys(c); if (ks.length > DESC_CACHE_MAX) ks.sort((a, b) => c[a].at - c[b].at).slice(0, ks.length - DESC_CACHE_MAX).forEach(x => delete c[x]);
+    localStorage.setItem(LS.descCache, JSON.stringify(c)); } catch(_) {}
+}
+async function _descLookup(name, lat, lng, force){
+  const k = _descNorm(name) + '@' + Number(lat).toFixed(3) + ',' + Number(lng).toFixed(3);
+  if (!force) { const c = _descCacheAll()[k]; if (c) return c.t ? {text: c.t, cached: true} : null; }
+  const r = await _descFind(name, lat, lng);   // 通信に失敗したら投げる（覚えない）
+  _descCacheSet(k, r ? r.text : '');
+  return r;
+}
+/* 自動で探したスポット（コース・スポット・名前ごと）。同じ名前ではもう自動では探さない＝消した解説を勝手に戻さない */
+function _descDoneKey(wp){ return String(currentCourseId) + ':' + wp.id; }
+function _descDoneGet(wp){ try { return (JSON.parse(localStorage.getItem(LS.descDone) || '{}') || {})[_descDoneKey(wp)]; } catch(_) { return undefined; } }
+function _descDoneSet(wp, name){ try { const o = JSON.parse(localStorage.getItem(LS.descDone) || '{}') || {}; o[_descDoneKey(wp)] = _descNorm(name); localStorage.setItem(LS.descDone, JSON.stringify(o)); } catch(_) {} }
+/* 説明の種類：空／取り込みのメモ（情報：…）／書いてある説明（上書きしない） */
+function _descKind(d){
+  const t = String(d || '').trim(); if (!t) return 'empty';
+  const m = t.match(/^([\s\S]*?)\n?（情報：[^）]*）$/);
+  return (m && m[1].length <= 160) ? 'note' : 'own';
+}
+function _descMerge(old, found){
+  const k = _descKind(old); if (k === 'own' || !found) return null;
+  return k === 'empty' ? found : found + '\n' + String(old).trim();   // メモ（住所・営業時間など）は残す
+}
+function _descAutoOk(){ return !navigator.webdriver && navigator.onLine !== false; }   // 自動のときだけ（検査の自動操作中・圏外では聞きに行かない）
+/* まとめて探す。manual＝ボタンから（覚えた結果も使わず、もう一度聞く・結果を知らせる） */
+async function descFillAll(manual){
+  if (viewMode || _descBusy || document.body.classList.contains('viewonly')) return;
+  if (!manual && !_descAutoOk()) return;
+  const targets = _allSpots().filter(w => _descKind(w.desc) !== 'own' && _descNorm(w.name).length >= 2 && (manual || _descDoneGet(w) !== _descNorm(w.name)));
+  if (!targets.length) { if (manual) showToast('説明が空いているスポットはありません'); return; }
+  _descBusy = true;
+  const cid = currentCourseId; let n = 0, fail = 0, snap = false;
+  if (manual) showToast('名前から解説を探しています…（' + targets.length + ' か所）');
+  try {
+    for (const w of targets) {
+      if (currentCourseId !== cid || viewMode) break;              // 画面を移ったらやめる
+      let r = null;
+      try { r = await _descLookup(w.name, w.lat, w.lng, manual); } catch(_) { fail++; continue; }
+      if (!wps.includes(w)) continue;
+      _descDoneSet(w, w.name);
+      const nd = r ? _descMerge(w.desc, r.text) : null;            // 探している間に書かれた説明は上書きしない
+      if (nd && nd !== w.desc) { if (!snap) { saveSnapshot(); snap = true; } w.desc = nd; n++; }
+      if (!(r && r.cached)) await new Promise(res => setTimeout(res, DESC_GAP_MS));   // 相手のサーバーに負担をかけない
+    }
+  } finally { _descBusy = false; }
+  if (n) { showToast('名前から探して ' + n + ' か所に解説を入れました（出典つき。○を押すと直せます・「取り消し」で戻せます）'); try { renderShareInfo(); } catch(_) {} }
+  else if (manual) showToast(fail ? '通信できなかったため、探せませんでした' : '見つかった解説はありませんでした（自分で書くこともできます）');
+}
+/* スポットの編集：開いたとき・名前を入れ終えたときに、説明が空（またはメモだけ）なら探して入れる。「名前から探す」で何度でも */
+let _mDescT = null, _mDescSeq = 0;
+function _mDescStatus(t, cls){ const el = document.getElementById('mDescSt'); if (!el) return; el.textContent = t || ''; el.hidden = !t; el.className = 'm-desc-st' + (cls ? ' ' + cls : ''); }
+async function mDescFind(manual){
+  const wp = wps.find(w => w.id === editId); if (!wp) return;
+  const name = ((document.getElementById('mName') || {}).value || '').trim(), ta = document.getElementById('mDesc2');
+  if (_descNorm(name).length < 2) { if (manual) _mDescStatus('先に名前を入れてください', 'warn'); return; }
+  if (!manual && (!_descAutoOk() || _descKind(ta.value) === 'own' || _descDoneGet(wp) === _descNorm(name))) return;
+  if (manual && _descKind(ta.value) === 'own' && !confirm('いま書いてある説明を、名前から探した解説に置きかえますか？')) return;
+  const seq = ++_mDescSeq;
+  _mDescStatus('名前から解説を探しています…');
+  let r = null;
+  try { r = await _descLookup(name, wp.lat, wp.lng, manual); } catch(_) { if (seq === _mDescSeq) _mDescStatus('通信できなかったため、探せませんでした', 'warn'); return; }
+  if (seq !== _mDescSeq || editId !== wp.id) return;                   // その間に別のスポットを開いた／名前を変えた
+  _descDoneSet(wp, name);
+  if (!r) { _mDescStatus('解説は見つかりませんでした（自分で書けます）'); return; }
+  const cur = ta.value, nd = manual && _descKind(cur) === 'own' ? r.text : _descMerge(cur, r.text);
+  if (!nd) { _mDescStatus(''); return; }
+  ta.value = nd;
+  _mDescStatus(r.src === 'wikidata' ? 'ウィキデータから入れました。直してから「保存」できます' : 'ウィキペディアから入れました。直してから「保存」できます', 'ok');
+}
+function _mDescOnName(){ clearTimeout(_mDescT); _mDescT = setTimeout(() => mDescFind(false), 900); }
 /* スタート地点を決める（v227・オーナー指示「取り込みが終わったら、最初にスタート地点を決めることから始める」）。
    ・取り込んだスポットの中から選ぶ（地図の真ん中から近い順）か、地図を押して決める
    ・すでにスタートがあるコースでは出さない */
@@ -11233,7 +11408,7 @@ function renderCourseList() {
       </div>`;
     const [nameBtn,expBtn,shareBtn,delBtn] = card.querySelectorAll('.cc-act');
     nameBtn.addEventListener('click', e=>{e.stopPropagation();openRenameSheet(c.id);});
-    card.addEventListener('click', e => { if (e.target && e.target.closest && e.target.closest('.cc-act')) return; loadCourseData(c); });   // v179：カードのどこを押しても開く（ボタンを除く）
+    card.addEventListener('click', e => { if (e.target && e.target.closest && e.target.closest('.cc-act')) return; loadCourseData(c); setTimeout(() => descFillAll(false), DESC_AUTO_DELAY_MS); });   // v252：解説の空いたスポットを、名前から探して入れる   // v179：カードのどこを押しても開く（ボタンを除く）
     expBtn.addEventListener('click', e=>{e.stopPropagation();exportCourseData(c);});
     shareBtn.addEventListener('click', e=>{e.stopPropagation();openShareDialog(c);});
     delBtn.addEventListener('click', e=>{e.stopPropagation();askDeleteCourse(c.id);});   // v183：必ず確認してから消す

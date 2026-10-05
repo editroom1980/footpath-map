@@ -1166,6 +1166,18 @@ def static_checks(src):
         and '#mobileStampBtn[hidden]' in src and src.count('#stampBar{display:none!important}') == 2
         and "el.onclick = openStampSheet;" in src and '_stampTap' not in src
         and "mb.querySelector('.st-l').textContent = c.done + '/' + c.total;" in src and '#nextBar:not([hidden]) ~ #stampBar' not in src)
+    # --- v252: スポットの解説を名前から探して入れる・あとから直せる（オーナー指示）---
+    chk('静的', '解説は名前から探す：ウィキペディア（近くの記事・同じ名前で場所が近いか本文に市町村名）→ ウィキデータ（場所が近い）。Google は使わない。出典を付ける',
+        'function _descFind' in src and 'function _descLookup' in src and "const DESC_NEAR_M = 3000" in src and "const DESC_SUFFIX_RE = /(線路跡|跡地|跡|全景|入口|入り口)$/;" in src
+        and "'\\n（出典：ウィキペディア「' + t + '」）'" in src and "'\\n（出典：ウィキデータ）'" in src and "ppprop=disambiguation" in src
+        and "area.some(w => pg.extract.indexOf(w) >= 0)" in src and 'google' not in src[src.index('function _descFind'):src.index('function _descCacheAll')].lower())
+    chk('静的', '解説は上書きしない（書いてある説明はそのまま、取り込みのメモは残してその上に入れる）。自動はそのスポットのその名前で1回だけ。覚える鍵は LS に',
+        "function _descKind" in src and "function _descMerge" in src and "return k === 'empty' ? found : found + '\\n' + String(old).trim();" in src
+        and "descCache:   'fp_desc_cache'" in src and "descDone:    'fp_desc_done'" in src and "_descDoneGet(w) !== _descNorm(w.name)" in src)
+    chk('静的', '入口：自分のコースを開いたとき・まわりの施設を取り込んだあと（自動）、スポットの編集（開いたとき・名前を入れたとき・「名前から探す」）、公開の「スポットの解説」、閲覧モードのカードの「説明を直す」',
+        "loadCourseData(c); setTimeout(() => descFillAll(false), DESC_AUTO_DELAY_MS);" in src and "setTimeout(() => descFillAll(false), DESC_AUTO_DELAY_MS);   // v252：取り込んだ" in src
+        and 'onclick="mDescFind(true)">名前から探す</button>' in src and 'id="mDescSt"' in src and "_nm.addEventListener('input', _mDescOnName)" in src
+        and 'onclick="closeShareSheet();descFillAll(true)"' in src and 'id="ssSpotDesc"' in src and 'function _vipEdit' in src)
     # --- v251: スタンプ・次のスポット・カードのフリックはコースのスポットだけ・10m／カードの写真は小さく左に・シールを軽く（オーナー指示）---
     chk('静的', 'スタンプ・次のスポット・到着・カードのフリックは「コースに含まれるスポット」（S・番号・G）だけ。立ち寄り先は数えない。作る人の画面（写真の数・まわりの施設）は全部のスポット',
         "function _courseSpots(){ return wps.filter(w => w && w.type !== 'node' && (_hasRole(w) || _isNumbered(w))); }" in src
@@ -1890,6 +1902,73 @@ def functional_checks(index_path):
                  and st.get('storedKeys') == 1 and st.get('icon') is True
                  and '1 / 2' in st.get('barText', '') and st.get('mbText') == '1/2' and st.get('afterClear') == 0)
         chk('機能', 'スタンプが近づいたときだけ付き、消せる', ok_st, str(st)[:190])
+
+        # v252: 解説を名前から探す（ネットの代わりに決まった答えを返して確かめる）
+        ds = page.evaluate("""async ()=>{ try{
+            const keepGet = _descGet, keepW = wps.slice(), keepArea = courseInfo.area, keepU = undoStack.length, keepD = _dirty, keepConf = window.confirm, keepV = viewMode;
+            viewMode = false; courseInfo.area = '兵庫県宍粟市山崎町';
+            try { localStorage.removeItem(LS.descCache); localStorage.removeItem(LS.descDone); } catch(_){}
+            _descGeoMap.clear();
+            wps.length = 0;
+            const c = leafMap.getCenter(); _resetBounds(); _setAnchor(c.lat, c.lng, true);
+            const mk = (nm, desc, dlat) => { const w = addWp(c.lat + (dlat || 0), c.lng, 'course'); w.name = nm; w.desc = desc || ''; return w; };
+            const a = mk('近くの寺', '', 0);                         // ① 近くの記事で名前が同じ → 入る
+            const b = mk('同名寺', '', 0.001);                       // ② 同じ名前でも遠い・本文に町の名前なし → 入らない
+            const d = mk('町の鉄道線路跡', '', 0.002);               // ③ 「線路跡」を外して探す・座標なし・本文に「宍粟市」→ 入る
+            const e = mk('酒蔵', '', 0.003);                         // ④ ウィキデータ（場所が近い）→ 短い説明
+            const f = mk('近くの寺', '自分で書いた説明', 0.004);     // ⑤ 書いてある説明は上書きしない
+            const g = mk('メモの寺', '神社\\n（情報：OpenStreetMap）', 0.005);  // ⑥ 取り込みのメモ → その上に入れる
+            const calls = [];
+            _descGet = async (u) => { calls.push(u); const U = decodeURIComponent(u);
+              if (U.indexOf('list=geosearch') >= 0) return {query: {geosearch: [{pageid: 1, title: '近くの寺', lat: c.lat + 0.0005, lon: c.lng}, {pageid: 6, title: 'メモの寺', lat: c.lat + 0.005, lon: c.lng}]}};
+              if (U.indexOf('list=search') >= 0) { if (U.indexOf('srsearch=同名寺') >= 0) return {query: {search: [{pageid: 2, title: '同名寺'}]}}; if (U.indexOf('srsearch=町の鉄道') >= 0 && U.indexOf('線路跡') < 0) return {query: {search: [{pageid: 3, title: '町の鉄道'}]}}; return {query: {search: []}}; }
+              if (U.indexOf('prop=extracts') >= 0 && U.indexOf('pageids=') >= 0) { const P = {
+                  1: {pageid: 1, title: '近くの寺', extract: '近くの寺（ちかくのてら）は、兵庫県宍粟市にある寺院。江戸時代に建てられた。', coordinates: [{lat: c.lat + 0.0005, lon: c.lng}]},
+                  2: {pageid: 2, title: '同名寺', extract: '同名寺は、宮城県仙台市にある寺院。', coordinates: [{lat: 38.2, lon: 140.8}]},
+                  3: {pageid: 3, title: '町の鉄道', extract: '町の鉄道は、兵庫県宍粟市でかつて木材を運んだ鉄道。'},
+                  6: {pageid: 6, title: 'メモの寺', extract: 'メモの寺は宍粟市の古い寺。', coordinates: [{lat: c.lat + 0.005, lon: c.lng}]}};
+                const ids = (U.match(/pageids=([0-9|]+)/) || [])[1] || ''; const pages = {}; ids.split('|').forEach(i => { if (P[i]) pages[i] = P[i]; }); return {query: {pages}}; }
+              if (U.indexOf('wbsearchentities') >= 0) return U.indexOf('search=酒蔵') >= 0 ? {search: [{id: 'Q9', label: '酒蔵'}]} : {search: []};
+              if (U.indexOf('wbgetentities') >= 0) return {entities: {Q9: {claims: {P625: [{mainsnak: {datavalue: {value: {latitude: c.lat + 0.003, longitude: c.lng}}}}]}, descriptions: {ja: {value: '兵庫県宍粟市にある酒蔵'}}}}};
+              return {}; };
+            const out = {};
+            out.near = (await _descLookup('近くの寺', a.lat, a.lng, true) || {}).text || null;
+            out.far = await _descLookup('同名寺', b.lat, b.lng, true);
+            out.suffix = (await _descLookup('町の鉄道線路跡', d.lat, d.lng, true) || {}).text || null;
+            out.wd = (await _descLookup('酒蔵', e.lat, e.lng, true) || {}).text || null;
+            const n0 = calls.length; await _descLookup('近くの寺', a.lat, a.lng, false); out.cached = calls.length === n0;   // 2回目はネットに聞かない
+            out.merge = [_descMerge('', 'X'), _descMerge('自分の説明', 'X'), _descMerge('神社\\n（情報：OpenStreetMap）', 'X')];
+            // まとめて入れる（ボタンから）：①③④⑥に入り、②⑤はそのまま。取り消しで戻る
+            const u0 = undoStack.length;
+            await descFillAll(true);
+            out.bulk = {a: a.desc.indexOf('（出典：ウィキペディア「近くの寺」）') > 0, b: b.desc === '', d: d.desc.indexOf('（出典：ウィキペディア「町の鉄道」）') > 0,
+                        e: e.desc === '兵庫県宍粟市にある酒蔵\\n（出典：ウィキデータ）', f: f.desc === '自分で書いた説明',
+                        g: g.desc.indexOf('メモの寺は宍粟市の古い寺。') === 0 && /（情報：OpenStreetMap）$/.test(g.desc), undo: undoStack.length === u0 + 1};
+            undoLast(); out.undone = ((wps.find(w => w.id === a.id) || {}).desc || '') === '';
+            // スポットの編集：「名前から探す」で説明の欄に入り、一言が出る。書いてある説明は聞いてから
+            const a2 = wps.find(w => w.id === a.id); openModal(a2.id); await new Promise(r => setTimeout(r, 50));
+            document.getElementById('mDesc2').value = ''; await mDescFind(true);
+            out.modal = {filled: document.getElementById('mDesc2').value.indexOf('近くの寺（ちかくのてら）') === 0, st: document.getElementById('mDescSt').textContent};
+            document.getElementById('mDesc2').value = '自分の文'; window.confirm = () => false; await mDescFind(true);
+            out.modalKeep = document.getElementById('mDesc2').value === '自分の文';
+            window.confirm = keepConf; closeModal();
+            // 公開の「スポットの解説」の行
+            renderShareInfo(); out.share = (document.getElementById('ssSpotDesc') || {}).textContent || '';
+            _descGet = keepGet; courseInfo.area = keepArea; viewMode = keepV;
+            wps.forEach(w => { if (w.marker) leafMap.removeLayer(w.marker); });
+            wps.length = 0; keepW.forEach(w => wps.push(w)); undoStack.length = Math.min(undoStack.length, keepU); _dirty = keepD; refreshIcons(); redrawList();
+            try { localStorage.removeItem(LS.descCache); localStorage.removeItem(LS.descDone); } catch(_){}
+            document.querySelectorAll('#toastBox .toast').forEach(x => x.remove());
+            return out;
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        chk('機能', '解説を名前から探す：近くの同じ名前の記事は入る・遠い同じ名前は入らない・「線路跡」を外して本文の町の名前で確かめる・ウィキデータは短い説明。2回目はネットに聞かない',
+            isinstance(ds, dict) and (ds.get('near') or '').startswith('近くの寺（ちかくのてら）は') and (ds.get('near') or '').endswith('（出典：ウィキペディア「近くの寺」）')
+            and ds.get('far') is None and (ds.get('suffix') or '').startswith('町の鉄道は、兵庫県宍粟市') and ds.get('wd') == '兵庫県宍粟市にある酒蔵\n（出典：ウィキデータ）'
+            and ds.get('cached') and ds.get('merge') == ['X', None, 'X\n神社\n（情報：OpenStreetMap）'], str(ds)[:300])
+        chk('機能', '解説をまとめて入れる：空とメモだけのスポットに入り、書いてある説明と見つからないものはそのまま。取り消しで戻る。スポットの編集の「名前から探す」で入り、書いてある説明は聞いてから。公開に「スポットの解説」',
+            isinstance(ds, dict) and all((ds.get('bulk') or {}).get(k) for k in ('a', 'b', 'd', 'e', 'f', 'g', 'undo')) and ds.get('undone')
+            and (ds.get('modal') or {}).get('filled') and 'ウィキペディアから入れました' in (ds.get('modal') or {}).get('st', '') and ds.get('modalKeep')
+            and '名前から探す' in ds.get('share', ''), str(ds)[:300])
 
         # v251: スタンプはコースのスポットだけ（立ち寄り先は数えない）・10m 以内。カードのフリックもコースのスポットだけ。カードは写真を小さく左に、その隣に名前と解説
         cs = page.evaluate("""async ()=>{ try{

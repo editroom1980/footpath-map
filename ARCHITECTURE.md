@@ -549,3 +549,8 @@ CONSTANTS(904) → STATE(968) → STORAGE(1015) → 版のお知らせ(1021) →
 - 見せ方（v250）：スタンプの絵は `_stampSvg`（枠 `STAMP_FRAMES`×色 `STAMP_INKS` を歩く順で回す・真ん中は `_stampKanji`）。押した瞬間 `_stampFx`（順番待ち `_stampFxQ`）、全部そろったら最後のあとに `_stampDoneFx`（完歩之印 `_stampSealSvg`・紙吹雪）。スタンプ帳 `openStampSheet`。記念の1枚は `_goalSeal`。
 - 演出は `.st-fx`／`.st-done` を body に足して出す（`close〜` 関数があるので画面を移ると消える）。検査で `_checkVisits` を呼んだら、後の検査の画面を覆わないよう `closeStampFx()`・`closeStampDone()` で片づける。
 
+## スポットの解説を名前から探す（v252）
+- `_descLookup(名前, 緯度, 経度, force)` → `_descFind`：ウィキペディアの地理検索（`_descGeoList`・約5km四方ごとに1回）で名前が同じ近くの記事 → 名前で検索（同じ名前で、座標が `DESC_NEAR_M` 以内か本文に `_descAreaWords()` の市町村名）→ ウィキデータ（座標が近いもの）。ネットは `_descGet` の1か所（検査で差し替える）。
+- 説明の扱いは `_descKind`（empty／note＝取り込みのメモ「（情報：…）」／own＝書いてある説明）と `_descMerge`。own は上書きしない。
+- まとめて入れるのは `descFillAll(manual)`。自動は `_descDoneGet/_descDoneSet`（コース・スポット・名前ごとに1回）。結果は `LS.descCache` に覚える。
+
