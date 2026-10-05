@@ -1160,15 +1160,18 @@ def static_checks(src):
     chk('静的', '高低差の帯に「いまここ」の丸がある（位置が入ったときだけ・一番上に描く）',
         'class="ev-here"' in src and 'function _elevHerePoint' in src and 'function _drawElevHere' in src
         and src.index('stroke="#C0A882" stroke-width="0.8"/>`+\n    here + _scrubSvg(') > 0)   # v166：なぞりの印は「いまここ」の後（一番上）
-    chk('静的', 'スタンプの札は次のスポットの帯の下', '#nextBar:not([hidden]) ~ #stampBar{top:' in src)
+    chk('静的', 'スタンプはスマホでは右の列のアイコン（追いかけるの次・絵と数）。左上の札は出さない。PC は右下の札。押すと全部消すか聞く（v249）',
+        '<button class="mrb stamp tap" id="mobileStampBtn" onclick="_stampTap()"' in src
+        and src.index('id="mobileNextBtn"') < src.index('id="mobileStampBtn"') < src.index('id="mobilePtsBtn"')
+        and '#mobileStampBtn[hidden]' in src and src.count('#stampBar{display:none!important}') == 2
+        and "function _stampTap(){ if (confirm('スタンプを全部消しますか？')) clearVisits(); }" in src
+        and "mb.querySelector('.st-l').textContent = c.done + '/' + c.total;" in src and '#nextBar:not([hidden]) ~ #stampBar' not in src)
     chk('静的', '次のスポットの帯：向きの矢印を出さないときは場所も取らない（display。visibility で隠すと左に余白が残る・v248）',
         "ar.style.display = _walkPos ? '' : 'none';" in src and 'ar.style.visibility' not in src)
     # --- v245: 次のスポットの帯が右の列（➤）・「戻る」に重ならない（オーナー指摘）---
-    chk('静的', '次のスポットの帯は「戻る」と右の列の間に左右同じすきまで（真ん中）。右の列は帯の下へ下げない（v248）。帯の高さ（--nb-h）を測ってスタンプの札をその下に。横向きは幅 440px まで真ん中',
-        "document.documentElement.style.setProperty('--nb-h', h + 'px')" in src
-        and '~ #mobileRbtns{top:calc(max(8px,var(--sat)) + var(--nb-h' not in src
+    chk('静的', '次のスポットの帯は「戻る」と右の列の間に左右同じすきまで（真ん中）。右の列は帯の下へ下げない（v248）。横向きは幅 440px まで真ん中',
+        '--nb-h' not in src   # v249：帯の高さを使っていたスタンプの札は右の列へ移った
         and '#nextBar{display:none;position:absolute;left:calc(max(8px,env(safe-area-inset-left)) + 48px);right:calc(max(8px,env(safe-area-inset-right)) + 48px);top:max(8px,var(--sat));' in src
-        and '#nextBar:not([hidden]) ~ #stampBar{top:calc(max(8px,var(--sat)) + var(--nb-h,68px) + 8px)}' in src
         and '#nextBar{left:calc(max(8px,env(safe-area-inset-left)) + 48px);right:calc(max(8px,env(safe-area-inset-right)) + 48px);top:max(8px,var(--sat));width:auto;max-width:440px;margin:0 auto}' in src)
     chk('静的', '往復コースでも進みを取り違えない（候補を束ね、前回の進みに近いものを選ぶ）',
         'function _routeCandidates' in src and 'const ROUTE_AMBIG_M' in src and "_routeProgress(lat, lng, _walkPos ? _walkPos.along : null)" in src)
@@ -1838,20 +1841,21 @@ def functional_checks(index_path):
             const icon = a.marker.getElement().innerHTML.indexOf('wp-visited') >= 0;
             const bar = document.getElementById('stampBar');
             const barText = bar ? bar.textContent : '';
+            const mbText = document.querySelector('#mobileStampBtn .st-l').textContent;   // v249：右の列のアイコンの数
             clearVisits();
             const afterClear = visitCount();
             wps.forEach(w => { if (w.marker) leafMap.removeLayer(w.marker); });
             wps.length = 0; keepW.forEach(w => wps.push(w));
-            viewMode = keepView; currentCourseId = keepId; loadVisits();
+            viewMode = keepView; currentCourseId = keepId; loadVisits(); renderStampBar();
             try { localStorage.removeItem(LS.visits); } catch(_){}
             return {inEdit:inEdit, near:near, again:again, done:cnt.done, total:cnt.total,
-                    storedKeys:Object.keys(stored).length, icon:icon, barText:barText,
+                    storedKeys:Object.keys(stored).length, icon:icon, barText:barText, mbText:mbText,
                     afterClear:afterClear.done};
           }catch(e){ return 'ERR:'+e.message; } }""")
         ok_st = (isinstance(st, dict) and st.get('inEdit') == 0 and st.get('near') == 1
                  and st.get('again') == 0 and st.get('done') == 1 and st.get('total') == 2
                  and st.get('storedKeys') == 1 and st.get('icon') is True
-                 and '1 / 2' in st.get('barText', '') and st.get('afterClear') == 0)
+                 and '1 / 2' in st.get('barText', '') and st.get('mbText') == '1/2' and st.get('afterClear') == 0)
         chk('機能', 'スタンプが近づいたときだけ付き、消せる', ok_st, str(st)[:190])
 
         # INV-AM: 密集したラベルの重なりが自動配置で減る
@@ -5326,6 +5330,12 @@ def webkit_checks(index_path):
             page.evaluate("() => { const c = _lastRouteCoords; if (c && c.length > 2) { const i = Math.floor(c.length * 0.3); _onWalkerPos(c[i][0], c[i][1], 6); } }")
             page.wait_for_timeout(300)
             pad1 = page.evaluate(NB_PAD)
+            stp = page.evaluate("""() => { const mb = document.getElementById('mobileStampBtn'), ch = document.getElementById('stampBar');
+                const vis = e => !!e && getComputedStyle(e).display !== 'none' && e.getBoundingClientRect().width > 0;
+                const col = [...document.querySelectorAll('#mobileRbtns > *')].filter(vis).map(e => e.id || e.getAttribute('aria-label'));
+                return {icon: vis(mb), cap: mb.querySelector('.st-l').textContent, chip: vis(ch), after: col.indexOf('mobileStampBtn') === col.indexOf('mobileNextBtn') + 1}; }""")
+            chk('WebKit', 'スタンプは右の列のアイコン（追いかけるの次）で「押した数/全部」が出る。左上の札は出ない（v249）',
+                stp['icon'] and re.fullmatch(r'\d+/\d+', stp['cap'] or '') and not stp['chip'] and stp['after'], str(stp))
             chk('WebKit', '次のスポットの帯：歩く前は向きの矢印を出さず、文字は帯の左端から（余白を残さない）。歩きはじめたら矢印が出る',
                 pad0['ar'] == 'none' and pad0['pad'] <= 12 and pad1['ar'] == 'flex' and pad1['pad'] > 30, str({'before': pad0, 'walking': pad1}))
             r = page.evaluate(OVERFLOW)

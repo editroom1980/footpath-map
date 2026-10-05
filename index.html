@@ -382,7 +382,7 @@ body.embed #s2, body.embed #mapArea, body.embed #mapWrap{height:100%!important;m
 /* 発見（v143） */
 .wp-sticker.find{border-color:#E8F5E9}
 .find-dot{border-radius:50%;color:#fff;font-weight:bold;text-align:center;border:2.5px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.45);cursor:pointer}
-#mobileFindBtn[hidden],#btnFind[hidden],#mmFindsRow[hidden],#btnGoal[hidden],#mmGoalRow[hidden],#mmKokoroeRow[hidden],#mmInfoRow[hidden],#mmPubRow[hidden],#mmGetRow[hidden]{display:none!important}
+#mobileFindBtn[hidden],#mobileStampBtn[hidden],#btnFind[hidden],#mmFindsRow[hidden],#btnGoal[hidden],#mmGoalRow[hidden],#mmKokoroeRow[hidden],#mmInfoRow[hidden],#mmPubRow[hidden],#mmGetRow[hidden]{display:none!important}
 /* スポットの編集：くわしい設定（v148） */
 .m-more{border:1px solid #E6DCCB;border-radius:10px;padding:0 10px;margin:4px 0 10px;background:#FCFAF6}
 .m-switch{display:flex!important;align-items:center;gap:10px;background:#FCFAF6;border:1px solid #E6DCCB;border-radius:10px;padding:8px 10px;margin:6px 0 10px;cursor:pointer;font-weight:normal!important}
@@ -1074,10 +1074,8 @@ body.viewonly .mob-share, body.embed .mob-share{display:none!important}
   .mob-back{background:rgba(255,255,255,0.95)!important;box-shadow:0 2px 8px rgba(0,0,0,0.18)}
   .mob-save{box-shadow:0 2px 8px rgba(0,0,0,0.22)}
   #mobileRbtns{display:flex!important;top:max(8px,var(--sat))!important;bottom:auto;right:max(8px,env(safe-area-inset-right))}   /* v247：上の段の右が空いたので「戻る」と同じ高さから */
-  /* スタンプ表示は、下のカードの「…」ボタンに重なっていたので左上へ出す（v106で実測して判明）*/
-  #stampBar{left:max(8px,env(safe-area-inset-left));right:auto;bottom:auto;
-    top:calc(max(8px,var(--sat)) + 50px)}
-  #nextBar:not([hidden]) ~ #stampBar{top:calc(max(8px,var(--sat)) + var(--nb-h,68px) + 8px)}   /* 次のスポットの帯の下（v133。v245：帯の高さ --nb-h は JS が測る） */
+  /* スタンプは右の列のアイコン（v249）。左上の札は出さない（PC は今までどおり右下の札） */
+  #stampBar{display:none!important}
   /* v248：次のスポットの帯は「戻る」と右の列の間に、左右同じすきまで真ん中に出す（上の #nextBar の left・right）。
      右の列は編集のときと同じく「戻る」の高さから（オーナー指示「帯の幅を短くして中央に表示し、右のアイコン列を上に上げろ」）。
      v245 で右の列を帯の下へ下げていたのはやめた */
@@ -1148,6 +1146,7 @@ body.viewonly .mob-share, body.embed .mob-share{display:none!important}
   #nextBar{left:calc(max(8px,env(safe-area-inset-left)) + 48px);right:calc(max(8px,env(safe-area-inset-right)) + 48px);top:max(8px,var(--sat));width:auto;max-width:440px;margin:0 auto}
   #mobileShelf{display:flex!important}
   #mobileElevBand{display:block!important}
+  #stampBar{display:none!important}   /* v249：スタンプは右の列のアイコン（幅の広い横向きでは右下の札が下の棚に重なっていた） */
 
   /* モード切替シェルフを右下にフローティング（高さ44pxに統一） */
   #mobileShelf{position:absolute!important;right:max(8px,env(safe-area-inset-right));left:auto!important;bottom:max(8px,var(--sab));width:auto;height:44px!important;box-sizing:border-box;
@@ -1335,6 +1334,11 @@ body.viewing #modeHint,body.viewonly #modeHint{display:none!important}
 .mrb.pts .svgi{width:17px;height:17px}
 .mrb.pts .pts-l{font-size:9px;font-weight:800;line-height:1;letter-spacing:-.02em;white-space:nowrap}
 .mrb.pts.on{background:var(--brand)!important;color:#fff!important}
+/* スタンプ（v249）：絵と小さな数（押した数/全部）。全部押せたら緑 */
+.mrb.stamp{flex-direction:column;gap:1px;color:#4A2E0E}
+.mrb.stamp .svgi{width:17px;height:17px}
+.mrb.stamp .st-l{font-size:9px;font-weight:800;line-height:1;letter-spacing:-.02em;white-space:nowrap;font-variant-numeric:tabular-nums}
+.mrb.stamp.done{background:var(--ok)!important;color:#fff!important}
 #btnPts{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
 #btnPts .svgi{width:15px;height:15px}
 #btnPts .pc-val{font-size:11.5px;font-weight:800;color:var(--brand)}
@@ -1600,6 +1604,8 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
           <button class="mrb mob-share tap" onclick="openShareSheet()" aria-label="公開" title="公開（画像・印刷用シート・リンク・GPX・みんなのマップ）"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 9h-1a2 2 0 0 0 -2 2v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-8a2 2 0 0 0 -2 -2h-1" /> <path d="M12 14v-11" /> <path d="M9 6l3 -3l3 3" /></svg></button>
           <!-- v247：現在地は「追いかける」1つ（◎ 現在地へ をまとめた。オーナー指示「追従だけでいい」）。追いかけている間は青く塗る -->
           <button class="mrb next tap" id="mobileNextBtn" onclick="toggleFollowMode()" aria-label="現在地を追いかける" aria-pressed="false" title="現在地を追いかける（もう一度押すと止まります）。閲覧モードでは次のスポットまでの距離も出ます"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l19 -9l-9 19l-2 -8z" /></svg></button>
+          <!-- v249：スタンプも右の列のアイコンに（オーナー指示）。数は下の小さな文字。閲覧モードでスポットがあるときだけ出る。押すと「全部消しますか？」（前の札と同じ） -->
+          <button class="mrb stamp tap" id="mobileStampBtn" onclick="_stampTap()" aria-label="スタンプ" title="スタンプ（押すと全部消せます）" hidden><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 17.85h-18c0 -4.05 1.421 -4.05 3.79 -4.05c5.21 0 1.21 -4.59 1.21 -6.8a4 4 0 1 1 8 0c0 2.21 -4 6.8 1.21 6.8c2.369 0 3.79 0 3.79 4.05z" /> <path d="M5 21h14" /></svg><span class="st-l"></span></button>
           <!-- v241：ポイントの表示。押すたびに 全部→コース→線だけ。長押しで種類を選ぶ（_ptBindHold） -->
           <button class="mrb pts tap" id="mobilePtsBtn" data-pts="1" aria-label="ポイントの表示：全部（押すと切り替え・長押しで種類を選ぶ）" title="ポイントの表示：押すたびに 全部→コースだけ→線だけ。長押しで種類を選ぶ"><span class="pts-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17c3.5 0 4.5-6 8.5-6S16 15 21 13"/><circle cx="5" cy="16.6" r="1.9" fill="currentColor"/><circle cx="12" cy="11" r="1.9" fill="currentColor"/><circle cx="19.5" cy="13.4" r="1.9" fill="currentColor"/><circle cx="17" cy="5" r="1.9" fill="currentColor"/><circle cx="6" cy="6.5" r="1.9" fill="currentColor"/></svg></span><span class="pts-l">全部</span></button>
           <button class="mrb tap find" id="mobileFindBtn" onclick="openFindSheet()" aria-label="発見を貼る" title="見つけたものを貼る" hidden><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h1a2 2 0 0 0 2 -2a1 1 0 0 1 1 -1h6a1 1 0 0 1 1 1a2 2 0 0 0 2 2h1a2 2 0 0 1 2 2v9a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-9a2 2 0 0 1 2 -2" /><path d="M9 13a3 3 0 1 0 6 0a3 3 0 0 0 -6 0" /></svg></button>
@@ -3452,7 +3458,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 手描きの道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した手描きの道id（直前取り消し用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v248';
+const APP_VERSION = 'v249';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat0', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -4956,9 +4962,6 @@ function nextBarTap() {
   const id = _nextWpId; if (id == null) return;
   if (typeof showViewInfo === 'function') showViewInfo(id);
 }
-// v245：次のスポットの帯の高さを --nb-h に入れる（スタンプの札をその下に並べる。文字が折り返して帯が伸びても重ならない）
-(function () { const bar = document.getElementById('nextBar'); if (!bar || !window.ResizeObserver) return;
-  new ResizeObserver(() => { const h = bar.offsetHeight; if (h > 0) document.documentElement.style.setProperty('--nb-h', h + 'px'); }).observe(bar); })();
 function renderNextBar() {
   const bar = document.getElementById('nextBar'); if (!bar) return;
   const on = viewMode && !document.body.classList.contains('embed') && _stampTargets().length > 0;
@@ -5163,20 +5166,28 @@ function clearVisits(){
   _visits = {}; _saveVisits(); refreshIcons(); renderStampBar();
   if (typeof showToast === 'function') showToast('スタンプを消しました');
 }
-// 画面上の「スタンプ n/m」。閲覧モードでスポットがあるときだけ出す。
+// 画面上の「スタンプ n/m」。閲覧モードでスポットがあるときだけ出す。PC は右下の札、スマホは右の列のアイコン（v249）
+function _stampTap(){ if (confirm('スタンプを全部消しますか？')) clearVisits(); }
 function renderStampBar(){
   let el = document.getElementById('stampBar');
+  const mb = document.getElementById('mobileStampBtn');
   const show = viewMode && _stampTargets().length > 0;
+  if (mb) mb.hidden = !show;
   if (!show) { if (el) el.style.display = 'none'; return; }
   if (!el) {
     el = document.createElement('div'); el.id = 'stampBar';
-    el.onclick = function(){ if (confirm('スタンプを全部消しますか？')) clearVisits(); };
+    el.onclick = _stampTap;
     (document.getElementById('mapWrap') || document.body).appendChild(el);
   }
-  const c = visitCount();
+  const c = visitCount(), all = c.done > 0 && c.done === c.total;
   el.style.display = 'block';
   el.textContent = '🏁 スタンプ ' + c.done + ' / ' + c.total;
-  el.classList.toggle('done', c.done > 0 && c.done === c.total);
+  el.classList.toggle('done', all);
+  if (mb) {
+    mb.querySelector('.st-l').textContent = c.done + '/' + c.total;
+    mb.classList.toggle('done', all);
+    mb.setAttribute('aria-label', 'スタンプ ' + c.done + ' / ' + c.total + '（押すと全部消せます）');
+  }
 }
 
 /* ---- 現在地追従 ---------------------------------------------------------
