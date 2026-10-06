@@ -1119,7 +1119,7 @@ def static_checks(src):
     chk('静的', '「配る」の写真つきスポットから、写真の無いスポットへ飛べる', 'function shareInfoPhoto' in src and 'onclick="shareInfoPhoto()"' in src)
     chk('静的', '並べ替えの件数は「手描きの道の点」を数えず（v241：コースに入っているものだけ）、点の行は控えめ', "v('mmReorderN', _roTargets().filter(w => w.type !== 'node').length + ' か所');" in src and "' ro-node'" in src)
     chk('静的', '種別チップの畳んだ側はこのコースで使った順', "(used[b] || 0) - (used[a] || 0)" in src)
-    chk('静的', '通知は1つの箱に積む（重ならない・3つまで）', "box.id = 'toastBox'" in src and "while (box.children.length > 3)" in src)
+    chk('静的', '通知は1つの箱に積む（重ならない・3つまで。v255：出し続ける知らせ（.sticky）は数えず消さない）', "box.id = 'toastBox'" in src and "while (box.querySelectorAll('.toast:not(.sticky)').length > 3)" in src)
     # --- v139: 協会式のコース情報（F2）---
     chk('静的', 'コースの情報の項目は協会式の7つ（アクセス・車・トイレ・休憩・季節・注意・問い合わせ）',
         "const COURSE_INFO_FIELDS = [" in src and all(f"k:'{k}'" in src for k in ('access', 'car', 'toilet', 'rest', 'season', 'notes', 'contact')))
@@ -1167,6 +1167,17 @@ def static_checks(src):
         and '#mobileStampBtn[hidden]' in src and src.count('#stampBar{display:none!important}') == 2
         and "el.onclick = openStampSheet;" in src and '_stampTap' not in src
         and "mb.querySelector('.st-l').textContent = c.done + '/' + c.total;" in src and '#nextBar:not([hidden]) ~ #stampBar' not in src)
+    # --- v255: 名前から解説を探すのが「全くできてない」（オーナー指摘）：重なり・知らせ・途中でやめる・古い版のまま ---
+    chk('静的', '名前から探して入れた解説（出典の行）は found として、まとめて探すときは飛ばし、重なったものは1つにし、探し直すときは入れかえる',
+        "if (t.split('\\n').some(l => DESC_SRC_RE.test(l.trim()))) return 'found';" in src and 'function _descStripFound' in src and 'function _descDedupe' in src
+        and "if (k === 'own' || k === 'found' || !found) return null;" in src and "const cur = _descKind(cur0) === 'found' ? _descStripFound(cur0) : cur0;" in src)
+    chk('静的', 'まとめて探す：探している間の知らせ（消えない）・コースのスポットから先に・2つずつ・閲覧モードでもやめない・終わりの知らせは長めに',
+        'const DESC_WORKERS = 2;' in src and 'function _descProg' in src and "el.className = 'toast sticky'" in src
+        and "while (box.querySelectorAll('.toast:not(.sticky)').length > 3)" in src and "if (_descBusy || document.body.classList.contains('viewonly')) return;" in src
+        and "while (next < targets.length && currentCourseId === cid)" in src and 'function showToast(msg, ms)' in src)
+    chk('静的', '新しい版の確認は、起動したときだけでなく、アプリが表に戻ったときにも（5分に1回まで）',
+        'const UPD_RECHECK_MS = 5 * 60 * 1000;' in src and "document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') _watchVersionSoon(); });" in src
+        and "window.addEventListener('pageshow', e => { if (e.persisted) _watchVersionSoon(); });" in src)
     # --- v254: 名前の付いたスポットは、その名前で解説を探す先を足した（オーナー指示「寺院の名前など、すでにつけられているものはその名前で調べて解説を入れるように」）---
     chk('静的', '解説を探す先：文化遺産オンライン（ジャパンサーチ経由・場所が近いもの）とウィキペディアの本文の文（名前と市町村名が同じ文）を足した。出典を付ける。Google は使わない',
         "DESC_JPS = 'https://jpsearch.go.jp/api/item/search/jps-cross'" in src and "'\\n（出典：文化遺産オンライン「' + ti + '」・文化庁・CC BY 4.0）'" in src
@@ -2195,6 +2206,72 @@ def functional_checks(index_path):
             and ds.get('listOnly') is None and ds.get('area') == '宍粟市,宍粟,山崎町' and ds.get('oldDone') and ds.get('newDone'), str({k: ds.get(k) for k in ('bunka', 'mention', 'listOnly', 'area', 'oldDone', 'newDone')} if isinstance(ds, dict) else ds)[:400])
         chk('機能', '解説をまとめて入れる（v254）：文化遺産オンライン・本文の文も入る。名前を付けた地理院の記号の古いメモ「（地図記号。名前は地図に書かれていません）」は直し、名前が付いていないものはそのまま',
             isinstance(ds, dict) and all((ds.get('bulk') or {}).get(k) for k in ('h', 'i', 'j', 'k', 'l')), str((ds.get('bulk') if isinstance(ds, dict) else ds))[:400])
+
+        # v255: 名前から解説を探す（オーナー指摘「全くできてない」）：探している間の知らせ・閲覧モードでもやめない・コースのスポットから先に・重ねない・表に戻ったら新しい版を確かめる
+        df = page.evaluate("""async ()=>{ try{
+            closeStampFx(); closeStampDone();
+            const keepGet = _descGet, keepLk = _descLookup, keepW = wps.slice(), keepArea = courseInfo.area, keepU = undoStack.length, keepD = _dirty, keepV = viewMode, keepFetch = window.fetch;
+            viewMode = false; courseInfo.area = '兵庫県宍粟市山崎町';
+            try { localStorage.removeItem(LS.descCache); localStorage.removeItem(LS.descDone); } catch(_){}
+            _descGeoMap.clear(); document.querySelectorAll('#toastBox .toast').forEach(x => x.remove());
+            wps.length = 0;
+            const c = leafMap.getCenter(); _resetBounds(); _setAnchor(c.lat, c.lng, true);
+            const mk = (nm, desc, dlat, type) => { const w = addWp(c.lat + (dlat || 0), c.lng, type || 'course'); w.name = nm; w.desc = desc || ''; return w; };
+            const off = mk('立ち寄りの寺', '', 0.003, 'shrine'); off.onRoute = false;   // 立ち寄り先：あとで探す
+            const a = mk('近くの寺', '', 0);                                             // コースのスポット：先に探す
+            const dup = mk('重なり神社', 'X は神社。\\n（出典：ウィキペディア「X」・CC BY-SA 4.0）\\nX は神社。\\n（出典：ウィキペディア「X」・CC BY-SA 4.0）\\n神社\\n（情報：OpenStreetMap）', 0.001);
+            const none = mk('無い寺', '', 0.002);
+            refreshIcons();
+            let geoCalls = 0;
+            _descGet = async (u) => { const U = decodeURIComponent(u); await new Promise(r => setTimeout(r, 30));
+              if (U.indexOf('list=geosearch') >= 0) { geoCalls++; return {query: {geosearch: [{pageid: 1, title: '近くの寺', lat: c.lat, lon: c.lng}, {pageid: 5, title: '立ち寄りの寺', lat: c.lat + 0.003, lon: c.lng}]}}; }
+              if (U.indexOf('prop=extracts') >= 0 && U.indexOf('pageids=') >= 0) { const P = {1: {pageid: 1, title: '近くの寺', extract: '近くの寺は宍粟市の寺。', coordinates: [{lat: c.lat, lon: c.lng}]}, 5: {pageid: 5, title: '立ち寄りの寺', extract: '立ち寄りの寺は宍粟市の寺。', coordinates: [{lat: c.lat + 0.003, lon: c.lng}]}};
+                const ids = (U.match(/pageids=([0-9|]+)/) || [])[1] || ''; const pages = {}; ids.split('|').forEach(i => { if (P[i]) pages[i] = P[i]; }); return {query: {pages}}; }
+              if (U.indexOf('jpsearch') >= 0) return {hit: 0, list: []};
+              if (U.indexOf('wbsearchentities') >= 0) return {search: []};
+              return {query: {search: []}}; };
+            const looked = []; window._descLookup = (n, la, ln, f) => { looked.push(n); return keepLk(n, la, ln, f); };
+            const out = {};
+            // まとめて探す：探している間は「n / m」を出し続ける。途中で閲覧モードにしてもやめない
+            const pr = descFillAll(true); await new Promise(r => setTimeout(r, 5));
+            out.prog = (document.getElementById('descProg') || {}).textContent || '';
+            viewMode = true; await pr; viewMode = false;
+            out.progGone = !document.getElementById('descProg');
+            out.a = a.desc; out.off = off.desc; out.none = none.desc; out.dup = dup.desc; out.looked = looked.slice(); out.geoCalls = geoCalls;
+            out.toast = [...document.querySelectorAll('#toastBox .toast')].map(t => t.textContent).join(' | ');
+            // もう一度まとめて探しても重ねない
+            const before = a.desc; await descFillAll(true); out.again = a.desc === before && dup.desc === out.dup;
+            // スポットの編集の「名前から探す」で探し直すと入れかわる（重ねない）
+            openModal(a.id); await new Promise(r => setTimeout(r, 50)); await mDescFind(true);
+            out.modal = document.getElementById('mDesc2').value; closeModal();
+            // 公開の「スポットの解説」の数に、名前から探して入れた解説も数える
+            renderShareInfo(); out.share = (document.getElementById('ssSpotDesc') || {}).textContent || '';
+            out.kinds = [_descKind(''), _descKind('神社\\n（情報：OpenStreetMap）'), _descKind('近くの寺は宍粟市の寺。\\n（出典：ウィキペディア「近くの寺」・CC BY-SA 4.0）\\n神社\\n（情報：OpenStreetMap）'), _descKind('自分で書いた説明')];
+            // 表に戻ったときにも新しい版を確かめる（前に確かめてから5分たっていれば。すぐあとは聞かない）
+            let asked = 0;
+            window.fetch = async (u, o) => { if (String(u).indexOf('version.json') === 0) { asked++; return new Response(JSON.stringify({version: 'v999'}), {status: 200}); } return keepFetch(u, o); };
+            _updCheckedAt = Date.now() - UPD_RECHECK_MS - 1; document.dispatchEvent(new Event('visibilitychange')); await new Promise(r => setTimeout(r, 80));
+            out.upd = {asked: asked, v: _updVersion};
+            document.dispatchEvent(new Event('visibilitychange')); await new Promise(r => setTimeout(r, 80)); out.upd2 = asked;
+            window.fetch = keepFetch; _updVersion = null; const ub = document.getElementById('updBar'); if (ub) ub.remove();
+            // 後片づけ
+            _descGet = keepGet; window._descLookup = keepLk; courseInfo.area = keepArea; viewMode = keepV;
+            wps.forEach(w => { if (w.marker) leafMap.removeLayer(w.marker); });
+            wps.length = 0; keepW.forEach(w => wps.push(w)); undoStack.length = Math.min(undoStack.length, keepU); _dirty = keepD; refreshIcons(); redrawList();
+            try { localStorage.removeItem(LS.descCache); localStorage.removeItem(LS.descDone); } catch(_){}
+            document.querySelectorAll('#toastBox .toast').forEach(x => x.remove());
+            return out;
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        chk('機能', '名前から解説を探す（v255）：探している間は「n / m」を出し続けて終わったら消す。閲覧モードにしてもやめない。コースのスポットから先に探す。地理検索は1回。終わったら入ったところと見つからなかった数を知らせる',
+            isinstance(df, dict) and '名前から解説を探しています' in df.get('prog', '') and '/ 3' in df.get('prog', '') and df.get('progGone')
+            and df.get('a') == '近くの寺は宍粟市の寺。\n（出典：ウィキペディア「近くの寺」・CC BY-SA 4.0）' and df.get('off', '').startswith('立ち寄りの寺は宍粟市の寺。') and df.get('none') == ''
+            and df.get('looked', [])[-1:] == ['立ち寄りの寺'] and set(df.get('looked', [])[:2]) == {'近くの寺', '無い寺'} and df.get('geoCalls') == 1
+            and '名前から探して 2 か所に解説を入れました：' in df.get('toast', '') and '1 か所は、公開されている情報' in df.get('toast', ''), str(df)[:500])
+        chk('機能', '名前から解説を探す（v255）：同じ解説を重ねない（v254 までに重なったものは1つにする・もう一度探しても同じ・スポットの編集で探し直すと入れかわる）。公開の「スポットの解説」の数に入る。表に戻ったとき新しい版を確かめる（5分に1回）',
+            isinstance(df, dict) and df.get('dup') == 'X は神社。\n（出典：ウィキペディア「X」・CC BY-SA 4.0）\n神社\n（情報：OpenStreetMap）' and df.get('again')
+            and df.get('modal', '').count('（出典：') == 1 and df.get('modal', '').startswith('近くの寺は宍粟市の寺。')
+            and df.get('share', '').startswith('3 / 4') and df.get('kinds') == ['empty', 'note', 'found', 'own']
+            and df.get('upd') == {'asked': 1, 'v': 'v999'} and df.get('upd2') == 1, str({k: (df.get(k) if isinstance(df, dict) else df) for k in ('dup', 'again', 'modal', 'share', 'kinds', 'upd', 'upd2')})[:500])
 
         # v251: スタンプはコースのスポットだけ（立ち寄り先は数えない）・10m 以内。カードのフリックもコースのスポットだけ。カードは写真を小さく左に、その隣に名前と解説
         cs = page.evaluate("""async ()=>{ try{

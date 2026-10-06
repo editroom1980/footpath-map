@@ -2802,9 +2802,17 @@ async function applyUpdate(v){
   location.replace(base + '?v=' + String(v).replace(/^v/, ''));
 }
 async function watchVersion(){
+  _updCheckedAt = Date.now();
   _updVersion = await checkForUpdate();
   if (_updVersion) showUpdateBar(_updVersion);
 }
+/* v255：ホーム画面のアプリは閉じずに裏に回るだけのことが多く、起動したときにしか確かめないと、公開しても古い版のまま使い続けてしまう
+   （シミュレーターで確認：v254 を公開したあと、裏から戻したアプリは v250 のままで案内も出なかった）。表に戻ったときにも確かめる */
+const UPD_RECHECK_MS = 5 * 60 * 1000;   // 表に戻ったとき、前に確かめてからこれだけ経っていれば、もう一度確かめる
+let _updCheckedAt = 0;
+function _watchVersionSoon(){ if (Date.now() - _updCheckedAt >= UPD_RECHECK_MS) watchVersion(); }
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') _watchVersionSoon(); });
+window.addEventListener('pageshow', e => { if (e.persisted) _watchVersionSoon(); });
 // 一覧に戻ってきたときに、確認済みの新版があれば改めて案内する（再取得はしない）
 function showUpdateBarIfPending(){
   if (_updVersion) showUpdateBar(_updVersion);
@@ -3633,7 +3641,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 手描きの道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した手描きの道id（直前取り消し用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v254';
+const APP_VERSION = 'v255';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat0', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -4065,7 +4073,7 @@ function renderShareInfo(){
   pEl.classList.toggle('warn', spots.length > 0 && withPhoto === 0);
   document.getElementById('ssStamp').textContent = st.length ? `${st.length}か所` : 'なし';
   const sdEl = document.getElementById('ssSpotDesc');   // v252：解説の入っているスポット（取り込みのメモだけのものは数えない）。押すと名前から探す
-  if (sdEl) { const nd = spots.filter(w => _descKind(w.desc) === 'own').length; sdEl.textContent = `${nd} / ${spots.length}　名前から探す ›`; sdEl.classList.toggle('warn', spots.length > 0 && nd < spots.length); }
+  if (sdEl) { const nd = spots.filter(w => { const k = _descKind(w.desc); return k === 'own' || k === 'found'; }).length; sdEl.textContent = `${nd} / ${spots.length}　名前から探す ›`; sdEl.classList.toggle('warn', spots.length > 0 && nd < spots.length); }
   const kEl = document.getElementById('ssKokoroe');
   if (kEl) kEl.textContent = (courseInfo.kokoroe || '').trim() ? '標準＋この地域の追記 ›' : '標準の文 ›';
   const iEl = document.getElementById('ssInfo');
@@ -10312,9 +10320,10 @@ async function _descGeoList(lat, lng){
   const k = (Math.round(lat * 20) / 20).toFixed(2) + ',' + (Math.round(lng * 20) / 20).toFixed(2);
   if (_descGeoMap.has(k)) return _descGeoMap.get(k);
   const [cl, cg] = k.split(',');
-  const j = await _descGet(NEARBY_WIKI + '?action=query&list=geosearch&gscoord=' + cl + '%7C' + cg + '&gsradius=' + DESC_GEO_R + '&gslimit=500&format=json&origin=*');
-  const list = ((j && j.query) || {}).geosearch || [];
-  _descGeoMap.set(k, list); return list;
+  const p = _descGet(NEARBY_WIKI + '?action=query&list=geosearch&gscoord=' + cl + '%7C' + cg + '&gsradius=' + DESC_GEO_R + '&gslimit=500&format=json&origin=*')
+    .then(j => ((j && j.query) || {}).geosearch || []);
+  _descGeoMap.set(k, p);   // v255：2つ並べて探すので、取りに行っている途中も1回にまとめる
+  try { return await p; } catch(e) { _descGeoMap.delete(k); throw e; }
 }
 /* 見つかれば {text, src}、見つからなければ null。通信できなければ投げる（覚えない） */
 async function _descFind(name, lat, lng){
@@ -10405,11 +10414,26 @@ async function _descLookup(name, lat, lng, force){
 function _descDoneKey(wp){ return String(currentCourseId) + ':' + wp.id; }
 function _descDoneGet(wp){ try { const v = (JSON.parse(localStorage.getItem(LS.descDone) || '{}') || {})[_descDoneKey(wp)]; return (typeof v === 'string' && v.indexOf(DESC_VER + '|') === 0) ? v.slice(String(DESC_VER).length + 1) : undefined; } catch(_) { return undefined; } }   // 前の版で探した印は使わない（探す先を足したので、もう一度探す）
 function _descDoneSet(wp, name){ try { const o = JSON.parse(localStorage.getItem(LS.descDone) || '{}') || {}; o[_descDoneKey(wp)] = DESC_VER + '|' + _descNorm(name); localStorage.setItem(LS.descDone, JSON.stringify(o)); } catch(_) {} }
-/* 説明の種類：空／取り込みのメモ（情報：…）／書いてある説明（上書きしない） */
+/* 説明の種類：空／取り込みのメモ（情報：…）／名前から探して入れた解説（出典：…）／書いてある説明（上書きしない）
+   v255：名前から探して入れた解説（found）は、まとめて探すときは飛ばす。v254 までは短い解説がメモと見なされ、もう一度探すと同じ解説が重なった（総道神社） */
+const DESC_SRC_RE = /^（出典：(ウィキペディア|ウィキデータ|文化遺産オンライン)/;   // 名前から探して入れた解説の出典の行
 function _descKind(d){
   const t = String(d || '').trim(); if (!t) return 'empty';
+  if (t.split('\n').some(l => DESC_SRC_RE.test(l.trim()))) return 'found';
   const m = t.match(/^([\s\S]*?)\n?（情報：[^）]*）$/);
   return (m && m[1].length <= 160) ? 'note' : 'own';
+}
+function _descStripFound(d){   // 名前から探して入れた解説（いちばん下の出典の行まで）を外し、取り込みのメモだけにする（探し直して入れかえるとき）
+  const lines = String(d || '').split('\n'); let k = -1;
+  lines.forEach((l, i) => { if (DESC_SRC_RE.test(l.trim())) k = i; });
+  return k < 0 ? String(d || '') : lines.slice(k + 1).join('\n').trim();
+}
+function _descDedupe(d){   // 同じ解説（出典の行まで）が2回入っていたら1つにする
+  const lines = String(d || '').split('\n'), blocks = []; let cur = [];
+  lines.forEach(l => { cur.push(l); if (DESC_SRC_RE.test(l.trim())) { blocks.push(cur.join('\n')); cur = []; } });
+  if (blocks.length < 2) return String(d || '');
+  const seen = new Set(), kept = blocks.filter(b => { const x = b.trim(); if (seen.has(x)) return false; seen.add(x); return true; });
+  return kept.concat(cur.length ? [cur.join('\n')] : []).join('\n');
 }
 function _descFreshNote(d, name){   // v254：名前を付けたスポットの、地理院の記号の古いメモ「寺院（地図記号。名前は地図に書かれていません）」→「寺院」（出典の行は残す）
   const t = String(d || ''), i = t.indexOf('\n'), first = i < 0 ? t : t.slice(0, i);
@@ -10418,34 +10442,65 @@ function _descFreshNote(d, name){   // v254：名前を付けたスポットの�
 }
 const DESC_SRC_NAME = {wikipedia: 'ウィキペディア', 'wikipedia-mention': 'ウィキペディア', wikidata: 'ウィキデータ', bunka: '文化遺産オンライン'};
 function _descMerge(old, found){
-  const k = _descKind(old); if (k === 'own' || !found) return null;
+  const k = _descKind(old); if (k === 'own' || k === 'found' || !found) return null;
   return k === 'empty' ? found : found + '\n' + String(old).trim();   // メモ（住所・営業時間など）は残す
 }
 function _descAutoOk(){ return !navigator.webdriver && navigator.onLine !== false; }   // 自動のときだけ（検査の自動操作中・圏外では聞きに行かない）
-/* まとめて探す。manual＝ボタンから（覚えた結果も使わず、もう一度聞く・結果を知らせる） */
+/* まとめて探す。manual＝ボタンから（覚えた結果も使わず、もう一度聞く）
+   v255（オーナー指摘「スポットの名前から検索して情報を自動で入力するというのが全くできてない」）：
+   ・探している間は「名前から解説を探しています n / m」を出し続け、終わったら入ったところと入らなかった数を知らせる（自動のときも）。
+     v254 までは何も出ないまま 1〜2 分かかり、終わった知らせも2秒で消えていた
+   ・コースのスポット（S・番号・G）から先に、2つずつ並べて探す
+   ・閲覧モードに切りかえてもやめない（コースを替えたときだけやめる）。v254 までは閲覧モードにするとやめていた
+   ・名前から探して入れた解説は、もう一度まとめて探しても重ねない。v254 までに重なったものは1つにする */
+const DESC_WORKERS = 2;
+function _descProg(i, n){   // 探している間の知らせ（消えない）。引数なしで消す
+  let el = document.getElementById('descProg');
+  if (n == null) { if (el) el.remove(); return; }
+  let box = document.getElementById('toastBox');
+  if (!box) { box = document.createElement('div'); box.id = 'toastBox'; document.body.appendChild(box); }
+  if (!el) { el = document.createElement('div'); el.id = 'descProg'; el.className = 'toast sticky'; el.setAttribute('role', 'status'); box.insertBefore(el, box.firstChild); }
+  el.textContent = '📖 スポットの名前から解説を探しています… ' + i + ' / ' + n;
+}
 async function descFillAll(manual){
-  if (viewMode || _descBusy || document.body.classList.contains('viewonly')) return;
+  if (_descBusy || document.body.classList.contains('viewonly')) return;
   if (!manual && !_descAutoOk()) return;
-  const targets = _allSpots().filter(w => _descKind(w.desc) !== 'own' && _descNorm(w.name).length >= 2 && (manual || _descDoneGet(w) !== _descNorm(w.name)));
-  if (!targets.length) { if (manual) showToast('説明が空いているスポットはありません'); return; }
+  const cid = currentCourseId; let snap = false;
+  const snapOnce = () => { if (!snap) { saveSnapshot(); snap = true; } };
+  _allSpots().forEach(w => { const dd = _descDedupe(w.desc); if (dd !== String(w.desc || '')) { snapOnce(); w.desc = dd; } });   // v254 までに重なった解説を1つに
+  const first = _stampOrder(), rank = w => first.indexOf(w) < 0 ? 1 : 0;   // コースのスポットから先に
+  const targets = _allSpots().filter(w => { const k = _descKind(w.desc); return (k === 'empty' || k === 'note') && _descNorm(w.name).length >= 2 && (manual || _descDoneGet(w) !== _descNorm(w.name)); })
+    .sort((a, b) => rank(a) - rank(b));
+  if (!targets.length) { if (manual) showToast('解説が空いているスポットはありません'); return; }
   _descBusy = true;
-  const cid = currentCourseId; let n = 0, fail = 0, snap = false;
-  if (manual) showToast('名前から解説を探しています…（' + targets.length + ' か所）');
-  try {
-    for (const w of targets) {
-      if (currentCourseId !== cid || viewMode) break;              // 画面を移ったらやめる
+  const found = [], none = []; let fail = 0, done = 0, next = 0;
+  _descProg(0, targets.length);
+  const work = async () => {
+    while (next < targets.length && currentCourseId === cid) {   // コースを替えたらやめる
+      const w = targets[next++];
       let r = null;
-      try { r = await _descLookup(w.name, w.lat, w.lng, manual); } catch(_) { fail++; continue; }
-      if (!wps.includes(w)) continue;
+      try { r = await _descLookup(w.name, w.lat, w.lng, manual); } catch(_) { fail++; done++; _descProg(done, targets.length); continue; }
+      done++; _descProg(done, targets.length);
+      if (currentCourseId !== cid || !wps.includes(w)) continue;
       _descDoneSet(w, w.name);
-      const base = _descFreshNote(w.desc, w.name);                  // v254：名前を付けたのに「名前は地図に書かれていません」と残っているメモを直す
-      const nd = r ? _descMerge(base, r.text) : (base !== w.desc ? base : null);   // 探している間に書かれた説明は上書きしない
-      if (nd && nd !== w.desc) { if (!snap) { saveSnapshot(); snap = true; } w.desc = nd; if (r) n++; }
+      const k = _descKind(w.desc);
+      if (k === 'empty' || k === 'note') {                           // 探している間に書かれた説明は上書きしない
+        const base = _descFreshNote(w.desc, w.name);                 // v254：名前を付けたのに「名前は地図に書かれていません」と残っているメモを直す
+        const nd = r ? _descMerge(base, r.text) : (base !== w.desc ? base : null);
+        if (nd && nd !== w.desc) { snapOnce(); w.desc = nd; if (_viewInfoId === w.id) showViewInfo(w.id); }
+      }
+      (r ? found : none).push((w.name || '').split('\n')[0]);
       if (!(r && r.cached)) await new Promise(res => setTimeout(res, DESC_GAP_MS));   // 相手のサーバーに負担をかけない
     }
-  } finally { _descBusy = false; }
-  if (n) { showToast('名前から探して ' + n + ' か所に解説を入れました（出典つき。○を押すと直せます・「取り消し」で戻せます）'); try { renderShareInfo(); } catch(_) {} }
-  else if (manual) showToast(fail ? '通信できなかったため、探せませんでした' : '見つかった解説はありませんでした（自分で書くこともできます）');
+  };
+  try { await Promise.all(Array.from({length: DESC_WORKERS}, work)); } finally { _descBusy = false; _descProg(); }
+  if (currentCourseId !== cid) return;
+  if (found.length) { try { renderShareInfo(); } catch(_) {} }
+  const names = a => a.slice(0, 4).join('・') + (a.length > 4 ? ' ほか' : '');
+  const noneMsg = none.length + ' か所は、公開されている情報（ウィキペディア・ウィキデータ・文化遺産オンライン）に見つかりませんでした（○を押して書けます）';
+  if (found.length) showToast('名前から探して ' + found.length + ' か所に解説を入れました：' + names(found) + '（出典つき・「保存」で残ります）' + (none.length ? '。' + noneMsg : ''), 8000);
+  else if (fail && !none.length) showToast('通信できなかったため、探せませんでした（電波の良いところでもう一度）', 5000);
+  else showToast('名前から探しましたが、' + noneMsg, 8000);
 }
 /* スポットの編集：開いたとき・名前を入れ終えたときに、説明が空（またはメモだけ）なら探して入れる。「名前から探す」で何度でも */
 let _mDescT = null, _mDescSeq = 0;
@@ -10454,7 +10509,8 @@ async function mDescFind(manual){
   const wp = wps.find(w => w.id === editId); if (!wp) return;
   const name = ((document.getElementById('mName') || {}).value || '').trim(), ta = document.getElementById('mDesc2');
   if (_descNorm(name).length < 2) { if (manual) _mDescStatus('先に名前を入れてください', 'warn'); return; }
-  if (!manual && (!_descAutoOk() || _descKind(ta.value) === 'own' || _descDoneGet(wp) === _descNorm(name))) return;
+  const k0 = _descKind(ta.value);
+  if (!manual && (!_descAutoOk() || k0 === 'own' || k0 === 'found' || _descDoneGet(wp) === _descNorm(name))) return;
   if (manual && _descKind(ta.value) === 'own' && !confirm('いま書いてある説明を、名前から探した解説に置きかえますか？')) return;
   const seq = ++_mDescSeq;
   _mDescStatus('名前から解説を探しています…');
@@ -10462,8 +10518,9 @@ async function mDescFind(manual){
   try { r = await _descLookup(name, wp.lat, wp.lng, manual); } catch(_) { if (seq === _mDescSeq) _mDescStatus('通信できなかったため、探せませんでした', 'warn'); return; }
   if (seq !== _mDescSeq || editId !== wp.id) return;                   // その間に別のスポットを開いた／名前を変えた
   _descDoneSet(wp, name);
-  const cur = _descFreshNote(ta.value, name);   // v254：名前を付けたのに「名前は地図に書かれていません」と残っているメモを直す
-  if (!r) { if (cur !== ta.value) ta.value = cur; _mDescStatus('解説は見つかりませんでした（自分で書けます）'); return; }
+  const cur0 = _descFreshNote(ta.value, name);   // v254：名前を付けたのに「名前は地図に書かれていません」と残っているメモを直す
+  if (!r) { if (cur0 !== ta.value) ta.value = cur0; _mDescStatus('公開されている情報（ウィキペディア・ウィキデータ・文化遺産オンライン）に見つかりませんでした（自分で書けます）'); return; }
+  const cur = _descKind(cur0) === 'found' ? _descStripFound(cur0) : cur0;   // v255：探し直したときは、前に入れた解説と入れかえる（重ねない）
   const nd = manual && _descKind(cur) === 'own' ? r.text : _descMerge(cur, r.text);
   if (!nd) { _mDescStatus(''); return; }
   ta.value = nd;
@@ -13156,13 +13213,13 @@ function escHtml(s) {
 }
 
 /* 通知（トースト）は1つの箱に積む＝同時に出ても重ならない（C3・v140）。3つまで、古いものから消える */
-function showToast(msg) {
+function showToast(msg, ms) {   // ms＝出しておく長さ（v255：長い知らせ用。無ければ 1.8秒）
   let box = document.getElementById('toastBox');
   if (!box) { box = document.createElement('div'); box.id = 'toastBox'; document.body.appendChild(box); }
   const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg;
   box.appendChild(t);
-  while (box.children.length > 3) box.firstChild.remove();
-  setTimeout(()=>{ t.style.opacity='0'; setTimeout(()=>{ t.remove(); }, 500); }, 1800);
+  while (box.querySelectorAll('.toast:not(.sticky)').length > 3) box.querySelector('.toast:not(.sticky)').remove();   // 出し続ける知らせ（.sticky）は消さない
+  setTimeout(()=>{ t.style.opacity='0'; setTimeout(()=>{ t.remove(); }, 500); }, ms || 1800);
 }
 </script>
 
