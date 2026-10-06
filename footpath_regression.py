@@ -1167,6 +1167,23 @@ def static_checks(src):
         and '#mobileStampBtn[hidden]' in src and src.count('#stampBar{display:none!important}') == 2
         and "el.onclick = openStampSheet;" in src and '_stampTap' not in src
         and "mb.querySelector('.st-l').textContent = c.done + '/' + c.total;" in src and '#nextBar:not([hidden]) ~ #stampBar' not in src)
+    # --- v256: 地域の解説集（公開データに無いスポットを調べて書いた解説。オーナー指示「調べて書いて入れる」）---
+    _dd = os.path.join(os.path.dirname(os.path.abspath(INDEX)), 'data', 'desc')
+    try:
+        _didx = json.load(open(os.path.join(_dd, 'index.json'), encoding='utf-8'))
+        _dsets = [(st, json.load(open(os.path.join(os.path.dirname(os.path.abspath(INDEX)), st['file']), encoding='utf-8'))) for st in _didx.get('sets', [])]
+        _ditems = [(st, it) for st, d in _dsets for it in d.get('items', [])]
+        _dbad = [it.get('name') for st, it in _ditems if not (it.get('name') and it.get('text') and it.get('src') and it.get('u') and it.get('at')
+                 and len(it['text']) <= 220 and st['bbox'][0] <= it.get('lat', 0) <= st['bbox'][2] and st['bbox'][1] <= it.get('lng', 0) <= st['bbox'][3]
+                 and all(str(u).startswith('https://') or str(u).startswith('http://') for u in it['u']) and '（出典' not in it['text'])]
+        _dok = len(_ditems) > 0 and not _dbad
+    except Exception as e:
+        _dok, _dbad, _ditems = False, [str(e)[:80]], []
+    chk('静的', '地域の解説集（data/desc）：どの項目にも名前・場所（県の範囲内）・220字以内の解説・元の情報の名前と URL・調べた日がある',
+        _dok and "const DESC_LOCAL_INDEX = 'data/desc/index.json', DESC_LOCAL_M = 300;" in src, '項目 ' + str(len(_ditems)) + ' / 不備 ' + str(_dbad[:5]))
+    chk('静的', '地域の解説集は名前から探すとき最初に見る（名前が同じで 300m 以内）。出典は「地域の解説集（元の情報）」。探し方の版を上げた（前の「見つからなかった」を使わない）',
+        'async function _descLocal' in src and "if (lo) return {text: lo.text + '\\n（出典：地域の解説集（' + lo.src + '））', src: 'local'};" in src
+        and 'const DESC_VER = 3;' in src and '|地域の解説集)/;' in src)
     # --- v255: 名前から解説を探すのが「全くできてない」（オーナー指摘）：重なり・知らせ・途中でやめる・古い版のまま ---
     chk('静的', '名前から探して入れた解説（出典の行）は found として、まとめて探すときは飛ばし、重なったものは1つにし、探し直すときは入れかえる',
         "if (t.split('\\n').some(l => DESC_SRC_RE.test(l.trim()))) return 'found';" in src and 'function _descStripFound' in src and 'function _descDedupe' in src
@@ -1184,7 +1201,7 @@ def static_checks(src):
         and "'」の記事より：' + t + wiki(pg.title)" in src and 'function _descSentences' in src and 'function _descSentenceOk' in src
         and "c.database !== 'bunka'" in src and 'google' not in src[src.index('function _descFind'):src.index('function _descCacheAll')].lower())
     chk('静的', '取りちがえ・古いメモ・前の版：県の名前だけでは確かめない。名前を付けた地理院の記号の「名前は地図に書かれていません」は直す。探し方の版（DESC_VER）を覚えた結果と印に入れる',
-        "if (/[都道府県]$/.test(x)) return;" in src and 'function _descFreshNote' in src and 'const DESC_VER = 2;' in src
+        "if (/[都道府県]$/.test(x)) return;" in src and 'function _descFreshNote' in src and re.search(r'const DESC_VER = \d+;', src)
         and "const k = DESC_VER + ':' + _descNorm(name)" in src and "o[_descDoneKey(wp)] = DESC_VER + '|' + _descNorm(name)" in src)
     chk('静的', '正規表現の後ろ読み（古い iPhone で全体が動かなくなる）を使っていない', '(?<=' not in src and '(?<!' not in src)
     # --- v253: わたしの写真（オーナー指示「歩いた人が写真を撮って、自分の端末に保存でき、タップで表示できる。表示は他のアプリを参考に、見やすく楽しく」）---
@@ -2272,6 +2289,32 @@ def functional_checks(index_path):
             and df.get('modal', '').count('（出典：') == 1 and df.get('modal', '').startswith('近くの寺は宍粟市の寺。')
             and df.get('share', '').startswith('3 / 4') and df.get('kinds') == ['empty', 'note', 'found', 'own']
             and df.get('upd') == {'asked': 1, 'v': 'v999'} and df.get('upd2') == 1, str({k: (df.get(k) if isinstance(df, dict) else df) for k in ('dup', 'again', 'modal', 'share', 'kinds', 'upd', 'upd2')})[:500])
+
+        # v256: 地域の解説集（data/desc）：名前が同じで 300m 以内のものを最初に使う。遠い同じ名前は使わない
+        dl = page.evaluate("""async ()=>{ try{
+            const keepGet = _descGet; const c = leafMap.getCenter();
+            _descLocalIdx = null; Object.keys(_descLocalSets).forEach(k => delete _descLocalSets[k]); _descGeoMap.clear();
+            try { localStorage.removeItem(LS.descCache); } catch(_){}
+            _descGet = async (u) => { const U = decodeURIComponent(u);
+              if (U === 'data/desc/index.json') return {sets: [{code: '28', bbox: [c.lat - 1, c.lng - 1, c.lat + 1, c.lng + 1], file: 'data/desc/t.json'}]};
+              if (U === 'data/desc/t.json') return {items: [{name: '地元の寺', lat: c.lat, lng: c.lng, text: '地元の寺は江戸時代からある寺。', src: '市のホームページ', u: ['https://example.jp/'], at: '2026-10-06'}]};
+              if (U.indexOf('list=geosearch') >= 0) return {query: {geosearch: []}};
+              if (U.indexOf('jpsearch') >= 0) return {hit: 0, list: []};
+              if (U.indexOf('wbsearchentities') >= 0) return {search: []};
+              return {query: {search: []}}; };
+            const out = {};
+            out.near = ((await _descLookup('地元の寺', c.lat + 0.001, c.lng, true)) || {}).text || null;   // 約110m
+            out.far = await _descLookup('地元の寺', c.lat + 0.01, c.lng, true);                               // 約1.1km：使わない
+            out.kind = _descKind(out.near || '');
+            out.gsi = _descMerge('寺院\\n（情報：国土地理院「地理院地図Vector」）', 'X は神社。\\n（出典：地域の解説集（Y））');   // 地理院の記号の種類の1行は外す（合わないことがある）
+            out.osm = _descMerge('神社\\n（情報：OpenStreetMap）', 'X');                                                   // ほかのメモはそのまま残す
+            _descGet = keepGet; _descLocalIdx = null; Object.keys(_descLocalSets).forEach(k => delete _descLocalSets[k]);
+            try { localStorage.removeItem(LS.descCache); } catch(_){}
+            return out;
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        chk('機能', '地域の解説集：名前が同じで 300m 以内なら使い、出典は「地域の解説集（元の情報）」。1km 離れた同じ名前には使わない。名前から探して入れた解説（found）になる。解説が入ると、地理院の記号の種類の1行（「寺院」など）は外して出典だけ残す',
+            isinstance(dl, dict) and dl.get('near') == '地元の寺は江戸時代からある寺。\n（出典：地域の解説集（市のホームページ））' and dl.get('far') is None and dl.get('kind') == 'found'
+            and dl.get('gsi') == 'X は神社。\n（出典：地域の解説集（Y））\n（情報：国土地理院「地理院地図Vector」）' and dl.get('osm') == 'X\n神社\n（情報：OpenStreetMap）', str(dl)[:300])
 
         # v251: スタンプはコースのスポットだけ（立ち寄り先は数えない）・10m 以内。カードのフリックもコースのスポットだけ。カードは写真を小さく左に、その隣に名前と解説
         cs = page.evaluate("""async ()=>{ try{

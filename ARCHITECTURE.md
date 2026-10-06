@@ -564,6 +564,7 @@ CONSTANTS(904) → STATE(968) → STORAGE(1015) → 版のお知らせ(1021) →
 - v254：`_descFind` の順は ①地理検索の近い同じ名前の記事 ②同じ名前の記事（近い／本文に市町村名）③文化遺産オンライン（`DESC_JPS`＝ジャパンサーチ・`database === 'bunka'`・3km 以内・`DESC_MAIN_RE` で主屋などを先に・解説文は CC BY）④ウィキデータ ⑤ウィキペディアの本文の文（`_descSentences`・`_descSentenceOk`＝一覧の1行は使わない）。
 - `_descAreaWords` は都道府県を除く（県の名前だけでは確かめない）。`_descFreshNote` は名前を付けた地理院の記号の古いメモを直す。`DESC_VER` を覚えた結果の鍵と「自動で探した」印に入れる（探し方を変えたら上げる）。
 - v255：説明の種類に `found`（名前から探して入れた解説＝出典の行 `DESC_SRC_RE` がある）を足した。まとめて探す `descFillAll` は empty／note だけを探し、found と own は飛ばす。重なった解説は `_descDedupe`、探し直すときは `_descStripFound` で外してから入れる。`descFillAll` は `DESC_WORKERS`（2）並べて、コースのスポット（`_stampOrder`）から先に探し、`_descProg` で「n / m」を出す（`#toastBox` の `.toast.sticky`＝数えず消さない）。閲覧モードでは止めない（コースを替えたら止める）。
+- v256：地域の解説集 `data/desc/`（`DESC_LOCAL_INDEX`＝県ごとの範囲 → 県のファイル）。`_descFind` の最初（⓪）に `_descLocal` で読み、名前（`aka` も）が同じで `DESC_LOCAL_M`（300m）以内のものを使う。出典の行は「（出典：地域の解説集（src））」で `DESC_SRC_RE` に含める。地理院の記号のメモ（`DESC_GSI_NOTE_RE`）に解説を入れるときは種類の1行を外す。項目を足すときは、確かめた事実だけを自分の言葉で書き、src・u・at を必ず付ける（静的検査が見る）。
 - 新しい版の確認 `watchVersion` は起動時に加えて、`visibilitychange`（表に戻った）・`pageshow`（persisted）でも `_watchVersionSoon` から呼ぶ（`UPD_RECHECK_MS`＝5分に1回まで）。
 - 正規表現の後ろ読み（`(?<=`・`(?<!`）は使わない。古い iPhone（iOS 16.3 まで）ではインラインの JS 全体が読み込めず、アプリが動かなくなる（静的検査あり）。
 

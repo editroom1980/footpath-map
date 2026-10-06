@@ -3641,7 +3641,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 手描きの道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した手描きの道id（直前取り消し用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v255';
+const APP_VERSION = 'v256';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat0', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -10287,7 +10287,9 @@ document.addEventListener('keydown', e => { const ov = document.getElementById('
 const DESC_NEAR_M = 3000, DESC_MAX = 220, DESC_GAP_MS = 220, DESC_GEO_R = 10000, DESC_AUTO_DELAY_MS = 2500, DESC_CACHE_MAX = 400;
 const DESC_SUFFIX_RE = /(線路跡|跡地|跡|全景|入口|入り口)$/;
 const DESC_WIKIDATA = 'https://www.wikidata.org/w/api.php', DESC_JPS = 'https://jpsearch.go.jp/api/item/search/jps-cross';
-const DESC_VER = 2;               // 探し方を変えたら上げる（前の版で「見つからなかった」と覚えた結果を使わない）
+const DESC_VER = 3;               // 探し方を変えたら上げる（前の版で「見つからなかった」と覚えた結果を使わない）。v256：地域の解説集を足したので 3
+const DESC_LOCAL_INDEX = 'data/desc/index.json', DESC_LOCAL_M = 300;   // v256：地域の解説集（名前が同じで、スポットからこの距離以内のものだけ使う）
+let _descLocalIdx = null; const _descLocalSets = {};
 const DESC_MAIN_RE = /(主屋|本堂|本殿|拝殿|本館|母屋)$/;   // 文化遺産オンラインで同じ名前の建物がいくつかあるとき、先に選ぶもの
 const _descGeoMap = new Map();   // ウィキペディアの地理検索の結果（約5km四方ごとに1回だけ取る）
 let _descBusy = false;           // まとめて探している途中か
@@ -10325,11 +10327,29 @@ async function _descGeoList(lat, lng){
   _descGeoMap.set(k, p);   // v255：2つ並べて探すので、取りに行っている途中も1回にまとめる
   try { return await p; } catch(e) { _descGeoMap.delete(k); throw e; }
 }
+/* 地域の解説集（data/desc/）：スポットのある県のぶんだけ読む。読めなくても探すのは続ける（ほかの探し先へ） */
+async function _descLocal(lat, lng){
+  try {
+    if (!_descLocalIdx) _descLocalIdx = (await _descGet(DESC_LOCAL_INDEX)) || {sets: []};
+    const out = [];
+    for (const st of (_descLocalIdx.sets || [])) {
+      const b = st.bbox; if (!b || lat < b[0] || lng < b[1] || lat > b[2] || lng > b[3] || !st.file) continue;
+      if (!_descLocalSets[st.file]) _descLocalSets[st.file] = (await _descGet(st.file)) || {items: []};
+      (_descLocalSets[st.file].items || []).forEach(it => { if (it && it.name && it.text && it.src && isFinite(it.lat) && isFinite(it.lng)) out.push(it); });
+    }
+    return out;
+  } catch(_) { _descLocalIdx = null; return []; }
+}
 /* 見つかれば {text, src}、見つからなければ null。通信できなければ投げる（覚えない） */
 async function _descFind(name, lat, lng){
   const vars = _descVariants(name); if (!vars.length) return null;
   const area = _descAreaWords(), near = (a, b) => a != null && b != null && haversine(lat, lng, a, b) <= DESC_NEAR_M;
   const wiki = t => '\n（出典：ウィキペディア「' + t + '」・CC BY-SA 4.0）';   // v254：ウィキペディアの文は CC BY-SA 4.0（出典と使用許諾を書く）
+  // ⓪ 地域の解説集（v256・オーナー指示「公開情報に無いところは調べて書いて入れる」）：ウィキペディアなどに無いスポットを、
+  //    市・寺社・店などの公式の情報で調べ、事実を自分の言葉でまとめたもの（data/desc/。各項目に元の情報の名前と URL）
+  const lo = (await _descLocal(lat, lng)).filter(it => [it.name].concat(it.aka || []).some(n => vars.indexOf(_descNorm(n)) >= 0) && haversine(lat, lng, it.lat, it.lng) <= DESC_LOCAL_M)   // aka＝ほかの呼び名（正式名・登録の表記）
+    .sort((a, b) => haversine(lat, lng, a.lat, a.lng) - haversine(lat, lng, b.lat, b.lng))[0];
+  if (lo) return {text: lo.text + '\n（出典：地域の解説集（' + lo.src + '））', src: 'local'};
   // ① ウィキペディア：まわりの記事で名前が同じもの（場所がスポットの近く）
   const geo = await _descGeoList(lat, lng);
   let ids = geo.filter(a => vars.indexOf(_descNorm(a.title)) >= 0 && near(a.lat, a.lon)).map(a => a.pageid), fromGeo = ids.length > 0;
@@ -10416,7 +10436,7 @@ function _descDoneGet(wp){ try { const v = (JSON.parse(localStorage.getItem(LS.d
 function _descDoneSet(wp, name){ try { const o = JSON.parse(localStorage.getItem(LS.descDone) || '{}') || {}; o[_descDoneKey(wp)] = DESC_VER + '|' + _descNorm(name); localStorage.setItem(LS.descDone, JSON.stringify(o)); } catch(_) {} }
 /* 説明の種類：空／取り込みのメモ（情報：…）／名前から探して入れた解説（出典：…）／書いてある説明（上書きしない）
    v255：名前から探して入れた解説（found）は、まとめて探すときは飛ばす。v254 までは短い解説がメモと見なされ、もう一度探すと同じ解説が重なった（総道神社） */
-const DESC_SRC_RE = /^（出典：(ウィキペディア|ウィキデータ|文化遺産オンライン)/;   // 名前から探して入れた解説の出典の行
+const DESC_SRC_RE = /^（出典：(ウィキペディア|ウィキデータ|文化遺産オンライン|地域の解説集)/;   // 名前から探して入れた解説の出典の行
 function _descKind(d){
   const t = String(d || '').trim(); if (!t) return 'empty';
   if (t.split('\n').some(l => DESC_SRC_RE.test(l.trim()))) return 'found';
@@ -10440,9 +10460,11 @@ function _descFreshNote(d, name){   // v254：名前を付けたスポットの�
   const m = first.match(/^(.+)（地図記号。名前は地図に書かれていません）$/);
   return (m && _descNorm(name) !== _descNorm(m[1])) ? m[1] + t.slice(first.length) : t;
 }
-const DESC_SRC_NAME = {wikipedia: 'ウィキペディア', 'wikipedia-mention': 'ウィキペディア', wikidata: 'ウィキデータ', bunka: '文化遺産オンライン'};
+const DESC_SRC_NAME = {wikipedia: 'ウィキペディア', 'wikipedia-mention': 'ウィキペディア', wikidata: 'ウィキデータ', bunka: '文化遺産オンライン', local: '地域の解説集'};
+const DESC_GSI_NOTE_RE = /^[^\n]{1,30}\n（情報：国土地理院「地理院地図Vector」）$/;   // 地理院の記号から取り込んだときのメモ（種類の1行＋出典）
 function _descMerge(old, found){
   const k = _descKind(old); if (k === 'own' || k === 'found' || !found) return null;
+  if (DESC_GSI_NOTE_RE.test(String(old).trim())) return found + '\n（情報：国土地理院「地理院地図Vector」）';   // v256：解説が入ったら、記号の種類の1行（埴尾神社に「寺院」など、合わないことがある）は外し、出典だけ残す
   return k === 'empty' ? found : found + '\n' + String(old).trim();   // メモ（住所・営業時間など）は残す
 }
 function _descAutoOk(){ return !navigator.webdriver && navigator.onLine !== false; }   // 自動のときだけ（検査の自動操作中・圏外では聞きに行かない）
@@ -10497,7 +10519,7 @@ async function descFillAll(manual){
   if (currentCourseId !== cid) return;
   if (found.length) { try { renderShareInfo(); } catch(_) {} }
   const names = a => a.slice(0, 4).join('・') + (a.length > 4 ? ' ほか' : '');
-  const noneMsg = none.length + ' か所は、公開されている情報（ウィキペディア・ウィキデータ・文化遺産オンライン）に見つかりませんでした（○を押して書けます）';
+  const noneMsg = none.length + ' か所は、公開されている情報（ウィキペディア・ウィキデータ・文化遺産オンライン・地域の解説集）に見つかりませんでした（○を押して書けます）';
   if (found.length) showToast('名前から探して ' + found.length + ' か所に解説を入れました：' + names(found) + '（出典つき・「保存」で残ります）' + (none.length ? '。' + noneMsg : ''), 8000);
   else if (fail && !none.length) showToast('通信できなかったため、探せませんでした（電波の良いところでもう一度）', 5000);
   else showToast('名前から探しましたが、' + noneMsg, 8000);
@@ -10519,7 +10541,7 @@ async function mDescFind(manual){
   if (seq !== _mDescSeq || editId !== wp.id) return;                   // その間に別のスポットを開いた／名前を変えた
   _descDoneSet(wp, name);
   const cur0 = _descFreshNote(ta.value, name);   // v254：名前を付けたのに「名前は地図に書かれていません」と残っているメモを直す
-  if (!r) { if (cur0 !== ta.value) ta.value = cur0; _mDescStatus('公開されている情報（ウィキペディア・ウィキデータ・文化遺産オンライン）に見つかりませんでした（自分で書けます）'); return; }
+  if (!r) { if (cur0 !== ta.value) ta.value = cur0; _mDescStatus('公開されている情報（ウィキペディア・ウィキデータ・文化遺産オンライン・地域の解説集）に見つかりませんでした（自分で書けます）'); return; }
   const cur = _descKind(cur0) === 'found' ? _descStripFound(cur0) : cur0;   // v255：探し直したときは、前に入れた解説と入れかえる（重ねない）
   const nd = manual && _descKind(cur) === 'own' ? r.text : _descMerge(cur, r.text);
   if (!nd) { _mDescStatus(''); return; }

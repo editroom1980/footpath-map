@@ -1,0 +1,384 @@
+{
+ "label": "地域の解説集（兵庫県）",
+ "about": "ウィキペディア・ウィキデータ・文化遺産オンラインなどの公開データに無いスポットについて、市・寺社・店などの公式の情報や郷土資料を調べ、確かめた事実を自分の言葉で短くまとめたもの。src は元の情報の名前、u はその URL、at は調べた日。名前（aka はほかの呼び名）が同じで、スポットから 300m 以内のときだけ使う。",
+ "items": [
+  {
+   "name": "山崎観光駐車場",
+   "aka": [
+    "しそう山崎観光駐車場"
+   ],
+   "lat": 35.00412,
+   "lng": 134.53989,
+   "text": "旧山崎町役場（のちの山崎市民局）の跡地に2022年にできた市営の観光駐車場（正式名「しそう山崎観光駐車場」）。155台・24時間使え、ふだんは無料です（藤や紅葉の見頃など市が決めた期間の9〜17時は1台500円）。もみじ山へは歩いて約10分。",
+   "src": "宍粟市・しそう森林王国観光協会",
+   "u": [
+    "https://www.city.shiso.lg.jp/soshiki/sangyo/machinigiwai/tantojoho/kanko_annai/16030.html",
+    "https://www1.g-reiki.net/city.shiso/reiki_honbun/r402RG00000878.html",
+    "https://www.city.shiso.lg.jp/photo/old/reiwa4nendo/15995.html",
+    "https://shiso.or.jp/wpapp/wp-content/uploads/2023/10/4914323e7a1224180705c325e5a503bb.pdf"
+   ],
+   "at": "2026-10-06"
+  },
+  {
+   "name": "宍粟市役所駐車場",
+   "lat": 35.0037,
+   "lng": 134.54952,
+   "text": "宍粟市役所本庁舎の駐車場です。庁舎は土日祝日が休みで、庁舎の中のトイレは平日の8時30分〜17時15分だけ使えます。休日は市役所の西側にある夢公園のトイレ（24時間）が使えます。",
+   "src": "宍粟市",
+   "u": [
+    "https://www.city.shiso.lg.jp/shisetsu/gyoseishisetsu/1387189258136.html",
+    "https://www.city.shiso.lg.jp/soshiki/kenkofukushi/shogaifukushi/tantojyoho/barrierfree/shisetu/barrierfree_chosha/16320.html",
+    "https://www.city.shiso.lg.jp/material/files/group/27/yamasakijyouhou.pdf",
+    "https://www.city.shiso.lg.jp/soshiki/kenkofukushi/shogaifukushi/tantojyoho/barrierfree/shisetu/sototooire/16209.html"
+   ],
+   "at": "2026-10-06"
+  },
+  {
+   "name": "宍粟防災センター",
+   "aka": [
+    "防災センター"
+   ],
+   "lat": 35.00406,
+   "lng": 134.54144,
+   "text": "山崎断層の地震に備えた免震構造の市の施設で、ふだんは防災学習や集会の場、災害のときは避難所や対策の拠点になります。開館は8時30分〜22時（年末年始は休み）で、多目的トイレがあります。2階には手話に対応した喫茶があります。",
+   "src": "宍粟市",
+   "u": [
+    "https://www.city.shiso.lg.jp/kurashi/bosaibohankotsu/bosaisenta/1386734621457.html",
+    "https://www1.g-reiki.net/city.shiso/reiki_honbun/r402RG00000910.html",
+    "https://www.city.shiso.lg.jp/soshiki/machizukuri-bu/shobobosai/tantojoho/bosaisenta/shisetsuannai/1386739070467.html",
+    "https://www.city.shiso.lg.jp/material/files/group/27/yamasakijyouhou.pdf"
+   ],
+   "at": "2026-10-06"
+  },
+  {
+   "name": "大歳神社",
+   "lat": 35.00881,
+   "lng": 134.54306,
+   "text": "大歳神（おおとしのかみ）をまつる神社で、創立の年は分かっていません。北へ約4kmの大倭物代主神社の末社で、古くからその渡御所とされてきました。境内には天徳4年（960年）に植えられたと伝わる「千年藤」があり、例祭（秋祭り）は10月16日です。",
+   "src": "兵庫県神社庁",
+   "u": [
+    "https://www.hyogo-jinjacho.com/data/6320008.html"
+   ],
+   "at": "2026-10-06"
+  },
+  {
+   "name": "大歳神社「千年藤」",
+   "aka": [
+    "大歳神社の千年藤",
+    "千年藤"
+   ],
+   "lat": 35.00882,
+   "lng": 134.54312,
+   "text": "天徳4年（960年）に上寺村の与右衛門が植えたと伝わるノダフジです。4月下旬から5月上旬ごろ、大きな藤棚から薄紫の花房が下がり、あたりは甘い香りに包まれます。環境省の「かおり風景100選」にも選ばれています。",
+   "src": "しそう森林王国観光協会・兵庫県神社庁・日本樹木医会・環境省",
+   "u": [
+    "https://shiso.or.jp/highlights/%E5%A4%A7%E6%AD%B3%E7%A5%9E%E7%A4%BE%E3%80%8C%E5%8D%83%E5%B9%B4%E8%97%A4%E3%80%8D",
+    "https://www.hyogo-jinjacho.com/data/6320008.html",
+    "https://jumokui.jp/tree-data/%E5%A4%A7%E6%AD%B3%E3%81%A0%E3%81%84%E3%81%95%E3%81%84%E7%A5%9E%E7%A4%BE%E3%81%AE%E3%83%95%E3%82%B8/",
+    "https://www.env.go.jp/air/kaori/ichiran.htm"
+   ],
+   "at": "2026-10-06"
+  },
+  {
+   "name": "大歳神社のフジ",
+   "lat": 35.00881,
+   "lng": 134.54313,
+   "text": "昭和47年（1972年）に兵庫県の天然記念物に指定された藤の古木（大歳神社の千年藤）です。地元の保存会と樹木医が、冬の枝切りなどの手入れを続けて守っています。花の時期には藤まつりが開かれ、夜はライトアップされます（日程は年ごとに変わります）。",
+   "src": "兵庫県教育委員会・神戸新聞・しそう森林王国観光協会",
+   "u": [
+    "https://www2.hyogo-c.ed.jp/hpe/uploads/sites/13/2025/05/%E7%9C%8C%E6%8C%87%E5%AE%9A%E6%96%87%E5%8C%96%E8%B2%A1%E4%B8%80%E8%A6%A7%EF%BC%88%E4%BB%A4%E5%92%8C%EF%BC%97%E5%B9%B4%EF%BC%94%E6%9C%88%EF%BC%91%E6%97%A5%E7%8F%BE%E5%9C%A8%EF%BC%89.pdf",
+    "https://www.kobe-np.co.jp/news/odekake-plus/news/detail.shtml?url=news/odekake-plus/news/pickup/202504/18927762",
+    "https://shiso.or.jp/highlights/%E5%A4%A7%E6%AD%B3%E7%A5%9E%E7%A4%BE%E3%80%8C%E5%8D%83%E5%B9%B4%E8%97%A4%E3%80%8D",
+    "https://kisspress.jp/articles/47836/"
+   ],
+   "at": "2026-10-06"
+  },
+  {
+   "name": "山崎歴史民俗資料館",
+   "lat": 35.00301,
+   "lng": 134.53998,
+   "text": "明治22年（1889年）に龍野治安裁判所山崎出張所として建てられ、のちに法務局としても使われた建物です。山崎城の本丸跡へ移され、令和4年（2022年）に兵庫県の登録有形文化財になりました。山崎の酒造りの道具を収めていますが、公開は不定期です。",
+   "src": "宍粟市・兵庫県教育委員会",
+   "u": [
+    "https://www.city.shiso.lg.jp/soshiki/kyoikuiinkai/rekishiminzokushiryoukan/1467165959620.html",
+    "https://www2.hyogo-c.ed.jp/hpe/uploads/sites/13/2025/05/%E7%9C%8C%E7%99%BB%E9%8C%B2%E6%96%87%E5%8C%96%E8%B2%A1%E4%B8%80%E8%A6%A7%EF%BC%88%E4%BB%A4%E5%92%8C%EF%BC%97%E5%B9%B4%EF%BC%94%E6%9C%88%EF%BC%91%E6%97%A5%E7%8F%BE%E5%9C%A8%EF%BC%89.pdf",
+    "https://www.city.shiso.lg.jp/material/files/group/75/keikakuiltukatu.pdf"
+   ],
+   "at": "2026-10-06"
+  },
+  {
+   "name": "高瀬舟発着場",
+   "lat": 35.00327,
+   "lng": 134.55054,
+   "text": "江戸時代のはじめに揖保川の難所が切り開かれ、網干から出石（いだいし）まで高瀬舟が上れるようになりました。両岸に石積みの船着場がつくられ、年貢米や木材・炭などがここから川を下りました。修復された石積みが今も川岸に残っています。",
+   "src": "宍粟市・国土交通省",
+   "u": [
+    "https://www.city.shiso.lg.jp/material/files/group/75/keikakuiltukatu.pdf",
+    "https://www.city.shiso.lg.jp/material/files/group/2/27shisorekishihakken23-34.pdf",
+    "https://www.mlit.go.jp/river/shinngikai_blog/shaseishin/kasenbunkakai/shouiinkai/kihonhoushin/070119/pdf/ref1-2.pdf"
+   ],
+   "at": "2026-10-06"
+  },
+  {
+   "name": "映画館跡",
+   "lat": 35.0066,
+   "lng": 134.542,
+   "text": "山崎の町には、大正13年（1924年）に新富座、昭和26年（1951年）に山映館という映画館ができ、上映のたびに楽団が出て宣伝したといいます。テレビが広まった昭和40年代半ばに、二つの映画館はどちらも姿を消しました。",
+   "src": "山崎町史（1977年）",
+   "u": [
+    "https://dl.ndl.go.jp/pid/9573805"
+   ],
+   "at": "2026-10-06"
+  },
+  {
+   "name": "山崎城下町",
+   "lat": 35.00662,
+   "lng": 134.54116,
+   "text": "元和元年（1615年）に池田輝澄が山崎に城を構えて、本格的な城下町づくりが始まりました。延宝7年（1679年）からは本多家の山崎藩が明治まで続きます。武家地と町人地の分け方や、直角に折れる「鍵の手」の道、陣屋の門（紙屋門）が今も残ります。",
+   "src": "宍粟市・兵庫県",
+   "u": [
+    "https://www.city.shiso.lg.jp/material/files/group/75/keikakuiltukatu.pdf",
+    "https://web.pref.hyogo.lg.jp/ks20/documents/shiteisiryo.pdf"
+   ],
+   "at": "2026-10-06"
+  },
+  {
+   "name": "揖保川と山崎町",
+   "lat": 35.0066,
+   "lng": 134.54146,
+   "text": "山崎の町は揖保川の中流にあり、江戸時代には町の東の出石（いだいし）が高瀬舟の終点でした。年貢米や木材・炭などがここに集まって網干へ下り、帰りの舟は塩や日用品を運びました。舟の行き来は明治以降に減り、昭和のはじめごろ途絶えました。",
+   "src": "宍粟市・山崎町史",
+   "u": [
+    "https://www.city.shiso.lg.jp/material/files/group/75/keikakuiltukatu.pdf",
+    "https://www.city.shiso.lg.jp/material/files/group/2/27shisorekishihakken23-34.pdf",
+    "https://dl.ndl.go.jp/pid/9573805"
+   ],
+   "at": "2026-10-06"
+  },
+  {
+   "name": "明源寺",
+   "lat": 35.0059,
+   "lng": 134.54035,
+   "text": "浄土真宗本願寺派の寺で、読みは「みょうげんじ」。大正3年（1914年）に当時の住職が寺で仏教日曜学校を始め、大正8年（1919年）にできた裁縫教授所も寺に置かれていたことが、本願寺の便覧に記されています。",
+   "src": "本願寺神戸別院・国立国会図書館デジタルコレクション",
+   "u": [
+    "https://www.hongwanji-kobe.jp/search/detail.php?id=582",
+    "https://dl.ndl.go.jp/pid/1028228/1/67",
+    "https://dl.ndl.go.jp/pid/959884/1/71"
+   ],
+   "at": "2026-10-06"
+  },
+  {
+   "name": "埴尾神社",
+   "lat": 35.00711,
+   "lng": 134.54001,
+   "text": "読みは「はにお」。兵庫県神社庁の登録では、祭神は須佐之男命、例祭は7月9日です。地元では「荒神さん」と呼ばれ、大正から昭和の初めには最上山のお寺とともに桜の名所としてにぎわったと、山崎郷土会の会報が伝えています。",
+   "src": "兵庫県神社庁・山崎郷土会報",
+   "u": [
+    "https://www.hyogo-jinjacho.com/data/6320004.html",
+    "https://web.archive.org/web/20251103200250/https://blog.goo.ne.jp/takenet5177/e/a924112406c5115f494dd567c764e6cd"
+   ],
+   "at": "2026-10-06"
+  },
+  {
+   "name": "泉龍寺",
+   "lat": 35.00675,
+   "lng": 134.54343,
+   "text": "浄土宗西山禅林寺派の寺です。山門を入ってすぐ右の地蔵堂に、北を向いて立つ高さ約1.2mの延命地蔵尊がまつられ、長生きの願いをかなえると信仰されてきました。寺は初め最上山のふもとの寺町にあり、江戸時代中期に地蔵とともに今の伊沢町へ移ったと伝わります。",
+   "src": "宍粟市山崎文化協会・ウィキペディア",
+   "u": [
+    "https://www.yamasaki-bunka.org/?p=752",
+    "https://ja.wikipedia.org/wiki/%E6%B3%89%E9%BE%8D%E5%AF%BA"
+   ],
+   "at": "2026-10-06"
+  },
+  {
+   "name": "経王院",
+   "aka": [
+    "最上稲荷山経王院"
+   ],
+   "lat": 35.00667,
+   "lng": 134.5412,
+   "text": "最上山の展望台の下、町を見下ろす高台にある寺で、正式名は「最上稲荷山経王院」。岡山の最上稲荷を遠くから拝む所でもあります。あたりの山を「さいじょうさん」と呼ぶのはこの寺の名からとされ、明治から昭和には町を一望できる名所として人が集まりました。",
+   "src": "山崎郷土会報",
+   "u": [
+    "https://web.archive.org/web/20251103190417/https://blog.goo.ne.jp/takenet5177/e/324eede78c735f205fed97f211db68a2",
+    "https://web.archive.org/web/20251103200250/https://blog.goo.ne.jp/takenet5177/e/a924112406c5115f494dd567c764e6cd",
+    "https://web.archive.org/web/20251103183834/https://blog.goo.ne.jp/takenet5177/e/a089c2e1bb8e953b18d31c1190b31eed"
+   ],
+   "at": "2026-10-06"
+  },
+  {
+   "name": "光泉寺",
+   "lat": 35.00502,
+   "lng": 134.54185,
+   "text": "浄土真宗本願寺派の寺で、読みは「こうせんじ」。本願寺の兵庫教区宍粟組に属し、近くの明源寺も同じ組の寺です。昭和9年（1934年）の町村別の記録にも、山崎町の真宗の寺として名が載っています。",
+   "src": "本願寺神戸別院・国立国会図書館デジタルコレクション",
+   "u": [
+    "https://www.hongwanji-kobe.jp/search/detail.php?id=581",
+    "https://dl.ndl.go.jp/pid/1465137/1/482"
+   ],
+   "at": "2026-10-06"
+  },
+  {
+   "name": "恵比寿神社",
+   "aka": [
+    "恵比須神社",
+    "惠比須神社"
+   ],
+   "lat": 35.00586,
+   "lng": 134.54074,
+   "text": "公的な登録での表記は「恵比須神社」。兵庫県神社庁によると、主祭神は大国主尊で、例祭は1月10日です。明源寺のすぐ東の町なかにあり、昭和9年（1934年）の町村別の記録にも、山崎町の神社の一つとして名が載っています。",
+   "src": "兵庫県神社庁・国税庁法人番号公表サイト・国立国会図書館デジタルコレクション",
+   "u": [
+    "https://www.hyogo-jinjacho.com/data/6320002.html",
+    "https://www.houjin-bangou.nta.go.jp/henkorireki-johoto.html?selHouzinNo=7140005006963",
+    "https://dl.ndl.go.jp/pid/1465137/1/482"
+   ],
+   "at": "2026-10-06"
+  },
+  {
+   "name": "衣坂叶地蔵尊",
+   "aka": [
+    "衣坂の叶え地蔵"
+   ],
+   "lat": 35.00656,
+   "lng": 134.54707,
+   "text": "「衣坂（ころもざか）の叶え地蔵」と呼ばれ、願いを一つ必ずかなえてくれると信じられてきました。明治の終わりごろ、夢のお告げで畑から掘り出されたと伝わり、天正の丑年の文字が刻まれています。今の場所に地蔵堂が建ったのは昭和4年（1929年）です。",
+   "src": "宍粟市山崎文化協会",
+   "u": [
+    "https://www.yamasaki-bunka.org/?p=373"
+   ],
+   "at": "2026-10-06"
+  },
+  {
+   "name": "老松酒造",
+   "lat": 35.00571,
+   "lng": 134.53778,
+   "text": "明和5年（1768年）創業の造り酒屋で、江戸時代は山崎藩の御用酒屋でした。屋号は北門前屋。文化13年（1816年）建築とされる主屋は、兵庫県の景観形成重要建造物に指定されています。代表銘柄は「スエヒロ老松」。蔵見学は要予約（仕込みの9〜1月を除く）。",
+   "src": "老松酒造・西播磨ビンテージ建物図鑑・HYOGO!ナビ",
+   "u": [
+    "http://s-oimatsu.com/history",
+    "https://vintage-nishiharima.jp/?p=440",
+    "https://www.hyogo-tourism.jp/review/detail_536.html",
+    "http://s-oimatsu.com/product"
+   ],
+   "at": "2026-10-06"
+  },
+  {
+   "name": "老松ダイニング",
+   "aka": [
+    "ダイニング老松"
+   ],
+   "lat": 35.00572,
+   "lng": 134.53752,
+   "text": "老松酒造が2019年に開いた食事処で、県の景観形成重要建造物に指定された母屋を改装し、歴代当主の庭に面しています。酒造りの麹を生かした発酵食のランチを出し、隣に酒の販売所があります。11時〜14時30分、木曜休み（2026年10月時点）。",
+   "src": "老松酒造・神戸新聞・しそう森林王国観光協会",
+   "u": [
+    "http://s-oimatsu.com/sales",
+    "http://s-oimatsu.com/dining",
+    "https://www.kobe-np.co.jp/news/odekake-plus/news/detail.shtml?url=news/odekake-plus/news/pickup/201901/12006547",
+    "https://shiso.or.jp/highlights/%E8%80%81%E6%9D%BE%E3%83%80%E3%82%A4%E3%83%8B%E3%83%B3%E3%82%B0"
+   ],
+   "at": "2026-10-06"
+  },
+  {
+   "name": "菊亭　菊カフェ",
+   "aka": [
+    "醸す宿 菊亭",
+    "KIKU CAFE",
+    "菊亭"
+   ],
+   "lat": 35.00587,
+   "lng": 134.5405,
+   "text": "料亭旅館「菊水」の建物を改装して2026年3月に開業した宿「醸す宿 菊亭」のカフェ＆バー（KIKU CAFE ＆ bar）で、泊まらなくても利用できます。昭和7年に野口雨情と中山晋平が作った「山崎小唄」は、菊水で生まれたと宿は伝えています。",
+   "src": "醸す宿 菊亭・しそう森林王国観光協会・宍粟市",
+   "u": [
+    "https://kamosu-kikutei.com/",
+    "https://kamosu-kikutei.com/about/",
+    "https://shiso.or.jp/highlights/%E9%86%B8%E3%81%99%E5%AE%BF-%E8%8F%8A%E4%BA%AD",
+    "https://web.archive.org/web/20260317030109/https://www.city.shiso.lg.jp/soshiki/shichokoshitsu/hisyoseisaku/tantojoho/utaondo/11115.html"
+   ],
+   "at": "2026-10-06"
+  },
+  {
+   "name": "山崎旅館Q",
+   "aka": [
+    "古民家の宿 山崎旅館Q 中門前屋",
+    "中門前屋"
+   ],
+   "lat": 35.00576,
+   "lng": 134.537,
+   "text": "かつて醤油と酢を造って売っていた商家「中門前屋」の主屋（1851年建築）を改装し、2019年に開業した客室3室の宿です。この主屋は2021年、宍粟市で初めて国の登録有形文化財になりました。",
+   "src": "山崎旅館Q・文化遺産オンライン・ラジオ関西",
+   "u": [
+    "https://yamasaki-q.com/",
+    "https://online.bunka.go.jp/heritages/detail/572652",
+    "https://jocr.jp/raditopi/2021/07/22/364735/",
+    "https://www.yumenoi.com/co_diary/be0c8f6f472f035837693c44.html"
+   ],
+   "at": "2026-10-06"
+  },
+  {
+   "name": "カフェ&ギャラリー　さんしょう",
+   "aka": [
+    "町家cafe＆ギャラリー さんしょう"
+   ],
+   "lat": 35.00561,
+   "lng": 134.53701,
+   "text": "1977年まで酒「三笑」を造っていた本家門前屋の、江戸時代の町家の一角を使ったカフェです。本家門前屋の店舗兼主屋は2024年に国の登録有形文化財になりました。地元作家の作品を並べ、宍粟の地酒も売っています。11時〜15時、日・月曜休み（2026年10月時点）。",
+   "src": "町家cafe＆ギャラリー さんしょう・文化遺産オンライン・しそう森林王国観光協会・ラジオ関西",
+   "u": [
+    "https://cafesansyo.com/",
+    "https://online.bunka.go.jp/heritages/detail/593662",
+    "https://shiso.or.jp/highlights/%E7%94%BA%E5%AE%B6%E3%82%AB%E3%83%95%E3%82%A7%E3%80%80%E3%81%95%E3%82%93%E3%81%97%E3%82%87%E3%81%86",
+    "https://jocr.jp/raditopi/2024/04/17/567483/"
+   ],
+   "at": "2026-10-06"
+  },
+  {
+   "name": "ホテル碧雲",
+   "aka": [
+    "町家ホテル碧雲"
+   ],
+   "lat": 35.00558,
+   "lng": 134.53767,
+   "text": "大正2年（1913年）に建てられたふすま店を改装した町家ホテルで、老松酒造の向かいにあります。名前は、この建物を買った地元企業の創業者の書道の雅号から。客室は3室で、ロビーには囲炉裏があります。",
+   "src": "神戸新聞・設計事務所の作品紹介",
+   "u": [
+    "https://www.kobe-np.co.jp/news/odekake-plus/news/detail.shtml?url=news/odekake-plus/news/pickup/201901/12006547",
+    "http://toyodadesign.com/pg74.html",
+    "https://www.uebayasi.co.jp/works/87"
+   ],
+   "at": "2026-10-06"
+  },
+  {
+   "name": "ミートショップみうら",
+   "aka": [
+    "三浦精肉店"
+   ],
+   "lat": 35.00486,
+   "lng": 134.54308,
+   "text": "山田町商店街にある精肉店。商店街の店紹介によると、古くからこの地で商いを続け、揚げ物と黒毛和牛を売りにしています。宍粟で獲れたシカの肉を扱う店の一つでもあります。",
+   "src": "しそう森林王国観光協会・山崎連合商店街",
+   "u": [
+    "https://shiso.or.jp/product/%E5%AE%8D%E7%B2%9F%E3%81%AE%E3%82%B7%E3%82%AB%E8%82%89%E3%80%80",
+    "https://web.archive.org/web/20260217174722/https://yamasaki-ss.com/omiseitiran/%E3%83%9F%E3%83%BC%E3%83%88%E3%82%B7%E3%83%A7%E3%83%83%E3%83%97%E3%81%BF%E3%81%86%E3%82%89/"
+   ],
+   "at": "2026-10-06"
+  },
+  {
+   "name": "イオン山崎店",
+   "lat": 35.00243,
+   "lng": 134.54368,
+   "text": "1993年に今の場所で開業した大型店で、食品や日用品の売り場と専門店街があります。前身は1963年に近くの山崎町鹿沢で開いた店（のちのジャスコ山崎店）で、2011年に今の名前になりました。駐車場は無料です。",
+   "src": "イオン・ウィキペディア",
+   "u": [
+    "https://www.aeon.com/store/%E3%82%A4%E3%82%AA%E3%83%B3/%E3%82%A4%E3%82%AA%E3%83%B3%E5%B1%B1%E5%B4%8E%E5%BA%97/",
+    "https://ja.wikipedia.org/wiki/%E5%92%B2%E3%83%A9%E3%83%B3%E3%83%89%E3%82%B7%E3%83%A7%E3%83%83%E3%83%94%E3%83%B3%E3%82%B0%E3%82%BB%E3%83%B3%E3%82%BF%E3%83%BC",
+    "https://ja.wikipedia.org/wiki/%E9%81%8E%E5%8E%BB%E3%81%AB%E5%AD%98%E5%9C%A8%E3%81%97%E3%81%9F%E3%82%B8%E3%83%A3%E3%82%B9%E3%82%B3%E3%81%AE%E5%BA%97%E8%88%97"
+   ],
+   "at": "2026-10-06"
+  }
+ ]
+}
