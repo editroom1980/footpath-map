@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">   <!-- v161: 地図はノッチの下まで広げ、押す部品は --sat（安全域）ぶん下げる -->
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">   <!-- v161: 地図を上端まで。部品は全部 --sat で下げてある（v154 の教訓） -->
+<meta name="apple-mobile-web-app-status-bar-style" content="default">   <!-- v257: 透ける形だと iOS 27 が上をぼかすので普通の形に。ページはステータスバーの下から -->
 <title>Footpath Mapmaker</title>
 <meta name="description" content="歩くコース（フットパス）を地図で設計し、配布用の地図画像やJSONを書き出せるWebアプリ。">
 <meta name="theme-color" content="#B8440A">
@@ -29,11 +29,11 @@
 <link rel="dns-prefetch" href="https://basemaps.cartocdn.com">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <style>
-:root{--sat0:env(safe-area-inset-top,0px);--sat:max(calc(var(--sat0) + min(36px, var(--sat0) * 1000)), min(98px, var(--sat0) * 1000));--sab:env(safe-area-inset-bottom,0px)}
-/* 安全域（ノッチ・ホームバー）。v161：押す部品は --sat で下げ、地図はノッチの下まで広げる。
-   v246：--sat0 はノッチ（ステータスバー）そのものの高さ。--sat は「押す部品を置き始める高さ」＝ノッチ＋36pt（少なくとも上から 98pt）。
-   iOS 27 のホーム画面のアプリは、ノッチの下に出した物を上から約 95pt までぼかす（iOS 側の効果で、ページから止める設定は無い）。
-   部品はそのぼかしの下に置き、地図はノッチの下まで出したままにする（塗りつぶさない）。ノッチが無い画面（PC・横向き・Safari）は 0 のまま */
+:root{--sat0:env(safe-area-inset-top,0px);--sat:var(--sat0);--sab:env(safe-area-inset-bottom,0px);--top-gap:4px}
+/* 安全域（ノッチ・ホームバー）。v161：押す部品は --sat で下げる。
+   v257：ステータスバーを「普通の形（default）」にした。iOS 27 のホーム画面のアプリは、透ける形（black-translucent）だと
+   ノッチの下に出した物を上から約 95pt までぼかす。普通の形ならページはステータスバーの下から始まり、ぼかしは出ない（EDITFLOW で確認済み）。
+   そのため --sat はノッチの高さそのまま（ホーム画面のアプリでは 0）。上の段の部品はステータスバーのすぐ下 --top-gap から置く */
 *{box-sizing:border-box;margin:0;padding:0}
 
 /* ══ 配色の基準 ═══════════════════════════════════════════════════
@@ -934,7 +934,7 @@ body.viewonly #firstTip,body.embed #firstTip{display:none!important}
 body.viewonly .hbtn-back{display:none!important}   /* PCで共有リンクを開いた人に「一覧」（作る人の画面）を見せない（A5・v137） */
 /* 配る（v123）：画像・印刷用シート・リンク・GPX の4つの出口を1枚に。編集画面から2タップで届く */
 /* 次のスポット（v132）：歩く人の画面の上。矢印は北=0で回す（コンパス許可後は体の向き基準） */
-#nextBar{display:none;position:absolute;left:calc(max(8px,env(safe-area-inset-left)) + 48px);right:calc(max(8px,env(safe-area-inset-right)) + 48px);top:max(8px,var(--sat));z-index:1001;background:rgba(255,255,255,.96);
+#nextBar{display:none;position:absolute;left:calc(max(8px,env(safe-area-inset-left)) + 48px);right:calc(max(8px,env(safe-area-inset-right)) + 48px);top:max(var(--top-gap),var(--sat));z-index:1001;background:rgba(255,255,255,.96);
   border-radius:14px;box-shadow:0 2px 10px rgba(0,0,0,.18);padding:7px 8px 7px 10px;align-items:center;gap:9px;min-height:var(--tap)}
 body.viewing #nextBar:not([hidden]){display:flex}
 body.embed #nextBar{display:none!important}
@@ -1084,12 +1084,12 @@ body.viewonly .mob-share, body.embed .mob-share{display:none!important}
   #map{width:100%;height:100%}
   /* 上部：戻るだけを浮かせる（白帯なし。v247：保存・公開は右の列へ） */
   #mobileTopBar{display:flex!important;justify-content:space-between;background:transparent!important;
-    padding:max(8px,var(--sat)) max(8px,env(safe-area-inset-right)) 0 max(8px,env(safe-area-inset-left))!important;pointer-events:none}
+    padding:max(var(--top-gap),var(--sat)) max(8px,env(safe-area-inset-right)) 0 max(8px,env(safe-area-inset-left))!important;pointer-events:none}
   #mobileTopBar > *{pointer-events:auto}
   #mobileCourseTitle{display:none!important}
   .mob-back{background:rgba(255,255,255,0.95)!important;box-shadow:0 2px 8px rgba(0,0,0,0.18)}
   .mob-save{box-shadow:0 2px 8px rgba(0,0,0,0.22)}
-  #mobileRbtns{display:flex!important;top:max(8px,var(--sat))!important;bottom:auto;right:max(8px,env(safe-area-inset-right))}   /* v247：上の段の右が空いたので「戻る」と同じ高さから */
+  #mobileRbtns{display:flex!important;top:max(var(--top-gap),var(--sat))!important;bottom:auto;right:max(8px,env(safe-area-inset-right))}   /* v247：上の段の右が空いたので「戻る」と同じ高さから */
   /* スタンプは右の列のアイコン（v249）。左上の札は出さない（PC は今までどおり右下の札） */
   #stampBar{display:none!important}
   /* v248：次のスポットの帯は「戻る」と右の列の間に、左右同じすきまで真ん中に出す（上の #nextBar の left・right）。
@@ -1150,16 +1150,16 @@ body.viewonly .mob-share, body.embed .mob-share{display:none!important}
 
   /* フロートUIを表示 */
   #mobileTopBar{display:flex!important;justify-content:space-between;background:transparent!important;
-    padding:max(8px,var(--sat)) max(8px,env(safe-area-inset-right)) 0 max(8px,env(safe-area-inset-left))!important;pointer-events:none}
+    padding:max(var(--top-gap),var(--sat)) max(8px,env(safe-area-inset-right)) 0 max(8px,env(safe-area-inset-left))!important;pointer-events:none}
   #mobileTopBar > *{pointer-events:auto}
   #mobileCourseTitle{display:none!important}  /* タイトルは隠して地図を最大化 */
   .mob-back{background:rgba(255,255,255,0.95)!important;box-shadow:0 2px 8px rgba(0,0,0,0.18)}
   .mob-save{box-shadow:0 2px 8px rgba(0,0,0,0.22)}
-  #mobileRbtns{display:flex!important;top:max(8px,var(--sat))!important;bottom:auto;right:max(8px,env(safe-area-inset-right))}   /* v247：「戻る」と同じ高さから */
+  #mobileRbtns{display:flex!important;top:max(var(--top-gap),var(--sat))!important;bottom:auto;right:max(8px,env(safe-area-inset-right))}   /* v247：「戻る」と同じ高さから */
   #mobileRbtns{gap:4px!important}#mobileRbtns .mrb.mt{margin-top:4px}   /* v241：横向きは縦が短い。ボタンが1つ増えても下の帯に重ならないように間を詰める（v247：保存・公開が入ったので 4px＝押せる範囲 44px がちょうど並ぶ最小） */
   /* v245：横向きも次のスポットの帯を「戻る」と右の列の間に置く（幅の広い横向きでは PC 向けの左上・幅 380px の決まりが効き、帯が「戻る」に重なっていた）。
      v248：幅は 440px までにして、余りは左右に等しく＝真ん中に出す */
-  #nextBar{left:calc(max(8px,env(safe-area-inset-left)) + 48px);right:calc(max(8px,env(safe-area-inset-right)) + 48px);top:max(8px,var(--sat));width:auto;max-width:440px;margin:0 auto}
+  #nextBar{left:calc(max(8px,env(safe-area-inset-left)) + 48px);right:calc(max(8px,env(safe-area-inset-right)) + 48px);top:max(var(--top-gap),var(--sat));width:auto;max-width:440px;margin:0 auto}
   #mobileShelf{display:flex!important}
   #mobileElevBand{display:block!important}
   #stampBar{display:none!important}   /* v249：スタンプは右の列のアイコン（幅の広い横向きでは右下の札が下の棚に重なっていた） */
@@ -3641,7 +3641,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 手描きの道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した手描きの道id（直前取り消し用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v256';
+const APP_VERSION = 'v257';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat0', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;

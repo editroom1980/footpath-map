@@ -995,8 +995,8 @@ def static_checks(src):
         'function _isNumbered' in src and 'function _numBadge' in src and '歩く順の番号（道順の地点）' in src and 'const list = wps.filter(w => _isNumbered(w));' in src)
     chk('静的', 'スポットの編集：番号のスイッチ（道順に入れる）を上に出す', 'class="m-switch"' in src and src.index('id="mOnRoute"') < src.index('id="mName"'))
     # --- v154: ノッチ／ステータスバーに重ならない（致命的・オーナー指摘）---
-    chk('静的', '地図はノッチの下まで広げ（viewport-fit=cover・透明ステータスバー）、押す部品は全部 --sat で下げる。印刷用シートは外側タップと Esc で閉じる',
-        'viewport-fit=cover' in src and 'content="black-translucent"' in src and ':root{--sat0:env(safe-area-inset-top,0px);--sat:max(calc(var(--sat0) + min(36px, var(--sat0) * 1000)), min(98px, var(--sat0) * 1000));--sab:env(safe-area-inset-bottom,0px)}' in src
+    chk('静的', 'ステータスバーは普通の形（default・v257：透ける形だと iOS 27 が上をぼかす）、押す部品は全部 --sat で下げる。印刷用シートは外側タップと Esc で閉じる',
+        'viewport-fit=cover' in src and 'content="default"' in src and 'content="black-translucent"' not in src and ':root{--sat0:env(safe-area-inset-top,0px);--sat:var(--sat0);--sab:env(safe-area-inset-bottom,0px);--top-gap:4px}' in src
         and all(re.search(r'#' + i + r'\{[^}]*var\(--sat\)', src) for i in ('modeHint', 'offlineBadge', 'crFinishBar', 'sheetOver', 'nextBar', 'updBar'))
         and re.search(r'#mobileTopBar\{[^}]*var\(--sat\)', src) and 'padding:var(--sat) 0 var(--sab)' in src
         and src.split("get('debug')")[0].count('env(safe-area-inset-top') == 1   # :root の定義だけ（他は var(--sat) 経由）
@@ -1276,8 +1276,8 @@ def static_checks(src):
     # --- v245: 次のスポットの帯が右の列（➤）・「戻る」に重ならない（オーナー指摘）---
     chk('静的', '次のスポットの帯は「戻る」と右の列の間に左右同じすきまで（真ん中）。右の列は帯の下へ下げない（v248）。横向きは幅 440px まで真ん中',
         '--nb-h' not in src   # v249：帯の高さを使っていたスタンプの札は右の列へ移った
-        and '#nextBar{display:none;position:absolute;left:calc(max(8px,env(safe-area-inset-left)) + 48px);right:calc(max(8px,env(safe-area-inset-right)) + 48px);top:max(8px,var(--sat));' in src
-        and '#nextBar{left:calc(max(8px,env(safe-area-inset-left)) + 48px);right:calc(max(8px,env(safe-area-inset-right)) + 48px);top:max(8px,var(--sat));width:auto;max-width:440px;margin:0 auto}' in src)
+        and '#nextBar{display:none;position:absolute;left:calc(max(8px,env(safe-area-inset-left)) + 48px);right:calc(max(8px,env(safe-area-inset-right)) + 48px);top:max(var(--top-gap),var(--sat));' in src
+        and '#nextBar{left:calc(max(8px,env(safe-area-inset-left)) + 48px);right:calc(max(8px,env(safe-area-inset-right)) + 48px);top:max(var(--top-gap),var(--sat));width:auto;max-width:440px;margin:0 auto}' in src)
     chk('静的', '往復コースでも進みを取り違えない（候補を束ね、前回の進みに近いものを選ぶ）',
         'function _routeCandidates' in src and 'const ROUTE_AMBIG_M' in src and "_routeProgress(lat, lng, _walkPos ? _walkPos.along : null)" in src)
     # --- v132: 次のスポットまでの距離と向き（ロードマップ 段階2-1）---
@@ -6045,11 +6045,11 @@ def webkit_checks(index_path):
                 try { const all = JSON.parse(localStorage.getItem(LS.myPhotos) || '{}'); delete all['wk-my-test']; localStorage.setItem(LS.myPhotos, JSON.stringify(all)); } catch(_){}
                 currentCourseId = window.__wkKeepId; document.querySelectorAll('#toastBox .toast').forEach(x => x.remove()); }""")
             r7.update({'s0': [s0['open'], s0['ttl'][-5:], s0['close']['top'], s0['closeHit'], s0['bars'], s0['saveH']], 's1': s1['ttl'][-5:], 's2': s2['ttl'][-5:], 's3': s3['open'], 'album': [ac['ok'], ac['in'], ac['ph']]})
-            chk('WebKit', 'iPhone と同じエンジンで、わたしの写真：カードの「📷 撮る」「🖼 写真から選ぶ」（何枚でも）で選んだ写真がそのスポットに入る。全画面は右を押すと次・左で前（1回で1枚）、閉じるはぼかしより下で押せて戻る。アルバムも閉じられる（v253）',
+            chk('WebKit', 'iPhone と同じエンジンで、わたしの写真：カードの「📷 撮る」「🖼 写真から選ぶ」（何枚でも）で選んだ写真がそのスポットに入る。全画面は右を押すと次・左で前（1回で1枚）、閉じるは安全域より下で押せて戻る。アルバムも閉じられる（v253）',
                 (r7.get('b0') or {}).get('ok') and r7['b0']['h'] >= 44 and r7['b0']['txt'] == '📷 撮る' and r7.get('multi0') is False
                 and (r7.get('b1') or {}).get('ok') and r7['b1']['txt'] == '🖼 写真から選ぶ' and r7.get('multi1') is True
                 and r7.get('n') == 3 and r7.get('wp') and r7.get('card') == 3
-                and s0['open'] and s0['ttl'].endswith('1 / 3') and s0['close']['top'] >= 59 + 34 and s0['closeHit'] and s0['bars'] >= 59 + 34 and s0['saveH'] >= 44
+                and s0['open'] and s0['ttl'].endswith('1 / 3') and s0['close']['top'] >= 59 and s0['closeHit'] and s0['bars'] >= 59 and s0['saveH'] >= 44
                 and s1['ttl'].endswith('2 / 3') and s2['ttl'].endswith('1 / 3') and not s3['open']
                 and ac['ok'] and ac['in'] and ac['ph'] == 3 and r7['albumClosed'] and not errs, str(r7)[:320] + (' err:' + errs[0][:80] if errs else ''))
             cvr = r7.get('cover') if isinstance(r7.get('cover'), dict) else {}
@@ -6067,8 +6067,8 @@ def webkit_checks(index_path):
                 return {mapTop: Math.round(map.top), minTop: Math.min(...tops), n: tops.length, hintTop: Math.round(hint.top), sat: getComputedStyle(document.documentElement).getPropertyValue('--sat').trim()}; }""")
             chk('WebKit', 'ノッチ（安全域59px）でも地図は上端から広がり、上のボタンと道具の案内は安全域より下に出る',
                 r3['mapTop'] <= 0 and r3['n'] >= 3 and r3['minTop'] >= 59 and r3['hintTop'] >= 59 + 44, str(r3)[:200])
-            chk('WebKit', 'ノッチ（安全域59px）では、上のボタンを iOS 27 のぼかし（ノッチの下 約34pt）の下に置く。地図はノッチの下まで',
-                r3['mapTop'] <= 0 and r3['minTop'] >= 59 + 34 and r3['minTop'] <= 59 + 50, str(r3)[:200])
+            chk('WebKit', '上のボタンは安全域のすぐ下（4px あけるだけ）に詰めて置く（v257：ぼかしが無くなったので 98pt も下げない）',
+                r3['mapTop'] <= 0 and r3['minTop'] >= 59 and r3['minTop'] <= 59 + 8 and r3['sat'] == '59px', str(r3)[:200])
             page.evaluate("() => { if (!viewMode) toggleViewMode(); }"); page.wait_for_timeout(500)
             r6 = page.evaluate(NB_OVER)
             page.evaluate("() => { if (viewMode) toggleViewMode(); }"); page.wait_for_timeout(200)
