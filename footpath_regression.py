@@ -996,16 +996,17 @@ def static_checks(src):
     chk('静的', 'スポットの編集：番号のスイッチ（道順に入れる）を上に出す', 'class="m-switch"' in src and src.index('id="mOnRoute"') < src.index('id="mName"'))
     # --- v154: ノッチ／ステータスバーに重ならない（致命的・オーナー指摘）---
     chk('静的', 'ステータスバーは普通の形（default・v257：透ける形だと iOS 27 が上をぼかす）、押す部品は全部 --sat で下げる。印刷用シートは外側タップと Esc で閉じる',
-        'viewport-fit=cover' in src and 'content="default"' in src and 'content="black-translucent"' not in src and ':root{--sat0:env(safe-area-inset-top,0px);--sat:var(--sat0);--sab:env(safe-area-inset-bottom,0px);--top-gap:4px}' in src
-        and all(re.search(r'#' + i + r'\{[^}]*var\(--sat\)', src) for i in ('modeHint', 'offlineBadge', 'crFinishBar', 'sheetOver', 'nextBar', 'relaunchBar'))
+        'viewport-fit=cover' in src and 'content="default"' in src and 'content="black-translucent"' not in src and ':root{--sat0:env(safe-area-inset-top,0px);--sat:max(calc(var(--sat0) + min(36px, var(--sat0) * 1000)), min(98px, var(--sat0) * 1000));--sab:env(safe-area-inset-bottom,0px);--top-gap:4px}' in src
+        and all(re.search(r'#' + i + r'\{[^}]*var\(--sat\)', src) for i in ('modeHint', 'offlineBadge', 'crFinishBar', 'sheetOver', 'nextBar', 'readdBar'))
         and re.search(r'#mobileTopBar\{[^}]*var\(--sat\)', src) and 'padding:var(--sat) 0 var(--sab)' in src
         and src.split("get('debug')")[0].count('env(safe-area-inset-top') == 1   # :root の定義だけ（他は var(--sat) 経由）
         and "if (e.target === ov) closePrintSheet();" in src and "e.key === 'Escape'" in src)
     chk('静的', '一覧のタイトルもステータスバーのすぐ下（#s1 の上は --top-gap だけ・見出しの上の余白なし）（v258）',
         'padding:max(var(--top-gap),var(--sat)) 12px max(40px,var(--sab))}' in src and '.s1-header{padding:0 4px 16px}' in src and 'max(20px,var(--sat))' not in src)
-    chk('静的', 'ステータスバーの形は開いた瞬間にしか読まれないので、ホーム画面のアプリが縦向きでノッチの下に描いているときは「一度閉じて開き直す」と知らせる（v258）',
-        'function _isStaleStatusBar()' in src and 'function showRelaunchBar()' in src and "window.addEventListener('load', () => setTimeout(showRelaunchBar, 600));" in src
-        and '#updBar,#relaunchBar{position:fixed;' in src and "'updBar', 'relaunchBar'," in src)
+    chk('静的', 'ステータスバーの形は追加したときのまま。前の設定で追加したアプリ（縦向きでノッチの下に描いている）には、一覧に「追加し直す」手順を出す（✕ で消すと覚える）（v258）',
+        'function _isOldStatusBar()' in src and 'function showReaddBar()' in src and "window.addEventListener('load', () => setTimeout(showReaddBar, 600));" in src
+        and '#updBar,#readdBar{position:fixed;' in src and "'updBar', 'readdBar'," in src and "readdHide:   'fp_readd_hide'," in src
+        and '「すべて書き出す（バックアップ）」' in src.split('function showReaddSteps()')[1][:600] and '「バックアップから復元」' in src.split('function showReaddSteps()')[1][:700])
     chk('静的', '一覧の画面は固定の無地の箱（スクロールは中のコース一覧だけ）。上の端がスクロールする箱だと iOS 27 がステータスバーの下をぼかす（v258）',
         '#s1{position:fixed;top:0;left:0;right:0;height:100vh;height:100dvh;overflow:hidden;background-color:#EFE3CA;' in src)
     # --- v246: 押す部品は iOS 27 のぼかし（ノッチの下 約95pt まで）の下に置く。地図はノッチの下まで（塗りつぶさない）---
@@ -6056,7 +6057,7 @@ def webkit_checks(index_path):
                 (r7.get('b0') or {}).get('ok') and r7['b0']['h'] >= 44 and r7['b0']['txt'] == '📷 撮る' and r7.get('multi0') is False
                 and (r7.get('b1') or {}).get('ok') and r7['b1']['txt'] == '🖼 写真から選ぶ' and r7.get('multi1') is True
                 and r7.get('n') == 3 and r7.get('wp') and r7.get('card') == 3
-                and s0['open'] and s0['ttl'].endswith('1 / 3') and s0['close']['top'] >= 59 and s0['closeHit'] and s0['bars'] >= 59 and s0['saveH'] >= 44
+                and s0['open'] and s0['ttl'].endswith('1 / 3') and s0['close']['top'] >= 59 + 34 and s0['closeHit'] and s0['bars'] >= 59 + 34 and s0['saveH'] >= 44
                 and s1['ttl'].endswith('2 / 3') and s2['ttl'].endswith('1 / 3') and not s3['open']
                 and ac['ok'] and ac['in'] and ac['ph'] == 3 and r7['albumClosed'] and not errs, str(r7)[:320] + (' err:' + errs[0][:80] if errs else ''))
             cvr = r7.get('cover') if isinstance(r7.get('cover'), dict) else {}
@@ -6074,8 +6075,8 @@ def webkit_checks(index_path):
                 return {mapTop: Math.round(map.top), minTop: Math.min(...tops), n: tops.length, hintTop: Math.round(hint.top), sat: getComputedStyle(document.documentElement).getPropertyValue('--sat').trim()}; }""")
             chk('WebKit', 'ノッチ（安全域59px）でも地図は上端から広がり、上のボタンと道具の案内は安全域より下に出る',
                 r3['mapTop'] <= 0 and r3['n'] >= 3 and r3['minTop'] >= 59 and r3['hintTop'] >= 59 + 44, str(r3)[:200])
-            chk('WebKit', '上のボタンは安全域のすぐ下（4px あけるだけ）に詰めて置く（v257：ぼかしが無くなったので 98pt も下げない）',
-                r3['mapTop'] <= 0 and r3['minTop'] >= 59 and r3['minTop'] <= 59 + 8 and r3['sat'] == '59px', str(r3)[:200])
+            chk('WebKit', '前の設定（透ける形）で追加したアプリ（安全域59px）では、上のボタンを iOS 27 のぼかし（ノッチの下 約34pt）の下に置く（v258 で v246 に戻した）',
+                r3['mapTop'] <= 0 and r3['minTop'] >= 59 + 34 and r3['minTop'] <= 59 + 50, str(r3)[:200])
             page.evaluate("() => { if (!viewMode) toggleViewMode(); }"); page.wait_for_timeout(500)
             r6 = page.evaluate(NB_OVER)
             page.evaluate("() => { if (viewMode) toggleViewMode(); }"); page.wait_for_timeout(200)

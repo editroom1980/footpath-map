@@ -29,11 +29,13 @@
 <link rel="dns-prefetch" href="https://basemaps.cartocdn.com">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <style>
-:root{--sat0:env(safe-area-inset-top,0px);--sat:var(--sat0);--sab:env(safe-area-inset-bottom,0px);--top-gap:4px}
+:root{--sat0:env(safe-area-inset-top,0px);--sat:max(calc(var(--sat0) + min(36px, var(--sat0) * 1000)), min(98px, var(--sat0) * 1000));--sab:env(safe-area-inset-bottom,0px);--top-gap:4px}
 /* 安全域（ノッチ・ホームバー）。v161：押す部品は --sat で下げる。
    v257：ステータスバーを「普通の形（default）」にした。iOS 27 のホーム画面のアプリは、透ける形（black-translucent）だと
    ノッチの下に出した物を上から約 95pt までぼかす。普通の形ならページはステータスバーの下から始まり、ぼかしは出ない（EDITFLOW で確認済み）。
-   そのため --sat はノッチの高さそのまま（ホーム画面のアプリでは 0）。上の段の部品はステータスバーのすぐ下 --top-gap から置く */
+   普通の形で追加したアプリはノッチの高さ --sat0 が 0 なので --sat も 0、上の段の部品はステータスバーのすぐ下 --top-gap から置く。
+   v258：iOS はステータスバーの形を「ホーム画面に追加したとき」のまま使い続ける（シミュレータで確認：開き直しても、新しい版を読んでも変わらない）。
+   透ける形のときに追加したアプリは --sat0 が 0 でなく、ぼかしも残るので、前（v246）と同じく部品をぼかしの下（ノッチ＋36pt・少なくとも 98pt）に置く */
 *{box-sizing:border-box;margin:0;padding:0}
 
 /* ══ 配色の基準 ═══════════════════════════════════════════════════
@@ -601,10 +603,10 @@ body.viewonly #descSec.view-desc textarea{background:#F9F7F4;border-color:#E6DCC
   *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
   @page{size:A4 landscape;margin:8mm}
 }
-#updBar,#relaunchBar{position:fixed;left:8px;right:8px;top:max(8px,var(--sat));z-index:7000;display:flex;align-items:center;gap:10px;background:#4A2E0E;color:#F5EDD8;font-size:12.5px;padding:9px 12px;border-radius:12px;box-shadow:0 6px 24px rgba(0,0,0,.35)}
-#updBar span,#relaunchBar span{flex:1;line-height:1.45}
-#updBar button{border:none;border-radius:8px;padding:7px 13px;font-size:12.5px;font-weight:700;font-family:inherit;background:var(--brand-grad);color:#fff;cursor:pointer;flex:none}
-#updBar .upd-x,#relaunchBar .upd-x{background:transparent;color:#D9CDB4;padding:6px 4px;font-size:14px}
+#updBar,#readdBar{position:fixed;left:8px;right:8px;top:max(8px,var(--sat));z-index:7000;display:flex;align-items:center;gap:10px;background:#4A2E0E;color:#F5EDD8;font-size:12.5px;padding:9px 12px;border-radius:12px;box-shadow:0 6px 24px rgba(0,0,0,.35)}
+#updBar span,#readdBar span{flex:1;line-height:1.45}
+#updBar button,#readdBar button{border:none;border-radius:8px;padding:7px 13px;font-size:12.5px;font-weight:700;font-family:inherit;background:var(--brand-grad);color:#fff;cursor:pointer;flex:none}
+#updBar .upd-x,#readdBar .upd-x{background:transparent;color:#D9CDB4;padding:6px 4px;font-size:14px}
 #offlineBadge{position:fixed;top:calc(8px + var(--sat));left:50%;transform:translateX(-50%);background:rgba(90,58,26,.92);color:#fff;font-size:11px;padding:4px 14px;border-radius:14px;z-index:2600;pointer-events:none;display:none}
 body.offline #offlineBadge{display:block}
 .ctx-it.ctx-convert{color:var(--ok)}
@@ -2631,6 +2633,7 @@ const LS = {
   customOn:    'fp_custom_on',    // 手描きの道の表示ON/OFF
   customSnap:  'fp_custom_snap',  // 手描きの道スナップON/OFF
   probe:       '_fp_t',           // localStorage 可用性チェック用
+  readdHide:   'fp_readd_hide',   // v258：「ホーム画面に追加し直す」の知らせを ✕ で消した
   sampleDone:  'fp_sample_done',  // サンプルコースを取り込み済み(または削除済み)かの記録
   labelSize:   'fp_labelsize',    // 名称ラベルの文字サイズ段階（LABEL_SIZES の添字）
   wpSize:      'fp_wpsize',       // スポット○の大きさ段階（WP_SIZES の添字）
@@ -2815,10 +2818,10 @@ let _updCheckedAt = 0;
 function _watchVersionSoon(){ if (Date.now() - _updCheckedAt >= UPD_RECHECK_MS) watchVersion(); }
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') _watchVersionSoon(); });
 window.addEventListener('pageshow', e => { if (e.persisted) _watchVersionSoon(); });
-/* v258：ステータスバーの形（v257 から普通の形）は、iOS がアプリを開いた瞬間にだけ読む。開いたまま新しい版に更新しても
-   透ける形のまま残り、上がぼやける（iOS 27 シミュレータで確認）。ホーム画面のアプリなのにノッチの下に描いている（安全域の上が 0 でない）ときは、
-   一度閉じて開き直すように知らせる */
-function _isStaleStatusBar(){
+/* v258：iOS はステータスバーの形を「ホーム画面に追加したとき」のまま使い続ける。v256 までに追加したアプリは透ける形のままで、
+   開き直しても新しい版を読んでも変わらず、上がぼやける（iOS 27 シミュレータで確認）。直すにはホーム画面に追加し直すしかないので、
+   ホーム画面のアプリが縦向きでノッチの下に描いている（安全域の上が 0 でない）ときは、追加し直す手順を一覧に出す */
+function _isOldStatusBar(){
   const standalone = window.navigator.standalone === true || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
   if (!standalone || window.innerWidth > window.innerHeight) return false;   // 横向きはノッチが横に来るので比べない
   const pr = document.createElement('div');
@@ -2828,15 +2831,29 @@ function _isStaleStatusBar(){
   pr.remove();
   return t > 0;
 }
-function showRelaunchBar(){
-  if (document.getElementById('relaunchBar') || !_isStaleStatusBar()) return;
+function showReaddBar(){
+  if (document.getElementById('readdBar') || !_onCourseList() || !_isOldStatusBar()) return;
+  try { if (localStorage.getItem(LS.readdHide)) return; } catch(_) {}
   const bar = document.createElement('div');
-  bar.id = 'relaunchBar';
-  bar.innerHTML = '<span>上のぼやけは、アプリを一度閉じて開き直すと消えます（画面の下から上へはらい、このアプリを上へはらって閉じ、ホーム画面から開く）</span>'
-    + '<button class="upd-x" onclick="this.parentNode.remove()" aria-label="閉じる">✕</button>';
+  bar.id = 'readdBar';
+  bar.innerHTML = '<span>上のぼやけは、ホーム画面に追加し直すと消えます（このアイコンは前の設定のまま追加されています）</span>'
+    + '<button onclick="showReaddSteps()">手順</button>'
+    + '<button class="upd-x" onclick="hideReaddBar()" aria-label="閉じる">✕</button>';
   document.body.appendChild(bar);
 }
-window.addEventListener('load', () => setTimeout(showRelaunchBar, 600));
+function hideReaddBar(){
+  const b = document.getElementById('readdBar'); if (b) b.remove();
+  try { localStorage.setItem(LS.readdHide, '1'); } catch(_) {}
+}
+function showReaddSteps(){
+  alert('ホーム画面に追加し直す手順\n\n'
+    + '1. この一覧の「すべて書き出す（バックアップ）」で、コースをファイルに保存する\n'
+    + '2. ホーム画面のこのアイコンを長押しして削除する\n'
+    + '3. Safari で ' + location.origin + location.pathname.replace(/index\.html$/, '') + ' を開き、共有から「ホーム画面に追加」\n'
+    + '4. 新しいアイコンで開き、「バックアップから復元」で 1 のファイルを選ぶ\n\n'
+    + '※ コースと写真は戻ります。「わたしの写真」とスタンプは戻りません。');
+}
+window.addEventListener('load', () => setTimeout(showReaddBar, 600));
 // 一覧に戻ってきたときに、確認済みの新版があれば改めて案内する（再取得はしない）
 function showUpdateBarIfPending(){
   if (_updVersion) showUpdateBar(_updVersion);
@@ -3665,7 +3682,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 手描きの道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した手描きの道id（直前取り消し用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v258';
+const APP_VERSION = 'v259';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat0', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -7501,7 +7518,7 @@ function _buildTypeOptions(wp) {
    オーナー報告「戻った時にこういうのが残っている／前の画面で開いた設定が残ってる」。
    窓は数が多く、これからも増える。**名前を並べて書くと必ず閉じ忘れる**ので、
    ① close〜／hide〜 という名前の関数を全部呼ぶ ② それでも開いている窓の show を外す、の2段で閉じる。 */
-const SHEET_KEEP = ['toastBox', 'updBar', 'relaunchBar', 'guideWrap', 'offlineBadge', 's1', 's2'];   // 閉じてはいけないもの
+const SHEET_KEEP = ['toastBox', 'updBar', 'readdBar', 'guideWrap', 'offlineBadge', 's1', 's2'];   // 閉じてはいけないもの
 /* 「閉じる」だけで済まない関数＝呼ぶと別のことまで起きるので、ここでは呼ばない。
    closeA2hs … ホーム画面追加の案内を「見た」ことにしてしまう
    closeStartChooser … 「どれから始めますか」を二度と出さないことにしてしまう
