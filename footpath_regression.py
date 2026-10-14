@@ -995,16 +995,16 @@ def static_checks(src):
         'function _isNumbered' in src and 'function _numBadge' in src and '歩く順の番号（道順の地点）' in src and 'const list = wps.filter(w => _isNumbered(w));' in src)
     chk('静的', 'スポットの編集：番号のスイッチ（道順に入れる）を上に出す', 'class="m-switch"' in src and src.index('id="mOnRoute"') < src.index('id="mName"'))
     # --- v154: ノッチ／ステータスバーに重ならない（致命的・オーナー指摘）---
-    chk('静的', 'ステータスバーは普通の形（default・v257：透ける形だと iOS 27 が上をぼかす）、押す部品は全部 --sat で下げる。印刷用シートは外側タップと Esc で閉じる',
-        'content="default"' in src and 'content="black-translucent"' not in src and ':root{--sat0:env(safe-area-inset-top,0px);--sat:max(calc(var(--sat0) + min(36px, var(--sat0) * 1000)), min(98px, var(--sat0) * 1000));--sab:max(env(safe-area-inset-bottom,0px), var(--sab-min,0px));--top-gap:4px}' in src
+    chk('静的', '地図はノッチの下まで広げ（viewport-fit=cover・透明ステータスバー・v261 で戻した）、押す部品は全部 --sat で下げる。印刷用シートは外側タップと Esc で閉じる',
+        'viewport-fit=cover">' in src and 'status-bar-style" content="black-translucent"' in src and ':root{--sat0:env(safe-area-inset-top,0px);--sat:max(calc(var(--sat0) + min(36px, var(--sat0) * 1000)), min(98px, var(--sat0) * 1000));--sab:max(env(safe-area-inset-bottom,0px), var(--sab-min,0px));--top-gap:4px}' in src
         and all(re.search(r'#' + i + r'\{[^}]*var\(--sat\)', src) for i in ('modeHint', 'offlineBadge', 'crFinishBar', 'sheetOver', 'nextBar', 'shareFileBar'))
         and re.search(r'#mobileTopBar\{[^}]*var\(--sat\)', src) and 'padding:var(--sat) 0 var(--sab)' in src
         and src.split("get('debug')")[0].count('env(safe-area-inset-top') == 1   # :root の定義だけ（他は var(--sat) 経由）
         and "if (e.target === ov) closePrintSheet();" in src and "e.key === 'Escape'" in src)
     chk('静的', '一覧のタイトルもステータスバーのすぐ下（#s1 の上は --top-gap だけ・見出しの上の余白なし）（v258）',
         'padding:max(var(--top-gap),var(--sat)) 12px max(40px,var(--sab))}' in src and '.s1-header{padding:0 4px 16px}' in src and 'max(20px,var(--sat))' not in src)
-    chk('静的', 'ノッチの下までは広げない（viewport-fit=cover なし）。前の設定（透ける形）で追加したアイコンでもステータスバーが無地になり、上がぼやけない（v260）。追加し直す知らせは要らなくなった',
-        'user-scalable=no">' in src and 'viewport-fit=cover">' not in src and 'readdBar' not in src and 'showReaddBar' not in src
+    chk('静的', 'ノッチの部分を無地の帯にしない（viewport-fit=cover を外さない・v260 の誤りを v261 で戻した）。下の余白はホームバーぶんを最小に（--sab-min）',
+        'user-scalable=no, viewport-fit=cover">' in src and 'readdBar' not in src and 'showReaddBar' not in src
         and "if (/iPhone/.test(ua) && big >= 812) v = 34;" in src and "document.documentElement.style.setProperty('--sab-min', v + 'px');" in src)
     chk('静的', 'スマホの書き出し（バックアップ・コース・GPX）は共有の画面で渡す（ダウンロードだと関係ないアプリが「で開く」に出る）。開けなければ「保存する」ボタンで押し直す（v260）',
         "if (_isTouch() && file && navigator.share && navigator.canShare && navigator.canShare({files: [file]})) { _shareFile(file); return; }" in src
@@ -1015,7 +1015,7 @@ def static_checks(src):
     chk('静的', '押す部品を置き始める高さ（--sat）はノッチ＋36pt・少なくとも98pt。ノッチが無い画面では0。ページの高さの補いはノッチそのもの（--sat0）で、検査用の ?safe= も --sat0 を偽装する',
         'html,body{touch-action:manipulation;min-height:calc(100% + var(--sat0));' in src
         and "document.documentElement.style.setProperty('--sat0', v + 'px')" in src
-        and 'class="sat-band"' not in src and 'viewport-fit=cover">' not in src)
+        and 'class="sat-band"' not in src and 'viewport-fit=cover">' in src)
     # --- v247: 保存・公開を右の列のアイコンに／現在地は「追いかける」1つ（オーナー指示）---
     _tb = src[src.index('<div id="mobileTopBar">'):src.index('<div id="modeHint"')]
     chk('静的', 'スマホの上の段は「戻る」だけ。保存・公開（配る→公開）は右の列のアイコン（絵つき・名前つき）。◎（現在地へ）はスマホに無い',

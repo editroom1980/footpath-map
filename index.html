@@ -2,11 +2,11 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">   <!-- v260: ノッチの下までは広げない（viewport-fit=cover をやめた）。前の設定で追加したアイコンでも、ステータスバーが無地になり上がぼやけない（iOS 27 シミュレータで確認） -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">   <!-- v261: 地図はノッチの下まで広げる（v260 で無地の帯にしたのは誤り・オーナー指示で戻した） -->
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <script>
-/* v260：viewport-fit=cover をやめると、ホーム画面のアプリでは下の安全域（ホームバー）が 0 で返り、下の帯がホームバーにかかる（iOS 27 シミュレータで測った）。
+/* v260：ホーム画面のアプリでは下の安全域（ホームバー）が 0 で返ることがあり（viewport-fit=cover が無いとき・iOS 27 シミュレータで測った）、下の帯がホームバーにかかる。念のため v261 でも残す。
    ホームバーのある iPhone（画面の長い辺が 812pt 以上）は 34pt、iPad は 20pt を下の余白の最小にする（--sab-min） */
 (function(){ try {
   var st = navigator.standalone === true || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
@@ -17,7 +17,7 @@
   if (v) document.documentElement.style.setProperty('--sab-min', v + 'px');
 } catch(_) {} })();
 </script>
-<meta name="apple-mobile-web-app-status-bar-style" content="default">   <!-- v257: 透ける形だと iOS 27 が上をぼかすので普通の形に。ページはステータスバーの下から -->
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">   <!-- v261: 地図をノッチの下まで出すため透ける形に戻した。iOS 26 以降はノッチの下にぼかしが重なり、ページから消す方法は無い（部品は --sat でぼかしの下へ） -->
 <title>Footpath Mapmaker</title>
 <meta name="description" content="歩くコース（フットパス）を地図で設計し、配布用の地図画像やJSONを書き出せるWebアプリ。">
 <meta name="theme-color" content="#B8440A">
@@ -46,8 +46,9 @@
    v257：ステータスバーを「普通の形（default）」にした。iOS 27 のホーム画面のアプリは、透ける形（black-translucent）だと
    ノッチの下に出した物を上から約 95pt までぼかす。普通の形ならページはステータスバーの下から始まり、ぼかしは出ない（EDITFLOW で確認済み）。
    普通の形で追加したアプリはノッチの高さ --sat0 が 0 なので --sat も 0、上の段の部品はステータスバーのすぐ下 --top-gap から置く。
-   v260：viewport-fit=cover をやめたので、前の設定（透ける形）で追加したアイコンでもページはステータスバーの下から始まり、--sat0 は 0、ぼかしも出ない。
-   --sat の式（ノッチ＋36pt・少なくとも 98pt）は、ノッチの下に描くことがあったときのための残り（検査の ?safe= もこれで測る） */
+   v261：地図はノッチの下まで出す（オーナー指示。無地の帯で隠さない）。iOS 26 以降のホーム画面のアプリは、ノッチの下に描いた物に上から約 95pt のぼかしを重ね、
+   ページから止める方法は無い（v260〜v261 にシミュレータで試した：上の端の透明・不透明の箱、地の色、theme-color、color-scheme、iframe、スクロールの有無。どれも残った）。
+   そのため押す部品は --sat（ノッチ＋36pt・少なくとも 98pt）でぼかしの下に置く。普通の形で追加したアイコンは --sat0 が 0 なので、ステータスバーのすぐ下 --top-gap から */
 *{box-sizing:border-box;margin:0;padding:0}
 
 /* ══ 配色の基準 ═══════════════════════════════════════════════════
@@ -3657,7 +3658,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 手描きの道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した手描きの道id（直前取り消し用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v260';
+const APP_VERSION = 'v261';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat0', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
