@@ -996,24 +996,26 @@ def static_checks(src):
     chk('静的', 'スポットの編集：番号のスイッチ（道順に入れる）を上に出す', 'class="m-switch"' in src and src.index('id="mOnRoute"') < src.index('id="mName"'))
     # --- v154: ノッチ／ステータスバーに重ならない（致命的・オーナー指摘）---
     chk('静的', 'ステータスバーは普通の形（default・v257：透ける形だと iOS 27 が上をぼかす）、押す部品は全部 --sat で下げる。印刷用シートは外側タップと Esc で閉じる',
-        'viewport-fit=cover' in src and 'content="default"' in src and 'content="black-translucent"' not in src and ':root{--sat0:env(safe-area-inset-top,0px);--sat:max(calc(var(--sat0) + min(36px, var(--sat0) * 1000)), min(98px, var(--sat0) * 1000));--sab:env(safe-area-inset-bottom,0px);--top-gap:4px}' in src
-        and all(re.search(r'#' + i + r'\{[^}]*var\(--sat\)', src) for i in ('modeHint', 'offlineBadge', 'crFinishBar', 'sheetOver', 'nextBar', 'readdBar'))
+        'content="default"' in src and 'content="black-translucent"' not in src and ':root{--sat0:env(safe-area-inset-top,0px);--sat:max(calc(var(--sat0) + min(36px, var(--sat0) * 1000)), min(98px, var(--sat0) * 1000));--sab:max(env(safe-area-inset-bottom,0px), var(--sab-min,0px));--top-gap:4px}' in src
+        and all(re.search(r'#' + i + r'\{[^}]*var\(--sat\)', src) for i in ('modeHint', 'offlineBadge', 'crFinishBar', 'sheetOver', 'nextBar', 'shareFileBar'))
         and re.search(r'#mobileTopBar\{[^}]*var\(--sat\)', src) and 'padding:var(--sat) 0 var(--sab)' in src
         and src.split("get('debug')")[0].count('env(safe-area-inset-top') == 1   # :root の定義だけ（他は var(--sat) 経由）
         and "if (e.target === ov) closePrintSheet();" in src and "e.key === 'Escape'" in src)
     chk('静的', '一覧のタイトルもステータスバーのすぐ下（#s1 の上は --top-gap だけ・見出しの上の余白なし）（v258）',
         'padding:max(var(--top-gap),var(--sat)) 12px max(40px,var(--sab))}' in src and '.s1-header{padding:0 4px 16px}' in src and 'max(20px,var(--sat))' not in src)
-    chk('静的', 'ステータスバーの形は追加したときのまま。前の設定で追加したアプリ（縦向きでノッチの下に描いている）には、一覧に「追加し直す」手順を出す（✕ で消すと覚える）（v258）',
-        'function _isOldStatusBar()' in src and 'function showReaddBar()' in src and "window.addEventListener('load', () => setTimeout(showReaddBar, 600));" in src
-        and '#updBar,#readdBar{position:fixed;' in src and "'updBar', 'readdBar'," in src and "readdHide:   'fp_readd_hide'," in src
-        and '「すべて書き出す（バックアップ）」' in src.split('function showReaddSteps()')[1][:600] and '「バックアップから復元」' in src.split('function showReaddSteps()')[1][:700])
-    chk('静的', '一覧の画面は固定の無地の箱（スクロールは中のコース一覧だけ）。上の端がスクロールする箱だと iOS 27 がステータスバーの下をぼかす（v258）',
-        '#s1{position:fixed;top:0;left:0;right:0;height:100vh;height:100dvh;overflow:hidden;background-color:#EFE3CA;' in src)
+    chk('静的', 'ノッチの下までは広げない（viewport-fit=cover なし）。前の設定（透ける形）で追加したアイコンでもステータスバーが無地になり、上がぼやけない（v260）。追加し直す知らせは要らなくなった',
+        'user-scalable=no">' in src and 'viewport-fit=cover">' not in src and 'readdBar' not in src and 'showReaddBar' not in src
+        and "if (/iPhone/.test(ua) && big >= 812) v = 34;" in src and "document.documentElement.style.setProperty('--sab-min', v + 'px');" in src)
+    chk('静的', 'スマホの書き出し（バックアップ・コース・GPX）は共有の画面で渡す（ダウンロードだと関係ないアプリが「で開く」に出る）。開けなければ「保存する」ボタンで押し直す（v260）',
+        "if (_isTouch() && file && navigator.share && navigator.canShare && navigator.canShare({files: [file]})) { _shareFile(file); return; }" in src
+        and 'async function _saveCanvasPng(canvas, filename, okMsg)' in src and src.count('await _saveCanvasPng(canvas, ') == 2
+        and "if (_isTouch()) { _shareFile(_goalFile); return; }" in src
+        and 'async function _shareFile(file)' in src and "bar.id = 'shareFileBar';" in src and '#updBar,#shareFileBar{' in src)
     # --- v246: 押す部品は iOS 27 のぼかし（ノッチの下 約95pt まで）の下に置く。地図はノッチの下まで（塗りつぶさない）---
     chk('静的', '押す部品を置き始める高さ（--sat）はノッチ＋36pt・少なくとも98pt。ノッチが無い画面では0。ページの高さの補いはノッチそのもの（--sat0）で、検査用の ?safe= も --sat0 を偽装する',
         'html,body{touch-action:manipulation;min-height:calc(100% + var(--sat0));' in src
         and "document.documentElement.style.setProperty('--sat0', v + 'px')" in src
-        and 'class="sat-band"' not in src and 'viewport-fit=cover">' in src)
+        and 'class="sat-band"' not in src and 'viewport-fit=cover">' not in src)
     # --- v247: 保存・公開を右の列のアイコンに／現在地は「追いかける」1つ（オーナー指示）---
     _tb = src[src.index('<div id="mobileTopBar">'):src.index('<div id="modeHint"')]
     chk('静的', 'スマホの上の段は「戻る」だけ。保存・公開（配る→公開）は右の列のアイコン（絵つき・名前つき）。◎（現在地へ）はスマホに無い',
