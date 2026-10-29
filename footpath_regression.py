@@ -1011,6 +1011,8 @@ def static_checks(src):
         and 'async function _saveCanvasPng(canvas, filename, okMsg)' in src and src.count('await _saveCanvasPng(canvas, ') == 2
         and "if (_isTouch()) { _shareFile(_goalFile); return; }" in src
         and 'async function _shareFile(file)' in src and "bar.id = 'shareFileBar';" in src and '#updBar,#shareFileBar{' in src)
+    chk('静的', 'スポットに電話番号（type=tel）とサイトのアドレス（type=url）の欄が別々にあり、保存（2か所の写し）に url が入る（v262）',
+        'id="mTel" type="tel"' in src and 'id="mUrl" type="url"' in src and src.count('tel:w.tel,url:w.url||undefined,') == 2 and '<label>電話・URL</label>' not in src)
     # --- v246: 押す部品は iOS 27 のぼかし（ノッチの下 約95pt まで）の下に置く。地図はノッチの下まで（塗りつぶさない）---
     chk('静的', '押す部品を置き始める高さ（--sat）はノッチ＋36pt・少なくとも98pt。ノッチが無い画面では0。ページの高さの補いはノッチそのもの（--sat0）で、検査用の ?safe= も --sat0 を偽装する',
         'html,body{touch-action:manipulation;min-height:calc(100% + var(--sat0));' in src
@@ -1067,8 +1069,8 @@ def static_checks(src):
     chk('静的', 'スマホの下の道具は スポット・なぞる・ルート調整・道を足す の4つ（文字つき・この順・v169）。詳細に重複させない（v154・オーナー指摘）',
         src.index('id="mobileWpBtn"') < src.index('id="mobileDrawBtn"') < src.index('id="mobileViaBtn"') < src.index('id="mobileCustomBtn"') and src.count('class="mob-mode ') == 4 and src.count('class="mob-mode-l"') == 4 and 'id="mobileViaBtn" class="mob-mode tap" onclick="setMode(\'via\')"' in src
         and 'id="mobileCustomBtn" class="mob-mode tap" onclick="toggleCustomMode()"' in src and src.count('id="mobileViaBtn"') == 1)
-    chk('静的', 'スポットの編集は 種別→名前→写真→説明 の順で、2行目・電話・滞在・道順・名札の位置は「くわしい設定」に畳む',
-        src.index('id="mName"') < src.index('id="mPhotoStrip"') < src.index('id="mDesc2"') < src.index('<details id="mMore"') < src.index('id="mTel"') and "_more.open = !!(" in src)
+    chk('静的', 'スポットの編集は 種別→名前→写真→説明→電話番号・サイト の順で、2行目・滞在・道順・名札の位置は「くわしい設定」に畳む（v262：電話とサイトは畳まない）',
+        src.index('id="mName"') < src.index('id="mPhotoStrip"') < src.index('id="mDesc2"') < src.index('id="mTel"') < src.index('id="mUrl"') < src.index('<details id="mMore"') < src.index('id="mDwell"') and "_more.open = !!(" in src)
     # --- v147: 改変の可否（noEdit）＋ゴールの1枚（F7）---
     chk('静的', '改変の可否は配布ファイル（shared:true）にだけ効き、読み込みで断る。バックアップは常に取り込める',
         'function _isLockedShare' in src and "data.shared === true && data.noEdit === true" in src and 'Object.assign({}, course, {shared:true})' in src
@@ -2137,6 +2139,39 @@ def functional_checks(index_path):
             isinstance(mc, dict) and mc.get('o1', {}).get('n') == 2 and mc['o1'].get('first') == [1024, 768] and mc['o1'].get('keep') and mc['o1'].get('dirty')
             and mc['o1'].get('card', {}).get('act') == '📷 入れ替える' and mc['o1']['card'].get('more') == '+1' and mc['o1'].get('my') == 1
             and mc.get('o2a') == 'カードの写真にする' and mc.get('o2', {}).get('n') == 3 and mc['o2'].get('lbl') == 'カードの写真にしました' and mc['o2'].get('dis'), str(mc)[:400])
+
+        # v262: スポットの電話番号とサイトのアドレス（別々の欄・カードで押すと電話／サイト）
+        ct = page.evaluate("""async ()=>{ try{
+            const sl = ms => new Promise(r => setTimeout(r, ms));
+            const keepW = wps.slice(), keepD = _dirty;
+            wps.length = 0;
+            const c = leafMap.getCenter();
+            const a = addWp(c.lat, c.lng, 'course'); a.name = '連絡の甲'; a.tel = '0790-62-1000'; a.url = 'https://example.jp/a';
+            const b = addWp(c.lat + 0.001, c.lng, 'course'); b.name = '連絡の乙'; b.tel = 'www.example.jp';   // 前の「電話・URL」欄にアドレス
+            const d = addWp(c.lat + 0.002, c.lng, 'course'); d.name = '連絡の丙'; d.url = 'javascript:alert(1)';
+            const pan = document.getElementById('viewInfoPanel');
+            const links = () => [...pan.querySelectorAll('.vip-link')].map(x => ({h: x.getAttribute('href'), t: x.firstChild.textContent, tg: x.getAttribute('target') || '', ht: Math.round(x.getBoundingClientRect().height)}));
+            const out = {};
+            showViewInfo(a.id); await sl(250); out.a = links();
+            showViewInfo(b.id); await sl(250); out.b = links(); out.bMoved = [b.tel, b.url];
+            showViewInfo(d.id); await sl(250); out.d = links();
+            closeViewInfo();
+            const snap = _makeSnapshot(); const sa = (snap.wps || []).find(w => w.name === '連絡の甲'); out.snap = sa ? [sa.tel, sa.url] : null;
+            openModal(a.id); await sl(150);
+            out.ed = [document.getElementById('mTel').value, document.getElementById('mUrl').value, !document.getElementById('mUrl').closest('#mMore')];
+            document.getElementById('mUrl').value = 'www.foo.jp'; document.getElementById('mTel').value = ' 090-1111-2222 ';
+            saveModal(); await sl(150); out.saved = [a.tel, a.url];
+            if (typeof closeModal === 'function') closeModal();
+            wps.forEach(w => { if (w.marker) leafMap.removeLayer(w.marker); });
+            wps.length = 0; keepW.forEach(w => wps.push(w)); _dirty = keepD; refreshIcons();
+            return out;
+          }catch(e){ return 'ERR:'+e.message; } }""")
+        chk('機能', 'スポットの電話番号とサイトのアドレス（v262）：別々の欄（くわしい設定の外）。カードに「📞 電話する」（tel: の数字だけ）と「🌐 サイトを見る」（別のタブ）が押せる大きさで出る。前の「電話・URL」欄のアドレスはサイトへ移る。http(s) 以外は出さない。保存・取り消しの控えに入る',
+            isinstance(ct, dict) and ct.get('a') == [{'h': 'tel:0790621000', 't': '📞 電話する', 'tg': '', 'ht': ct['a'][0]['ht']}, {'h': 'https://example.jp/a', 't': '🌐 サイトを見る', 'tg': '_blank', 'ht': ct['a'][1]['ht']}]
+            and all(x['ht'] >= 44 for x in ct['a'])
+            and [x['h'] for x in ct.get('b', [])] == ['https://www.example.jp'] and ct.get('bMoved') == ['', 'https://www.example.jp']
+            and ct.get('d') == [] and ct.get('snap') == ['0790-62-1000', 'https://example.jp/a']
+            and ct.get('ed') == ['0790-62-1000', 'https://example.jp/a', True] and ct.get('saved') == ['090-1111-2222', 'https://www.foo.jp'], str(ct)[:400])
 
         # v252: 解説を名前から探す（ネットの代わりに決まった答えを返して確かめる）
         ds = page.evaluate("""async ()=>{ try{
@@ -4570,7 +4605,7 @@ def functional_checks(index_path):
             document.getElementById('s1').style.display = 'none'; document.getElementById('s2').style.display = 'flex';
             // くわしい設定：空なら閉じ、電話があれば開く
             const w = wps.find(x => x.type !== 'node'); const keepTel = w.tel; w.tel = ''; w.dwell = 0; openModal(w.id); out.closedWhenEmpty = document.getElementById('mMore').open === false; closeModal();
-            w.tel = '090-0000-0000'; openModal(w.id); out.openWhenTel = document.getElementById('mMore').open === true; closeModal(); w.tel = keepTel;
+            const keepDw = w.dwell; w.dwell = 10; openModal(w.id); out.openWhenTel = document.getElementById('mMore').open === true; closeModal(); w.dwell = keepDw;   // v262：電話は畳まなくなったので、滞在時間で確かめる
             // 後片付け：検査で保存したコースを消す
             window.__noAutoSave = keepFlag; setCourses(keepCourses); currentCourseId = keepId; _dirty = keepD; courseInfo.name = keepName; _setSaveState(keepD ? 'dirty' : 'saved');
             return out;

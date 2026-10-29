@@ -35,7 +35,7 @@
 
 | 変数 | 中身 |
 |---|---|
-| `wps` | スポット（ウェイポイント）配列。`{id,type,name,desc,tel,dwell,lat,lng,photos[],labelDir,onRoute,marker}` |
+| `wps` | スポット（ウェイポイント）配列。`{id,type,name,desc,tel,url,dwell,lat,lng,photos[],labelDir,onRoute,marker}`（tel＝電話番号・url＝サイトのアドレス。http(s) だけ・v262） |
 | `vps` | 調整点（Via Point）配列。ルートの通り道を手で決めるための点 |
 | `routeLine` / `_routeLineBase` | 画面上のルート線（**v117以降は切れ端の集まり**）/ **その素の座標**（データ準拠） |
 | `routeCasing` | ルート線の下に敷く白い実線（v103）。**表示専用** |
@@ -54,7 +54,7 @@
 ### コース1本（保存・書き出しの単位）
 ```
 { id, name, area, desc, center, zoom,
-  wps:[{id,type,name,desc,tel,dwell,fitBefore,fitAfter,onRoute,lat,lng,labelDir,photos[]}],
+  wps:[{id,type,name,desc,tel,url,dwell,fitBefore,fitAfter,onRoute,lat,lng,labelDir,photos[]}],
   vps:[{id,segAfter,fitBefore,fitAfter,lat,lng,order}],
   customPaths:[{id,pts:[[lat,lng],…]}],      // 手描きの道
   routes:{ "lng,lat;lng,lat": [[lat,lng],…] }, // 区間ごとの道順（v119）。読み込み時に segCache へ戻す

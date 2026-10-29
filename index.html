@@ -366,7 +366,9 @@ body.moving #modeHint{display:none!important}
 .vip-name{font-size:16px;font-weight:bold;color:#2C1B0E;flex:1;line-height:1.3}
 .vip-close{width:28px;height:28px;background:#EEE8DE;border:none;border-radius:50%;font-size:14px;cursor:pointer;flex-shrink:0}
 .vip-desc{font-size:13px;color:#444;line-height:1.7;margin-bottom:8px;white-space:pre-wrap}
-.vip-tel a{font-size:13px;color:#1a6fc4;display:block;margin-bottom:10px}
+.vip-links{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 10px}   /* v262：電話・サイト（押せる大きさ 44px） */
+.vip-link{flex:1 1 140px;min-width:0;min-height:44px;display:flex;flex-direction:column;justify-content:center;padding:6px 12px;border:1.5px solid #D4C4A8;border-radius:12px;background:#FAF6EE;color:#4A2E0E;font-size:14px;font-weight:700;text-decoration:none}
+.vip-link small{font-size:11px;font-weight:400;color:var(--t-sub);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .vip-edit{margin-top:4px;min-height:var(--tap);border:none;background:none;padding:0 2px;color:var(--brand);font-family:inherit;font-size:12.5px;font-weight:700;cursor:pointer}   /* v252 */
 .m-desc-hd{display:flex;align-items:flex-end;justify-content:space-between;gap:8px}
 .m-desc-hd label{margin-bottom:2px}
@@ -2174,10 +2176,11 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
       </div>
       <div class="m-desc-hd"><label for="mDesc2">説明（歩く人のカードに出ます）</label><button type="button" class="m-desc-find tap" onclick="mDescFind(true)">名前から探す</button></div><textarea id="mDesc2" placeholder="例：農水省認定・171枚の棚田が広がる"></textarea>
       <div class="m-desc-st" id="mDescSt" hidden></div>
+      <label>電話番号（任意・見る人が押すと電話をかけられます）</label><input id="mTel" type="tel" inputmode="tel" autocomplete="off" placeholder="例：0790-62-1000">
+      <label>サイトのアドレス（任意・押すとサイトが開きます）</label><input id="mUrl" type="url" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="例：https://example.jp/">
       <details id="mMore" class="m-more">
-        <summary>くわしい設定 <small>2行目の名前・電話・滞在時間・道順・名札の位置</small></summary>
+        <summary>くわしい設定 <small>2行目の名前・滞在時間・道順・名札の位置</small></summary>
         <label>名前の2行目（任意）</label><input id="mName2" placeholder="補足・カッコ書きなど">
-        <label>電話・URL</label><input id="mTel" placeholder="例：090-1234-5678">
         <label>滞在時間（分・所要時間に足します）</label>
         <input type="number" id="mDwell" min="0" max="480" step="5" value="0" placeholder="0">
         <div style="font-size:11px;font-weight:bold;color:var(--t-sub);margin-bottom:4px">道順</div>
@@ -3658,7 +3661,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 手描きの道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した手描きの道id（直前取り消し用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v261';
+const APP_VERSION = 'v262';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat0', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -7581,6 +7584,24 @@ function _safeInsets() {
   return { t:parseFloat(p.paddingTop)||0, r:parseFloat(p.paddingRight)||0, b:parseFloat(p.paddingBottom)||0, l:parseFloat(p.paddingLeft)||0 };
 }
 
+/* v262：スポットの電話番号とサイトのアドレス。前は「電話・URL」の1つの欄で、アドレスを入れても電話のリンクになっていた */
+const URL_LIKE_RE = /^(https?:\/\/|www\.)\S+$/i;
+function _normUrl(v) {             // http(s) のアドレスだけ通す。「www.」から始まるものは https:// を補う。ほかは空
+  v = String(v || '').trim();
+  if (!v) return '';
+  if (/^www\./i.test(v)) v = 'https://' + v;
+  if (!/^https?:\/\/[^\s/$.?#].\S*$/i.test(v)) return '';
+  return v;
+}
+function _telHref(v) {             // 数字・+ だけにして tel: に。数字が 3 けた未満なら出さない
+  const d = String(v || '').replace(/[^\d+]/g, '');
+  return (d.replace(/\D/g, '').length >= 3) ? 'tel:' + d : '';
+}
+function _splitContact(wp) {       // 電話の欄にアドレスだけが入っていたら、サイトの欄へ移す
+  if (!wp) return;
+  const t = String(wp.tel || '').trim();
+  if (t && URL_LIKE_RE.test(t) && !wp.url) { wp.url = _normUrl(t); wp.tel = ''; }
+}
 function openModal(id) {
   if (viewMode) return;              // 閲覧中は編集画面を開かない
   _closeAllPopups('modal');
@@ -7597,7 +7618,9 @@ function openModal(id) {
   const mN2el = document.getElementById('mName2');
   if (mN2el) mN2el.value = _nameParts[1] || '';
   document.getElementById('mDesc2').value  = wp.desc;
-  document.getElementById('mTel').value    = wp.tel;
+  _splitContact(wp);
+  document.getElementById('mTel').value    = wp.tel || '';
+  document.getElementById('mUrl').value    = wp.url || '';
   document.getElementById('mDwell').value   = wp.dwell || 0;
   const _onRouteDefault = _onRouteOf(wp);   // v155：種類に関係なく「道順に入っているか」
   document.getElementById('mOnRoute').checked = _onRouteDefault;
@@ -7610,7 +7633,7 @@ function openModal(id) {
   _mDescSeq++; clearTimeout(_mDescT); _mDescStatus('');   // v252：前のスポットで探していた結果を持ち込まない
   setTimeout(() => { if (editId === id) mDescFind(false); }, 300);   // v252：説明が空なら、名前から探して入れる
   const _more = document.getElementById('mMore');   // くわしい設定は、何か入っているときだけ開いておく（v148）
-  if (_more) _more.open = !!((_nameParts[1] || '').trim() || (wp.tel || '').trim() || (wp.dwell || 0) > 0 || (wp.labelDir && wp.labelDir !== 'auto') || wp.fitBefore === false || wp.fitAfter === false);   // 置いたときの既定（道順に入れる・道に沿う・名札は自動）から変えてあるときだけ
+  if (_more) _more.open = !!((_nameParts[1] || '').trim() || (wp.dwell || 0) > 0 || (wp.labelDir && wp.labelDir !== 'auto') || wp.fitBefore === false || wp.fitAfter === false);   // 置いたときの既定（道順に入れる・道に沿う・名札は自動）から変えてあるときだけ
   document.getElementById('mOver').classList.add('show');
   setTimeout(()=>document.getElementById('mName').focus(), 50);
 }
@@ -7638,7 +7661,8 @@ function saveModal() {
   const _n2 = (document.getElementById('mName2')?.value||'').trim();
   wp.name  = _n1 + (_n2 ? '\n' + _n2 : '');
   wp.desc  = document.getElementById('mDesc2').value;
-  wp.tel   = document.getElementById('mTel').value;
+  wp.tel   = document.getElementById('mTel').value.trim();
+  wp.url   = _normUrl(document.getElementById('mUrl').value);
   wp.dwell   = parseInt(document.getElementById('mDwell').value)||0;
   wp.fitBefore = document.getElementById('mFitBefore').checked;
   wp.fitAfter  = document.getElementById('mFitAfter').checked;
@@ -8597,7 +8621,7 @@ function _magnetSvg(){ return '<svg viewBox="0 0 24 24" width="15" height="15" f
    ============================================================ */
 function _makeSnapshot() {
   return {
-    wps: wps.map(w=>({id:w.id,type:w.type,name:w.name,desc:w.desc,tel:w.tel,dwell:w.dwell||0,fitBefore:w.fitBefore!==false,fitAfter:w.fitAfter!==false,onRoute:w.onRoute!==undefined?w.onRoute!==false:(w.type==='course'),lat:w.lat,lng:w.lng,labelDir:w.labelDir||'auto',got:w.got?1:undefined,role:w.role||undefined})),
+    wps: wps.map(w=>({id:w.id,type:w.type,name:w.name,desc:w.desc,tel:w.tel,url:w.url||undefined,dwell:w.dwell||0,fitBefore:w.fitBefore!==false,fitAfter:w.fitAfter!==false,onRoute:w.onRoute!==undefined?w.onRoute!==false:(w.type==='course'),lat:w.lat,lng:w.lng,labelDir:w.labelDir||'auto',got:w.got?1:undefined,role:w.role||undefined})),
     vps: vps.map(v=>({id:v.id,segAfter:v.segAfter,fitBefore:v.fitBefore!==false,fitAfter:v.fitAfter!==false,lat:v.lat,lng:v.lng,order:v.order||0,guide:v.guide?JSON.parse(JSON.stringify(v.guide)):undefined})),
     idW, idV,
     customPaths: customPaths.map(p=>({id:p.id, pts:(p.pts||[]).map(pt=>pt.slice())})),
@@ -8949,7 +8973,12 @@ function showViewInfo(wpId) {
     <button class="vip-close" onclick="closeViewInfo()" aria-label="閉じる">✕</button>
   </div>`;
   if (wp.desc) html2 += `<div class="vip-desc">${escHtml(wp.desc)}</div>`;
-  if (wp.tel)  html2 += `<div class="vip-tel"><a href="tel:${escHtml(wp.tel)}">${escHtml(wp.tel)}</a></div>`;
+  _splitContact(wp);
+  const telH = _telHref(wp.tel), urlH = _normUrl(wp.url);
+  if (telH || urlH) html2 += '<div class="vip-links">'
+    + (telH ? `<a class="vip-link tap" href="${escHtml(telH)}">📞 電話する<small>${escHtml(wp.tel)}</small></a>` : '')
+    + (urlH ? `<a class="vip-link tap" href="${escHtml(urlH)}" target="_blank" rel="noopener">🌐 サイトを見る<small>${escHtml(urlH.replace(/^https?:\/\//, '').replace(/\/$/, ''))}</small></a>` : '')
+    + '</div>';
   if (!document.body.classList.contains('viewonly')) html2 += `<button type="button" class="vip-edit tap" onclick="_vipEdit(${JSON.stringify(wp.id)})">✎ ${wp.desc ? '説明を直す' : '説明を書く'}</button>`;   // v252：自分のコースなら、ここから直せる
   html2 += '</div></div>';
   html2 += _myCardHtml(wp);   // v253：わたしの写真（撮る・見る）
@@ -11581,7 +11610,7 @@ function buildCurrentSaveData() {
     origin:   courseInfo.origin || undefined,          // 作者の印（v220）。取り込んでも消さない
     center:  leafMap ? {lat:leafMap.getCenter().lat, lng:leafMap.getCenter().lng} : null,
     zoom:    leafMap ? leafMap.getZoom() : 14,
-    wps:     wps.map(w=>({id:w.id,type:w.type,name:w.name,desc:w.desc,tel:w.tel,dwell:w.dwell||0,fitBefore:w.fitBefore!==false,fitAfter:w.fitAfter!==false,onRoute:w.onRoute!==undefined?w.onRoute!==false:(w.type==='course'),lat:w.lat,lng:w.lng,labelDir:w.labelDir||'auto',photos:w.photos||[],got:w.got?1:undefined,role:w.role||undefined})),
+    wps:     wps.map(w=>({id:w.id,type:w.type,name:w.name,desc:w.desc,tel:w.tel,url:w.url||undefined,dwell:w.dwell||0,fitBefore:w.fitBefore!==false,fitAfter:w.fitAfter!==false,onRoute:w.onRoute!==undefined?w.onRoute!==false:(w.type==='course'),lat:w.lat,lng:w.lng,labelDir:w.labelDir||'auto',photos:w.photos||[],got:w.got?1:undefined,role:w.role||undefined})),
     vps:     vps.map(v=>({id:v.id,segAfter:v.segAfter,fitBefore:v.fitBefore!==false,fitAfter:v.fitAfter!==false,lat:v.lat,lng:v.lng,order:v.order||0,guide:v.guide||undefined})),   // guide＝分岐・注意の案内（v141）
     customRoads: customRoads.map(r=>({id:r.id,name:r.name,coords:r.coords})),
     customPaths: (customPaths||[]).map(p=>({id:p.id, pts:(p.pts||[]).map(pt=>pt.slice())})),
@@ -11733,6 +11762,7 @@ function loadCourseData(data) {
         photos:    w.photos    || [],
         marker:    null
       };
+      _splitContact(wp);   // v262：前の「電話・URL」欄に入れたアドレスはサイトの欄へ
       buildWpMarker(wp);   // sets wp.marker
       return wp;
     });
