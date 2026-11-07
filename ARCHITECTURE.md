@@ -546,6 +546,13 @@ CONSTANTS(904) → STATE(968) → STORAGE(1015) → 版のお知らせ(1021) →
 - `--sab` は `max(env(safe-area-inset-bottom), var(--sab-min))`。`<head>` の script がホームバーのある iPhone に 34pt・iPad に 20pt を入れる（v260）。下に固定する部品は必ず `--sab` を使う。
 - 一覧 `#s1` と地図 `#s2` は固定（`position:fixed`）で `background-color` のある箱（v258）。
 
+## 新しいデザインの地図と札（v263）
+- 閲覧モードだけ、道順のまわり `DM_PAD_M` を地理院ベクトルタイルから canvas で描く（`_applyDesignMap`・`_dmDrawTile`・`_mvtShapes`）。付け外しは `_applyViewLock` から。道順ができたとき（`_lastRouteCoords` を作る所）にも描く。
+- 色は `DM_STYLES`（aizome・kinari）。`DM_STYLE_ORDER` の off は いつもの地図。選んだものは `LS.dmStyle`。
+- 札と名前の帯は `_dmMarks()`（off でなければ、編集・閲覧とも）。`wpIcon` の先で `_dmBadgeIcon`、`updateTooltip` で帯の色、`_wpIconSize` で札の大きさ。写真のシールを選んでいればシールが優先。
+- 道順の点線は `_dmRouteSync`（表示用の座標を使う。`routeLine` などは透明にするだけ。当たり判定 `hitOverlays` は触らない）。
+- 画像の保存（html2canvas）の前の色の塗り直しは、札（`.fd-bd`）と帯では行わない。
+
 ## スタンプラリー（v100→v250）
 - 押す仕組み：閲覧モードで位置が入ったとき（➤ 追いかける）、`VISIT_RADIUS_M`（10m・v251）以内の**コースに含まれるスポット**（`_courseSpots()`＝S・番号・G）に記録（`_visits`・この端末の `LS.visits` だけ）。次のスポット・到着・カードのフリックも `_courseSpots()`。作る人の画面で全部のスポットが要るところは `_allSpots()`。
 - 見せ方（v250）：スタンプの絵は `_stampSvg`（枠 `STAMP_FRAMES`×色 `STAMP_INKS` を歩く順で回す・真ん中は `_stampKanji`）。押した瞬間 `_stampFx`（順番待ち `_stampFxQ`）、全部そろったら最後のあとに `_stampDoneFx`（完歩之印 `_stampSealSvg`・紙吹雪）。スタンプ帳 `openStampSheet`。記念の1枚は `_goalSeal`。
