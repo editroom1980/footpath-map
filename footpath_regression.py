@@ -317,7 +317,11 @@ def static_checks(src):
         lum = 0.2126 * f(ch[0]) + 0.7152 * f(ch[1]) + 0.0722 * f(ch[2])
         return round(1.05 / (lum + 0.05), 2)
 
-    root_vars = dict(re.findall(r"--(brand|brand-lite|ok):(#[0-9A-Fa-f]{6})", src))
+    _root_blk = src[src.index(':root{\n  --brand:'):]; _root_blk = _root_blk[:_root_blk.index('}')]   # :root の中だけ（v264：body.fd の上書きを拾わない）
+    root_vars = dict(re.findall(r"--(brand|brand-lite|ok):(#[0-9A-Fa-f]{6})", _root_blk))
+    fd_vars = dict(re.findall(r"--(brand|brand-lite):(#[0-9A-Fa-f]{6})", src[src.index("body.fd{--brand:"):src.index("body.fd{--brand:") + 200]))
+    chk('静的', '新しいデザインの操作の色（藍）も白い字との差 4.5:1 以上（v264）', len(fd_vars) == 2 and all(_white_contrast(v) >= 4.5 for v in fd_vars.values()),
+        str({k: _white_contrast(v) for k, v in fd_vars.items()}))
     js_colors = dict(re.findall(r"(brand|ok):'(#[0-9A-Fa-f]{6})'", src))
     chk('静的', '配色の基準が :root にある', len(root_vars) == 3, str(root_vars))
     chk('静的', 'CSSの色とJSの色が一致している（COLOR と :root）',
@@ -1019,6 +1023,15 @@ def static_checks(src):
         and "dmStyle:     'fp_dm_style'," in src and 'id="mobileDmBtn" onclick="cycleDesignMap()"' in src and "_applyDesignMap(!document.body.classList.contains('embed'));" in src
         and 'function _mvtShapes(buf)' in src and 'function _dmDrawTile(cv, coords, st)' in src and "dmEditStyle: 'fp_dm_edit_style'," in src and "let _dmEditStyle = 'off';" in src and "attribution: '国土地理院ベクトルタイル（加工して作成）'" in src
         and 'DM_PAD_M' not in src and 'DM_BASE_DIM' not in src)
+    chk('静的', '高低差のグラフ（スマホの帯・PC）も新しいデザイン（v264）：線と面は藍、勾配は山吹と朱、上の印は札と同じ形。帯の地は生成り。道順は編集・閲覧とも朱の点線（編集は朱の向きの三角）',
+        'function _evC(){' in src and 'function _evMark(wp, xp, PT, iH, r, fs){' in src and src.count('_evMark(wp, xp, PT, iH,') == 3
+        and src.count('const EC = _evC();') == 2 and "body.fd #mobileElevBand{background:#F7EEDC;" in src
+        and "const on = _dmMarks() && !!_routeLineBase;" in src and "routeDirs.setStyle({opacity: 1, fillOpacity: 1, color: '#F7EEDC', fillColor: '#E9603B'})" in src
+        and 'GRADE_COL[' not in src)
+    chk('静的', '画面全体も新しいデザイン（v264）：起動時と切り替えのときに body.fd を付け、自分の CSS の茶色・ベージュ（色相 15〜60°・明るさ 0.9 未満）を藍系に置き換えた上書きを作る。操作の色は藍、小さな種類の丸は札の形、スタンプ帳の点線も藍系',
+        'function _fdBuild(){' in src and 'function _fdMap(r, g, b){' in src and 'const FD_HUE = 205, FD_KEEP_L = 0.9;' in src
+        and "try { _loadDmStyle(); _fdApply(); } catch(_) {}" in src and "body.fd{--brand:#2E78AE;" in src
+        and "['.vip-dot', '.wp-dot', '.ro-badge', '.sh-lgm', '.nb-dot', '.tc-dot']" in src and "const PH = _fdc('#D3C5AA'), PM = _fdc('#D6C8AE');" in src)
     # --- v246: 押す部品は iOS 27 のぼかし（ノッチの下 約95pt まで）の下に置く。地図はノッチの下まで（塗りつぶさない）---
     chk('静的', '押す部品を置き始める高さ（--sat）はノッチ＋36pt・少なくとも98pt。ノッチが無い画面では0。ページの高さの補いはノッチそのもの（--sat0）で、検査用の ?safe= も --sat0 を偽装する',
         'html,body{touch-action:manipulation;min-height:calc(100% + var(--sat0));' in src
@@ -1178,7 +1191,7 @@ def static_checks(src):
     # --- v133: 高低差グラフに「いまここ」（ロードマップ 段階2-4）---
     chk('静的', '高低差の帯に「いまここ」の丸がある（位置が入ったときだけ・一番上に描く）',
         'class="ev-here"' in src and 'function _elevHerePoint' in src and 'function _drawElevHere' in src
-        and src.index('stroke="#C0A882" stroke-width="0.8"/>`+\n    here + _scrubSvg(') > 0)   # v166：なぞりの印は「いまここ」の後（一番上）
+        and src.index('stroke="${EC.axis}" stroke-width="0.8"/>`+\n    here + _scrubSvg(') > 0)   # v166：なぞりの印は「いまここ」の後（一番上）
     chk('静的', 'スタンプはスマホでは右の列のアイコン（追いかけるの次・絵と数）。左上の札は出さない。PC は右下の札。押すとスタンプ帳（v249・v250）',
         '<button class="mrb stamp tap" id="mobileStampBtn" onclick="openStampSheet()"' in src
         and src.index('id="mobileNextBtn"') < src.index('id="mobileStampBtn"') < src.index('id="mobilePtsBtn"')
@@ -2215,15 +2228,27 @@ def functional_checks(index_path):
         chk('機能', '新しいデザインの地図（v263）：閲覧モードは藍の地で、画面に映った所をどこでも描く（範囲のふち・外を薄くはしない）。縮めたら粗いデータ。出典を出す。編集にもどると外れる（編集の最初は今までの地図）',
             isinstance(dm, dict) and dm.get('offBefore') and dm.get('on') and dm.get('frame') and dm.get('dim') == 1 and dm.get('tiles', 0) > 0 and dm.get('z13') and dm.get('far')
             and dm.get('ground') and dm.get('attr') and dm.get('offAfter') and dm.get('undim') == 1, str(dm)[:300])
-        chk('機能', '閲覧モードの地図の印（v263）：歩く順は大きい札（番号つき・藍の縁）、立ち寄り先は小さい札（山吹の縁）。道順は朱の点（生成りの縁）で前の線は隠す。名前は生成りの帯に藍の字。右の列のボタンで 藍→生成り→いつもの地図 と切り替わる。編集モードでも札と帯（地図と点線は閲覧だけ）。いつもの地図なら前の印',
+        chk('機能', '閲覧モードの地図の印（v263）：歩く順は大きい札（番号つき・藍の縁）、立ち寄り先は小さい札（山吹の縁）。道順は朱の点（生成りの縁）で前の線は隠す。名前は生成りの帯に藍の字。右の列のボタンで 藍→生成り→いつもの地図 と切り替わる。編集モードでも札と帯と朱の点線（v264）。いつもの地図なら前の印',
             isinstance(dm, dict) and dm.get('big') and dm['big'][0] is False and dm['big'][1] and dm['big'][2] >= 30
             and (dm.get('small') == 'none' or dm.get('small') == [True]) and dm.get('dots') and dm.get('oldLine') == 0
             and dm.get('tt') and 'rgb(247, 238, 220)' in dm['tt'][0] and 'rgb(46, 120, 174)' in dm['tt'][1] and dm.get('btn')
             and dm.get('k') == ['kinari', True, '生成り'] and dm.get('o') == ['off', False, 0, 0.9, 1] and dm.get('a') == ['aizome', True]
             and dm.get('editBd') == 0 and dm.get('editLine') == 0.9
-            and dm.get('editOn') == [True, True, 0.9, 'rgb(46, 120, 174)']
-            and dm.get('editMap0') and dm.get('editMap1') == ['aizome', True, 0.9, False, True] and dm.get('editMap2') == ['off', False]
+            and dm.get('editOn') == [True, True, 0, 'rgb(46, 120, 174)']
+            and dm.get('editMap0') and dm.get('editMap1') == ['aizome', True, 0, True, True] and dm.get('editMap2') == ['off', False]
             and isinstance(dm.get('plain'), list) and dm['plain'][0].isdigit() and dm['plain'][1] is False and dm['plain'][2] is False, str({k: dm.get(k) for k in ('big', 'small', 'plain', 'editOn', 'editMap1', 'editMap2', 'dots', 'oldLine', 'tt', 'btn', 'k', 'o', 'a', 'editBd', 'editLine')} if isinstance(dm, dict) else dm)[:400])
+
+        # v264: 画面全体の色（body.fd）：茶色は藍系に、明るい地と赤はそのまま
+        fdc = page.evaluate("""() => { try {
+            const keep = _dmStyle; _dmStyle = 'aizome'; _fdApply();
+            const out = {on: document.body.classList.contains('fd'), rules: window._fdRules || 0,
+                         brown: _fdValue('#4A2E0E'), cream: _fdValue('#FAF6EE'), red: _fdValue('#DC2626'), brand: _fdValue('#B8440A'),
+                         brandVar: getComputedStyle(document.body).getPropertyValue('--brand').trim()};
+            _dmStyle = keep; _fdApply(); out.off = !document.body.classList.contains('fd');
+            return out; } catch(e) { return 'ERR:' + e.message; } }""")
+        chk('機能', '画面全体の色（v264）：新しいデザインのとき body.fd が付き、上書きが100以上できる。茶色は藍系、明るい地と赤はそのまま、操作の色は藍。いつもの地図に戻すと外れる',
+            isinstance(fdc, dict) and fdc.get('on') and fdc.get('rules', 0) > 100 and fdc.get('brown', '').startswith('rgb(') and fdc['brown'] != 'rgb(74, 46, 14)'
+            and fdc.get('cream') is None and fdc.get('red') is None and fdc.get('brand') == 'rgb(46, 120, 174)' and fdc.get('brandVar') == '#2E78AE' and fdc.get('off'), str(fdc)[:300])
 
         # v262: スポットの電話番号とサイトのアドレス（別々の欄・カードで押すと電話／サイト）
         ct = page.evaluate("""async ()=>{ try{
