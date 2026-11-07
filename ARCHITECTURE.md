@@ -554,6 +554,7 @@ CONSTANTS(904) → STATE(968) → STORAGE(1015) → 版のお知らせ(1021) →
 - 画像の保存（html2canvas）の前の色の塗り直しは、札（`.fd-bd`）と帯では行わない。
 - 画面全体の色（v265）：`_fdApply()` が `body.fd` を付け外しする（`_dmMarks()` と同じ条件）。上書きの CSS は `_fdBuild()` が起動時に1回、自分の CSS から作る（暖かい色 → 藍系・`_fdMap`）。CSS に新しい色を足しても自動で藍系になる。JS で直接書く色は `_fdc(色)` を通す。
 - 高低差のグラフの色は `_evC()`、上の印は `_evMark()`、勾配の色は `_gradeCol()`。
+- 地名（v266）：`_dmDrawNames` が z14 の label を各マスに描く。マスの外へはみ出す字は描かない。色は `DM_STYLES` の name・halo。
 
 ## スタンプラリー（v100→v250）
 - 押す仕組み：閲覧モードで位置が入ったとき（➤ 追いかける）、`VISIT_RADIUS_M`（10m・v251）以内の**コースに含まれるスポット**（`_courseSpots()`＝S・番号・G）に記録（`_visits`・この端末の `LS.visits` だけ）。次のスポット・到着・カードのフリックも `_courseSpots()`。作る人の画面で全部のスポットが要るところは `_allSpots()`。

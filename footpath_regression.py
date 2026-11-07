@@ -1018,8 +1018,8 @@ def static_checks(src):
     chk('静的', 'スポットに電話番号（type=tel）とサイトのアドレス（type=url）の欄が別々にあり、保存（2か所の写し）に url が入る（v262）',
         'id="mTel" type="tel"' in src and 'id="mUrl" type="url"' in src and src.count('tel:w.tel,url:w.url||undefined,') == 2 and '<label>電話・URL</label>' not in src)
     chk('静的', '閲覧モードの地図（v263）：色は案2（藍の地・生成りの道・淡い水色の川）。閲覧の切り替え（_applyViewLock）で付け外し、道順ができたときにも描く。地理院の出典つき',
-        "aizome: {label:'藍染めの町', short:'藍',     ground:'#2E78AE', bld:'#3B85BA', road:'#F7EEDC', roadCase:null,      water:'#C4DCEE'," in src
-        and "kinari: {label:'生成りの町', short:'生成り', ground:'#F7EEDC'," in src and "const DM_STYLE_ORDER = ['aizome', 'kinari', 'off'];" in src
+        "ground:'#2E78AE', bld:'#3B85BA', road:'#F7EEDC', roadCase:null,      water:'#C4DCEE'," in src
+        and "kinari: {label:'生成りの町', short:'生成り', name:" in src and "const DM_STYLE_ORDER = ['aizome', 'kinari', 'off'];" in src
         and "dmStyle:     'fp_dm_style'," in src and 'id="mobileDmBtn" onclick="cycleDesignMap()"' in src and "_applyDesignMap(!document.body.classList.contains('embed'));" in src
         and 'function _mvtShapes(buf)' in src and 'function _dmDrawTile(cv, coords, st)' in src and "dmEditStyle: 'fp_dm_edit_style'," in src and "let _dmEditStyle = 'off';" in src and "attribution: '国土地理院ベクトルタイル（加工して作成）'" in src
         and 'DM_PAD_M' not in src and 'DM_BASE_DIM' not in src)
@@ -1032,6 +1032,10 @@ def static_checks(src):
         'function _fdBuild(){' in src and 'function _fdMap(r, g, b){' in src and 'const FD_HUE = 205, FD_KEEP_L = 0.9;' in src
         and "try { _loadDmStyle(); _fdApply(); } catch(_) {}" in src and "body.fd{--brand:#2E78AE;" in src
         and "['.vip-dot', '.wp-dot', '.ro-badge', '.sh-lgm', '.nb-dot', '.tc-dot']" in src and "const PH = _fdc('#D3C5AA'), PM = _fdc('#D6C8AE');" in src)
+    chk('静的', '新しいデザインの地図に地名（v266）：z14 の地名を、藍の地は生成りの字・生成りの地は藍の字で。マスからはみ出す字と重なる字は描かない。施設の名前は z16 から。浮かぶ部品は生成り（色の付く状態は除く）',
+        'async function _dmDrawNames(g, coords, C, dpr){' in src and "if (z >= DM_NAME_MIN_Z) await _dmDrawNames(g, coords, DM_COL, dpr);" in src
+        and "const DM_NAME_MIN_Z = 14, DM_FAC_MIN_Z = 16, DM_NAME_Z = 14;" in src and "name:'#F7EEDC', halo:'#215B87'" in src and "name:'#2A5F8A', halo:'#F7EEDC'" in src
+        and "if (b[0] < 1 || b[1] < 1 || b[2] > 255 || b[3] > 255) continue;" in src and 'body.fd .mrb:not(.on):not(.done):not(.mob-save)' in src)
     # --- v246: 押す部品は iOS 27 のぼかし（ノッチの下 約95pt まで）の下に置く。地図はノッチの下まで（塗りつぶさない）---
     chk('静的', '押す部品を置き始める高さ（--sat）はノッチ＋36pt・少なくとも98pt。ノッチが無い画面では0。ページの高さの補いはノッチそのもの（--sat0）で、検査用の ?safe= も --sat0 を偽装する',
         'html,body{touch-action:manipulation;min-height:calc(100% + var(--sat0));' in src

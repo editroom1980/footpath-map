@@ -367,6 +367,8 @@ body.moving #modeHint{display:none!important}
 .vip-close{width:28px;height:28px;background:#EEE8DE;border:none;border-radius:50%;font-size:14px;cursor:pointer;flex-shrink:0}
 .vip-desc{font-size:13px;color:#444;line-height:1.7;margin-bottom:8px;white-space:pre-wrap}
 body.fd #mobileElevBand{background:#F7EEDC;border-top:1px solid rgba(46,120,174,.25)}   /* v264：高低差の帯も新しいデザイン */
+body.fd #mobileShelf,body.fd .mrb:not(.on):not(.done):not(.mob-save),body.fd .mob-back,body.fd #nextBar,body.fd #viewInfoPanel{background:#FBF6EA!important}   /* v266：地図の上に浮かぶ部品も生成りにそろえる（白のままだと高低差の帯と色がずれた） */
+body.fd .mrb,body.fd .mob-back{box-shadow:0 2px 8px rgba(20,50,80,.22)!important}
 body.fd #mobileElevBand .mob-elev-hl span,body.fd #mobileElevBand .mob-elev-hl strong,body.fd #mobileElevStatsRow{color:#2E78AE}
 body.fd .lg-mid{background:#E8A83A!important}body.fd .lg-steep{background:#E9603B!important}
 .fd-bd{position:relative;box-sizing:border-box;border-radius:50%;background:#F7EEDC;border:2.5px solid #2E78AE;box-shadow:0 0 0 2px #F7EEDC,0 2px 6px 2px rgba(10,30,50,.35);display:flex;align-items:center;justify-content:center;cursor:pointer}   /* v263：札 */
@@ -2503,8 +2505,8 @@ const DM_SRC_MAX_Z = 16;        // 元のデータの一番細かい段階（z17
 const DM_BLD_MIN_Z = 15;        // 建物はこれより拡大したときだけ（縮めると点々になる）
 const DM_CACHE_MAX = 400;       // 端末のメモリに持つタイルの数（これを超えたら古い順に捨てる。端末の保存はサービスワーカー）
 const DM_STYLES = {               // 閲覧モードの地図の色（オーナーが選んだ案2と案1。2026-11-07）。押すたびに 藍→生成り→いつもの地図
-  aizome: {label:'藍染めの町', short:'藍',     ground:'#2E78AE', bld:'#3B85BA', road:'#F7EEDC', roadCase:null,      water:'#C4DCEE', river:'#C4DCEE', contour:'#3B83B8', rail:'#F7EEDC', dots:'rgba(247,238,220,0.07)', edge:'rgba(247,238,220,0.9)'},
-  kinari: {label:'生成りの町', short:'生成り', ground:'#F7EEDC', bld:'#ECDCBD', road:'#FFFFFF', roadCase:'#E4D4B6', water:'#4F8DC1', river:'#8DB6D8', contour:'#E9DABB', rail:'#2E78AE', dots:'rgba(46,120,174,0.06)',  edge:'rgba(46,120,174,0.55)'}
+  aizome: {label:'藍染めの町', short:'藍',     name:'#F7EEDC', halo:'#215B87', ground:'#2E78AE', bld:'#3B85BA', road:'#F7EEDC', roadCase:null,      water:'#C4DCEE', river:'#C4DCEE', contour:'#3B83B8', rail:'#F7EEDC', dots:'rgba(247,238,220,0.07)', edge:'rgba(247,238,220,0.9)'},
+  kinari: {label:'生成りの町', short:'生成り', name:'#2A5F8A', halo:'#F7EEDC', ground:'#F7EEDC', bld:'#ECDCBD', road:'#FFFFFF', roadCase:'#E4D4B6', water:'#4F8DC1', river:'#8DB6D8', contour:'#E9DABB', rail:'#2E78AE', dots:'rgba(46,120,174,0.06)',  edge:'rgba(46,120,174,0.55)'}
 };
 const DM_STYLE_ORDER = ['aizome', 'kinari', 'off'];   // off＝いつもの地図（地名を見たいとき）
 /* 地図記号（symbol レイヤの ftCode）。実地で確かめた2つだけを使う：
@@ -3699,7 +3701,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 手描きの道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した手描きの道id（直前取り消し用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v265';
+const APP_VERSION = 'v266';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat0', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -9795,7 +9797,7 @@ function _mvtParse(buf, tx, ty, want){
 /* ===== v263：閲覧モードの地図（藍染めの町） ===== */
 function _mvtShapes(buf){          // 線と面を読む（点は _mvtParse）。座標はタイルの中の 0〜extent
   const b = (buf instanceof Uint8Array) ? buf : new Uint8Array(buf), dec = new TextDecoder('utf-8'), out = [];
-  const want = ['road', 'railway', 'river', 'waterarea', 'lake', 'building', 'contour'];
+  const want = ['road', 'railway', 'river', 'waterarea', 'lake', 'building', 'contour', 'label'];   // v266：label＝地名
   for (const [fn, t, v] of _mvtFields(b, 0, b.length)) {
     if (fn !== 3 || t !== 'b') continue;
     let name = '', extent = 4096; const keys = [], vals = [], feats = [];
@@ -9814,7 +9816,7 @@ function _mvtShapes(buf){          // 線と面を読む（点は _mvtParse）�
         else if (f3 === 3 && t3 === 'v') gt = v3;
         else if (f3 === 4 && t3 === 'b') geom = v3;
       }
-      if (gt < 2 || !geom) continue;
+      if (!geom || (gt < 2 && name !== 'label')) continue;
       const rings = []; let cur = null, cx = 0, cy = 0; const q = {i: 0};
       while (q.i < geom.length) {
         const ci = _mvtVarint(geom, q), cmd = ci & 7, cnt = Math.floor(ci / 8);
@@ -9825,7 +9827,7 @@ function _mvtShapes(buf){          // 線と面を読む（点は _mvtParse）�
         }
       }
       const props = {};
-      for (let a = 0; a + 1 < tags.length; a += 2) { const k = keys[tags[a]]; if (k === 'rnkWidth' || k === 'alti') props[k] = vals[tags[a + 1]]; }
+      for (let a = 0; a + 1 < tags.length; a += 2) { const k = keys[tags[a]]; if (k === 'rnkWidth' || k === 'alti' || k === 'knj' || k === 'annoCtg') props[k] = vals[tags[a + 1]]; }
       out.push({layer: name, gt: gt, rings: rings, props: props});
     }
   }
@@ -9875,6 +9877,35 @@ async function _dmDrawTile(cv, coords, st){   // 1マス（256px）を描く。�
   const pat = g.createPattern(dot, 'repeat');
   if (pat && pat.setTransform && typeof DOMMatrix === 'function') pat.setTransform(new DOMMatrix().translate(-((ox * dpr) % dot.width), -((oy * dpr) % dot.height)));
   g.fillStyle = pat; g.fillRect(0, 0, 256 * dpr, 256 * dpr);
+  if (z >= DM_NAME_MIN_Z) await _dmDrawNames(g, coords, DM_COL, dpr);   // v266：地名
+}
+/* v266：地名（町名・字名、拡大すると公園・役所・学校などの名前も）。地理院のデータは z14 の区画に入っているので、
+   拡大しても z14 の区画を使う。字がマスの外にはみ出すものは描かない（途中で切れた字を出さない）。重なるものは先に置いたほうを残す */
+const DM_NAME_MIN_Z = 14, DM_FAC_MIN_Z = 16, DM_NAME_Z = 14;
+async function _dmDrawNames(g, coords, C, dpr){
+  const z = coords.z, k = Math.pow(2, z - DM_NAME_Z), tx = Math.floor(coords.x / k), ty = Math.floor(coords.y / k);
+  const f = await _dmGet(DM_NAME_Z, tx, ty); if (!f) return;
+  const ox = coords.x * 256, oy = coords.y * 256, seen = new Set(), boxes = [];
+  const list = f.filter(x => x.layer === 'label' && x.props.knj && x.rings[0]).map(x => {
+    const c = Number(x.props.annoCtg), place = c === 210 || c === 220;
+    return {t: place ? String(x.props.knj).replace(/^\S{1,4}?[町村](?=\S{2,}$)/, '') : String(x.props.knj), place, c,   // 字名は頭の「◯◯町」を取る（山崎町鹿沢→鹿沢）
+            x: (tx * 256 + x.rings[0][0] * 256) * k - ox, y: (ty * 256 + x.rings[0][1] * 256) * k - oy};
+  }).filter(x => x.t && (x.place || ((x.c >= 500 && x.c < 700) || (x.c >= 880 && x.c < 890)) && z >= DM_FAC_MIN_Z))
+    .sort((a, b) => (b.place - a.place));
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineJoin = 'round';
+  for (const it of list) {
+    if (seen.has(it.t)) continue;
+    const fs = it.place ? 12 : 10.5;
+    g.font = `${it.place ? 700 : 600} ${fs}px "Hiragino Maru Gothic ProN","Hiragino Sans","Meiryo",sans-serif`;
+    const w = g.measureText(it.t).width, h = fs * 1.2, b = [it.x - w / 2 - 3, it.y - h / 2 - 2, it.x + w / 2 + 3, it.y + h / 2 + 2];
+    if (b[0] < 1 || b[1] < 1 || b[2] > 255 || b[3] > 255) continue;   // マスからはみ出す
+    if (boxes.some(q => b[0] < q[2] && b[2] > q[0] && b[1] < q[3] && b[3] > q[1])) continue;
+    boxes.push(b); seen.add(it.t);
+    g.strokeStyle = C.halo; g.lineWidth = 3; g.strokeText(it.t, it.x, it.y);
+    g.fillStyle = C.name; g.fillText(it.t, it.x, it.y);
+  }
+  g.setTransform(1, 0, 0, 1, 0, 0);
 }
 const DM_DOT = {halo: 12, dot: 7, step: 15};   // 道順の点（直径 px）と間隔。点のまわりに生成りの縁（川や道の上でも読める）
 let _dmRouteHalo = null, _dmRouteDots = null;
@@ -11634,7 +11665,7 @@ function _fdc(c){ return (document.body && document.body.classList.contains('fd'
 function _fdApply(){ const on = _dmMarks(); if (on) _fdBuild(); document.body.classList.toggle('fd', on); }
 function _evC(){
   return _dmMarks()
-    ? {line:'#2E78AE', fill:'#2E78AE', fillOp:0.14, grid:'#E4D6BA', axis:'#9DB8D2', sub:'#5B7EA0', mid:'#E8A83A', steep:'#E9603B'}
+    ? {line:'#2E78AE', fill:'#B9D2E8', fillOp:0.75, grid:'#E4D6BA', axis:'#9DB8D2', sub:'#5B7EA0', mid:'#E8A83A', steep:'#E9603B'}
     : {line:COLOR.brand, fill:COLOR.brand, fillOp:0.18, grid:'#E8DDD0', axis:'#C0A882', sub:COLOR.sub, mid:GRADE_COL.mid, steep:GRADE_COL.steep};
 }
 function _gradeCol(c){ const k = _evC(); return c === 'steep' ? k.steep : c === 'mid' ? k.mid : '#231C14'; }
