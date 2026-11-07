@@ -366,7 +366,6 @@ body.moving #modeHint{display:none!important}
 .vip-name{font-size:16px;font-weight:bold;color:#2C1B0E;flex:1;line-height:1.3}
 .vip-close{width:28px;height:28px;background:#EEE8DE;border:none;border-radius:50%;font-size:14px;cursor:pointer;flex-shrink:0}
 .vip-desc{font-size:13px;color:#444;line-height:1.7;margin-bottom:8px;white-space:pre-wrap}
-body:not(.viewing) #mobileDmBtn{display:none!important}   /* v263：地図の見た目の切り替えは閲覧モードだけ */
 .fd-bd{position:relative;box-sizing:border-box;border-radius:50%;background:#F7EEDC;border:2.5px solid #2E78AE;box-shadow:0 0 0 2px #F7EEDC,0 2px 6px 2px rgba(10,30,50,.35);display:flex;align-items:center;justify-content:center;cursor:pointer}   /* v263：札 */
 .fd-bd.sm{border:2px solid #E8A83A}
 .fd-bd svg{display:block}
@@ -1503,6 +1502,7 @@ body.viewing #modeHint,body.viewonly #modeHint{display:none!important}
 @media (prefers-reduced-motion: reduce){.ms-img.kb,.ms-img.kb2{animation:none!important}}
 /* スタンプ（v249）：絵と小さな数（押した数/全部）。全部押せたら緑 */
 .mrb.stamp{flex-direction:column;gap:1px;color:#4A2E0E}
+@media (orientation:landscape){ body:not(.viewing) #mobileDmBtn{display:none!important} }   /* v263：横向きの編集モードは右の列に余裕が無い（縦向きか閲覧モードで切り替える） */
 .mrb.dm{flex-direction:column;gap:1px;color:#2E78AE}   /* v263：地図の見た目（下に今の名前） */
 .mrb.dm .svgi{width:17px;height:17px}
 .mrb.dm small{font-size:9px;font-weight:800;line-height:1;letter-spacing:-.02em;white-space:nowrap}
@@ -2492,14 +2492,13 @@ const GSI_VT_URL = 'https://cyberjapandata.gsi.go.jp/xyz/experimental_bvmap/16/{
 const GSI_VT_Z = 16;            // このタイルが用意されている一番細かい段階
 const GSI_VT_MAX_TILES = 12;    // 一度に読む枚数の上限（1枚 約80KB）。多いときはコースの真ん中から
 const GSI_VT_LABEL_M = 150;     // 記号に名前を結びつけるときの近さ(m)
-/* v263：閲覧モードの地図（大会の印と同じ「藍染めの町」）。編集のときは今までの地図のまま。
-   コースのまわり DM_PAD_M の中だけ、地理院ベクトルタイルから藍の地・生成りの道・淡い水色の川で描く（外は今の地図を薄く見せる）。
+/* v263：新しいデザインの地図（大会の印と同じ「藍染めの町」「生成りの町」）。画面に映った所を、その都度、地理院ベクトルタイルから描く（日本のどこでも）。
+   閲覧モードと編集モードで別々に選べる（編集の最初は今までの地図）。
    色はオーナーが選んだ案2・川は「エ 淡い水色」（2026-11-07） */
-const DM_PAD_M = 250;           // 道順のまわりに描く幅(m)
-const DM_MIN_Z = 14;            // これより縮めたら描かない（今の地図だけ）
+const DM_MIN_Z = 12;            // これより縮めたら描かない（今の地図だけ）。地理院のベクトルタイルは z12 から道が入っている
+const DM_SRC_MAX_Z = 16;        // 元のデータの一番細かい段階（z17 より先は z16 を引き伸ばして描く）
 const DM_BLD_MIN_Z = 15;        // 建物はこれより拡大したときだけ（縮めると点々になる）
-const DM_MAX_TILES = 48;        // 読む z16 タイルの上限（1枚 約80KB）。長いコースは真ん中に近い順
-const DM_BASE_DIM = 0.45;       // 描く範囲の外の今の地図の濃さ
+const DM_CACHE_MAX = 400;       // 端末のメモリに持つタイルの数（これを超えたら古い順に捨てる。端末の保存はサービスワーカー）
 const DM_STYLES = {               // 閲覧モードの地図の色（オーナーが選んだ案2と案1。2026-11-07）。押すたびに 藍→生成り→いつもの地図
   aizome: {label:'藍染めの町', short:'藍',     ground:'#2E78AE', bld:'#3B85BA', road:'#F7EEDC', roadCase:null,      water:'#C4DCEE', river:'#C4DCEE', contour:'#3B83B8', rail:'#F7EEDC', dots:'rgba(247,238,220,0.07)', edge:'rgba(247,238,220,0.9)'},
   kinari: {label:'生成りの町', short:'生成り', ground:'#F7EEDC', bld:'#ECDCBD', road:'#FFFFFF', roadCase:'#E4D4B6', water:'#4F8DC1', river:'#8DB6D8', contour:'#E9DABB', rail:'#2E78AE', dots:'rgba(46,120,174,0.06)',  edge:'rgba(46,120,174,0.55)'}
@@ -2678,6 +2677,7 @@ const LS = {
   customSnap:  'fp_custom_snap',  // 手描きの道スナップON/OFF
   probe:       '_fp_t',           // localStorage 可用性チェック用
   dmStyle:     'fp_dm_style',     // v263：閲覧モードの地図の色（aizome・kinari・off）
+  dmEditStyle: 'fp_dm_edit_style',// v263：編集モードの地図の色（最初は off＝今までの地図）
   sampleDone:  'fp_sample_done',  // サンプルコースを取り込み済み(または削除済み)かの記録
   labelSize:   'fp_labelsize',    // 名称ラベルの文字サイズ段階（LABEL_SIZES の添字）
   wpSize:      'fp_wpsize',       // スポット○の大きさ段階（WP_SIZES の添字）
@@ -2782,9 +2782,9 @@ let _elevFetchTimer = null;  // 自動fetch用タイマー
 let _baseTileLayer  = null;  // 通常タイルレイヤー参照
 let _labelTileLayer = null;  // 航空写真の上に重ねる「文字だけ」のタイル（v186）
 let _dmLayer = null;         // v263：閲覧モードの地図（藍染めの町）の層
-let _dmFrame = null;         // v263：その範囲のふち
 const _dmCache = new Map();  // v263：'x/y' → 読んだ z16 タイルの線・面（Promise）
-let _dmStyle = 'aizome';     // v263：閲覧モードの地図の色（端末に覚える。LS.dmStyle）
+let _dmStyle = 'aizome';     // v263：閲覧モードの地図の色（端末に覚える。LS.dmStyle）。札と名前の帯もこれで決める
+let _dmEditStyle = 'off';    // v263：編集モードの地図の色（LS.dmEditStyle）
 let _drawRoad   = null;   // 描画中のカスタム道路
 let _crVisible  = true;   // カスタム道路全体表示フラグ
 let _modalPhotos= [];      // モーダル編集中の写真
@@ -3541,7 +3541,6 @@ function setBaseMap(id){
     _baseTileLayer = _makeBaseLayer(id).addTo(leafMap);
     _baseTileLayer.on('tileload', _hideMapMsg);
     try { _baseTileLayer.bringToBack(); } catch(_){}
-    if (_dmLayer) { try { _baseTileLayer.setOpacity(DM_BASE_DIM); } catch(_) {} }   // v263：閲覧モードの地図の外は薄く
     _applyBaseOverlay(id);   // v186：航空写真＋地名
   }
   _syncBaseMapMenu();
@@ -3696,7 +3695,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 手描きの道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した手描きの道id（直前取り消し用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v263';
+const APP_VERSION = 'v264';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat0', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -5093,7 +5092,7 @@ const ICON_EDIT = '<svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="cur
 function _applyViewLock() {
   const on = !!viewMode;
   document.body.classList.toggle('viewing', on);
-  _applyDesignMap(on && !document.body.classList.contains('embed'));   // v263：閲覧モードの地図（藍染めの町）。編集のときは今までの地図
+  _applyDesignMap(!document.body.classList.contains('embed'));   // v263：新しいデザインの地図（閲覧・編集で別々に選んだ色。off なら今までの地図）
   wps.filter(w => w.type === 'node').forEach(x => { if (x.marker && x.marker.dragging) (on ? x.marker.dragging.disable() : x.marker.dragging.enable()); });   // スポット・調整点はもともと動かない（v164・v169）
   const t = document.getElementById('btnViewTxt');
   if (t) t.textContent = on ? '編集モード' : '閲覧モード';
@@ -6967,7 +6966,7 @@ async function doRouting() {
       const combined = fullCoords.length >= 2 ? fullCoords : allCoords;
 
       _lastRouteCoords = combined;
-      if (viewMode && !_dmLayer) setTimeout(() => { if (viewMode && !_dmLayer) _applyDesignMap(!document.body.classList.contains('embed')); }, 0);   // v263：道順ができてから閲覧モードの地図を描く（共有リンクで開いたとき）
+      if (viewMode && _routeLineBase) setTimeout(() => _dmRouteSync(), 0);   // v263：道順ができたら朱の点線を合わせる（共有リンクで開いたとき）
       _elevData = null; if (typeof _scrubClear === 'function') _scrubClear();   // v166
       if (_elevFetchTimer) clearTimeout(_elevFetchTimer);
       _elevFetchTimer = setTimeout(function() {
@@ -9827,49 +9826,28 @@ function _mvtShapes(buf){          // 線と面を読む（点は _mvtParse）�
   }
   return out;
 }
-function _dmGet(x, y){             // z16 タイルを1回だけ読む（失敗したら空。サービスワーカーが端末に残す）
-  const key = x + '/' + y;
-  if (!_dmCache.has(key)) _dmCache.set(key, (async () => {
-    try { const r = await _fetchTimeout(GSI_VT_URL.replace('{x}', x).replace('{y}', y), {}, NEARBY_TIMEOUT_MS); if (!r.ok) return []; return _mvtShapes(await r.arrayBuffer()); }
-    catch(_) { return []; }
-  })());
-  return _dmCache.get(key);
+function _dmGet(z, x, y){          // タイルを1回だけ読む（失敗したら null。サービスワーカーが端末に残す）
+  const key = z + '/' + x + '/' + y;
+  if (_dmCache.has(key)) { const v = _dmCache.get(key); _dmCache.delete(key); _dmCache.set(key, v); return v; }   // 使ったものを後ろへ（古い順に捨てるため）
+  const v = (async () => {
+    try { const r = await _fetchTimeout(GSI_VT_URL.replace('/16/', '/' + z + '/').replace('{x}', x).replace('{y}', y), {}, NEARBY_TIMEOUT_MS); if (!r.ok) return null; return _mvtShapes(await r.arrayBuffer()); }
+    catch(_) { _dmCache.delete(key); return null; }   // つながらなかったときは覚えない（次に見たとき取り直す）
+  })();
+  _dmCache.set(key, v);
+  while (_dmCache.size > DM_CACHE_MAX) _dmCache.delete(_dmCache.keys().next().value);
+  return v;
 }
-function _dmBounds(){              // 道順と歩く順のスポットのまわり DM_PAD_M
-  const pts = [];
-  (_lastRouteCoords || []).forEach(p => pts.push(Array.isArray(p) ? p : [p.lat, p.lng]));
-  wps.forEach(w => { if (w.type !== 'node' && (_isNumbered(w) || _hasRole(w))) pts.push([w.lat, w.lng]); });
-  if (pts.length < 2) return null;
-  let s = 90, n = -90, w = 180, e = -180;
-  pts.forEach(p => { s = Math.min(s, p[0]); n = Math.max(n, p[0]); w = Math.min(w, p[1]); e = Math.max(e, p[1]); });
-  const dLat = DM_PAD_M / 111000, dLng = DM_PAD_M / (111000 * Math.cos((s + n) / 2 * Math.PI / 180));
-  return L.latLngBounds([s - dLat, w - dLng], [n + dLat, e + dLng]);
-}
-function _dmTileList(bb){          // 範囲にかかる z16 タイル（多いときは真ん中に近い順に DM_MAX_TILES まで）
-  const n = Math.pow(2, GSI_VT_Z), xOf = lng => Math.floor((lng + 180) / 360 * n);
-  const yOf = lat => Math.floor((1 - Math.log(Math.tan(lat * Math.PI / 180) + 1 / Math.cos(lat * Math.PI / 180)) / Math.PI) / 2 * n);
-  const x0 = xOf(bb.getWest()), x1 = xOf(bb.getEast()), y0 = yOf(bb.getNorth()), y1 = yOf(bb.getSouth()), list = [];
-  for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) list.push(x + '/' + y);
-  if (list.length <= DM_MAX_TILES) return new Set(list);
-  const c = bb.getCenter(), cx = xOf(c.lng), cy = yOf(c.lat);
-  return new Set(list.sort((a, b) => { const A = a.split('/'), B = b.split('/'); return (Math.abs(A[0] - cx) + Math.abs(A[1] - cy)) - (Math.abs(B[0] - cx) + Math.abs(B[1] - cy)); }).slice(0, DM_MAX_TILES));
-}
-async function _dmDrawTile(cv, coords, bb, allow){   // 1マス（256px）を描く。範囲の外は透明（今の地図が見える）
-  const DM_COL = _dmCol(), z = coords.z, dpr = Math.min(3, window.devicePixelRatio || 1), g = cv.getContext('2d');
-  const sc = Math.pow(2, z - GSI_VT_Z);                   // z16 タイル1枚がこのズームで何マス分か
-  const K = Math.min(sc, 4) * dpr;                         // 線の太さの倍率（z18 より先は太くしない）
-  const ox = coords.x * 256, oy = coords.y * 256;          // このマスの左上（このズームの全体の画素）
-  const p0 = leafMap.project(bb.getNorthWest(), z), p1 = leafMap.project(bb.getSouthEast(), z);
-  const rx0 = Math.max(0, p0.x - ox), ry0 = Math.max(0, p0.y - oy), rx1 = Math.min(256, p1.x - ox), ry1 = Math.min(256, p1.y - oy);
-  if (rx1 <= rx0 || ry1 <= ry0) return;
-  // このマスにかかる z16 タイル
-  const t0x = Math.floor(ox / 256 / sc), t1x = Math.floor((ox + 255) / 256 / sc), t0y = Math.floor(oy / 256 / sc), t1y = Math.floor((oy + 255) / 256 / sc);
-  const jobs = [];
-  for (let x = t0x; x <= t1x; x++) for (let y = t0y; y <= t1y; y++) if (allow.has(x + '/' + y)) jobs.push(_dmGet(x, y).then(f => ({x, y, f})));
-  const got = await Promise.all(jobs);
+async function _dmDrawTile(cv, coords, st){   // 1マス（256px）を描く。データが無い所（海・国の外・圏外）は透明＝今の地図が見える
+  const DM_COL = _dmCol(st), z = coords.z, dpr = Math.min(3, window.devicePixelRatio || 1), g = cv.getContext('2d');
+  const sz = Math.min(z, DM_SRC_MAX_Z), sc = Math.pow(2, z - sz);   // 元のデータの段階と、その1枚がこのズームで何マス分か
+  const K = Math.min(sc, 4) * dpr * Math.pow(2, Math.min(0, z - 16) * 0.5);   // 線の太さの倍率（縮めると細く・z18 より先は太くしない）
+  const ox = coords.x * 256, oy = coords.y * 256;
+  const tx = Math.floor(coords.x / sc), ty = Math.floor(coords.y / sc);
+  const f0 = await _dmGet(sz, tx, ty);
+  if (!f0 || !f0.length) return;
+  const got = [{x: tx, y: ty, f: f0}];
   g.setTransform(dpr, 0, 0, dpr, 0, 0);
-  g.save(); g.beginPath(); g.rect(rx0, ry0, rx1 - rx0, ry1 - ry0); g.clip();
-  g.fillStyle = DM_COL.ground; g.fillRect(rx0, ry0, rx1 - rx0, ry1 - ry0);
+  g.fillStyle = DM_COL.ground; g.fillRect(0, 0, 256, 256);
   g.setTransform(1, 0, 0, 1, 0, 0); g.lineCap = 'round'; g.lineJoin = 'round';
   const path = (t, f) => {
     const bx = (t.x * 256 * sc - ox) * dpr, by = (t.y * 256 * sc - oy) * dpr, s2 = 256 * sc * dpr;
@@ -9891,8 +9869,7 @@ async function _dmDrawTile(cv, coords, bb, allow){   // 1マス（256px）を描
   const dg = dot.getContext('2d'); dg.fillStyle = DM_COL.dots; dg.beginPath(); dg.arc(ds / 2, ds / 2, ds * 0.22, 0, 7); dg.fill();
   const pat = g.createPattern(dot, 'repeat');
   if (pat && pat.setTransform && typeof DOMMatrix === 'function') pat.setTransform(new DOMMatrix().translate(-((ox * dpr) % dot.width), -((oy * dpr) % dot.height)));
-  g.fillStyle = pat; g.fillRect(rx0 * dpr, ry0 * dpr, (rx1 - rx0) * dpr, (ry1 - ry0) * dpr);
-  g.restore();
+  g.fillStyle = pat; g.fillRect(0, 0, 256 * dpr, 256 * dpr);
 }
 const DM_DOT = {halo: 12, dot: 7, step: 15};   // 道順の点（直径 px）と間隔。点のまわりに生成りの縁（川や道の上でも読める）
 let _dmRouteHalo = null, _dmRouteDots = null;
@@ -9900,7 +9877,7 @@ function _dmOn(){ return !!_dmLayer; }
 function _dmMarks(){ return _dmStyle !== 'off' && !document.body.classList.contains('embed'); }   // v263：札と名前の帯（オーナー指示で編集モードも。いつもの地図を選んだときだけ前の印）
 function _dmRouteSync(disp){       // 新しいデザインのときは今の線を見えなくして、表示用の座標で朱の点線を重ねる（当たり判定・データは触らない）
   if (!leafMap) return;
-  const on = _dmOn() && !!_routeLineBase;
+  const on = _dmOn() && !!viewMode && !!_routeLineBase;   // 点線は閲覧モードだけ（編集は向きの三角が要る）
   if (!on) {
     if (_dmRouteHalo) { try { leafMap.removeLayer(_dmRouteHalo); } catch(_) {} _dmRouteHalo = null; }
     if (_dmRouteDots) { try { leafMap.removeLayer(_dmRouteDots); } catch(_) {} _dmRouteDots = null; }
@@ -9931,41 +9908,38 @@ function _dmBadgeIcon(wp, sz, anc, stamp){   // 札：生成りの丸・藍の�
   return L.divIcon({className: '', iconSize: [d, d], iconAnchor: a,
     html: `<div class="fd-bd${big ? '' : ' sm'}" data-wtype="${wp.type}" style="width:${d}px;height:${d}px">${svg}${chip ? `<span class="fd-num${role === 'start' ? ' st' : ''}">${chip}</span>` : ''}${more}${stamp || ''}</div>`});
 }
-function _applyDesignMap(on){      // 閲覧モードで付け、編集にもどったら外す
+function _dmCur(){ return viewMode ? _dmStyle : _dmEditStyle; }   // 今のモードの地図の色
+function _applyDesignMap(on){      // 今のモードで選んだ地図の色で描く（off なら今までの地図だけ）
   if (!leafMap) return;
   if (_dmLayer) { try { leafMap.removeLayer(_dmLayer); } catch(_) {} _dmLayer = null; }
-  if (_dmFrame) { try { leafMap.removeLayer(_dmFrame); } catch(_) {} _dmFrame = null; }
-  if (_baseTileLayer) { try { _baseTileLayer.setOpacity(1); } catch(_) {} }
   _syncDmBtn();
-  if (!on || _dmStyle === 'off' || typeof L.GridLayer !== 'function') { _dmRefresh(); return; }
-  const bb = _dmBounds(); if (!bb) { _dmRefresh(); return; }
-  const allow = _dmTileList(bb);
+  const st = _dmCur();
+  if (!on || st === 'off' || typeof L.GridLayer !== 'function') { _dmRefresh(); return; }
   const DMLayer = L.GridLayer.extend({
     createTile: function(coords, done){
       const cv = document.createElement('canvas'), dpr = Math.min(3, window.devicePixelRatio || 1);
       cv.width = cv.height = 256 * dpr; cv.style.width = cv.style.height = '256px';
-      _dmDrawTile(cv, coords, bb, allow).then(() => done(null, cv), e => done(e, cv));
+      _dmDrawTile(cv, coords, st).then(() => done(null, cv), e => done(e, cv));
       return cv;
     }
   });
-  _dmLayer = new DMLayer({bounds: bb, minZoom: DM_MIN_Z, maxZoom: 21, updateWhenZooming: false, keepBuffer: 2, className: 'fp-design', attribution: '国土地理院ベクトルタイル（加工して作成）'}).addTo(leafMap);
-  _dmFrame = L.rectangle(bb, {color: _dmCol().edge, weight: 2, fill: false, interactive: false}).addTo(leafMap);
-  if (_baseTileLayer) { try { _baseTileLayer.setOpacity(DM_BASE_DIM); } catch(_) {} }
+  _dmLayer = new DMLayer({minZoom: DM_MIN_Z, maxZoom: 21, updateWhenZooming: false, keepBuffer: 2, className: 'fp-design', attribution: '国土地理院ベクトルタイル（加工して作成）'}).addTo(leafMap);
   _dmRefresh();
 }
-function _dmCol(){ return DM_STYLES[_dmStyle] || DM_STYLES.aizome; }
-function _loadDmStyle(){ try { const v = localStorage.getItem(LS.dmStyle); if (DM_STYLE_ORDER.indexOf(v) >= 0) _dmStyle = v; } catch(_) {} }
+function _dmCol(st){ return DM_STYLES[st || _dmCur()] || DM_STYLES.aizome; }
+function _loadDmStyle(){ try { const v = localStorage.getItem(LS.dmStyle); if (DM_STYLE_ORDER.indexOf(v) >= 0) _dmStyle = v; const e = localStorage.getItem(LS.dmEditStyle); if (DM_STYLE_ORDER.indexOf(e) >= 0) _dmEditStyle = e; } catch(_) {} }
 function _syncDmBtn(){
   const b = document.getElementById('mobileDmBtn'); if (!b) return;
-  const lb = _dmStyle === 'off' ? 'いつもの地図' : _dmCol().label;
-  b.querySelector('small').textContent = _dmStyle === 'off' ? '地図' : _dmCol().short;
+  const st = _dmCur(), lb = st === 'off' ? 'いつもの地図' : _dmCol(st).label;
+  b.querySelector('small').textContent = st === 'off' ? '地図' : _dmCol(st).short;
   b.setAttribute('aria-label', '地図の見た目：' + lb + '（押すと切り替え）'); b.title = '地図の見た目：' + lb + '（押すたびに 藍染めの町→生成りの町→いつもの地図）';
 }
-function cycleDesignMap(){         // 閲覧モードの地図を切り替える（藍染めの町→生成りの町→いつもの地図）
-  _dmStyle = DM_STYLE_ORDER[(DM_STYLE_ORDER.indexOf(_dmStyle) + 1) % DM_STYLE_ORDER.length];
-  try { localStorage.setItem(LS.dmStyle, _dmStyle); } catch(_) {}
-  _applyDesignMap(!!viewMode && !document.body.classList.contains('embed'));
-  showToast('地図：' + (_dmStyle === 'off' ? 'いつもの地図' : _dmCol().label));
+function cycleDesignMap(){         // 今のモードの地図を切り替える（藍染めの町→生成りの町→いつもの地図）
+  const nx = DM_STYLE_ORDER[(DM_STYLE_ORDER.indexOf(_dmCur()) + 1) % DM_STYLE_ORDER.length];
+  if (viewMode) _dmStyle = nx; else _dmEditStyle = nx;
+  try { localStorage.setItem(viewMode ? LS.dmStyle : LS.dmEditStyle, nx); } catch(_) {}
+  _applyDesignMap(!document.body.classList.contains('embed'));
+  showToast('地図：' + (nx === 'off' ? 'いつもの地図' : _dmCol(nx).label));
 }
 function _dmRefresh(){
   _dmRouteSync(); if (typeof _lastZoomK !== 'undefined' && leafMap) _lastZoomK = _zoomK(); refreshIcons(); wps.forEach(w => updateTooltip(w));

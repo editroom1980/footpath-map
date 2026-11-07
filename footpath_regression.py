@@ -1016,9 +1016,9 @@ def static_checks(src):
     chk('静的', '閲覧モードの地図（v263）：色は案2（藍の地・生成りの道・淡い水色の川）。閲覧の切り替え（_applyViewLock）で付け外し、道順ができたときにも描く。地理院の出典つき',
         "aizome: {label:'藍染めの町', short:'藍',     ground:'#2E78AE', bld:'#3B85BA', road:'#F7EEDC', roadCase:null,      water:'#C4DCEE'," in src
         and "kinari: {label:'生成りの町', short:'生成り', ground:'#F7EEDC'," in src and "const DM_STYLE_ORDER = ['aizome', 'kinari', 'off'];" in src
-        and "dmStyle:     'fp_dm_style'," in src and 'id="mobileDmBtn" onclick="cycleDesignMap()"' in src and "_applyDesignMap(on && !document.body.classList.contains('embed'));" in src
-        and 'function _mvtShapes(buf)' in src and 'function _dmDrawTile(cv, coords, bb, allow)' in src and "attribution: '国土地理院ベクトルタイル（加工して作成）'" in src
-        and "if (viewMode && !_dmLayer) setTimeout(" in src)
+        and "dmStyle:     'fp_dm_style'," in src and 'id="mobileDmBtn" onclick="cycleDesignMap()"' in src and "_applyDesignMap(!document.body.classList.contains('embed'));" in src
+        and 'function _mvtShapes(buf)' in src and 'function _dmDrawTile(cv, coords, st)' in src and "dmEditStyle: 'fp_dm_edit_style'," in src and "let _dmEditStyle = 'off';" in src and "attribution: '国土地理院ベクトルタイル（加工して作成）'" in src
+        and 'DM_PAD_M' not in src and 'DM_BASE_DIM' not in src)
     # --- v246: 押す部品は iOS 27 のぼかし（ノッチの下 約95pt まで）の下に置く。地図はノッチの下まで（塗りつぶさない）---
     chk('静的', '押す部品を置き始める高さ（--sat）はノッチ＋36pt・少なくとも98pt。ノッチが無い画面では0。ページの高さの補いはノッチそのもの（--sat0）で、検査用の ?safe= も --sat0 を偽装する',
         'html,body{touch-action:manipulation;min-height:calc(100% + var(--sat0));' in src
@@ -2147,21 +2147,26 @@ def functional_checks(index_path):
             and mc['o1'].get('card', {}).get('act') == '📷 入れ替える' and mc['o1']['card'].get('more') == '+1' and mc['o1'].get('my') == 1
             and mc.get('o2a') == 'カードの写真にする' and mc.get('o2', {}).get('n') == 3 and mc['o2'].get('lbl') == 'カードの写真にしました' and mc['o2'].get('dis'), str(mc)[:400])
 
-        # v263: 閲覧モードの地図（藍染めの町）：閲覧モードで付き、編集にもどると外れる。範囲の外は今の地図を薄く
+        # v263: 新しいデザインの地図：閲覧モードは藍染めの町、編集モードは最初は今までの地図。どこでも（画面に映った所を）描く
         dm = page.evaluate("""async ()=>{ try{
             const sl = ms => new Promise(r => setTimeout(r, ms));
             if (!(_lastRouteCoords && _lastRouteCoords.length > 1)) return 'noroute';
-            const keepView = viewMode, keepCache = new Map(_dmCache);
+            const keepView = viewMode, keepGet = _dmGet;
             if (viewMode) toggleViewMode();
             _applyViewLock();   // 前の検査が閲覧の状態を手で書き換えたときの後片付け
             _dmStyle = 'aizome'; refreshIcons(); wps.forEach(w => updateTooltip(w));   // この検査は藍染めの町から
             if (!routeLine) { removeLines(); drawLines(_lastRouteCoords, []); }   // 道順の線が描かれていなければ描く（点線を確かめるため）
-            const bb = _dmBounds(); const allow = _dmTileList(bb);
-            allow.forEach(k => _dmCache.set(k, Promise.resolve([{layer: 'road', gt: 2, rings: [[0, 0.5, 1, 0.5]], props: {rnkWidth: 3}}])));   // 取りに行かない
+            const asked = new Set();
+            _dmGet = (z, x, y) => { asked.add(z); return Promise.resolve([{layer: 'road', gt: 2, rings: [[0, 0.5, 1, 0.5]], props: {rnkWidth: 3}}]); };   // 取りに行かない
+            _dmEditStyle = 'off';
             const out = {offBefore: !_dmLayer};
             toggleViewMode(); await sl(200);
-            const c = bb.getCenter(); leafMap.setView(c, 16, {animate: false}); await sl(1200);
-            out.on = !!_dmLayer && leafMap.hasLayer(_dmLayer); out.dim = _baseTileLayer ? _baseTileLayer.options.opacity : null; out.frame = !!_dmFrame;
+            const ll = _lastRouteCoords[0], c = Array.isArray(ll) ? {lat: ll[0], lng: ll[1]} : ll;
+            leafMap.setView(c, 16, {animate: false}); await sl(1200);
+            out.on = !!_dmLayer && leafMap.hasLayer(_dmLayer); out.dim = _baseTileLayer ? _baseTileLayer.options.opacity : null; out.frame = typeof _dmFrame === 'undefined';
+            leafMap.setView(c, 13, {animate: false}); await sl(800); out.z13 = asked.has(13);   // 縮めたときは粗いデータ（z13）を読む
+            leafMap.panBy([3000, 0], {animate: false}); await sl(800); out.far = document.querySelectorAll('.fp-design canvas').length > 0;   // コースから離れた所も描く
+            leafMap.setView(c, 16, {animate: false}); await sl(800);
             const cvs = [...document.querySelectorAll('.fp-design canvas')]; out.tiles = cvs.length;
             // 範囲の中のマスの真ん中が藍の地（#2E78AE）か
             let ground = false;
@@ -2190,19 +2195,25 @@ def functional_checks(index_path):
             out.editOn = [wps.filter(w => w.marker && w.marker.getElement() && w.marker.getElement().querySelector('.fd-bd')).length > 0, !_dmLayer, routeLine ? routeLine.options.opacity : null,
                           (() => { const t = big && big.marker.getTooltip() && big.marker.getTooltip().getElement(); return t ? t.style.color : null; })()];
             toggleViewMode(); await sl(200);
-            _dmStyle = 'off';
+            // 編集モードでも「地図」で新しいデザインにできる（最初は今までの地図）。道順は前の線のまま
+            if (viewMode) toggleViewMode(); await sl(200);
+            out.editMap0 = !_dmLayer;
+            cycleDesignMap(); await sl(300); out.editMap1 = [_dmEditStyle, !!_dmLayer, routeLine ? routeLine.options.opacity : null, !!_dmRouteDots, getComputedStyle(document.getElementById('mobileDmBtn')).display !== 'none'];
+            cycleDesignMap(); await sl(100); cycleDesignMap(); await sl(100); out.editMap2 = [_dmEditStyle, !!_dmLayer];
+            try { localStorage.removeItem(LS.dmEditStyle); } catch(_) {}
+            toggleViewMode(); await sl(200);   // 閲覧にもどす（このあと編集へ切り替えて確かめる）
+            _dmStyle = 'off'; _dmGet = keepGet;
             try { localStorage.setItem(LS.dmStyle, 'off'); } catch(_) {}
             toggleViewMode(); await sl(200);
             const fdIn = () => wps.filter(w => w.marker && w.marker.getElement() && w.marker.getElement().querySelector('.fd-bd')).length;
             out.editBd = fdIn(); out.editTt = (() => { const t = big && big.marker.getTooltip() && big.marker.getTooltip().getElement(); return t ? t.style.color : null; })(); out.editLine = routeLine ? routeLine.options.opacity : null;
-            out.offAfter = !_dmLayer && !_dmFrame; out.undim = _baseTileLayer ? _baseTileLayer.options.opacity : null;
-            _dmCache.clear(); keepCache.forEach((v, k) => _dmCache.set(k, v));
+            out.offAfter = !_dmLayer; out.undim = _baseTileLayer ? _baseTileLayer.options.opacity : null;
             if (keepView && !viewMode) toggleViewMode();
             document.querySelectorAll('#toastBox .toast').forEach(x => x.remove());
             return out;
           }catch(e){ return 'ERR:'+e.message; } }""")
-        chk('機能', '閲覧モードの地図（藍染めの町・v263）：閲覧モードで道順のまわりだけ藍の地で描き、範囲にふちを付け、外の地図は薄く（0.45）。出典を出す。編集にもどると外れて元の濃さ',
-            isinstance(dm, dict) and dm.get('offBefore') and dm.get('on') and dm.get('frame') and dm.get('dim') == 0.45 and dm.get('tiles', 0) > 0
+        chk('機能', '新しいデザインの地図（v263）：閲覧モードは藍の地で、画面に映った所をどこでも描く（範囲のふち・外を薄くはしない）。縮めたら粗いデータ。出典を出す。編集にもどると外れる（編集の最初は今までの地図）',
+            isinstance(dm, dict) and dm.get('offBefore') and dm.get('on') and dm.get('frame') and dm.get('dim') == 1 and dm.get('tiles', 0) > 0 and dm.get('z13') and dm.get('far')
             and dm.get('ground') and dm.get('attr') and dm.get('offAfter') and dm.get('undim') == 1, str(dm)[:300])
         chk('機能', '閲覧モードの地図の印（v263）：歩く順は大きい札（番号つき・藍の縁）、立ち寄り先は小さい札（山吹の縁）。道順は朱の点（生成りの縁）で前の線は隠す。名前は生成りの帯に藍の字。右の列のボタンで 藍→生成り→いつもの地図 と切り替わる。編集モードでも札と帯（地図と点線は閲覧だけ）。いつもの地図なら前の印',
             isinstance(dm, dict) and dm.get('big') and dm['big'][0] is False and dm['big'][1] and dm['big'][2] >= 30
@@ -2211,7 +2222,8 @@ def functional_checks(index_path):
             and dm.get('k') == ['kinari', True, '生成り'] and dm.get('o') == ['off', False, 0, 0.9, 1] and dm.get('a') == ['aizome', True]
             and dm.get('editBd') == 0 and dm.get('editLine') == 0.9
             and dm.get('editOn') == [True, True, 0.9, 'rgb(46, 120, 174)']
-            and isinstance(dm.get('plain'), list) and dm['plain'][0].isdigit() and dm['plain'][1] is False and dm['plain'][2] is False, str({k: dm.get(k) for k in ('big', 'small', 'plain', 'editOn', 'dots', 'oldLine', 'tt', 'btn', 'k', 'o', 'a', 'editBd', 'editLine')} if isinstance(dm, dict) else dm)[:400])
+            and dm.get('editMap0') and dm.get('editMap1') == ['aizome', True, 0.9, False, True] and dm.get('editMap2') == ['off', False]
+            and isinstance(dm.get('plain'), list) and dm['plain'][0].isdigit() and dm['plain'][1] is False and dm['plain'][2] is False, str({k: dm.get(k) for k in ('big', 'small', 'plain', 'editOn', 'editMap1', 'editMap2', 'dots', 'oldLine', 'tt', 'btn', 'k', 'o', 'a', 'editBd', 'editLine')} if isinstance(dm, dict) else dm)[:400])
 
         # v262: スポットの電話番号とサイトのアドレス（別々の欄・カードで押すと電話／サイト）
         ct = page.evaluate("""async ()=>{ try{
@@ -6215,7 +6227,7 @@ def webkit_checks(index_path):
             page.evaluate("() => { const d = document.documentElement.style; d.setProperty('--sat0', '59px'); d.setProperty('--sab', '34px'); }")
             page.set_viewport_size({'width': 390, 'height': 812}); page.wait_for_timeout(200)
             chk('WebKit', '編集画面の右の列（保存・公開・追いかける…）は「戻る」と同じ高さから1列で、重ならず・下の棚から4px以上空き・画面の中（縦・横向き SE／mini／標準。横向きはホームバー21px）',
-                all(v.get('n') == 7 and v.get('first') == '保存|公開|現在' and v.get('topSame') and not v.get('hit') for v in col_res.values()), str(col_res)[:300])
+                all(v.get('n') in (7, 8) and v.get('first') == '保存|公開|現在' and v.get('topSame') and not v.get('hit') for v in col_res.values()), str(col_res)[:300])
             b.close()
     except Exception as e:
         chk('WebKit', 'WebKit の検査が最後まで走る', False, str(e).splitlines()[0][:160])

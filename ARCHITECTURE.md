@@ -547,10 +547,10 @@ CONSTANTS(904) → STATE(968) → STORAGE(1015) → 版のお知らせ(1021) →
 - 一覧 `#s1` と地図 `#s2` は固定（`position:fixed`）で `background-color` のある箱（v258）。
 
 ## 新しいデザインの地図と札（v263）
-- 閲覧モードだけ、道順のまわり `DM_PAD_M` を地理院ベクトルタイルから canvas で描く（`_applyDesignMap`・`_dmDrawTile`・`_mvtShapes`）。付け外しは `_applyViewLock` から。道順ができたとき（`_lastRouteCoords` を作る所）にも描く。
-- 色は `DM_STYLES`（aizome・kinari）。`DM_STYLE_ORDER` の off は いつもの地図。選んだものは `LS.dmStyle`。
+- 画面に映ったマスを、その都度、地理院ベクトルタイルから canvas で描く（`_applyDesignMap`・`_dmDrawTile`・`_mvtShapes`・`_dmGet`）。z12〜z16 はその段階のタイル、z17 より先は z16 を引き伸ばす（v264）。データが無いマスは透明。付け外しは `_applyViewLock` と `cycleDesignMap` から。
+- 色は `DM_STYLES`（aizome・kinari）。`DM_STYLE_ORDER` の off は いつもの地図。閲覧モードは `LS.dmStyle`（`_dmStyle`）、編集モードは `LS.dmEditStyle`（`_dmEditStyle`・最初は off）。今のモードの色は `_dmCur()`。
 - 札と名前の帯は `_dmMarks()`（off でなければ、編集・閲覧とも）。`wpIcon` の先で `_dmBadgeIcon`、`updateTooltip` で帯の色、`_wpIconSize` で札の大きさ。写真のシールを選んでいればシールが優先。
-- 道順の点線は `_dmRouteSync`（表示用の座標を使う。`routeLine` などは透明にするだけ。当たり判定 `hitOverlays` は触らない）。
+- 道順の点線は閲覧モードだけ `_dmRouteSync`（表示用の座標を使う。`routeLine` などは透明にするだけ。当たり判定 `hitOverlays` は触らない）。
 - 画像の保存（html2canvas）の前の色の塗り直しは、札（`.fd-bd`）と帯では行わない。
 
 ## スタンプラリー（v100→v250）
