@@ -1782,7 +1782,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
           <!-- v249：スタンプも右の列のアイコンに（オーナー指示）。数は下の小さな文字。閲覧モードでスポットがあるときだけ出る。押すとスタンプ帳（v250） -->
           <button class="mrb stamp tap" id="mobileStampBtn" onclick="openStampSheet()" aria-label="スタンプ帳" title="スタンプ帳（押し方・いくつ押したか）" hidden><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 17.85h-18c0 -4.05 1.421 -4.05 3.79 -4.05c5.21 0 1.21 -4.59 1.21 -6.8a4 4 0 1 1 8 0c0 2.21 -4 6.8 1.21 6.8c2.369 0 3.79 0 3.79 4.05z" /> <path d="M5 21h14" /></svg><span class="st-l"></span></button>
           <!-- v241：ポイントの表示。押すたびに 全部→コース→線だけ。長押しで種類を選ぶ（_ptBindHold） -->
-          <!-- v263：閲覧モードの地図の見た目（藍染めの町→生成りの町→いつもの地図）。閲覧モードのときだけ出る -->
+          <!-- v263：閲覧モードの地図の見た目（藍の町→白の町→いつもの地図）。閲覧モードのときだけ出る -->
           <button class="mrb dm tap" id="mobileDmBtn" onclick="cycleDesignMap()" aria-label="地図の見た目" title="地図の見た目"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7l6-3 6 3 6-3v13l-6 3-6-3-6 3z"/><path d="M9 4v13"/><path d="M15 7v13"/></svg><small>藍</small></button>
           <button class="mrb pts tap" id="mobilePtsBtn" data-pts="1" aria-label="ポイントの表示：全部（押すと切り替え・長押しで種類を選ぶ）" title="ポイントの表示：押すたびに 全部→コースだけ→線だけ。長押しで種類を選ぶ"><span class="pts-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17c3.5 0 4.5-6 8.5-6S16 15 21 13"/><circle cx="5" cy="16.6" r="1.9" fill="currentColor"/><circle cx="12" cy="11" r="1.9" fill="currentColor"/><circle cx="19.5" cy="13.4" r="1.9" fill="currentColor"/><circle cx="17" cy="5" r="1.9" fill="currentColor"/><circle cx="6" cy="6.5" r="1.9" fill="currentColor"/></svg></span><span class="pts-l">全部</span></button>
           <button class="mrb tap find" id="mobileFindBtn" onclick="openFindSheet()" aria-label="発見を貼る" title="見つけたものを貼る" hidden><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h1a2 2 0 0 0 2 -2a1 1 0 0 1 1 -1h6a1 1 0 0 1 1 1a2 2 0 0 0 2 2h1a2 2 0 0 1 2 2v9a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-9a2 2 0 0 1 2 -2" /><path d="M9 13a3 3 0 1 0 6 0a3 3 0 0 0 -6 0" /></svg></button>
@@ -2497,16 +2497,18 @@ const GSI_VT_URL = 'https://cyberjapandata.gsi.go.jp/xyz/experimental_bvmap/16/{
 const GSI_VT_Z = 16;            // このタイルが用意されている一番細かい段階
 const GSI_VT_MAX_TILES = 12;    // 一度に読む枚数の上限（1枚 約80KB）。多いときはコースの真ん中から
 const GSI_VT_LABEL_M = 150;     // 記号に名前を結びつけるときの近さ(m)
-/* v263：新しいデザインの地図（大会の印と同じ「藍染めの町」「生成りの町」）。画面に映った所を、その都度、地理院ベクトルタイルから描く（日本のどこでも）。
+/* v263：新しいデザインの地図（大会の印と同じ「藍の町」「白の町」）。画面に映った所を、その都度、地理院ベクトルタイルから描く（日本のどこでも）。
    閲覧モードと編集モードで別々に選べる（編集の最初は今までの地図）。
    色はオーナーが選んだ案2・川は「エ 淡い水色」（2026-11-07） */
 const DM_MIN_Z = 12;            // これより縮めたら描かない（今の地図だけ）。地理院のベクトルタイルは z12 から道が入っている
 const DM_SRC_MAX_Z = 16;        // 元のデータの一番細かい段階（z17 より先は z16 を引き伸ばして描く）
 const DM_BLD_MIN_Z = 15;        // 建物はこれより拡大したときだけ（縮めると点々になる）
 const DM_CACHE_MAX = 400;       // 端末のメモリに持つタイルの数（これを超えたら古い順に捨てる。端末の保存はサービスワーカー）
+const DM_ROAD_W = {3: 5.4, 0: 5.4, 1: 3.9};   // v267：道の種類（地理院の rdCtg）ごとの最低の太さ px（z16）。3＝高速、0＝国道、1＝県道。市町村道は道幅の区分のまま
+const DM_ROAD_SHRINK = 0.25;      // v267：太い道を縮めたときの細り方（ほかの線は 0.5。小さいほど細くならない）
 const DM_STYLES = {               // 閲覧モードの地図の色（オーナーが選んだ案2と案1。2026-11-07）。押すたびに 藍→生成り→いつもの地図
-  aizome: {label:'藍染めの町', short:'藍',     name:'#F7EEDC', halo:'#215B87', ground:'#2E78AE', bld:'#3B85BA', road:'#F7EEDC', roadCase:null,      water:'#C4DCEE', river:'#C4DCEE', contour:'#3B83B8', rail:'#F7EEDC', dots:'rgba(247,238,220,0.07)', edge:'rgba(247,238,220,0.9)'},
-  kinari: {label:'生成りの町', short:'生成り', name:'#2A5F8A', halo:'#F7EEDC', ground:'#F7EEDC', bld:'#ECDCBD', road:'#FFFFFF', roadCase:'#E4D4B6', water:'#4F8DC1', river:'#8DB6D8', contour:'#E9DABB', rail:'#2E78AE', dots:'rgba(46,120,174,0.06)',  edge:'rgba(46,120,174,0.55)'}
+  aizome: {label:'藍の町',     short:'藍',     name:'#F7EEDC', halo:'#215B87', ground:'#2E78AE', bld:'#3B85BA', road:'#F7EEDC', roadCase:null,      water:'#C4DCEE', river:'#C4DCEE', contour:'#3B83B8', rail:'#F7EEDC', dots:'rgba(247,238,220,0.07)', edge:'rgba(247,238,220,0.9)'},
+  kinari: {label:'白の町',     short:'白',     name:'#2A5F8A', halo:'#F7EEDC', ground:'#F7EEDC', bld:'#ECDCBD', road:'#FFFFFF', roadCase:'#E4D4B6', roadMainCase:'#C7AE84', water:'#4F8DC1', river:'#8DB6D8', contour:'#E9DABB', rail:'#2E78AE', dots:'rgba(46,120,174,0.06)',  edge:'rgba(46,120,174,0.55)'}
 };
 const DM_STYLE_ORDER = ['aizome', 'kinari', 'off'];   // off＝いつもの地図（地名を見たいとき）
 /* 地図記号（symbol レイヤの ftCode）。実地で確かめた2つだけを使う：
@@ -3701,7 +3703,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 手描きの道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した手描きの道id（直前取り消し用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v266';
+const APP_VERSION = 'v267';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat0', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -9827,7 +9829,7 @@ function _mvtShapes(buf){          // 線と面を読む（点は _mvtParse）�
         }
       }
       const props = {};
-      for (let a = 0; a + 1 < tags.length; a += 2) { const k = keys[tags[a]]; if (k === 'rnkWidth' || k === 'alti' || k === 'knj' || k === 'annoCtg') props[k] = vals[tags[a + 1]]; }
+      for (let a = 0; a + 1 < tags.length; a += 2) { const k = keys[tags[a]]; if (k === 'rnkWidth' || k === 'rdCtg' || k === 'alti' || k === 'knj' || k === 'annoCtg') props[k] = vals[tags[a + 1]]; }
       out.push({layer: name, gt: gt, rings: rings, props: props});
     }
   }
@@ -9848,6 +9850,7 @@ async function _dmDrawTile(cv, coords, st){   // 1マス（256px）を描く。�
   const DM_COL = _dmCol(st), z = coords.z, dpr = Math.min(3, window.devicePixelRatio || 1), g = cv.getContext('2d');
   const sz = Math.min(z, DM_SRC_MAX_Z), sc = Math.pow(2, z - sz);   // 元のデータの段階と、その1枚がこのズームで何マス分か
   const K = Math.min(sc, 4) * dpr * Math.pow(2, Math.min(0, z - 16) * 0.5);   // 線の太さの倍率（縮めると細く・z18 より先は太くしない）
+  const KM = Math.min(sc, 4) * dpr * Math.pow(2, Math.min(0, z - 16) * DM_ROAD_SHRINK);   // 太い道の倍率（縮めたときの細り方を小さく）
   const ox = coords.x * 256, oy = coords.y * 256;
   const tx = Math.floor(coords.x / sc), ty = Math.floor(coords.y / sc);
   const f0 = await _dmGet(sz, tx, ty);
@@ -9866,10 +9869,11 @@ async function _dmDrawTile(cv, coords, st){   // 1マス（256px）を描く。�
   g.fillStyle = DM_COL.water; each('waterarea', 3, (t, f) => { path(t, f); g.fill('evenodd'); }); each('lake', 3, (t, f) => { path(t, f); g.fill('evenodd'); });
   g.strokeStyle = DM_COL.river; g.lineWidth = Math.max(0.8 * dpr, 1.5 * K); each('river', 2, (t, f) => { path(t, f); g.stroke(); });
   if (z >= DM_BLD_MIN_Z) { g.fillStyle = DM_COL.bld; each('building', 3, (t, f) => { path(t, f); g.fill('evenodd'); }); }
-  const rw = f => { const r = Number(f.props.rnkWidth); return (r >= 4 ? 6.4 : r === 3 ? 4.8 : r === 2 ? 3.6 : r === 1 ? 2.6 : 1.8) * 0.75; };   // スマホで道が強すぎないよう 0.75 倍
+  const rw = f => { const r = Number(f.props.rnkWidth), w = (r >= 4 ? 6.4 : r === 3 ? 4.8 : r === 2 ? 3.6 : r === 1 ? 2.6 : 1.8) * 0.75; return Math.max(w, DM_ROAD_W[f.props.rdCtg] || 0); };   // 道幅の区分（スマホで強すぎないよう 0.75 倍）と道の種類の太いほう
+  const rk = f => (DM_ROAD_W[f.props.rdCtg] ? KM : K);   // v267：国道・高速・県道は縮めても細くしすぎない
   const roads = []; each('road', 2, (t, f) => roads.push([t, f])); roads.sort((a, b) => rw(a[1]) - rw(b[1]));
-  if (DM_COL.roadCase) { g.strokeStyle = DM_COL.roadCase; roads.forEach(([t, f]) => { if (rw(f) < 2.7) return; g.lineWidth = Math.max(1.2 * dpr, (rw(f) + 1.4) * K); path(t, f); g.stroke(); }); }   // 広い道だけ縁
-  g.strokeStyle = DM_COL.road; roads.forEach(([t, f]) => { g.lineWidth = Math.max(0.7 * dpr, rw(f) * K); path(t, f); g.stroke(); });
+  if (DM_COL.roadCase) { roads.forEach(([t, f]) => { if (rw(f) < 2.7) return; g.strokeStyle = (DM_ROAD_W[f.props.rdCtg] && DM_COL.roadMainCase) || DM_COL.roadCase; g.lineWidth = Math.max(1.2 * dpr, (rw(f) + 1.4) * rk(f)); path(t, f); g.stroke(); }); }   // 広い道だけ縁
+  g.strokeStyle = DM_COL.road; roads.forEach(([t, f]) => { g.lineWidth = Math.max(0.7 * dpr, rw(f) * rk(f)); path(t, f); g.stroke(); });
   each('railway', 2, (t, f) => { g.strokeStyle = DM_COL.rail; g.lineWidth = Math.max(1 * dpr, 2.4 * K); path(t, f); g.stroke(); g.strokeStyle = DM_COL.ground; g.lineWidth = Math.max(0.5 * dpr, 1.1 * K); g.setLineDash([5 * K, 5 * K]); path(t, f); g.stroke(); g.setLineDash([]); });
   // 網点（どのマスでも位置がそろうように、全体の画素に合わせる）
   const ds = 4 * dpr * Math.max(1, Math.min(sc, 3)), dot = document.createElement('canvas'); dot.width = dot.height = Math.round(ds);
@@ -9972,9 +9976,9 @@ function _syncDmBtn(){
   const b = document.getElementById('mobileDmBtn'); if (!b) return;
   const st = _dmCur(), lb = st === 'off' ? 'いつもの地図' : _dmCol(st).label;
   b.querySelector('small').textContent = st === 'off' ? '地図' : _dmCol(st).short;
-  b.setAttribute('aria-label', '地図の見た目：' + lb + '（押すと切り替え）'); b.title = '地図の見た目：' + lb + '（押すたびに 藍染めの町→生成りの町→いつもの地図）';
+  b.setAttribute('aria-label', '地図の見た目：' + lb + '（押すと切り替え）'); b.title = '地図の見た目：' + lb + '（押すたびに 藍の町→白の町→いつもの地図）';
 }
-function cycleDesignMap(){         // 今のモードの地図を切り替える（藍染めの町→生成りの町→いつもの地図）
+function cycleDesignMap(){         // 今のモードの地図を切り替える（藍の町→白の町→いつもの地図）
   const nx = DM_STYLE_ORDER[(DM_STYLE_ORDER.indexOf(_dmCur()) + 1) % DM_STYLE_ORDER.length];
   if (viewMode) _dmStyle = nx; else _dmEditStyle = nx;
   try { localStorage.setItem(viewMode ? LS.dmStyle : LS.dmEditStyle, nx); } catch(_) {}

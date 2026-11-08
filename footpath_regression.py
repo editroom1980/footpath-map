@@ -1019,7 +1019,7 @@ def static_checks(src):
         'id="mTel" type="tel"' in src and 'id="mUrl" type="url"' in src and src.count('tel:w.tel,url:w.url||undefined,') == 2 and '<label>電話・URL</label>' not in src)
     chk('静的', '閲覧モードの地図（v263）：色は案2（藍の地・生成りの道・淡い水色の川）。閲覧の切り替え（_applyViewLock）で付け外し、道順ができたときにも描く。地理院の出典つき',
         "ground:'#2E78AE', bld:'#3B85BA', road:'#F7EEDC', roadCase:null,      water:'#C4DCEE'," in src
-        and "kinari: {label:'生成りの町', short:'生成り', name:" in src and "const DM_STYLE_ORDER = ['aizome', 'kinari', 'off'];" in src
+        and "kinari: {label:'白の町',     short:'白',     name:" in src and "const DM_STYLE_ORDER = ['aizome', 'kinari', 'off'];" in src
         and "dmStyle:     'fp_dm_style'," in src and 'id="mobileDmBtn" onclick="cycleDesignMap()"' in src and "_applyDesignMap(!document.body.classList.contains('embed'));" in src
         and 'function _mvtShapes(buf)' in src and 'function _dmDrawTile(cv, coords, st)' in src and "dmEditStyle: 'fp_dm_edit_style'," in src and "let _dmEditStyle = 'off';" in src and "attribution: '国土地理院ベクトルタイル（加工して作成）'" in src
         and 'DM_PAD_M' not in src and 'DM_BASE_DIM' not in src)
@@ -1036,6 +1036,11 @@ def static_checks(src):
         'async function _dmDrawNames(g, coords, C, dpr){' in src and "if (z >= DM_NAME_MIN_Z) await _dmDrawNames(g, coords, DM_COL, dpr);" in src
         and "const DM_NAME_MIN_Z = 14, DM_FAC_MIN_Z = 16, DM_NAME_Z = 14;" in src and "name:'#F7EEDC', halo:'#215B87'" in src and "name:'#2A5F8A', halo:'#F7EEDC'" in src
         and "if (b[0] < 1 || b[1] < 1 || b[2] > 255 || b[3] > 255) continue;" in src and 'body.fd .mrb:not(.on):not(.done):not(.mob-save)' in src)
+    chk('静的', '新しいデザインの地図の太い道（v267）：道の種類（rdCtg）を読み、国道・高速・県道は道幅の区分より太く、縮めても細くしすぎない。白の町では太い道の縁を濃く。呼び名は「藍の町」「白の町」',
+        "k === 'rdCtg'" in src and "const DM_ROAD_W = {3: 5.4, 0: 5.4, 1: 3.9};" in src and "const DM_ROAD_SHRINK = 0.25;" in src
+        and "return Math.max(w, DM_ROAD_W[f.props.rdCtg] || 0); };" in src and "const rk = f => (DM_ROAD_W[f.props.rdCtg] ? KM : K);" in src
+        and "roadMainCase:'#C7AE84'" in src and "(DM_ROAD_W[f.props.rdCtg] && DM_COL.roadMainCase) || DM_COL.roadCase" in src
+        and "aizome: {label:'藍の町'," in src and '生成りの町' not in src and '藍染めの町→' not in src)
     # --- v246: 押す部品は iOS 27 のぼかし（ノッチの下 約95pt まで）の下に置く。地図はノッチの下まで（塗りつぶさない）---
     chk('静的', '押す部品を置き始める高さ（--sat）はノッチ＋36pt・少なくとも98pt。ノッチが無い画面では0。ページの高さの補いはノッチそのもの（--sat0）で、検査用の ?safe= も --sat0 を偽装する',
         'html,body{touch-action:manipulation;min-height:calc(100% + var(--sat0));' in src
@@ -2236,7 +2241,7 @@ def functional_checks(index_path):
             isinstance(dm, dict) and dm.get('big') and dm['big'][0] is False and dm['big'][1] and dm['big'][2] >= 30
             and (dm.get('small') == 'none' or dm.get('small') == [True]) and dm.get('dots') and dm.get('oldLine') == 0
             and dm.get('tt') and 'rgb(247, 238, 220)' in dm['tt'][0] and 'rgb(46, 120, 174)' in dm['tt'][1] and dm.get('btn')
-            and dm.get('k') == ['kinari', True, '生成り'] and dm.get('o') == ['off', False, 0, 0.9, 1] and dm.get('a') == ['aizome', True]
+            and dm.get('k') == ['kinari', True, '白'] and dm.get('o') == ['off', False, 0, 0.9, 1] and dm.get('a') == ['aizome', True]
             and dm.get('editBd') == 0 and dm.get('editLine') == 0.9
             and dm.get('editOn') == [True, True, 0, 'rgb(46, 120, 174)']
             and dm.get('editMap0') and dm.get('editMap1') == ['aizome', True, 0, True, True] and dm.get('editMap2') == ['off', False]
