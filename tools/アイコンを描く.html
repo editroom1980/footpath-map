@@ -1,0 +1,98 @@
+<!doctype html><meta charset="utf-8"><style>body{margin:0;background:#888} svg{display:block}</style><body>
+<script>
+// ホーム画面のアイコン「藍の町」：前の A と同じ大きさで、本物の町の地図らしく（傾きの違う通り・T字路・旧街道・鉄道・中州と小川のある川・山の等高線・学校・神社の森・家並み）
+const AI='#2E78AE', LAND='#F7EEDC', SHU='#E9603B', MIZU='#C4DCEE', BLD='#3B85BA', CONT='#3B83B8', NS='http://www.w3.org/2000/svg';
+const mix=(op,c1=LAND,c2=AI)=>{const h=c=>[1,3,5].map(i=>parseInt(c.slice(i,i+2),16)),A=h(c1),B=h(c2);return '#'+A.map((v,i)=>Math.round(v*op+B[i]*(1-op)).toString(16).padStart(2,'0')).join('');};
+let seed=7; const rnd=()=>{seed=(seed*16807)%2147483647;return (seed-1)/2147483646;};
+const HX=-120, HY0=-110;   // 山の中心（北西の角）
+const O={rot:-12,wMain:28,wSt:15,wAl:7,opMain:0.9,opSt:0.62,opAl:0.5,bldOp:0.62,step:60,dot:18,halo:9,badgeR:108,ring:18};
+// ---- 通り（回す前の座標）。[[x,y],...] の折れ線。点線が通る通りは真っすぐのまま
+const R=[]; const st=(cls,pts)=>R.push({cls,pts});
+st('main',[[-300,572],[150,566],[400,560],[620,560],[900,553],[1324,544]]);       // 東西の大通り
+st('main',[[392,-300],[400,200],[400,560],[400,790],[406,1100],[414,1324]]);      // 南北の大通り（橋あり）
+st('st',[[170,1324],[170,790],[168,560]]);                                         // 点線が通る（南の端から）
+st('st',[[-300,796],[170,790],[400,790],[700,786],[1000,795],[1324,800]]);         // 点線が通る
+st('st',[[620,200],[620,560],[618,790],[612,1010]]);                               // 点線が通る（橋あり）
+st('st',[[-300,206],[100,203],[400,200],[620,200],[880,190],[1324,176]]);          // 川の北の通り
+st('st',[[848,560],[855,790],[862,1010],[870,1324]]);
+st('st',[[1080,-300],[1078,200],[1086,560],[1092,800],[1100,1324]]);
+st('st',[[-60,560],[-62,790],[-66,1010]]);
+st('st',[[-300,1018],[-66,1012],[170,1010],[406,1006],[612,1010],[862,1004],[1324,996]]);
+st('st',[[400,680],[620,676]]);                                                     // 短い通り（T字路）
+st('st',[[862,690],[1086,684]]);
+st('st',[[280,790],[284,1010]]);
+st('st',[[746,1010],[752,1324]]);   // 学校の運動場は通さない
+st('st',[[620,90],[880,80],[1078,70]]);
+st('st',[[760,200],[756,90]]);
+// 路地（細い・折れる・行き止まり）
+const AL=[[[280,560],[282,680],[318,700],[320,790]],[[510,560],[512,650]],[[40,790],[42,900],[90,930]],[[510,790],[514,900],[560,920],[562,1006]],
+  [[960,560],[962,640]],[[700,1010],[704,1120],[760,1140]],[[230,1010],[232,1110],[300,1130],[302,1200]],[[960,800],[964,900],[1010,920]],[[500,200],[498,110]],[[960,190],[958,110]]];
+// 旧街道：南を斜めに走る古い道（少し曲がる）
+const OLD='M-300,1240 C-100,1120 60,980 170,905 C260,845 330,730 400,680';
+// 鉄道：北の端を走る
+const RAIL='M-300,40 C200,10 700,-10 1324,-60';
+// 川：中心線と幅（場所で変わる）。中州と、山から流れ込む小川
+const RIV='M-300,300 C0,292 160,450 400,440 C620,430 720,330 920,345 C1060,355 1160,410 1324,420';
+const TRIB='M-40,-80 C20,60 60,170 125,372';   // 川の中まで延ばし、川の水面の下に潜らせる
+// 点線の道順（通りの上だけ）：南の端 → 北へ → 大通りまで東 → 北へ → 大通りを東 → 北へ橋を渡る → 札
+const ROUTE_PTS=[[170,1324],[170,790],[400,790],[400,560],[620,560],[620,200]], BADGE=[620,200];
+const pathOf=pts=>'M'+pts.map(p=>p.join(',')).join(' L');
+function sample(d,step){const s=document.createElementNS(NS,'svg');s.innerHTML=`<path d="${d}"/>`;document.body.appendChild(s);const p=s.firstChild,L=p.getTotalLength(),o=[];for(let l=0;l<=L;l+=step){const q=p.getPointAtLength(l);o.push([q.x,q.y]);}s.remove();return o;}
+function riverPoly(){const P=sample(RIV,6),L=[],Rr=[];for(let i=0;i<P.length;i++){const a=P[Math.max(0,i-1)],b=P[Math.min(P.length-1,i+1)],dx=b[0]-a[0],dy=b[1]-a[1],n=Math.hypot(dx,dy)||1,nx=-dy/n,ny=dx/n;
+  const w=(86+30*Math.sin(i*0.045)+16*Math.sin(i*0.11+1))/2; L.push([P[i][0]+nx*w,P[i][1]+ny*w]); Rr.push([P[i][0]-nx*w,P[i][1]-ny*w]);}
+  return {P,poly:'M'+L.map(p=>p.map(v=>v.toFixed(1)).join(',')).join(' L')+' L'+Rr.reverse().map(p=>p.map(v=>v.toFixed(1)).join(',')).join(' L')+'Z'};}
+function draw(){
+  const W={main:O.wMain,st:O.wSt,al:O.wAl}, C={main:mix(O.opMain),st:mix(O.opSt),al:mix(O.opAl)};
+  let g='';
+  // 山：北西の端に等高線（町は山すその平地）
+  for(let r=70;r<=430;r+=40){let d='';for(let a=0;a<=360;a+=6){const t=a*Math.PI/180,rr=r*(1+0.08*Math.sin(3*t+r*0.01)+0.05*Math.cos(5*t));d+=(a?'L':'M')+(HX+rr*Math.cos(t)).toFixed(1)+','+(HY0+rr*0.8*Math.sin(t)).toFixed(1);}g+=`<path d="${d}Z" fill="none" stroke="${mix(0.24)}" stroke-width="${(r-70)%160===0?6:3.5}"/>`;}
+  const hill=(x,y)=>Math.hypot((x-HX),(y-HY0)/0.8)<400;
+  const riv=riverPoly(), oldP=sample(OLD,10), railP=sample(RAIL,10), tribP=sample(TRIB,8);
+  const near=(x,y,P,d)=>P.some(([px,py])=>Math.hypot(px-x,py-y)<d);
+  // 学校（運動場とトラック）と神社の森
+  const school={x:640,y:812,w:200,h:180}, shrine={x:878,y:578,w:192,h:96};
+  g+=`<rect x="${school.x}" y="${school.y}" width="${school.w}" height="${school.h}" rx="6" fill="${mix(0.16)}"/>`
+    +`<ellipse cx="${school.x+120}" cy="${school.y+92}" rx="62" ry="50" fill="none" stroke="${mix(0.5)}" stroke-width="6"/>`
+    +`<path d="M${school.x+12},${school.y+14} h44 v150 h-44 Z" fill="${mix(O.bldOp+0.08,BLD,AI)}"/>`;
+  g+=`<rect x="${shrine.x}" y="${shrine.y}" width="${shrine.w}" height="${shrine.h}" rx="10" fill="${mix(0.0)}"/>`;
+  for(let i=0;i<26;i++){const x=shrine.x+16+rnd()*(shrine.w-32),y=shrine.y+14+rnd()*(shrine.h-28);g+=`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${(9+rnd()*6).toFixed(1)}" fill="${mix(0.12,'#1F4E7C',AI)}"/>`;}
+  const inRect=(x,y,r,m=10)=>x>r.x-m&&x<r.x+r.w+m&&y>r.y-m&&y<r.y+r.h+m;
+  // 家並み：通りに沿って、通りに面した家を並べる（通りの向きに合わせて少し傾ける）
+  const house=(x,y,w,h,ang)=>`<rect x="${(-w/2).toFixed(1)}" y="${(-h/2).toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" rx="3" fill="${mix(O.bldOp,BLD,AI)}" transform="translate(${x.toFixed(1)} ${y.toFixed(1)}) rotate(${ang.toFixed(2)})"/>`;
+  const allRoads=[...R.map(r=>({pts:r.pts,w:r.cls==='main'?W.main:W.st})),...AL.map(p=>({pts:p,w:W.al}))];
+  const roadPts=[...allRoads.map(r=>({w:r.w,P:sample(pathOf(r.pts),8)})),{w:W.st+2,P:sample(OLD,8)}];   // 旧街道の上にも家を置かない
+  const clearOfRoads=(x,y,rad)=>roadPts.every(r=>!near(x,y,r.P,r.w/2+rad));
+  const rows=[...R.map(r=>({pts:r.pts,w:r.cls==='main'?W.main:W.st,big:r.cls==='main'})),{pts:sample(OLD,40),w:W.st,big:false}];
+  for(const r of rows){const P=sample(pathOf(r.pts),4);for(const side of [1,-1]){let acc=0,i=0;while(i<P.length-1){const a=P[i],b=P[Math.min(i+3,P.length-1)],dx=b[0]-a[0],dy=b[1]-a[1],n=Math.hypot(dx,dy)||1,nx=-dy/n,ny=dx/n;
+    const wid=(r.big?40:28)+rnd()*(r.big?26:20), dep=(r.big?40:30)+rnd()*10, off=r.w/2+8+dep/2, cx=a[0]+nx*off*side+dx/n*wid/2, cy=a[1]+ny*off*side+dy/n*wid/2, rad=Math.max(wid,dep)/2;
+    if(rnd()>0.14 && !hill(cx,cy) && !near(cx,cy,riv.P,70+rad) && !near(cx,cy,railP,22+rad*0.8) && !near(cx,cy,tribP,14+rad*0.7) && !inRect(cx,cy,school) && !inRect(cx,cy,shrine) && clearOfRoads(cx,cy,rad*0.72) && cx>-260&&cx<1290&&cy>-260&&cy<1290)
+      g+=house(cx,cy,wid,dep,Math.atan2(dy,dx)*180/Math.PI);
+    const adv=Math.ceil((wid+7)/4); i+=adv;}}}
+  // 道（不透明の色。重なっても明るくならない）
+  const line=(d,w,c,cap='butt')=>`<path d="${d}" fill="none" stroke="${c}" stroke-width="${w}" stroke-linecap="${cap}" stroke-linejoin="round"/>`;
+  g+=AL.map(p=>line(pathOf(p),W.al,C.al,'round')).join('');
+  g+=line(OLD,W.st+2,C.st);
+  g+=R.filter(r=>r.cls==='st').map(r=>line(pathOf(r.pts),W.st,C.st)).join('');
+  g+=R.filter(r=>r.cls==='main').map(r=>line(pathOf(r.pts),W.main,C.main)).join('');
+  // 鉄道（アプリの藍の町と同じ：白の線に藍の破線）
+  g+=line(RAIL,13,mix(0.95))+`<path d="${RAIL}" fill="none" stroke="${AI}" stroke-width="5" stroke-dasharray="26 26"/>`;
+  // 川：小川 → 堤の道 → 水面 → 中州 → 橋
+  g+=line(TRIB,16,MIZU,'round');
+  g+=`<path d="${riv.poly}" fill="${C.st}" stroke="${C.st}" stroke-width="${2*W.st+30}" stroke-linejoin="round"/><path d="${riv.poly}" fill="${AI}" stroke="${AI}" stroke-width="14" stroke-linejoin="round"/><path d="${riv.poly}" fill="${MIZU}"/>`;   // 岸の道は川の形に沿う
+  g+=`<path d="M690,388 C730,370 800,352 850,356 C820,370 760,385 700,394 Z" fill="${mix(0.55,LAND,MIZU)}"/>`;
+  for(const [bx,w,c] of [[400,W.main,C.main],[620,W.st,C.st]]){const P=riv.P.reduce((m,p)=>Math.abs(p[0]-bx)<Math.abs(m[0]-bx)?p:m,riv.P[0]);const h=78;
+    g+=`<rect x="${bx-w/2-6}" y="${P[1]-h}" width="${w+12}" height="${2*h}" fill="${AI}"/>`+line(`M${bx},${P[1]-h} L${bx},${P[1]+h}`,w,c);}
+  // 点線：角に点を置き、角と角のあいだを等分。札に掛かる点は描かない
+  const D=[];for(let i=1;i<ROUTE_PTS.length;i++){const [x0,y0]=ROUTE_PTS[i-1],[x1,y1]=ROUTE_PTS[i],L=Math.hypot(x1-x0,y1-y0),n=Math.max(1,Math.round(L/O.step));for(let j=(i===1?0:1);j<=n;j++)D.push([x0+(x1-x0)*j/n,y0+(y1-y0)*j/n]);}
+  const Dv=D.filter(([x,y])=>Math.hypot(x-BADGE[0],y-BADGE[1])>=O.badgeR+O.ring*0.8+O.dot+O.halo+8);
+  g+=Dv.map(([x,y])=>`<circle cx="${x.toFixed(2)}" cy="${y.toFixed(2)}" r="${O.dot+O.halo}" fill="${LAND}"/>`).join('')+Dv.map(([x,y])=>`<circle cx="${x.toFixed(2)}" cy="${y.toFixed(2)}" r="${O.dot}" fill="${SHU}"/>`).join('');
+  // 札（回さない）
+  const a=O.rot*Math.PI/180, bx=512+(BADGE[0]-512)*Math.cos(a)-(BADGE[1]-512)*Math.sin(a), by=512+(BADGE[0]-512)*Math.sin(a)+(BADGE[1]-512)*Math.cos(a);
+  const Rb=O.badgeR, k=Rb*1.15/24, ox=bx-10.77*k, oy=by-12.5*k;
+  const badge=`<filter id="sh" x="-50%" y="-50%" width="200%" height="200%"><feDropShadow dx="0" dy="7" stdDeviation="10" flood-color="#0A1E32" flood-opacity="0.35"/></filter>`
+   +`<circle cx="${bx}" cy="${by}" r="${Rb+O.ring*0.8}" fill="${LAND}" filter="url(#sh)"/><circle cx="${bx}" cy="${by}" r="${Rb}" fill="${AI}"/><circle cx="${bx}" cy="${by}" r="${Rb-O.ring}" fill="${LAND}"/>`
+   +`<path d="M${ox+6*k},${oy+21*k} V${oy+4*k}" stroke="${AI}" stroke-width="${2.4*k}" stroke-linecap="round"/><path d="M${ox+6*k},${oy+4*k} H${ox+17*k} L${ox+14.5*k},${oy+8*k} L${ox+17*k},${oy+12*k} H${ox+6*k} Z" fill="${AI}"/>`;
+  return `<svg xmlns="${NS}" width="2048" height="2048" viewBox="0 0 1024 1024"><rect width="1024" height="1024" fill="${AI}"/><g transform="rotate(${O.rot} 512 512)">${g}</g>${badge}</svg>`;
+}
+const d=document.createElement('div');d.id='T5';d.innerHTML=draw();document.body.appendChild(d);window.DONE=1;
+</script>

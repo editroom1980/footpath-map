@@ -1048,8 +1048,8 @@ def static_checks(src):
         if not os.path.exists(p): return None
         b = open(p, 'rb').read()
         return (struct.unpack('>II', b[16:24]) if b[:8] == b'\x89PNG\r\n\x1a\n' else None, hashlib.sha256(b).hexdigest()[:16])
-    _ICONS = {'icon-1024.png': (1024, 'd172b1de44873b37'), 'icon-512.png': (512, 'a43b49240d1520cb'), 'icon-192.png': (192, 'feeea51aed0577b3'), 'apple-touch-icon.png': (180, '8007c4deec72a436')}
-    chk('静的', 'ホーム画面のアイコン（v268）：4つの大きさ（1024・512・192・180）とも新しいデザインの「藍の町」（藍の地・白の町・淡い水色の川・朱の点線・札）の絵',
+    _ICONS = {'icon-1024.png': (1024, 'c68bd6f653f61ef2'), 'icon-512.png': (512, '711bee202db6d3f8'), 'icon-192.png': (192, 'c813bcf29b9304f4'), 'apple-touch-icon.png': (180, '6df4b6f1f1a91ffd')}
+    chk('静的', 'ホーム画面のアイコン（v269）：4つの大きさ（1024・512・192・180）とも新しいデザインの「藍の町」（通り・路地・家並み・川と橋・朱の点線は通りの上・札）の絵',
         all(_png_info(f) == ((n, n), h) for f, (n, h) in _ICONS.items()))
     # --- v246: 押す部品は iOS 27 のぼかし（ノッチの下 約95pt まで）の下に置く。地図はノッチの下まで（塗りつぶさない）---
     chk('静的', '押す部品を置き始める高さ（--sat）はノッチ＋36pt・少なくとも98pt。ノッチが無い画面では0。ページの高さの補いはノッチそのもの（--sat0）で、検査用の ?safe= も --sat0 を偽装する',
