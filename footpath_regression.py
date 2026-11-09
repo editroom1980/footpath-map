@@ -1041,6 +1041,16 @@ def static_checks(src):
         and "return Math.max(w, DM_ROAD_W[f.props.rdCtg] || 0); };" in src and "const rk = f => (DM_ROAD_W[f.props.rdCtg] ? KM : K);" in src
         and "roadMainCase:'#C7AE84'" in src and "(DM_ROAD_W[f.props.rdCtg] && DM_COL.roadMainCase) || DM_COL.roadCase" in src
         and "aizome: {label:'藍の町'," in src and '生成りの町' not in src and '藍染めの町→' not in src)
+    # v268：ホーム画面のアイコンを新しいデザイン（藍の町）に。大きさ（PNG の IHDR）と、差し替えた絵の指紋を確かめる
+    def _png_info(fn):
+        import hashlib, struct
+        p = os.path.join(os.path.dirname(INDEX), fn)
+        if not os.path.exists(p): return None
+        b = open(p, 'rb').read()
+        return (struct.unpack('>II', b[16:24]) if b[:8] == b'\x89PNG\r\n\x1a\n' else None, hashlib.sha256(b).hexdigest()[:16])
+    _ICONS = {'icon-1024.png': (1024, 'd172b1de44873b37'), 'icon-512.png': (512, 'a43b49240d1520cb'), 'icon-192.png': (192, 'feeea51aed0577b3'), 'apple-touch-icon.png': (180, '8007c4deec72a436')}
+    chk('静的', 'ホーム画面のアイコン（v268）：4つの大きさ（1024・512・192・180）とも新しいデザインの「藍の町」（藍の地・白の町・淡い水色の川・朱の点線・札）の絵',
+        all(_png_info(f) == ((n, n), h) for f, (n, h) in _ICONS.items()))
     # --- v246: 押す部品は iOS 27 のぼかし（ノッチの下 約95pt まで）の下に置く。地図はノッチの下まで（塗りつぶさない）---
     chk('静的', '押す部品を置き始める高さ（--sat）はノッチ＋36pt・少なくとも98pt。ノッチが無い画面では0。ページの高さの補いはノッチそのもの（--sat0）で、検査用の ?safe= も --sat0 を偽装する',
         'html,body{touch-action:manipulation;min-height:calc(100% + var(--sat0));' in src
