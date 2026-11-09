@@ -1041,6 +1041,8 @@ def static_checks(src):
         and "return Math.max(w, DM_ROAD_W[f.props.rdCtg] || 0); };" in src and "const rk = f => (DM_ROAD_W[f.props.rdCtg] ? KM : K);" in src
         and "roadMainCase:'#C7AE84'" in src and "(DM_ROAD_W[f.props.rdCtg] && DM_COL.roadMainCase) || DM_COL.roadCase" in src
         and "aizome: {label:'藍の町'," in src and '生成りの町' not in src and '藍染めの町→' not in src)
+    chk('静的', '新しいデザインの道順の点線（v270）：白の縁 10・朱の点 6・間隔 9。縁の直径が間隔より大きく、縁どうしが重なってつながって見える',
+        "const DM_DOT = {halo: 10, dot: 6, step: 9};" in src and "dashArray: '0,' + DM_DOT.step" in src)
     # v268：ホーム画面のアイコンを新しいデザイン（藍の町）に。大きさ（PNG の IHDR）と、差し替えた絵の指紋を確かめる
     def _png_info(fn):
         import hashlib, struct
@@ -2214,7 +2216,7 @@ def functional_checks(index_path):
             const pb = bdOf(plain); out.plain = pb ? [(pb.querySelector('.fd-big') || {}).textContent || '', !!pb.querySelector('svg'), !!pb.querySelector('.fd-num')] : null;
             leafMap.removeLayer(plain.marker); wps.splice(wps.indexOf(plain), 1); refreshIcons();
             out.small = small && bdOf(small) ? [bdOf(small).classList.contains('sm')] : 'none';
-            out.dots = !!_dmRouteDots && leafMap.hasLayer(_dmRouteDots) && _dmRouteDots.options.dashArray === '0,15' && _dmRouteDots.options.color === '#E9603B' && !!_dmRouteHalo;
+            out.dots = !!_dmRouteDots && leafMap.hasLayer(_dmRouteDots) && _dmRouteDots.options.dashArray === '0,9' && _dmRouteDots.options.color === '#E9603B' && !!_dmRouteHalo;
             out.oldLine = routeLine ? routeLine.options.opacity : null;
             const tt = big && big.marker.getTooltip() && big.marker.getTooltip().getElement(); out.tt = tt ? [tt.style.background, tt.style.color] : null;
             out.btn = getComputedStyle(document.getElementById('mobileDmBtn')).display !== 'none';

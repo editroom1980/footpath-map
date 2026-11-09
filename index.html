@@ -3703,7 +3703,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 手描きの道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した手描きの道id（直前取り消し用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v269';
+const APP_VERSION = 'v270';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat0', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -9911,7 +9911,7 @@ async function _dmDrawNames(g, coords, C, dpr){
   }
   g.setTransform(1, 0, 0, 1, 0, 0);
 }
-const DM_DOT = {halo: 12, dot: 7, step: 15};   // 道順の点（直径 px）と間隔。点のまわりに生成りの縁（川や道の上でも読める）
+const DM_DOT = {halo: 10, dot: 6, step: 9};    // 道順の点（直径 px）と間隔。点のまわりに白の縁。v270：縁の直径＞間隔で縁どうしが重なり、1本の道につながって見える（前は 12・7・15。オーナー「見づらい、密度を上げてつながっている感じを」）
 let _dmRouteHalo = null, _dmRouteDots = null;
 function _dmOn(){ return !!_dmLayer; }
 function _dmMarks(){ return _dmStyle !== 'off' && !document.body.classList.contains('embed'); }   // v263：札と名前の帯（オーナー指示で編集モードも。いつもの地図を選んだときだけ前の印）
