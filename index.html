@@ -3703,7 +3703,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 手描きの道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した手描きの道id（直前取り消し用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v270';
+const APP_VERSION = 'v271';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat0', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -9911,6 +9911,8 @@ async function _dmDrawNames(g, coords, C, dpr){
   }
   g.setTransform(1, 0, 0, 1, 0, 0);
 }
+const DM_DOT_SHRINK = {z: 16, per: 0.15, min: 0.55};   // v271：広く映すほど点を小さく・間隔を狭く（z16 より寄ったら DM_DOT のまま。1段広くなるごとに 15% 小さく、最小 55%）
+function _dmDotAt(z){ const f = Math.max(DM_DOT_SHRINK.min, 1 - Math.max(0, DM_DOT_SHRINK.z - z) * DM_DOT_SHRINK.per); return {halo: DM_DOT.halo * f, dot: DM_DOT.dot * f, step: +(DM_DOT.step * f).toFixed(2)}; }
 const DM_DOT = {halo: 10, dot: 6, step: 9};    // 道順の点（直径 px）と間隔。点のまわりに白の縁。v270：縁の直径＞間隔で縁どうしが重なり、1本の道につながって見える（前は 12・7・15。オーナー「見づらい、密度を上げてつながっている感じを」）
 let _dmRouteHalo = null, _dmRouteDots = null;
 function _dmOn(){ return !!_dmLayer; }
@@ -9933,9 +9935,10 @@ function _dmRouteSync(disp){       // 新しいデザインのときは今の線
     if (viewMode) routeDirs.setStyle({opacity: 0, fillOpacity: 0});
     else { routeDirs.setStyle({opacity: 1, fillOpacity: 1, color: '#F7EEDC', fillColor: '#E9603B'}); }
   }
-  const st = {lineCap: 'round', lineJoin: 'round', smoothFactor: 0, interactive: false, renderer: canvasRenderer, dashArray: '0,' + DM_DOT.step, opacity: 1};
-  if (!_dmRouteHalo) _dmRouteHalo = L.polyline(d, Object.assign({}, st, {color: '#F7EEDC', weight: DM_DOT.halo})).addTo(leafMap); else _dmRouteHalo.setLatLngs(d);
-  if (!_dmRouteDots) _dmRouteDots = L.polyline(d, Object.assign({}, st, {color: '#E9603B', weight: DM_DOT.dot})).addTo(leafMap); else _dmRouteDots.setLatLngs(d);
+  const P = _dmDotAt(leafMap.getZoom());   // v271：縮尺に合わせた点の大きさと間隔
+  const st = {lineCap: 'round', lineJoin: 'round', smoothFactor: 0, interactive: false, renderer: canvasRenderer, dashArray: '0,' + P.step, opacity: 1};
+  if (!_dmRouteHalo) _dmRouteHalo = L.polyline(d, Object.assign({}, st, {color: '#F7EEDC', weight: P.halo})).addTo(leafMap); else { _dmRouteHalo.setStyle({weight: P.halo, dashArray: st.dashArray}); _dmRouteHalo.setLatLngs(d); }
+  if (!_dmRouteDots) _dmRouteDots = L.polyline(d, Object.assign({}, st, {color: '#E9603B', weight: P.dot})).addTo(leafMap); else { _dmRouteDots.setStyle({weight: P.dot, dashArray: st.dashArray}); _dmRouteDots.setLatLngs(d); }
   if (routeDirs && !viewMode) { try { routeDirs.bringToFront(); } catch(_) {} }
 }
 function _dmBadgeIcon(wp, sz, anc, stamp){   // 札：生成りの丸・藍の縁・藍の絵。歩く順とスタート・ゴールは大きい札、立ち寄り先は小さい札で縁は山吹
