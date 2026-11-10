@@ -1043,8 +1043,8 @@ def static_checks(src):
         and "aizome: {label:'藍の町'," in src and '生成りの町' not in src and '藍染めの町→' not in src)
     chk('静的', '新しいデザインの道順の点線（v270）：白の縁 10・朱の点 6・間隔 9。縁の直径が間隔より大きく、縁どうしが重なってつながって見える',
         "const DM_DOT = {halo: 10, dot: 6, step: 9};" in src and "dashArray: '0,' + P.step" in src)
-    chk('静的', '広く映すほど道順の点を小さく・間隔を狭く（v271）：z16 より寄ったら縁10・点6・間隔9、1段広くなるごとに 15% 小さく（最小 55%）。拡大縮小のたびに大きさと間隔を合わせ直す',
-        "const DM_DOT_SHRINK = {z: 16, per: 0.15, min: 0.55};" in src and "function _dmDotAt(z){" in src and "const P = _dmDotAt(leafMap.getZoom());" in src
+    chk('静的', '広く映すほど道順の点を小さく・間隔を狭く（v272）：z16 より寄ったら縁10・点6・間隔9、1段広くなるごとに 30% 小さく（最小 30%）。拡大縮小のたびに大きさと間隔を合わせ直す',
+        "const DM_DOT_SHRINK = {z: 16, per: 0.3, min: 0.3};" in src and "function _dmDotAt(z){" in src and "const P = _dmDotAt(leafMap.getZoom());" in src
         and "_dmRouteDots.setStyle({weight: P.dot, dashArray: st.dashArray});" in src and "_dmRouteHalo.setStyle({weight: P.halo, dashArray: st.dashArray});" in src)
     # v268：ホーム画面のアイコンを新しいデザイン（藍の町）に。大きさ（PNG の IHDR）と、差し替えた絵の指紋を確かめる
     def _png_info(fn):
