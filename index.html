@@ -3712,7 +3712,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 手描きの道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した手描きの道id（直前取り消し用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v273';
+const APP_VERSION = 'v274';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat0', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -7393,7 +7393,9 @@ function setWalkSpeed(i){
 }
 
 function updateDistanceAndTime(coords) {
-  const c = coords || buildStraightCoords();
+  // v274：引数なしのときは、いま地図に描いている線で測る（道に沿った道順が描けていればそれ、まだ直線ならその直線）。
+  // 前は常に直線で測っていたので、スポットの「保存」などで道順の距離（2.4km）が直線の距離（2.2km）に置き換わっていた
+  const c = coords || (_lastRouteCoords && _routeLineBase === _lastRouteCoords ? _lastRouteCoords : buildStraightCoords());
   let dist = 0;
   for (let i=0; i<c.length-1; i++) dist += haversine(c[i][0],c[i][1],c[i+1][0],c[i+1][1]);
 
@@ -11472,6 +11474,17 @@ async function _fetchElevs(pts) {
 }
 
 function _calcElevDists(pts) {
+  // v274：pts が道順（_lastRouteCoords）から間引いた点なら、間引く前の道のりで距離を数える（総距離・所要時間と同じ haversine）。
+  // 前は間引いた点どうしを直線で結んでいたので、曲がりの多い道で短く出た（2.4km の道順がグラフでは 2.3km）
+  const R = _lastRouteCoords;
+  if (R && R.length >= 2 && pts.length >= 2 && pts[0] === R[0]) {
+    const out = []; let j = 0, acc = 0;
+    for (let i = 0; i < R.length && j < pts.length; i++) {
+      if (i) acc += haversine(R[i-1][0], R[i-1][1], R[i][0], R[i][1]);
+      if (R[i] === pts[j]) { out.push(acc); j++; }
+    }
+    if (out.length === pts.length) return out;
+  }
   const DEG_M = 111000, dists = [0];
   for (let i=1; i<pts.length; i++) {
     const dlat=(pts[i][0]-pts[i-1][0])*DEG_M;

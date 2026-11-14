@@ -1049,6 +1049,9 @@ def static_checks(src):
     chk('静的', '等高線を標高が高いほど濃く（v273）：線ごとの標高（alti）を対数の目盛りで 12 段に分け、白の町は濃い茶へ・藍の町は明るい線へ。段ごとにまとめて描く（色を替えるのは最大 12 回）',
         "const DM_CONTOUR = {top: 1200, base: 50, steps: 12};" in src and "function _dmContourStep(alti){" in src and "function _dmContourCols(C){" in src
         and "contourHi:'#93BBDD'" in src and "contourHi:'#BC9B68'" in src and "bins[_dmContourStep(f.props.alti)].push([t, f])" in src)
+    chk('静的', '距離の測り直し（v274）：引数なしのときは描いている線（道順なら道順・直線なら直線）。高低差のグラフの距離は間引く前の道順の道のり',
+        "const c = coords || (_lastRouteCoords && _routeLineBase === _lastRouteCoords ? _lastRouteCoords : buildStraightCoords());" in src
+        and "if (R && R.length >= 2 && pts.length >= 2 && pts[0] === R[0]) {" in src)
     # v268：ホーム画面のアイコンを新しいデザイン（藍の町）に。大きさ（PNG の IHDR）と、差し替えた絵の指紋を確かめる
     def _png_info(fn):
         import hashlib, struct
@@ -1399,6 +1402,13 @@ def static_checks(src):
             and len(_smp.get('wps', [])) >= 10, f"routes={len(_smp.get('routes') or {})} elevs={len(_smp.get('elevs') or {})}")
     except Exception as _e:
         chk('静的', 'サンプルコースに道順と標高が同梱されている（開いても問い合わせ0）', False, str(_e)[:120])
+    try:   # v274：見本のコースに同じ名前のスポットが無い（地図で区別できる）・神社は「加茂新明神社」（国土交通省 姫路河川国道事務所の報告とオーナーのコースに合わせた）
+        _nm = [w.get('name') for w in _smp.get('wps', []) if w.get('name')]
+        chk('静的', '見本のコースに同じ名前のスポットが無く、神社の表記は「加茂新明神社」（v274）',
+            len(_nm) == len(set(_nm)) and '加茂新明神社' in _nm and not any('加茂神明' in n for n in _nm)
+            and {'飯見の棚田全景①', '飯見の棚田全景②', '飯見の棚田①', '飯見の棚田②'} <= set(_nm), str(_nm)[:200])
+    except Exception as _e:
+        chk('静的', '見本のコースに同じ名前のスポットが無く、神社の表記は「加茂新明神社」（v274）', False, str(_e)[:120])
     # --- v126: PCの道具を役割で3群に（ロードマップ 段階1-3／図4）---
     chk('静的', '上バー＝一覧・コース名・閲覧モード・その他・保存・配る（文字つき）',
         'class="hbtn hbtn-back" onclick="backToS1()"' in src and 'id="btnView"' in src and '<span id="btnViewTxt">閲覧モード</span>' in src
@@ -2186,6 +2196,19 @@ def functional_checks(index_path):
             isinstance(mc, dict) and mc.get('o1', {}).get('n') == 2 and mc['o1'].get('first') == [1024, 768] and mc['o1'].get('keep') and mc['o1'].get('dirty')
             and mc['o1'].get('card', {}).get('act') == '📷 入れ替える' and mc['o1']['card'].get('more') == '+1' and mc['o1'].get('my') == 1
             and mc.get('o2a') == 'カードの写真にする' and mc.get('o2', {}).get('n') == 3 and mc['o2'].get('lbl') == 'カードの写真にしました' and mc['o2'].get('dis'), str(mc)[:400])
+
+        # v274: 距離と時間の数字をどの画面でもそろえる（引数なしの測り直しは、描いている線で。高低差のグラフの端は道順の道のり）
+        dz = page.evaluate("""()=>{ try{
+            if (!(_lastRouteCoords && _lastRouteCoords.length > 1)) return 'noroute';
+            const L = A => A.reduce((s, p, i) => i ? s + haversine(A[i-1][0], A[i-1][1], p[0], p[1]) : 0, 0);
+            const R = _lastRouteCoords, len = L(R);
+            removeLines(); drawLines(R, []); updateDistanceAndTime(); const a = _lastRouteDistM;      // 道順を描いているとき
+            const dd = _calcElevDists(_sampleCoords(R, 50)), end = dd[dd.length - 1];                  // 高低差のグラフの端
+            removeLines(); drawLines(buildStraightCoords(), buildSegCoordsList()); updateDistanceAndTime(); const b = _lastRouteDistM, st = L(buildStraightCoords());   // 直線を描いているとき
+            removeLines(); drawLines(R, []); updateDistanceAndTime(R);                                    // 元に戻す
+            return {len, a, end, b, st}; } catch(e){ return 'err:' + e; } }""")
+        chk('機能', '距離と時間がどの画面でもそろう（v274）：道順を描いているときは引数なしで測り直しても道順の長さ。高低差のグラフの端も道順の長さ。直線を描いているときは直線の長さ',
+            isinstance(dz, dict) and abs(dz['a'] - dz['len']) < 0.5 and abs(dz['end'] - dz['len']) < 0.5 and abs(dz['b'] - dz['st']) < 0.5 and abs(dz['len'] - dz['st']) > 1, str(dz)[:200])
 
         # v263: 新しいデザインの地図：閲覧モードは藍染めの町、編集モードは最初は今までの地図。どこでも（画面に映った所を）描く
         dm = page.evaluate("""async ()=>{ try{
