@@ -1046,6 +1046,9 @@ def static_checks(src):
     chk('静的', '広く映すほど道順の点を小さく・間隔を狭く（v272）：z16 より寄ったら縁10・点6・間隔9、1段広くなるごとに 30% 小さく（最小 30%）。拡大縮小のたびに大きさと間隔を合わせ直す',
         "const DM_DOT_SHRINK = {z: 16, per: 0.3, min: 0.3};" in src and "function _dmDotAt(z){" in src and "const P = _dmDotAt(leafMap.getZoom());" in src
         and "_dmRouteDots.setStyle({weight: P.dot, dashArray: st.dashArray});" in src and "_dmRouteHalo.setStyle({weight: P.halo, dashArray: st.dashArray});" in src)
+    chk('静的', '等高線を標高が高いほど濃く（v273）：線ごとの標高（alti）を対数の目盛りで 12 段に分け、白の町は濃い茶へ・藍の町は明るい線へ。段ごとにまとめて描く（色を替えるのは最大 12 回）',
+        "const DM_CONTOUR = {top: 1200, base: 50, steps: 12};" in src and "function _dmContourStep(alti){" in src and "function _dmContourCols(C){" in src
+        and "contourHi:'#93BBDD'" in src and "contourHi:'#BC9B68'" in src and "bins[_dmContourStep(f.props.alti)].push([t, f])" in src)
     # v268：ホーム画面のアイコンを新しいデザイン（藍の町）に。大きさ（PNG の IHDR）と、差し替えた絵の指紋を確かめる
     def _png_info(fn):
         import hashlib, struct

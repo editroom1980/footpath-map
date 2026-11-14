@@ -2506,9 +2506,18 @@ const DM_BLD_MIN_Z = 15;        // 建物はこれより拡大したときだけ
 const DM_CACHE_MAX = 400;       // 端末のメモリに持つタイルの数（これを超えたら古い順に捨てる。端末の保存はサービスワーカー）
 const DM_ROAD_W = {3: 5.4, 0: 5.4, 1: 3.9};   // v267：道の種類（地理院の rdCtg）ごとの最低の太さ px（z16）。3＝高速、0＝国道、1＝県道。市町村道は道幅の区分のまま
 const DM_ROAD_SHRINK = 0.25;      // v267：太い道を縮めたときの細り方（ほかの線は 0.5。小さいほど細くならない）
+const DM_CONTOUR = {top: 1200, base: 50, steps: 12};   // v273：等高線を標高が高いほど濃く（藍の町は明るく強く）。対数の目盛りで 0〜top m を steps 段に。線ごとの標高だけで決まるので、マスの継ぎ目で色が飛ばない
+const _dmContourCache = {};
+function _dmContourCols(C){   // その見た目の steps 段の色（低い所＝contour → 高い所＝contourHi）
+  const key = C.contour + C.contourHi; if (_dmContourCache[key]) return _dmContourCache[key];
+  const h = c => [1, 3, 5].map(i => parseInt(c.slice(i, i + 2), 16)), a = h(C.contour), b = h(C.contourHi || C.contour), out = [];
+  for (let i = 0; i < DM_CONTOUR.steps; i++) { const t = i / (DM_CONTOUR.steps - 1); out.push('rgb(' + a.map((v, j) => Math.round(v + (b[j] - v) * t)).join(',') + ')'); }
+  return (_dmContourCache[key] = out);
+}
+function _dmContourStep(alti){ const v = Math.max(0, Number(alti) || 0); const t = Math.min(1, Math.log(1 + v / DM_CONTOUR.base) / Math.log(1 + DM_CONTOUR.top / DM_CONTOUR.base)); return Math.round(t * (DM_CONTOUR.steps - 1)); }
 const DM_STYLES = {               // 閲覧モードの地図の色（オーナーが選んだ案2と案1。2026-11-07）。押すたびに 藍→生成り→いつもの地図
-  aizome: {label:'藍の町',     short:'藍',     name:'#F7EEDC', halo:'#215B87', ground:'#2E78AE', bld:'#3B85BA', road:'#F7EEDC', roadCase:null,      water:'#C4DCEE', river:'#C4DCEE', contour:'#3B83B8', rail:'#F7EEDC', dots:'rgba(247,238,220,0.07)', edge:'rgba(247,238,220,0.9)'},
-  kinari: {label:'白の町',     short:'白',     name:'#2A5F8A', halo:'#F7EEDC', ground:'#F7EEDC', bld:'#ECDCBD', road:'#FFFFFF', roadCase:'#E4D4B6', roadMainCase:'#C7AE84', water:'#4F8DC1', river:'#8DB6D8', contour:'#E9DABB', rail:'#2E78AE', dots:'rgba(46,120,174,0.06)',  edge:'rgba(46,120,174,0.55)'}
+  aizome: {label:'藍の町',     short:'藍',     name:'#F7EEDC', halo:'#215B87', ground:'#2E78AE', bld:'#3B85BA', road:'#F7EEDC', roadCase:null,      water:'#C4DCEE', river:'#C4DCEE', contour:'#3B83B8', contourHi:'#93BBDD', rail:'#F7EEDC', dots:'rgba(247,238,220,0.07)', edge:'rgba(247,238,220,0.9)'},
+  kinari: {label:'白の町',     short:'白',     name:'#2A5F8A', halo:'#F7EEDC', ground:'#F7EEDC', bld:'#ECDCBD', road:'#FFFFFF', roadCase:'#E4D4B6', roadMainCase:'#C7AE84', water:'#4F8DC1', river:'#8DB6D8', contour:'#E9DABB', contourHi:'#BC9B68', rail:'#2E78AE', dots:'rgba(46,120,174,0.06)',  edge:'rgba(46,120,174,0.55)'}
 };
 const DM_STYLE_ORDER = ['aizome', 'kinari', 'off'];   // off＝いつもの地図（地名を見たいとき）
 /* 地図記号（symbol レイヤの ftCode）。実地で確かめた2つだけを使う：
@@ -3703,7 +3712,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 手描きの道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した手描きの道id（直前取り消し用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v272';
+const APP_VERSION = 'v273';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat0', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -9865,7 +9874,9 @@ async function _dmDrawTile(cv, coords, st){   // 1マス（256px）を描く。�
     f.rings.forEach(r => { for (let i = 0; i < r.length; i += 2) { const X = bx + r[i] * s2, Y = by + r[i + 1] * s2; if (i) g.lineTo(X, Y); else g.moveTo(X, Y); } if (f.gt === 3) g.closePath(); });
   };
   const each = (layer, gt, fn) => got.forEach(t => t.f.forEach(f => { if (f.layer === layer && (!gt || f.gt === gt)) fn(t, f); }));
-  g.strokeStyle = DM_COL.contour; each('contour', 2, (t, f) => { g.lineWidth = Math.max(0.6 * dpr, 0.8 * K * ((Number(f.props.alti) % 50 === 0) ? 1.7 : 1)); path(t, f); g.stroke(); });
+  { const cols = _dmContourCols(DM_COL), bins = cols.map(() => []);   // v273：標高の段ごとにまとめて描く（色を替えるのは最大 steps 回）
+    each('contour', 2, (t, f) => bins[_dmContourStep(f.props.alti)].push([t, f]));
+    bins.forEach((L, i) => { if (!L.length) return; g.strokeStyle = cols[i]; L.forEach(([t, f]) => { g.lineWidth = Math.max(0.6 * dpr, 0.8 * K * ((Number(f.props.alti) % 50 === 0) ? 1.7 : 1)); path(t, f); g.stroke(); }); }); }
   g.fillStyle = DM_COL.water; each('waterarea', 3, (t, f) => { path(t, f); g.fill('evenodd'); }); each('lake', 3, (t, f) => { path(t, f); g.fill('evenodd'); });
   g.strokeStyle = DM_COL.river; g.lineWidth = Math.max(0.8 * dpr, 1.5 * K); each('river', 2, (t, f) => { path(t, f); g.stroke(); });
   if (z >= DM_BLD_MIN_Z) { g.fillStyle = DM_COL.bld; each('building', 3, (t, f) => { path(t, f); g.fill('evenodd'); }); }
