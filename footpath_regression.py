@@ -1052,6 +1052,11 @@ def static_checks(src):
     chk('静的', '距離の測り直し（v274）：引数なしのときは描いている線（道順なら道順・直線なら直線）。高低差のグラフの距離は間引く前の道順の道のり',
         "const c = coords || (_lastRouteCoords && _routeLineBase === _lastRouteCoords ? _lastRouteCoords : buildStraightCoords());" in src
         and "if (R && R.length >= 2 && pts.length >= 2 && pts[0] === R[0]) {" in src)
+    chk('静的', 'ブラウザで開かせる・ホーム画面に追加の案内（v275）：LINE は ?openExternalBrowser=1 で外のブラウザへ開き直す（#d= は残す）、アプリの中のブラウザは毎回すぐ案内（アドレスを写す・Android は intent）、iPhone は Safari 26／それより前／Chrome で手順を分け、やりかたカードで手順を出したまま操作。「あとにする」は3回まで',
+        "if (!/\\sLine\\/\\d/.test(navigator.userAgent)) return;" in src and "'openExternalBrowser=1' + (location.hash || '')" in src
+        and "KAKAOTALK|musical_ly|BytedanceWebview|Barcelona" in src and 'function _a2Copy()' in src and 'function _a2Intent()' in src and 'function _a2Strip(v)' in src
+        and "a2Rec:       'fp_a2_rec'," in src and "inappSeen:   'fp_inapp_seen'," in src and "sv >= 26 ? [" in src and "_a2Rec(n >= 3 ? 'done' : String(n))" in src
+        and "#a2Strip{position:fixed;" in src and "z-index:7100;" in src)
     # v268：ホーム画面のアイコンを新しいデザイン（藍の町）に。大きさ（PNG の IHDR）と、差し替えた絵の指紋を確かめる
     def _png_info(fn):
         import hashlib, struct
@@ -3996,7 +4001,7 @@ def functional_checks(index_path):
             openA2hs();
             out.a2 = document.getElementById('a2hsSheet').classList.contains('show');
             _a2Open('ios');
-            out.ios = document.querySelectorAll('#a2hsSheet .ah-steps li').length === 3
+            out.ios = [3, 4].includes(document.querySelectorAll('#a2hsSheet .ah-steps > li').length)   // v275：Safari 26 は「…」→共有→表示を増やす の4手順
                       && /ホーム画面に追加/.test(document.getElementById('a2D').textContent);
             _a2Open('inapp');
             out.inapp = /ブラウザで開く/.test(document.getElementById('a2D').textContent);

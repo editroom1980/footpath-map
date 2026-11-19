@@ -6,6 +6,17 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <script>
+/* v275：LINE の中のブラウザで開かれたら、URL に ?openExternalBrowser=1 を付けて開き直し、外部ブラウザ（Safari・Chrome）で開かせる。
+   LINE 公式の仕組み（developers.line.biz「LINE URLスキームでLINEの機能を使う」の「URLを外部ブラウザで開く」）。
+   #d=…（配るリンクのコース）はそのまま残す。付けても LINE の中のままなら、繰り返さない（ブラウザで開く案内が代わりに出る） */
+(function(){ try {
+  if (!/\sLine\/\d/.test(navigator.userAgent)) return;
+  var q = location.search || '';
+  if (/[?&]openExternalBrowser=1(&|$)/.test(q)) return;
+  location.replace(location.pathname + q + (q ? '&' : '?') + 'openExternalBrowser=1' + (location.hash || ''));
+} catch(_) {} })();
+</script>
+<script>
 /* v260：ホーム画面のアプリでは下の安全域（ホームバー）が 0 で返ることがあり（viewport-fit=cover が無いとき・iOS 27 シミュレータで測った）、下の帯がホームバーにかかる。念のため v261 でも残す。
    ホームバーのある iPhone（画面の長い辺が 812pt 以上）は 34pt、iPad は 20pt を下の余白の最小にする（--sab-min） */
 (function(){ try {
@@ -789,10 +800,21 @@ body.viewonly #firstTip,body.embed #firstTip{display:none!important}
 #a2hsSheet .tr-ic{font-size:34px;line-height:1;text-align:center}
 #a2hsSheet .tr-t{font-size:18px;font-weight:800;color:#3E2A0E;text-align:center;line-height:1.4}
 #a2hsSheet .tr-d{font-size:13.5px;color:#4A443E;line-height:1.8;overflow-y:auto;flex:1}
-#a2hsSheet .ah-steps{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:10px}
-#a2hsSheet .ah-steps li{display:flex;gap:9px;align-items:flex-start;font-size:14px;color:#2C2620;line-height:1.6}
-#a2hsSheet .ah-steps b.n{flex-shrink:0;width:23px;height:23px;border-radius:50%;background:var(--brand);color:#fff;font-size:12.5px;display:flex;align-items:center;justify-content:center}
-#a2hsSheet .ah-mark{display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:26px;border-radius:7px;background:#EFF4FF;border:0.5px solid #C9D8F5;vertical-align:-7px;margin:0 2px}
+#a2hsSheet .ah-steps,#a2Strip .ah-steps{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:10px}
+#a2hsSheet .ah-steps li,#a2Strip .ah-steps li{display:flex;gap:9px;align-items:flex-start;font-size:14px;color:#2C2620;line-height:1.6}
+#a2hsSheet .ah-steps b.n,#a2Strip .ah-steps b.n{flex-shrink:0;width:23px;height:23px;border-radius:50%;background:var(--brand);color:#fff;font-size:12.5px;display:flex;align-items:center;justify-content:center}
+#a2hsSheet .ah-mark,#a2Strip .ah-mark{display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:26px;border-radius:7px;background:#EFF4FF;border:0.5px solid #C9D8F5;vertical-align:-7px;margin:0 2px}
+/* v275：やりかたカード（しそチャンNET に倣う）。暗い幕も押す物も無く、画面の上に手順を出したまま、ブラウザのメニューを操作してもらう */
+#a2Strip{position:fixed;left:8px;right:8px;top:max(8px,var(--sat));z-index:7100;max-width:620px;margin:0 auto;background:#fff;border-radius:16px;box-shadow:0 8px 28px rgba(0,0,0,.28);padding:12px 14px 12px;display:none}
+#a2Strip.show{display:block}
+#a2Strip .st-hd{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+#a2Strip .st-t{flex:1;font-size:15px;font-weight:800;color:#2C2620}
+#a2Strip .st-x{width:32px;height:32px;border:0;border-radius:50%;background:#F1ECE3;color:#6A645E;font-size:14px;cursor:pointer;flex-shrink:0}
+#a2Strip .ah-steps{gap:7px}
+#a2Strip .ah-steps li{font-size:13.5px;line-height:1.55}
+@supports (text-spacing-trim:trim-start){#a2hsSheet .ah-steps li>span,#a2Strip .ah-steps li>span{text-spacing-trim:trim-start}}   /* v275：「 で始まる手順も、文の頭をそろえる（しそチャンNET に倣う） */
+@supports not (text-spacing-trim:trim-start){.ah-steps .kq{margin-left:-.5em}}   /* 知らないブラウザ（今の Safari など）では行の頭の「 を半字左へ */
+#a2Strip .st-n{margin-top:8px;font-size:12px;color:#6A645E;line-height:1.6}
 #a2hsSheet .tr-foot{display:flex;gap:8px}
 #a2hsSheet .tr-foot button{flex:1;min-height:46px;border:0;border-radius:12px;font-family:inherit;font-size:15px;font-weight:800;cursor:pointer}
 #a2hsSheet .tr-back{background:#F1ECE3;color:#4A2E0E}
@@ -2714,6 +2736,8 @@ const LS = {
   saveCount:   'fp_save_count',   // その後の保存回数（＝バックアップに入っていない回数）
   firstSaveAt: 'fp_first_save',   // 最初の保存の日時（一度もバックアップが無いときの起点）
   homeTipSeen: 'fp_hometip_seen', // iPhone のホーム画面追加の案内を見たかどうか
+  a2Rec:       'fp_a2_rec',       // v275：ホーム画面に追加の案内の記録（'done'＝手順まで見た・3回ことわった／数字＝「あとにする」で閉じた回数。しそチャンNET に倣う）
+  inappSeen:   'fp_inapp_seen',   // v275：LINE などの中のブラウザで「ブラウザで開いて」を出したか（sessionStorage・同じタブで1回）
   offAuto:     'fp_offauto',      // 共有リンクを開いた端末で地図を自動で持ち歩いた記録（コースごと・v135）
   finds:       'fp_finds',        // 歩く人が貼った「発見」（コースIDごと・この端末だけ・v143）
   findBy:      'fp_find_by',      // 発見に添える名前（前回の入力を覚える・v143）
@@ -3712,7 +3736,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 手描きの道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した手描きの道id（直前取り消し用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v274';
+const APP_VERSION = 'v275';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat0', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -8069,7 +8093,7 @@ function _a2Apple(){
   try { if (/Mac/.test(u) && navigator.maxTouchPoints > 1) return true; } catch(_) {}   // iPadOS は Mac を名乗る
   return false;
 }
-function _a2InApp(){ return /Line\/|FBAN|FBAV|Instagram|Twitter for|MicroMessenger/.test(navigator.userAgent); }
+function _a2InApp(){ return /\sLine\/|FBAN|FBAV|FB_IAB|FBIOS|Instagram|Twitter for|MicroMessenger|KAKAOTALK|musical_ly|BytedanceWebview|Barcelona/.test(navigator.userAgent); }   // v275：カカオトーク・TikTok・Threads も
 function _a2Pc(){
   const u = navigator.userAgent;
   if (/Android|iPhone|iPod|iPad|Mobile/.test(u)) return false;
@@ -8084,24 +8108,52 @@ function _a2MayGetPrompt(){   // まだ合図が来る見込みがあるか（Ch
 }
 const A2_SHARE = '<span class="ah-mark"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="#1B62D6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v13"/><path d="M8 7l4-4 4 4"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg></span>';
 const A2_DOTS = '<span class="ah-mark"><svg viewBox="0 0 24 24" width="15" height="15" fill="#1B62D6"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></span>';
+const A2_VDOTS = '<span class="ah-mark"><svg viewBox="0 0 24 24" width="15" height="15" fill="#1B62D6"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg></span>';   // v275：Android の ⋮（縦）
 function _a2Screen(kind){
   if (kind === 'done') return {ic:'🎉', t:'追加できました', d:'ホーム画面のアイコンから開いてお使いください。<br>アイコンが見つからないときは、ホーム画面を左右にめくって全部のページをご覧ください。', b:'とじる'};
   if (kind === 'already') return {ic:'👍', t:'すでに追加されています', d:'いまホーム画面のアイコンから開いています。このままお使いください。', b:'とじる'};
-  if (kind === 'inapp') return {ic:'↗️', t:'このままでは追加できません', d:'LINE などの中で見ているため、ホーム画面に置けません。<br>右上のメニューから <b>「ブラウザで開く」</b>（Safari・Chrome）を選んでから、もう一度お試しください。', b:'とじる'};
+  if (kind === 'inapp') {   // v275：LINE・Instagram などの中のブラウザ
+    const and = /Android/.test(navigator.userAgent), toBrowser = and && !location.hash;   // # の後ろ（配るリンクのコース）は intent で運べないので写す
+    return {ic:'↗️', t:'ブラウザで開いてください', steps: and ? [
+        '右上の ' + A2_VDOTS + ' を押す',
+        '<b>「ブラウザで開く」</b>（Chrome など）を押す'
+      ] : [
+        '右上か右下の ' + A2_DOTS + ' か ' + A2_SHARE + ' を押す',
+        '<b>「Safari で開く」</b>（または「ブラウザで開く」）を押す'
+      ], note: 'LINE・Instagram などの中では、コースの保存やホーム画面への追加がうまく働きません。'
+        + (toBrowser ? '下のボタンでも開けます。' : '見つからないときは、アドレスを写して ' + (and ? 'Chrome' : 'Safari') + ' に貼ってください。'),
+      b: toBrowser ? 'ブラウザで開く' : 'アドレスを写す', alt: 'このまま使う', act: toBrowser ? 'intent' : 'copy'};
+  }
   if (kind === 'pc') return {ic:'💻', t:'パソコンでご覧です', d:'ホーム画面への追加はスマートフォン・タブレットの機能です。<br>パソコンでは、このページを<b>お気に入り（ブックマーク）</b>に入れておくと次から開きやすくなります。', b:'とじる'};
-  if (kind === 'ios') return {ic:'📱', t:'ホーム画面に追加します', steps:[
-      '画面の下（横向きのときは上）にある ' + A2_SHARE + ' を押す',
-      '出てきた一覧を下へたどり <b>「ホーム画面に追加」</b> を押す',
-      '右上の <b>「追加」</b> を押す'
-    ], note:'この ' + A2_SHARE + ' が見当たらないときは、アドレスバーの右の ' + A2_DOTS + ' の中にあります（Safari の表示設定によって変わります）。', b:'できた'};
+  if (kind === 'ios') {   // v275：版とブラウザで道が違う（しそチャンNET が iOS 26.5 の実機で確かめた道に合わせた）
+    const u = navigator.userAgent, other = /CriOS|FxiOS|EdgiOS/.test(u), m = u.match(/Version\/(\d+)/), sv = m ? +m[1] : 0;   // Safari 26 は UA の iOS の版が 18 で止まるので Safari の版で見る
+    const steps = other ? [
+        'アドレス欄の右の ' + A2_SHARE + ' を押す',
+        '<b>「ホーム画面に追加」</b>を押す（見えないときは下へたどる）',
+        '右上の <b>「追加」</b>を押す'
+      ] : sv >= 26 ? [
+        '画面の下の ' + A2_DOTS + ' を押す',
+        '<b>「共有」</b>を押す',
+        '<b>「表示を増やす」</b>→<b>「ホーム画面に追加」</b>を押す',
+        '<b>「Webアプリとして開く」</b>はオンのまま、<span style="white-space:nowrap">右上の <b>「追加」</b>を押す</span>'
+      ] : [
+        '画面の下（横向きのときは上）の ' + A2_SHARE + ' を押す',
+        '一覧を下へたどり <b>「ホーム画面に追加」</b>を押す',
+        '右上の <b>「追加」</b>を押す'
+      ];
+    return {ic:'📱', t:'ホーム画面に追加します', steps,
+      note: (other || sv >= 26 ? '' : A2_SHARE + ' が見当たらないときは、アドレス欄の右の ' + A2_DOTS + ' の中にあります。') + '追加したアイコンは、ホーム画面の2ページ目以降に入ることがあります。',
+      b:'手順を見ながらやる', act:'strip'};
+  }
   if (kind === 'android') return {ic:'📱', t:'ホーム画面に追加します', steps:[
-      '右上の ' + A2_DOTS + ' を押す',
+      '右上の ' + A2_VDOTS + ' を押す',
       '<b>「ホーム画面に追加」</b>（または「アプリをインストール」）を押す',
-      '<b>「追加」</b>を押す'
-    ], note:'ブラウザによって言い方が少し変わります。見つからないときは、メニューの中を上から順にご覧ください。', b:'できた'};
+      '<b>「追加」</b>（または「インストール」）を押す'
+    ], note:'⋮ が色のついた丸になっていることもあります。「（アプリ名）を起動」と出るときは、すでに入っています。追加したアイコンは、ホーム画面の2ページ目以降に入ることがあります。', b:'手順を見ながらやる', act:'strip'};
   return {ic:'📲', t:'ホーム画面に追加しませんか？', d:'ふつうのアプリのように、1回押すだけで開けるようになります。<br>Safari は<b>7日以上開かない</b>と保存したコースを消すことがありますが、ホーム画面に追加しておくと消えにくくなります。',
           b:'ホーム画面に追加', alt:'あとにする'};
 }
+function _a2Lis(steps){ return steps.map((t, i) => '<li><b class="n">' + (i + 1) + '</b><span>' + t.replace(/^(<b>)?「/, '$1<span class="kq">「</span>') + '</span></li>').join(''); }   // v275：手順の行（頭の「 は詰める）
 function _a2Open(kind){
   let sh = document.getElementById('a2hsSheet');
   if (!sh) {
@@ -8119,15 +8171,51 @@ function _a2Open(kind){
   sh.querySelector('#a2Ic').textContent = v.ic;
   sh.querySelector('#a2T').textContent = v.t;
   sh.querySelector('#a2D').innerHTML = v.steps
-    ? ('<ol class="ah-steps">' + v.steps.map((t, i) => '<li><b class="n">' + (i + 1) + '</b><span>' + t + '</span></li>').join('') + '</ol>'
+    ? ('<ol class="ah-steps">' + _a2Lis(v.steps) + '</ol>'
        + (v.note ? '<div style="margin-top:12px;font-size:12.5px;color:#6A645E;line-height:1.7">' + v.note + '</div>' : ''))
     : v.d;
   const go = sh.querySelector('#a2Go'), alt = sh.querySelector('#a2Alt');
   go.textContent = v.b; alt.hidden = !v.alt; if (v.alt) alt.textContent = v.alt;
-  go.onclick = (kind === 'start') ? _a2Go : closeA2hs;
+  _a2Kind = kind;
+  go.onclick = (kind === 'start') ? _a2Go : v.act === 'copy' ? _a2Copy : v.act === 'intent' ? _a2Intent : v.act === 'strip' ? () => _a2Strip(v) : closeA2hs;
   sh.classList.add('show');
 }
-function closeA2hs(){ const sh = document.getElementById('a2hsSheet'); if (sh) sh.classList.remove('show'); try { localStorage.setItem(LS.homeTipSeen, '1'); } catch(_) {} }
+function _a2Url(){ return location.href.replace(/([?&])openExternalBrowser=1(&|(?=#)|$)/, (m, p1, p2) => p2 === '&' ? p1 : '').replace(/\?(?=#|$)/, ''); }   // v275：写すアドレス（LINE 用の印は外す）
+async function _a2Copy(){   // v275：アドレスを写す
+  const url = _a2Url(), go = document.getElementById('a2Go');
+  let ok = false;
+  try { await navigator.clipboard.writeText(url); ok = true; } catch(_) {
+    try { const t = document.createElement('textarea'); t.value = url; t.setAttribute('readonly', ''); t.style.cssText = 'position:fixed;top:-100px;opacity:0'; document.body.appendChild(t); t.select(); ok = document.execCommand('copy'); t.remove(); } catch(_) {}
+  }
+  if (go) go.textContent = ok ? '写しました' : 'アドレス：' + url;
+  if (ok) showToast('アドレスを写しました。' + (/Android/.test(navigator.userAgent) ? 'Chrome' : 'Safari') + ' のアドレス欄に貼ってください');
+}
+function _a2Intent(){   // v275：Android の中のブラウザから、ふつうのブラウザへ渡す（# の無いアドレスだけ）
+  const u = new URL(_a2Url());
+  location.href = 'intent://' + u.host + u.pathname + u.search + '#Intent;scheme=https;action=android.intent.action.VIEW;S.browser_fallback_url=' + encodeURIComponent(u.href) + ';end';
+}
+let _a2Kind = null;
+function _a2Rec(v){ try { if (v === undefined) return localStorage.getItem(LS.a2Rec); localStorage.setItem(LS.a2Rec, v); } catch(_) {} return null; }
+function closeA2hs(){   // v275：「あとにする」（最初の窓を閉じた）は回数を数え、3回で出さない。手順まで見た・追加できた・追加済みは、もう出さない
+  const sh = document.getElementById('a2hsSheet'); if (sh) sh.classList.remove('show');
+  try { localStorage.setItem(LS.homeTipSeen, '1'); } catch(_) {}
+  if (_a2Kind === 'inapp') return;   // ブラウザで開いてもらう案内は数えない（そのブラウザでまた案内する）
+  const r = _a2Rec();
+  if (r !== 'done') { if (_a2Kind === 'start') { const n = (+r || 0) + 1; _a2Rec(n >= 3 ? 'done' : String(n)); } else _a2Rec('done'); }
+}
+function _a2Strip(v){   // v275：やりかたカード。窓を閉じ、画面の上に手順を出したままにする（暗い幕なし。ブラウザのメニューを操作してもらう）
+  closeA2hs();
+  let el = document.getElementById('a2Strip');
+  if (!el) {
+    el = document.createElement('div'); el.id = 'a2Strip'; el.setAttribute('role', 'note');
+    el.innerHTML = '<div class="st-hd"><div class="st-t">ホーム画面に追加</div><button type="button" class="st-x tap" aria-label="手順を閉じる">✕</button></div><ol class="ah-steps" id="a2StS"></ol><div class="st-n" id="a2StN"></div>';
+    document.body.appendChild(el);
+    el.querySelector('.st-x').addEventListener('click', () => el.classList.remove('show'));
+  }
+  el.querySelector('#a2StS').innerHTML = _a2Lis(v.steps);
+  el.querySelector('#a2StN').innerHTML = v.note || '';
+  el.classList.add('show');
+}
 /* 「ホーム画面に追加」を押したあと：1タップで入れられる端末はそのまま、だめなら手順の案内へ */
 async function _a2Go(){
   if (_a2Prompt) {
@@ -8147,8 +8235,13 @@ function openA2hs(){
   _a2Open('start');
 }
 function _a2FirstRun(){   // 初回だけ、そっと出す（配るリンクで開いた人・追加済みには出さない）
+  if (_a2InApp() && !_a2Standalone()) {   // v275：LINE などの中のブラウザでは、毎回（同じタブで1回）すぐ「ブラウザで開いて」を出す。配るリンクで開いた人にも
+    try { if (sessionStorage.getItem(LS.inappSeen)) return; sessionStorage.setItem(LS.inappSeen, '1'); } catch(_) {}
+    setTimeout(() => _a2Open('inapp'), 900);
+    return;
+  }
   if (_a2Standalone() || _viewParams().on) return;
-  try { if (localStorage.getItem(LS.homeTipSeen)) return; } catch(_) { return; }
+  try { if (localStorage.getItem(LS.a2Rec) === 'done') return; } catch(_) { return; }   // v275：「あとにする」は3回まで次の起動でまた出す（しそチャンNET に倣う）
   const wait = _a2MayGetPrompt() ? 6000 : 2500;   // 1タップの合図を少し待ってから出す
   setTimeout(() => {
     if (_a2Standalone()) return;
