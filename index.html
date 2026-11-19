@@ -3736,7 +3736,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 手描きの道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した手描きの道id（直前取り消し用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v275';
+const APP_VERSION = 'v276';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat0', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -8078,7 +8078,12 @@ function _tourFirstRun(){   // 初回だけ自動で開く（配るリンクで�
    ・すでにホーム画面から開いている人には出さない */
 let _a2Prompt = null, _a2T0 = Date.now();
 const A2HS_WAIT_MS = 25000;   // 合図が来るのを待つ時間（しそチャンNET の実測に合わせる）
-window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); _a2Prompt = e; });
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault(); _a2Prompt = e;
+  if (_a2Waiting) { _a2Waiting = false; _a2AutoShow(); return; }   // v276：待っていた初回の案内を、合図が来たその場で出す（1回で入れられる形で）
+  const sh = document.getElementById('a2hsSheet'); if (sh && sh.classList.contains('show') && _a2Kind === 'start') _a2Open('start');   // 出ている案内を「インストールする」に替える
+});
+let _a2Waiting = false;
 window.addEventListener('appinstalled', () => { _a2Prompt = null; try { localStorage.setItem(LS.homeTipSeen, '1'); } catch(_) {} _a2Open('done'); });
 function _a2Standalone(){
   try {
@@ -8110,6 +8115,7 @@ const A2_SHARE = '<span class="ah-mark"><svg viewBox="0 0 24 24" width="15" heig
 const A2_DOTS = '<span class="ah-mark"><svg viewBox="0 0 24 24" width="15" height="15" fill="#1B62D6"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></span>';
 const A2_VDOTS = '<span class="ah-mark"><svg viewBox="0 0 24 24" width="15" height="15" fill="#1B62D6"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg></span>';   // v275：Android の ⋮（縦）
 function _a2Screen(kind){
+  if (kind === 'installed') return {ic:'👍', t:'すでに入っています', d:'ホーム画面の<b>「フットパス」</b>のアイコンから開いてください。<br>見つからないときは、ホーム画面を左右にめくって全部のページをご覧ください。', b:'とじる'};
   if (kind === 'done') return {ic:'🎉', t:'追加できました', d:'ホーム画面のアイコンから開いてお使いください。<br>アイコンが見つからないときは、ホーム画面を左右にめくって全部のページをご覧ください。', b:'とじる'};
   if (kind === 'already') return {ic:'👍', t:'すでに追加されています', d:'いまホーム画面のアイコンから開いています。このままお使いください。', b:'とじる'};
   if (kind === 'inapp') {   // v275：LINE・Instagram などの中のブラウザ
@@ -8150,6 +8156,8 @@ function _a2Screen(kind){
       '<b>「ホーム画面に追加」</b>（または「アプリをインストール」）を押す',
       '<b>「追加」</b>（または「インストール」）を押す'
     ], note:'⋮ が色のついた丸になっていることもあります。「（アプリ名）を起動」と出るときは、すでに入っています。追加したアイコンは、ホーム画面の2ページ目以降に入ることがあります。', b:'手順を見ながらやる', act:'strip'};
+  if (_a2Prompt) return {ic:'📲', t:'アプリとして入れませんか？', d:'下のボタンを押すと確認が出ます。<b>「インストール」</b>を押せば終わりです。<br>ホーム画面のアイコンから1回で開けるようになり、保存したコースも消えにくくなります。',
+          b:'インストールする', alt:'あとにする'};   // v276：Android の Chrome などで、1回で入れられるとき
   return {ic:'📲', t:'ホーム画面に追加しませんか？', d:'ふつうのアプリのように、1回押すだけで開けるようになります。<br>Safari は<b>7日以上開かない</b>と保存したコースを消すことがありますが、ホーム画面に追加しておくと消えにくくなります。',
           b:'ホーム画面に追加', alt:'あとにする'};
 }
@@ -8218,18 +8226,37 @@ function _a2Strip(v){   // v275：やりかたカード。窓を閉じ、画面�
 }
 /* 「ホーム画面に追加」を押したあと：1タップで入れられる端末はそのまま、だめなら手順の案内へ */
 async function _a2Go(){
+  if (!_a2Prompt && _a2MayGetPrompt()) {   // v276：Android の Chrome などで合図がまだなら、4秒まで待って1回で入れる形にする
+    const go = document.getElementById('a2Go'); if (go) { go.textContent = '準備しています…'; go.disabled = true; }
+    for (let i = 0; i < 20 && !_a2Prompt; i++) await new Promise(r => setTimeout(r, 200));
+    if (go) go.disabled = false;
+  }
   if (_a2Prompt) {
     const p = _a2Prompt; _a2Prompt = null;
-    try { p.prompt(); const r = await p.userChoice; if (r && r.outcome === 'accepted') { _a2Open('done'); return; } closeA2hs(); return; }
+    try { p.prompt(); const r = await p.userChoice; if (r && r.outcome === 'accepted') { _a2Rec('done'); _a2Open('done'); return; } closeA2hs(); return; }
     catch(_) {}
   }
   if (_a2InApp()) { _a2Open('inapp'); return; }
   if (_a2Pc()) { _a2Open('pc'); return; }
   _a2Open(_a2Apple() ? 'ios' : 'android');
 }
+async function _a2Installed(){   // v276：manifest の related_applications と合わせ、ブラウザのタブからでも「入れ済み」が分かる（Android の Chrome。しそチャンNET が実機で確かめた）
+  try { if (navigator.getInstalledRelatedApps) { const a = await navigator.getInstalledRelatedApps(); return Array.isArray(a) && a.length > 0; } } catch(_) {}
+  return false;
+}
+function _a2AutoShow(){   // v276：初回の案内を出してよいときだけ出す
+  if (_a2Standalone()) return;
+  if (document.getElementById('s1').style.display === 'none') return;
+  if (document.querySelector('#tourSheet.show, #guideWrap.on, #a2hsSheet.show')) return;   // 使い方の案内が出ている間は譲る（v231）
+  _a2Installed().then(inst => { if (!inst) openA2hs(); });
+}
 /* 入口：一覧の案内カードと、いつでも開ける行 */
 function openA2hs(){
   if (_a2Standalone()) { _a2Open('already'); return; }
+  _openA2hsRest();
+  if (navigator.getInstalledRelatedApps && !_a2Apple()) _a2Installed().then(inst => { if (inst) _a2Open('installed'); });   // v276：窓はすぐ出し、入れ済みと分かったら「すでに入っています」に替える
+}
+function _openA2hsRest(){
   if (_a2InApp()) { _a2Open('inapp'); return; }
   if (_a2Pc()) { _a2Open('pc'); return; }
   _a2Open('start');
@@ -8242,13 +8269,15 @@ function _a2FirstRun(){   // 初回だけ、そっと出す（配るリンクで
   }
   if (_a2Standalone() || _viewParams().on) return;
   try { if (localStorage.getItem(LS.a2Rec) === 'done') return; } catch(_) { return; }   // v275：「あとにする」は3回まで次の起動でまた出す（しそチャンNET に倣う）
-  const wait = _a2MayGetPrompt() ? 6000 : 2500;   // 1タップの合図を少し待ってから出す
-  setTimeout(() => {
-    if (_a2Standalone()) return;
-    if (document.getElementById('s1').style.display === 'none') return;
-    if (document.querySelector('#tourSheet.show, #guideWrap.on')) return;   // 使い方の案内が出ている間は譲る（v231：さわりながらの案内も）
-    openA2hs();
-  }, wait);
+  // v276：Android の Chrome などは、1回で入れる合図（beforeinstallprompt）が来るまで最大25秒待ち、来たらその場で出す。
+  // 合図が来る時期はブラウザ次第で予測できない（しそチャンNET の実測）。来なければ25秒で手順の案内を出す。合図の無いブラウザ（iPhone など）は2.5秒で出す
+  if (_a2Prompt) { setTimeout(_a2AutoShow, 1500); return; }
+  if (_a2MayGetPrompt()) {
+    _a2Waiting = true;
+    setTimeout(() => { if (_a2Waiting) { _a2Waiting = false; _a2AutoShow(); } }, Math.max(1500, A2HS_WAIT_MS - (Date.now() - _a2T0)));
+    return;
+  }
+  setTimeout(_a2AutoShow, 2500);
 }
 
 

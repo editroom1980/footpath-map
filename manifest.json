@@ -1,7 +1,7 @@
 {
   "name": "フットパスマップメーカー",
   "short_name": "フットパス",
-  "description": "歩くコース（フットパス）を地図で設計し、配布用の地図画像やJSONを書き出せるWebアプリ。",
+  "description": "歩くコース（フットパス）を地図で作り、藍の町・白の町の地図の上を歩けるアプリ。コースを配ったり、スタンプを集めたりできます。",
   "lang": "ja",
   "start_url": "./index.html",
   "scope": "./",
@@ -9,9 +9,49 @@
   "background_color": "#F5EDD8",
   "theme_color": "#F2670E",
   "icons": [
-    { "src": "icon-192.png",  "sizes": "192x192",   "type": "image/png" },
-    { "src": "icon-512.png",  "sizes": "512x512",   "type": "image/png" },
-    { "src": "icon-512.png",  "sizes": "512x512",   "type": "image/png", "purpose": "maskable" },
-    { "src": "icon-1024.png", "sizes": "1024x1024", "type": "image/png" }
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "icon-1024.png",
+      "sizes": "1024x1024",
+      "type": "image/png"
+    }
+  ],
+  "id": "/footpath-map/index.html",
+  "screenshots": [
+    {
+      "src": "screenshot-1.jpg",
+      "sizes": "780x1688",
+      "type": "image/jpeg",
+      "form_factor": "narrow",
+      "label": "藍の町の地図で、コースの点線と見どころを見ながら歩く"
+    },
+    {
+      "src": "screenshot-2.jpg",
+      "sizes": "780x1688",
+      "type": "image/jpeg",
+      "form_factor": "narrow",
+      "label": "白の町の地図と、高低差のグラフ"
+    }
+  ],
+  "related_applications": [
+    {
+      "platform": "webapp",
+      "url": "https://editroom1980.github.io/footpath-map/manifest.json"
+    }
   ]
 }

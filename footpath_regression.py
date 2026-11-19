@@ -637,7 +637,7 @@ def static_checks(src):
         "window.addEventListener('beforeinstallprompt'" in src and 'function _a2Go' in src and 'function openA2hs' in src
         and 'function _a2Standalone' in src and 'function _a2Apple' in src and 'function _a2InApp' in src and 'function _a2Pc' in src
         and 'const A2HS_WAIT_MS = 25000;' in src and 'ホーム画面に追加する' in src and "_a2Open('ios')" not in src
-        and "document.querySelector('#tourSheet.show, #guideWrap.on')" in src   # v231：案内が出ている間は出さない
+        and "document.querySelector('#tourSheet.show, #guideWrap.on, #a2hsSheet.show')" in src   # v231：案内が出ている間は出さない（v276：案内の窓が出ている間も）
         and "_a2Open(_a2Apple() ? 'ios' : 'android')" in src)
     # --- v221: みんなのマップから開いたコースには、一覧の情報から作者の印を付ける ---
     chk('静的', 'v220 より前に出されたコース（中身に印が無いもの）でも、一覧の作者を印にして再投稿を止める',
@@ -1057,6 +1057,17 @@ def static_checks(src):
         and "KAKAOTALK|musical_ly|BytedanceWebview|Barcelona" in src and 'function _a2Copy()' in src and 'function _a2Intent()' in src and 'function _a2Strip(v)' in src
         and "a2Rec:       'fp_a2_rec'," in src and "inappSeen:   'fp_inapp_seen'," in src and "sv >= 26 ? [" in src and "_a2Rec(n >= 3 ? 'done' : String(n))" in src
         and "#a2Strip{position:fixed;" in src and "z-index:7100;" in src)
+    chk('静的', 'Android は1回でインストール（v276）：合図（beforeinstallprompt）が来るまで最大25秒待ち、来たらすぐ「インストールする」。押したときも4秒まで待つ。入れ済みはブラウザのタブからでも見分けて出さない（getInstalledRelatedApps）',
+        "if (_a2Waiting) { _a2Waiting = false; _a2AutoShow(); return; }" in src and "b:'インストールする', alt:'あとにする'" in src and 'async function _a2Installed()' in src
+        and "kind === 'installed'" in src and "go.textContent = '準備しています…'" in src and "_a2Waiting = true;" in src)
+    try:
+        _mf = json.load(open(os.path.join(os.path.dirname(os.path.abspath(INDEX)), 'manifest.json'), encoding='utf-8'))
+        chk('静的', 'manifest に画面の写真（Android の確認が写真つきの大きなシートになる）と、入れ済みを見分ける related_applications、今までと同じ id（v276）',
+            len(_mf.get('screenshots', [])) == 2 and all(os.path.exists(os.path.join(os.path.dirname(os.path.abspath(INDEX)), x['src'])) and x.get('form_factor') == 'narrow' for x in _mf['screenshots'])
+            and _mf.get('related_applications', [{}])[0].get('url') == 'https://editroom1980.github.io/footpath-map/manifest.json' and _mf.get('id') == '/footpath-map/index.html'
+            and _mf.get('start_url') == './index.html' and _mf.get('display') == 'standalone', str(_mf.get('screenshots'))[:120])
+    except Exception as _e:
+        chk('静的', 'manifest に画面の写真と related_applications（v276）', False, str(_e)[:120])
     # v268：ホーム画面のアイコンを新しいデザイン（藍の町）に。大きさ（PNG の IHDR）と、差し替えた絵の指紋を確かめる
     def _png_info(fn):
         import hashlib, struct
