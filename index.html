@@ -435,6 +435,12 @@ body.embed #s2, body.embed #mapArea, body.embed #mapWrap{height:100%!important;m
 .wp-ph{font-size:10px;color:var(--t-sub);margin-right:4px;flex-shrink:0}
 /* 発見（v143） */
 .wp-sticker.find{border-color:#E8F5E9}
+body.fp-rot #map .leaflet-marker-icon > *{rotate:var(--fp-nr,0deg)}   /* v278：地図を回しているとき、印の中身は逆に回して立てる */
+body.fp-rot #map .leaflet-tooltip{rotate:var(--fp-nr,0deg)}           /* 名前の帯も（軸は印の点。_rotTipOrigin で合わせる） */
+#mobileRotBtn .rot-needle{transform-origin:12px 12px;transform-box:view-box}
+#mobileRotBtn .rot-n{position:absolute;left:0;right:0;bottom:3px;font-size:9px;font-weight:800;line-height:1;text-align:center;color:#E9603B}
+#mobileRotBtn{position:relative}
+#mobileRotBtn[hidden]{display:none!important}   /* .mrb の display より強く隠す */
 .wp-sticker.round{border-radius:50%}   /* v277：丸いシール。小さな印は丸の縁の斜め45度の点（--p）に中心を合わせる */
 .wp-sticker.round .wp-stk-badge{left:var(--p);top:var(--p);transform:translate(-50%,-50%)}
 .wp-sticker.round .wp-visited{right:var(--p);top:var(--p);transform:translate(50%,-50%)}
@@ -1809,6 +1815,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
           <!-- v247：現在地は「追いかける」1つ（◎ 現在地へ をまとめた。オーナー指示「追従だけでいい」）。追いかけている間は青く塗る -->
           <button class="mrb next tap" id="mobileNextBtn" onclick="toggleFollowMode()" aria-label="現在地を追いかける" aria-pressed="false" title="現在地を追いかける（もう一度押すと止まります）。閲覧モードでは次のスポットまでの距離も出ます"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l19 -9l-9 19l-2 -8z" /></svg></button>
           <!-- v249：スタンプも右の列のアイコンに（オーナー指示）。数は下の小さな文字。閲覧モードでスポットがあるときだけ出る。押すとスタンプ帳（v250） -->
+          <button class="mrb rot tap" id="mobileRotBtn" onclick="resetMapBearing()" aria-label="北を上に戻す" title="北を上に戻す（2本指でひねると地図が回ります）" hidden><svg class="svgi" viewBox="0 0 24 24" aria-hidden="true"><g class="rot-needle"><path d="M12 3l3.6 9h-7.2z" fill="#E9603B"/><path d="M12 21l3.6-9h-7.2z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></g></svg><span class="rot-n">北</span></button>
           <button class="mrb stamp tap" id="mobileStampBtn" onclick="openStampSheet()" aria-label="スタンプ帳" title="スタンプ帳（押し方・いくつ押したか）" hidden><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 17.85h-18c0 -4.05 1.421 -4.05 3.79 -4.05c5.21 0 1.21 -4.59 1.21 -6.8a4 4 0 1 1 8 0c0 2.21 -4 6.8 1.21 6.8c2.369 0 3.79 0 3.79 4.05z" /> <path d="M5 21h14" /></svg><span class="st-l"></span></button>
           <!-- v241：ポイントの表示。押すたびに 全部→コース→線だけ。長押しで種類を選ぶ（_ptBindHold） -->
           <!-- v263：閲覧モードの地図の見た目（藍の町→白の町→いつもの地図）。閲覧モードのときだけ出る -->
@@ -3605,6 +3612,91 @@ function cycleBaseMap(){
 /* ============================================================
    MAP INIT
    ============================================================ */
+/* ===== 地図を回す（v278・閲覧モードだけ・部品を使わず自作）=====
+   Leaflet の中は北が上のまま。見た目だけ mapPane を画面の中心で回す（CSS の rotate。地図の枠とボタンは回さない）。
+   印の中身と名前の帯は逆に回して、字を立てたままにする。指の位置（mouseEventToContainerPoint）とドラッグの量は回した分だけ戻す。
+   回している間だけ、タイルと線を対角線の長さまで広く描く（隅が欠けないように）。北が上（0°）のときと編集モードでは何もしない＝今までと同じ */
+const ROT_START_DEG = 15;   // 2本指をこの角度ひねったら回し始める（ピンチで拡大・縮小するだけのときに回らないように）
+const ROT_SNAP_DEG = 8;     // 指を離したとき、北からこの角度以内なら北が上に戻す
+let _mapBearing = 0;        // 地図の回転（度・時計回り・-180〜180。0＝北が上）
+let _rotOn = false;          // 回している（タイルと線を広く描く・指の位置を戻す）
+let _rotPatched = false;
+function _rotPt(p, c, deg){ const a = deg * Math.PI / 180, cs = Math.cos(a), sn = Math.sin(a), x = p.x - c.x, y = p.y - c.y; return L.point(c.x + x * cs - y * sn, c.y + x * sn + y * cs); }
+function _rotCenter(){ return leafMap.getSize().divideBy(2); }
+function _rotAllowed(){ return !!(leafMap && viewMode && !document.body.classList.contains('embed')); }
+function _rotTipOrigin(tt, pos){   // 名前の帯を、印の点（pos）を軸に逆に回す。transform-origin＝印の点（帯の外側の余白を引く）
+  const el = tt && tt._container; if (!el || !pos) return;
+  const cs = getComputedStyle(el);
+  el.style.transformOrigin = (pos.x - (parseFloat(cs.marginLeft) || 0)) + 'px ' + (pos.y - (parseFloat(cs.marginTop) || 0)) + 'px';
+}
+function _rotPatchLeaflet(){   // 回しているときだけ働く直し（leafMap だけ。0°のときは元の処理そのまま）
+  if (_rotPatched) return; _rotPatched = true;
+  leafMap.mouseEventToContainerPoint = function(e){   // 指の位置：画面の点を、回した分だけ戻して Leaflet の座標に
+    const p = L.Map.prototype.mouseEventToContainerPoint.call(this, e);
+    return _rotOn ? _rotPt(p, _rotCenter(), -_mapBearing) : p;
+  };
+  const dragMove = L.Draggable.prototype._onMove;   // ドラッグ：指が動いた量を回した分だけ戻す（地図が指の向きに動くように）
+  L.Draggable.prototype._onMove = function(e){
+    if (!_rotOn || !leafMap || this._element !== leafMap._mapPane || !this._startPoint) return dragMove.call(this, e);
+    const sp = this._startPoint, rot = t => { const q = _rotPt(L.point(t.clientX, t.clientY), sp, -_mapBearing); return {clientX: q.x, clientY: q.y}; };
+    const tl = e.touches ? Array.from(e.touches).map(rot) : null, m = tl ? (tl[0] || {}) : rot(e);
+    return dragMove.call(this, {touches: tl, clientX: m.clientX, clientY: m.clientY, target: e.target, srcElement: e.srcElement, type: e.type,
+      preventDefault: () => { if (e.preventDefault) e.preventDefault(); }, stopPropagation: () => { if (e.stopPropagation) e.stopPropagation(); }});
+  };
+  const gridB = L.GridLayer.prototype._getTiledPixelBounds;   // タイル：画面の対角線の円が入る範囲まで読む
+  L.GridLayer.prototype._getTiledPixelBounds = function(center){
+    const b = gridB.call(this, center); if (!_rotOn || this._map !== leafMap) return b;
+    const c = b.getCenter(), sz = b.getSize(), r = Math.hypot(sz.x, sz.y) / 2 * 1.04;
+    return new L.Bounds(c.subtract([r, r]), c.add([r, r]));
+  };
+  const rendU = L.Renderer.prototype._update;   // 線：描く範囲を、少なくとも対角線の長さの正方形に
+  L.Renderer.prototype._update = function(){
+    rendU.call(this); if (!_rotOn || this._map !== leafMap) return;
+    const b = this._bounds, s = leafMap.getSize(), D = Math.ceil(Math.hypot(s.x, s.y) * 1.06), c = b.getCenter(), sz = b.getSize(), hx = Math.max(sz.x, D) / 2, hy = Math.max(sz.y, D) / 2;
+    this._bounds = new L.Bounds(L.point(c.x - hx, c.y - hy).round(), L.point(c.x + hx, c.y + hy).round());
+  };
+  const tipPos = L.Tooltip.prototype._setPosition;   // 名前の帯：置き直すたびに、逆に回す軸（印の点）を合わせる
+  L.Tooltip.prototype._setPosition = function(pos){ tipPos.call(this, pos); if (_rotOn && this._map === leafMap) _rotTipOrigin(this, pos); };
+}
+function _setMapBearing(deg){   // 地図の向きを決める（0＝北が上）
+  if (!leafMap) return;
+  deg = ((Number(deg) || 0) % 360 + 540) % 360 - 180;
+  if (Math.abs(deg) < 0.05) deg = 0;
+  _mapBearing = deg;
+  const on = deg !== 0, c = _rotCenter(), mp = leafMap.getPane('mapPane');
+  mp.style.transformOrigin = c.x + 'px ' + c.y + 'px';
+  mp.style.rotate = on ? deg + 'deg' : '';
+  leafMap.getContainer().style.setProperty('--fp-nr', (-deg) + 'deg');
+  if (on !== _rotOn) {
+    _rotOn = on; document.body.classList.toggle('fp-rot', on);
+    if (on) leafMap.eachLayer(l => { const t = l.getTooltip && l.getTooltip(); if (t && t._container && t._latlng) _rotTipOrigin(t, leafMap.latLngToLayerPoint(t._latlng)); });
+    leafMap.fire('moveend');   // タイルと線の範囲を広げる／元に戻す
+  }
+  _syncRotBtn();
+  if (typeof renderNextBar === 'function' && viewMode) renderNextBar();   // 次のスポットの矢印も地図の向きに合わせる
+}
+function _syncRotBtn(){
+  const b = document.getElementById('mobileRotBtn'); if (!b) return;
+  b.hidden = !(_rotOn && viewMode);
+  const n = b.querySelector('.rot-needle'); if (n) n.style.rotate = _mapBearing + 'deg';   // 針は画面の上での北を指す
+}
+function resetMapBearing(){ if (_mapBearing) _setMapBearing(0); }
+function _rotSetup(){   // 2本指でひねると回す（閲覧モードだけ）
+  _rotPatchLeaflet();
+  const el = leafMap.getContainer(); let g = null;
+  const ang = t => Math.atan2(t[1].clientY - t[0].clientY, t[1].clientX - t[0].clientX) * 180 / Math.PI;
+  el.addEventListener('touchstart', e => { g = (_rotAllowed() && e.touches && e.touches.length === 2) ? {a0: ang(e.touches), b0: _mapBearing, on: false} : null; }, {capture: true, passive: true});
+  document.addEventListener('touchmove', e => {   // Leaflet のピンチより先に回す（ピンチの中心の計算に、新しい向きが使われる）
+    if (!g || !e.touches || e.touches.length !== 2) return;
+    let d = ((ang(e.touches) - g.a0) % 360 + 540) % 360 - 180;
+    if (!g.on) { if (Math.abs(d) < ROT_START_DEG) return; g.on = true; const k = Math.sign(d) * ROT_START_DEG; g.a0 += k; d -= k; }
+    _setMapBearing(g.b0 + d);
+  }, {capture: true, passive: true});
+  const end = e => { if (!g || (e.touches && e.touches.length >= 2)) return; const was = g.on; g = null; if (was && Math.abs(_mapBearing) <= ROT_SNAP_DEG) _setMapBearing(0); };
+  document.addEventListener('touchend', end, {capture: true, passive: true});
+  document.addEventListener('touchcancel', end, {capture: true, passive: true});
+  leafMap.on('resize', () => { if (_rotOn) _setMapBearing(_mapBearing); });   // 画面の向きが変わったら、回す軸（画面の中心）を合わせ直す
+}
 function initMap() {
   leafMap = L.map('map', {center:[35.165,134.542], zoom:14, maxZoom:21, scrollWheelZoom:true, wheelPxPerZoomLevel:240, touchZoom:true, doubleClickZoom:false, zoomControl:false, maxBoundsViscosity:1.0});
   _initElevFlick();   // 高低差バンドのフリック検知を初期化
@@ -3652,6 +3744,7 @@ function initMap() {
   // 念のためのフォールバック（ResizeObserver非対応環境）
   window.addEventListener('resize', _scheduleRecalc);
   window.addEventListener('orientationchange', () => { setTimeout(_recalcMap, 120); setTimeout(_recalcMap, 350); setTimeout(_recalcMap, 650); });
+  _rotSetup();   // v278：閲覧モードで2本指をひねると地図を回す
 }
 
 /* ============================================================
@@ -3744,7 +3837,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 手描きの道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した手描きの道id（直前取り消し用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v277';
+const APP_VERSION = 'v278';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat0', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -5140,6 +5233,7 @@ const ICON_VIEW = '<svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="cur
 const ICON_EDIT = '<svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" /><path d="M13.5 6.5l4 4" /></svg>';   // 編集モードへ
 function _applyViewLock() {
   const on = !!viewMode;
+  if (!on) resetMapBearing(); else _syncRotBtn();   // v278：地図を回せるのは閲覧モードだけ。編集モードは北が上
   document.body.classList.toggle('viewing', on);
   _applyDesignMap(!document.body.classList.contains('embed'));   // v263：新しいデザインの地図（閲覧・編集で別々に選んだ色。off なら今までの地図）
   wps.filter(w => w.type === 'node').forEach(x => { if (x.marker && x.marker.dragging) (on ? x.marker.dragging.disable() : x.marker.dragging.enable()); });   // スポット・調整点はもともと動かない（v164・v169）
@@ -5282,7 +5376,7 @@ function renderNextBar() {
                      : ci ? '<div class="nb-cue">' + escHtml(ci.q.glyph) + ' <b>' + Math.round(ci.dist / 10) * 10 + 'm先 ' + escHtml(ci.q.text) + '</b></div>'
                : '<div class="nb-dist"> まで <b>' + info.distText + '</b>' + (info.straight ? '（直線）' : '') + '・約' + info.min + '分<span class="nb-dir">' + info.dirText + '</span></div>');
   ar.style.display = '';
-  ar.style.transform = 'rotate(' + Math.round(info.rot) + 'deg)';
+  ar.style.transform = 'rotate(' + Math.round(info.rot + (_walkHeading == null ? _mapBearing : 0)) + 'deg)';   // v278：地図を回しているときは、画面の上での向きに
 }
 setInterval(() => { if (viewMode && _walkPos) renderNextBar(); }, 15000);   // 古い位置を薄くする（v138）
 /* コンパス：iPhone は許可が要る（ボタンを押したときだけ求められる）。取れたら矢印が体の向き基準になる */
@@ -8298,6 +8392,7 @@ function _a2FirstRun(){   // 初回だけ、そっと出す（配るリンクで
 // 「画像保存」と「印刷用シート」の両方から使う（html2canvas 対策を1か所に保つため）。
 async function _captureMapCanvas() {
   const mapEl = document.getElementById('map');
+  if (_mapBearing) { resetMapBearing(); showToast('北を上に戻して画像にします'); await new Promise(r => setTimeout(r, 400)); }   // v278：回した地図はそのまま画像にできないので
   if (_ptActive()) showToast('ポイントの表示を切り替えているので、隠したポイントは地図の画像にも写りません');   // v241：画面と同じに写る
   try {
     // ── 編集要素を一時非表示（調整点・カスタム道路はマップ画像に映さない）──
@@ -12231,6 +12326,7 @@ function _fitCourseToScreen(data){
   }
 }
 function loadCourseData(data) {
+  if (typeof resetMapBearing === 'function') resetMapBearing();   // v278
   _scDismissed = false;    // 開き直したらはじめかたを出し直せる（v165）
   courseInfo = {name:data.name, area:data.area, start:data.start||'', goal:data.goal||'', kokoroe:data.kokoroe||'', info:(data.info && typeof data.info === 'object') ? Object.assign({}, data.info) : {}, stickers: data.stickers === true, stickerShape: data.stickerShape === 'round' ? 'round' : undefined, theme:(data.theme && typeof data.theme === 'object') ? Object.assign({}, data.theme) : null, check:(data.check && typeof data.check === 'object') ? Object.assign({}, data.check) : {}, noEdit: data.noEdit === true, icon: data.icon || undefined, origin: (data.origin && data.origin.oid) ? data.origin : undefined};
   applyTheme(courseInfo.theme, {quiet:true});   // 印と線を作る前に色を決める（v145）

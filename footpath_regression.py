@@ -1073,6 +1073,12 @@ def static_checks(src):
         and 'function setStickerShape(v)' in src and "stickerShape: courseInfo.stickerShape === 'round' ? 'round' : undefined," in src
         and "stickerShape: data.stickerShape === 'round' ? 'round' : undefined," in src and 'id="rowStkShape" hidden' in src and 'id="mmStkShape" data-edit="1" hidden' in src
         and "':where(body.fd) ' + x" in src and "x.replace(/^body/, 'body:where(.fd)')" in src)
+    chk('静的', '地図を回す（v278）：閲覧モードだけ2本指でひねると回す（15度のあそび・8度以内は北に戻す）。mapPane を画面の中心で回し、印と名前の帯は逆に回す。指の位置・ドラッグ・タイルと線の範囲は回しているときだけ直す。北のボタン・編集モードと画像の前は北が上',
+        'const ROT_START_DEG = 15;' in src and 'const ROT_SNAP_DEG = 8;' in src and 'function _setMapBearing(deg)' in src and 'function _rotPatchLeaflet()' in src and 'function _rotSetup()' in src
+        and 'body.fp-rot #map .leaflet-marker-icon > *{rotate:var(--fp-nr,0deg)}' in src and 'body.fp-rot #map .leaflet-tooltip{rotate:var(--fp-nr,0deg)}' in src
+        and 'id="mobileRotBtn" onclick="resetMapBearing()"' in src and '#mobileRotBtn[hidden]{display:none!important}' in src
+        and 'if (!on) resetMapBearing(); else _syncRotBtn();' in src and "if (_mapBearing) { resetMapBearing(); showToast('北を上に戻して画像にします')" in src
+        and "Math.round(info.rot + (_walkHeading == null ? _mapBearing : 0))" in src and '_rotSetup();   // v278' in src)
     # v268：ホーム画面のアイコンを新しいデザイン（藍の町）に。大きさ（PNG の IHDR）と、差し替えた絵の指紋を確かめる
     def _png_info(fn):
         import hashlib, struct
@@ -2217,6 +2223,24 @@ def functional_checks(index_path):
             isinstance(mc, dict) and mc.get('o1', {}).get('n') == 2 and mc['o1'].get('first') == [1024, 768] and mc['o1'].get('keep') and mc['o1'].get('dirty')
             and mc['o1'].get('card', {}).get('act') == '📷 入れ替える' and mc['o1']['card'].get('more') == '+1' and mc['o1'].get('my') == 1
             and mc.get('o2a') == 'カードの写真にする' and mc.get('o2', {}).get('n') == 3 and mc['o2'].get('lbl') == 'カードの写真にしました' and mc['o2'].get('dis'), str(mc)[:400])
+
+        # v278: 地図を回す（閲覧モードだけ・自作）。中身は回り、印と名前の帯は立ったまま、タップの位置は印の場所、編集モードでは北が上
+        rt = page.evaluate("""async ()=>{ try{
+            const keepView = viewMode; if (!viewMode) toggleViewMode(); await new Promise(r => setTimeout(r, 200));
+            _setMapBearing(30); await new Promise(r => setTimeout(r, 300));
+            const w = wps.find(w => w.marker && w.marker.getElement() && w.type !== 'node' && w.marker.getElement().firstElementChild);
+            const el = w.marker.getElement(), r = el.getBoundingClientRect(), rect = leafMap.getContainer().getBoundingClientRect();
+            const exp = _rotPt(leafMap.latLngToContainerPoint(w.marker.getLatLng()), leafMap.getSize().divideBy(2), 30);
+            const pos = Math.hypot(r.left + r.width / 2 - rect.left - exp.x, r.top + r.height / 2 - rect.top - exp.y);
+            const back = leafMap.mouseEventToLatLng({clientX: r.left + r.width / 2, clientY: r.top + r.height / 2}), tap = leafMap.distance(back, w.marker.getLatLng());
+            const out = {pane: leafMap.getPane('mapPane').style.rotate, child: getComputedStyle(el.firstElementChild).rotate, pos, tap, on: document.body.classList.contains('fp-rot'), btn: !document.getElementById('mobileRotBtn').hidden};
+            toggleViewMode(); await new Promise(r => setTimeout(r, 200));
+            out.edit = [_mapBearing, leafMap.getPane('mapPane').style.rotate, document.body.classList.contains('fp-rot'), document.getElementById('mobileRotBtn').hidden];
+            if (keepView && !viewMode) toggleViewMode(); else if (!keepView && viewMode) toggleViewMode();
+            return out; } catch(e){ return 'err:' + e; } }""")
+        chk('機能', '地図を回す（v278）：閲覧モードで30度回すと中身が回り、印の中身は逆に回って立ち、印は回した位置に出て、タップの位置は印の場所。北のボタンが出る。編集モードに戻すと北が上',
+            isinstance(rt, dict) and rt['pane'] == '30deg' and rt['child'] == '-30deg' and rt['pos'] < 1.5 and rt['tap'] < 3 and rt['on'] and rt['btn']
+            and rt['edit'] == [0, '', False, True], str(rt)[:240])
 
         # v277: シールの形（四角／丸）。保存に入り（丸のときだけ）、新しいデザインでも「入」のスイッチは藍
         sk = page.evaluate("""()=>{ try{

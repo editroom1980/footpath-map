@@ -581,3 +581,9 @@ CONSTANTS(904) → STATE(968) → STORAGE(1015) → 版のお知らせ(1021) →
 - 新しい版の確認 `watchVersion` は起動時に加えて、`visibilitychange`（表に戻った）・`pageshow`（persisted）でも `_watchVersionSoon` から呼ぶ（`UPD_RECHECK_MS`＝5分に1回まで）。
 - 正規表現の後ろ読み（`(?<=`・`(?<!`）は使わない。古い iPhone（iOS 16.3 まで）ではインラインの JS 全体が読み込めず、アプリが動かなくなる（静的検査あり）。
 
+## 地図の回転（v278・閲覧モードだけ）
+- Leaflet の中は北が上のまま。`mapPane` だけを CSS の `rotate` で画面の中心を軸に回し、印の中身と名前の帯は逆に回して立てる（`body.fp-rot`・`--fp-nr`）。
+- 回しているとき（`_rotOn`）だけ効く直し：`leafMap.mouseEventToContainerPoint`（画面→Leaflet の座標に戻す）、`L.Draggable._onMove`（地図の箱だけ）、`L.GridLayer._getTiledPixelBounds` と `L.Renderer._update`（対角線まで広く）、`L.Tooltip._setPosition`（帯の軸）。北が上・編集モードでは元の処理そのまま。
+- アプリが自分で計算する画面の位置（`latLngToContainerPoint` など）は Leaflet の座標のまま。タップの位置も同じ座標に戻して比べるので、当たり判定はそのまま正しい。画面に直接重ねる物を新しく作るときは、`_rotPt(p, 画面の中心, _mapBearing)` で画面の位置に直すこと。
+- 画像の保存・印刷の前は北が上に戻す（html2canvas は回した地図を正しく写せない前提）。
+
