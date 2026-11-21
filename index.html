@@ -435,6 +435,10 @@ body.embed #s2, body.embed #mapArea, body.embed #mapWrap{height:100%!important;m
 .wp-ph{font-size:10px;color:var(--t-sub);margin-right:4px;flex-shrink:0}
 /* 発見（v143） */
 .wp-sticker.find{border-color:#E8F5E9}
+.wp-sticker.round{border-radius:50%}   /* v277：丸いシール。小さな印は丸の縁の斜め45度の点（--p）に中心を合わせる */
+.wp-sticker.round .wp-stk-badge{left:var(--p);top:var(--p);transform:translate(-50%,-50%)}
+.wp-sticker.round .wp-visited{right:var(--p);top:var(--p);transform:translate(50%,-50%)}
+.wp-sticker.round .wp-stk-more{right:var(--p);bottom:var(--p);transform:translate(50%,50%)}
 .find-dot{border-radius:50%;color:#fff;font-weight:bold;text-align:center;border:2.5px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.45);cursor:pointer}
 #mobileFindBtn[hidden],#mobileStampBtn[hidden],#btnFind[hidden],#mmFindsRow[hidden],#btnGoal[hidden],#mmGoalRow[hidden],#mmKokoroeRow[hidden],#mmInfoRow[hidden],#mmPubRow[hidden],#mmGetRow[hidden]{display:none!important}
 /* スポットの編集：くわしい設定（v148） */
@@ -1562,6 +1566,8 @@ body.viewing #modeHint,body.viewonly #modeHint{display:none!important}
 .mm-map:last-child{border-bottom:none}
 .mm-map-l{flex:1;line-height:1.3}
 .mm-dot{border-radius:50%;background:var(--brand);border:2px solid rgba(255,255,255,.9);box-shadow:0 1px 3px rgba(0,0,0,.3);flex:none}
+.mm-stk{width:20px;height:20px;box-sizing:border-box;border-radius:5px;background:linear-gradient(160deg,#9CC3E2 0 45%,#6E9E6B 45% 100%);border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.35);flex:none}.mm-stk.round{border-radius:50%}   /* v277：シールの形の見本（空と山の小さな写真） */
+#mobileMenuSheet #mmStkShape{background:none;border-radius:0;margin:0;padding:0 0 0 30px}   /* v277：入れ子の箱にせず左だけ字下げ（✓ の右端をほかの行とそろえる） */
 .mm-map-ck{opacity:0;color:var(--brand);font-weight:700;font-size:15px}
 .mm-map.on .mm-map-ck{opacity:1}
 .mm-map.on .mm-map-l{color:var(--brand);font-weight:700}
@@ -1770,6 +1776,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
       <button class="pp-row" id="btnMapLabels" onclick="toggleMapLabels();_syncPcPops()">地名とスポットを表示<span class="pp-sw"></span></button>
       <button class="pp-row" id="btnPtsSet" onclick="closePcPops();openPtSheet()" title="押すたびの切り替え（すべて／コースだけ／線だけ）と、種類ごとに隠す設定">ポイントの表示<span class="pp-val" id="pcPtsVal">すべて表示</span></button>
       <button class="pp-row ed" id="btnStickers" onclick="toggleStickers();_syncPcPops()" title="写真のあるスポットの印を、写真そのもの（シール）にする。歩く人の画面と印刷用シートにも同じに出る">写真をシールで見せる<span class="pp-sw"></span></button>
+      <div class="pp-row static ed" id="rowStkShape" hidden>シールの形<span class="pp-seg"><button data-stk="square" onclick="setStickerShape('square')">四角</button><button data-stk="round" onclick="setStickerShape('round')">丸</button></span></div>
       <button class="pp-row ed" id="btnTheme" onclick="closePcPops();openThemeSheet()" title="道順の線と印の色の組み合わせ。コースに保存され、歩く人の画面と印刷用シートも同じ色になる">地図の色（テーマ）<span class="pp-val" id="pcThemeName">標準</span></button>
       <div class="pp-row static">文字の大きさ<span class="pp-seg" id="btnLabelSize"><button data-lsz="0" onclick="setLabelSize(0);_syncPcPops()">標準</button><button data-lsz="1" onclick="setLabelSize(1);_syncPcPops()">大</button><button data-lsz="2" onclick="setLabelSize(2);_syncPcPops()">特大</button></span></div>
       <div class="pp-row static">スポットの○<span class="pp-seg"><button data-wsz="0" onclick="setWpSize(0);_syncPcPops()">標準</button><button data-wsz="1" onclick="setWpSize(1);_syncPcPops()">大</button><button data-wsz="2" onclick="setWpSize(2);_syncPcPops()">特大</button></span></div>
@@ -2150,6 +2157,7 @@ body.drawing-active .leaflet-marker-icon *{pointer-events:none!important}
         <div class="mm-maplist">
           <div class="mm-map" onclick="closeMobileMenu();openThemeSheet()" data-edit="1"><span class="mm-map-l">地図の色（テーマ）</span><span class="mm-v" id="mmTheme">標準 ›</span></div>
           <div class="mm-tog" onclick="toggleStickers();_syncMobileMenu()" data-edit="1"><span class="mm-tog-ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 8h.01" /><path d="M4 6a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2z" /><path d="M4 15l4 -4a3 5 0 0 1 3 0l5 5" /><path d="M14 14l1 -1a3 5 0 0 1 3 0l2 2" /></svg></span><span class="mm-tog-l">写真をシールで見せる</span><div class="mm-sw" id="mmSwStickers"></div></div>
+          <div class="mm-maplist" id="mmStkShape" data-edit="1" hidden><div class="mm-map" data-stk="square" onclick="setStickerShape('square')"><span class="mm-stk"></span><span class="mm-map-l">シールの形：四角</span><span class="mm-map-ck">✓</span></div><div class="mm-map" data-stk="round" onclick="setStickerShape('round')"><span class="mm-stk round"></span><span class="mm-map-l">シールの形：丸</span><span class="mm-map-ck">✓</span></div></div>
         </div>
             <div class="mm-sec">地名ラベルの文字</div>
         <div class="mm-maplist">
@@ -3736,7 +3744,7 @@ let _pressStartT = 0;        // タップ判定用の押下開始時刻
 let _customTraceMode = false; // 手描きの道なぞり描きモード中か
 let _customSession   = [];    // 今回追加した手描きの道id（直前取り消し用）
 const SNAP_TH_M   = 25;
-const APP_VERSION = 'v276';
+const APP_VERSION = 'v277';
 (function(){ try { const q = new URLSearchParams(location.search), v = parseInt(q.get('safe') || '', 10); if (v > 0) { document.documentElement.style.setProperty('--sat0', v + 'px'); document.documentElement.style.setProperty('--sab', '34px'); } } catch(_) {} })();   // v161：安全域の偽装（検査用）   // 最初の画面のアプリ名の横に表示。?v=N と一致していれば反映済み
 window.addEventListener('load', function(){ try{
   var ve=document.getElementById('s1Ver'); if(ve) ve.textContent=APP_VERSION;
@@ -4607,7 +4615,7 @@ function wpIcon(wp, sz, anc) {
       const bm = _markInner(wp, Math.round(b * 0.62));
       const more = wp._clusterN > 1 ? `<span class="wp-stk-more">+${wp._clusterN - 1}</span>` : '';
       return L.divIcon({className:'',
-        html:`<div class="wp-sticker" data-sticker="1" style="width:${d}px;height:${d}px;background-image:url(${stk})"><div class="wp-stk-badge${bm.svg ? ' svg' : ''}" data-wtype="${wp.type}" style="background:${t.c};width:${b}px;height:${b}px;line-height:${b-3}px;font-size:${_wpFont(b, bm.txt || '●')}px">${bm.html}</div>${stamp}${more}</div>`,
+        html:`<div class="wp-sticker${_stickerRound() ? ' round' : ''}" data-sticker="1" style="width:${d}px;height:${d}px;background-image:url(${stk});--p:${_stickerEdgeP(d)}px"><div class="wp-stk-badge${bm.svg ? ' svg' : ''}" data-wtype="${wp.type}" style="background:${t.c};width:${b}px;height:${b}px;line-height:${b-3}px;font-size:${_wpFont(b, bm.txt || '●')}px">${bm.html}</div>${stamp}${more}</div>`,
         iconSize:[d,d], iconAnchor:[d/2,d/2]});
     }
   }
@@ -5340,6 +5348,7 @@ function closeMobileMenu() {
 function _syncMobileMenu() {
   document.getElementById('mmSwLabels')?.classList.toggle('on', _showMapLabels !== false);
   document.getElementById('mmSwStickers')?.classList.toggle('on', _stickerOn());
+  { const r = document.getElementById('mmStkShape'); if (r) r.hidden = !_stickerOn(); document.querySelectorAll('#mmStkShape [data-stk]').forEach(el => el.classList.toggle('on', (el.getAttribute('data-stk') === 'round') === _stickerRound())); }   // v277
   document.getElementById('mmSwManual')?.classList.toggle('on', manualMode !== true);   // 道なりに引く（v169）
   document.getElementById('mmSwView')?.classList.toggle('on', viewMode === true);
   document.getElementById('mmSwFollow')?.classList.toggle('on', _followOn === true);
@@ -7641,6 +7650,7 @@ function _syncPcPops(){
     document.querySelectorAll('#popMap [data-wsz]').forEach(el => el.classList.toggle('on', Number(el.getAttribute('data-wsz')) === _wpSizeIdx));
     document.getElementById('btnMapLabels')?.classList.toggle('on', _showMapLabels !== false);
     document.getElementById('btnStickers')?.classList.toggle('on', _stickerOn());
+    { const r = document.getElementById('rowStkShape'); if (r) r.hidden = !_stickerOn(); document.querySelectorAll('#rowStkShape [data-stk]').forEach(el => el.classList.toggle('on', (el.getAttribute('data-stk') === 'round') === _stickerRound())); }   // v277
     document.getElementById('btnManual')?.classList.toggle('on', manualMode !== true);   // 道なりに引く＝ON が普通（v169）
     document.getElementById('btnMagnet')?.classList.toggle('on', manualMode !== true);   // 磁石＝吸い付いている時に点灯（v160）
     document.getElementById('btnCustomFeat')?.classList.toggle('on', _customOn_ === true);
@@ -9339,9 +9349,12 @@ function saveKokoroeSheet() {
 /* ===== シール（v142）：写真のあるスポットの印を、写真そのものにする =====
    1枚目の写真を STICKER_PX 角に切り出して divIcon の背景にする。作るのは非同期なので、できるまでは○の印。
    参照写真（idb:）のシールは 's2:'+id で IndexedDB にも置き、次回は作り直さない。実体写真（配布ファイル）は都度作る（72px なので速い） */
+const STICKER_BORDER = 2.5;   // v277：シールの白い縁の太さ（.wp-sticker の border と同じ）
 const _stickerMem = new Map();   // 鍵→シールの実体。''＝作成中、null＝作れなかった
 const _stickerWait = new Map();  // 作成中の鍵→できたら印を置き換えるスポット（同じ写真を複数のスポットが使うことがある）
 function _stickerOn(){ return !!(courseInfo && courseInfo.stickers); }
+function _stickerRound(){ return !!(courseInfo && courseInfo.stickerShape === 'round'); }   // v277：シールの形（丸）。四角が今までどおりの既定
+function _stickerEdgeP(d){ const B = STICKER_BORDER; return +(d / 2 * (1 - Math.SQRT1_2) - B).toFixed(2); }   // 丸の縁の斜め45度の点（白い縁の内側の左上から。box-sizing:border-box なので外の大きさ＝d）
 function _stickerKey(p){ return _isPhotoRef(p) ? 's2:' + p.slice(PHOTO_REF.length) : p; }   // v251：大きさを変えたので鍵も変える（古い s: は片づけで消える）
 function _stickerOf(p){ return _stickerMem.get(_stickerKey(p)) || ''; }
 function _stickerSize(){ const base = isMobile() ? 46 : 40; const d = Math.round(base * (WP_SIZES[_wpSizeIdx] || WP_SIZES[0]) * _zoomK()); return [d, d]; }   // v168：シールも広域では小さく
@@ -9388,6 +9401,13 @@ function toggleStickers(){
   courseInfo.stickers = !courseInfo.stickers; _markDirty();
   refreshIcons(); _syncPcPops(); _syncMobileMenu();
   showToast(courseInfo.stickers ? '写真のあるスポットをシールで見せます。歩く人の画面と印刷用シートにも同じに出ます' : 'スポットの印を○に戻しました');
+}
+function setStickerShape(v){   // v277：シールの形（四角／丸）。歩く人の画面・配るリンク・印刷用シートにも同じに出る
+  const r = v === 'round';
+  if (_stickerRound() === r) return;
+  courseInfo.stickerShape = r ? 'round' : undefined; _markDirty();
+  refreshIcons(); _syncPcPops(); _syncMobileMenu();
+  showToast(r ? 'シールを丸にしました' : 'シールを四角にしました');
 }
 /* 近いシールは束ねる（先頭の1つに「+n」を付け、残りは隠す。ズームすると開く）。○の印は束ねない */
 function _declutter(){
@@ -11783,7 +11803,9 @@ function _fdValue(v){              // 1つの値の中の色を全部置き換�
   return changed ? out : null;
 }
 function _fdSel(sel){              // 選び方の前に body.fd を付ける（body・html から始まるものは中に入れる）
-  return sel.split(',').map(x => { x = x.trim(); if (!x || /^:root/.test(x) || /^html\b/.test(x)) return null; return /^body\b/.test(x) ? x.replace(/^body/, 'body.fd') : 'body.fd ' + x; }).filter(Boolean).join(',');
+  // v277：:where() で付ける＝強さはもとの決まりと同じまま、後ろに置くので、もとの決まりだけを置き換える。
+  // 前は body.fd を足して強くしていたので、「入のとき」などの強い決まり（.mm-sw.on の藍など）まで負けて、スイッチが入でも灰色に見えた
+  return sel.split(',').map(x => { x = x.trim(); if (!x || /^:root/.test(x) || /^html\b/.test(x)) return null; return /^body\b/.test(x) ? x.replace(/^body/, 'body:where(.fd)') : ':where(body.fd) ' + x; }).filter(Boolean).join(',');
 }
 const FD_PROPS = ['color', 'background', 'background-color', 'background-image', 'border', 'border-color', 'border-top', 'border-right', 'border-bottom', 'border-left',
   'border-top-color', 'border-right-color', 'border-bottom-color', 'border-left-color', 'outline', 'outline-color', 'box-shadow', 'text-shadow', 'fill', 'stroke', 'caret-color', 'accent-color', 'text-decoration-color'];
@@ -11809,8 +11831,10 @@ function _fdBuild(){               // 1回だけ作る
   out.push(dots.map(c => c + ' svg').join(',') + '{stroke:#2E78AE!important}');
   out.push(dots.map(c => c + ' svg[fill="#fff"]').join(',') + '{fill:#2E78AE!important}');
   out.push(['.vip-dot2', '.wp-dot.cat', '.ro-badge.cat'].map(c => 'body.fd ' + c).join(',') + '{border-color:#E8A83A!important}');   // 2つ目の丸（種類）は山吹の縁
-  el.textContent = 'body.fd{--brand:#2E78AE;--brand-lite:#2F7BB3;--brand-soft:#EAF2F9;--brand-grad:linear-gradient(135deg,#2F7BB3,#2E78AE);--brand-sh:rgba(46,120,174,.32);--t-sub:#4A6A8A;background:#F7EEDC;color:#1C3550}\n'
-    + 'body.fd #s1{background-color:#F7EEDC;background-image:linear-gradient(135deg,#FBF6EA,#F3E7CF)}\n' + out.join('\n');
+  // v277：手書きの地の色は、自動の上書き（out）と同じ強さ（:where）で前に置く。前と同じく、後ろの自動の上書きがあればそちらが勝つ（見た目を変えない）
+  el.textContent = 'body.fd{--brand:#2E78AE;--brand-lite:#2F7BB3;--brand-soft:#EAF2F9;--brand-grad:linear-gradient(135deg,#2F7BB3,#2E78AE);--brand-sh:rgba(46,120,174,.32);--t-sub:#4A6A8A}\n'
+    + 'body:where(.fd){background:#F7EEDC;color:#1C3550}\n'
+    + ':where(body.fd) #s1{background-color:#F7EEDC;background-image:linear-gradient(135deg,#FBF6EA,#F3E7CF)}\n' + out.join('\n');
   document.head.appendChild(el);
   window._fdRules = out.length;
 }
@@ -12087,6 +12111,7 @@ function buildCurrentSaveData() {
     info:    _courseInfoClean(),         // アクセス・駐車場・トイレ・休憩・季節・注意・問い合わせ・難易度（v139）
     icon:     courseInfo.icon || undefined,             // 一覧に出す絵（v190）。無ければ最初の写真
     stickers: courseInfo.stickers ? true : undefined,   // 写真のある印をシールで見せる（v142）。OFF のときは書かない
+    stickerShape: courseInfo.stickerShape === 'round' ? 'round' : undefined,   // v277：シールの形。丸のときだけ書く
     theme:    courseInfo.theme || undefined,            // 地図の色（v145）。標準のときは書かない
     check:    _courseCheckClean(),                      // 公開前の確認の✓（手で付けるものだけ・v146）
     noEdit:   courseInfo.noEdit ? true : undefined,     // 他の人による改変を断る（配布ファイルにだけ効く・v147）
@@ -12207,7 +12232,7 @@ function _fitCourseToScreen(data){
 }
 function loadCourseData(data) {
   _scDismissed = false;    // 開き直したらはじめかたを出し直せる（v165）
-  courseInfo = {name:data.name, area:data.area, start:data.start||'', goal:data.goal||'', kokoroe:data.kokoroe||'', info:(data.info && typeof data.info === 'object') ? Object.assign({}, data.info) : {}, stickers: data.stickers === true, theme:(data.theme && typeof data.theme === 'object') ? Object.assign({}, data.theme) : null, check:(data.check && typeof data.check === 'object') ? Object.assign({}, data.check) : {}, noEdit: data.noEdit === true, icon: data.icon || undefined, origin: (data.origin && data.origin.oid) ? data.origin : undefined};
+  courseInfo = {name:data.name, area:data.area, start:data.start||'', goal:data.goal||'', kokoroe:data.kokoroe||'', info:(data.info && typeof data.info === 'object') ? Object.assign({}, data.info) : {}, stickers: data.stickers === true, stickerShape: data.stickerShape === 'round' ? 'round' : undefined, theme:(data.theme && typeof data.theme === 'object') ? Object.assign({}, data.theme) : null, check:(data.check && typeof data.check === 'object') ? Object.assign({}, data.check) : {}, noEdit: data.noEdit === true, icon: data.icon || undefined, origin: (data.origin && data.origin.oid) ? data.origin : undefined};
   applyTheme(courseInfo.theme, {quiet:true});   // 印と線を作る前に色を決める（v145）
   currentCourseId = data.id;
   _dirty = false;             // 読み込み直後は未保存の変更なし

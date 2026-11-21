@@ -1068,6 +1068,11 @@ def static_checks(src):
             and _mf.get('start_url') == './index.html' and _mf.get('display') == 'standalone', str(_mf.get('screenshots'))[:120])
     except Exception as _e:
         chk('静的', 'manifest に画面の写真と related_applications（v276）', False, str(_e)[:120])
+    chk('静的', 'シールの形（v277）：丸を選べる（四角が既定）。丸では種類の小丸・訪れた印・+n を縁の斜め45度の点に中心を合わせる。保存は丸のときだけ・読み込みで引き継ぐ。メニューはシールが入っているときだけ形を出す。新しいデザインの上書きは :where(body.fd) で作る',
+        ".wp-sticker.round{border-radius:50%}" in src and ".wp-sticker.round .wp-stk-badge{left:var(--p);top:var(--p);transform:translate(-50%,-50%)}" in src
+        and 'function setStickerShape(v)' in src and "stickerShape: courseInfo.stickerShape === 'round' ? 'round' : undefined," in src
+        and "stickerShape: data.stickerShape === 'round' ? 'round' : undefined," in src and 'id="rowStkShape" hidden' in src and 'id="mmStkShape" data-edit="1" hidden' in src
+        and "':where(body.fd) ' + x" in src and "x.replace(/^body/, 'body:where(.fd)')" in src)
     # v268：ホーム画面のアイコンを新しいデザイン（藍の町）に。大きさ（PNG の IHDR）と、差し替えた絵の指紋を確かめる
     def _png_info(fn):
         import hashlib, struct
@@ -1176,7 +1181,7 @@ def static_checks(src):
         and 'function compressImage(file) { return compressImageTo(file, PHOTO_MAX_PX, PHOTO_QUALITY); }' in src and 'const MAX = maxPx;' in src
         and 'Promise.all(toAdd.map(compressImage))' in src and 'PHOTO_MAX_PER_SPOT - _modalPhotos.length' in src)   # v253：compressImage は引数1つのまま（map の番号を大きさにしない）
     chk('静的', 'シールは wpIcon の枝で描き、名札の位置はシールの大きさに合わせ、束ねた印を押すと中身から選べる（v189）',
-        'class="wp-sticker" data-sticker="1"' in src and '_wpIconSize(wp)[1] / 2 + 4' in src and 'if (wp._clusterN > 1) { openClusterPicker(wp); return; }' in src
+        'class="wp-sticker${_stickerRound() ? \' round\' : \'\'}" data-sticker="1"' in src and '_wpIconSize(wp)[1] / 2 + 4' in src   # v277：丸のときは round が付く and 'if (wp._clusterN > 1) { openClusterPicker(wp); return; }' in src
         and '      _declutter();\n' in src)   # v159→v173: ズームの処理は _applyViewUpdate の中の _declutter にまとめた
     chk('静的', 'シールの ON/OFF はコースに保存され（stickers）、PC・スマホの「地図の見せ方」に行がある',
         'stickers: courseInfo.stickers ? true : undefined' in src and 'stickers: data.stickers === true' in src and 'id="btnStickers"' in src and 'id="mmSwStickers"' in src)
@@ -2212,6 +2217,19 @@ def functional_checks(index_path):
             isinstance(mc, dict) and mc.get('o1', {}).get('n') == 2 and mc['o1'].get('first') == [1024, 768] and mc['o1'].get('keep') and mc['o1'].get('dirty')
             and mc['o1'].get('card', {}).get('act') == '📷 入れ替える' and mc['o1']['card'].get('more') == '+1' and mc['o1'].get('my') == 1
             and mc.get('o2a') == 'カードの写真にする' and mc.get('o2', {}).get('n') == 3 and mc['o2'].get('lbl') == 'カードの写真にしました' and mc['o2'].get('dis'), str(mc)[:400])
+
+        # v277: シールの形（四角／丸）。保存に入り（丸のときだけ）、新しいデザインでも「入」のスイッチは藍
+        sk = page.evaluate("""()=>{ try{
+            const keep = [courseInfo.stickers, courseInfo.stickerShape, document.body.classList.contains('fd')];
+            courseInfo.stickers = true; setStickerShape('round'); const a = buildCurrentSaveData().stickerShape;
+            setStickerShape('square'); const b = buildCurrentSaveData().stickerShape;
+            _fdBuild(); document.body.classList.add('fd'); _syncMobileMenu();
+            const sw = document.getElementById('mmSwStickers'), on = sw && sw.classList.contains('on'), bg = sw ? getComputedStyle(sw).backgroundColor : '';
+            const p = _stickerEdgeP(46);
+            courseInfo.stickers = keep[0]; courseInfo.stickerShape = keep[1]; document.body.classList.toggle('fd', keep[2]); refreshIcons(); _syncMobileMenu();
+            return {a, b: b === undefined ? 'none' : b, on, bg, p}; } catch(e){ return 'err:' + e; } }""")
+        chk('機能', 'シールの形（v277）：丸にすると保存に round が入り、四角に戻すと書かない。新しいデザインのときも「入」のスイッチは藍（上書きを :where で作るので強い決まりに負けない）。丸の縁の45度の点は 46px で 4.24px',
+            isinstance(sk, dict) and sk['a'] == 'round' and sk['b'] == 'none' and sk['on'] and sk['bg'] == 'rgb(46, 120, 174)' and abs(sk['p'] - 4.24) < 0.01, str(sk)[:200])
 
         # v274: 距離と時間の数字をどの画面でもそろえる（引数なしの測り直しは、描いている線で。高低差のグラフの端は道順の道のり）
         dz = page.evaluate("""()=>{ try{
