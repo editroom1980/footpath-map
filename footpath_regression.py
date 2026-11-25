@@ -1068,11 +1068,17 @@ def static_checks(src):
             and _mf.get('start_url') == './index.html' and _mf.get('display') == 'standalone', str(_mf.get('screenshots'))[:120])
     except Exception as _e:
         chk('静的', 'manifest に画面の写真と related_applications（v276）', False, str(_e)[:120])
-    chk('静的', 'シールの形（v277）：丸を選べる（四角が既定）。丸では種類の小丸・訪れた印・+n を縁の斜め45度の点に中心を合わせる。保存は丸のときだけ・読み込みで引き継ぐ。メニューはシールが入っているときだけ形を出す。新しいデザインの上書きは :where(body.fd) で作る',
+    chk('静的', 'シールはいつも丸（v277→v279 オーナー指示）：スポットのシールも発見のシールも丸。種類の小丸・訪れた印・+n は縁の斜め45度の点に中心を合わせる。形を選ぶ行・関数・保存の項目は無い。新しいデザインの上書きは :where(body.fd) で作る',
         ".wp-sticker.round{border-radius:50%}" in src and ".wp-sticker.round .wp-stk-badge{left:var(--p);top:var(--p);transform:translate(-50%,-50%)}" in src
-        and 'function setStickerShape(v)' in src and "stickerShape: courseInfo.stickerShape === 'round' ? 'round' : undefined," in src
-        and "stickerShape: data.stickerShape === 'round' ? 'round' : undefined," in src and 'id="rowStkShape" hidden' in src and 'id="mmStkShape" data-edit="1" hidden' in src
+        and 'html:`<div class="wp-sticker round" data-sticker="1"' in src and 'html:`<div class="wp-sticker round find" style="width:${d}px;height:${d}px;background-image:url(${stk});--p:${_stickerEdgeP(d)}px">' in src
+        and 'setStickerShape' not in src and '_stickerRound' not in src and 'stickerShape' not in src and 'StkShape' not in src
         and "':where(body.fd) ' + x" in src and "x.replace(/^body/, 'body:where(.fd)')" in src)
+    chk('静的', '藍・白の地図（v279）：下地の地図は見せず（不透明度0）、地図の地をその町の地の色で塗る。描き終わる前のマスからいつもの地図が透けない。データが空のマス（海・404）は水の色。つながらないとき・藍白が描かれない広さでは下地を出す',
+        'function _dmBaseSync(){' in src and "const hide = !!_dmLayer && !_dmNetFail && Math.round(leafMap.getZoom()) >= DM_MIN_Z;" in src
+        and "leafMap.getContainer().style.backgroundColor = hide ? _dmCol().ground : '';" in src and "leafMap.on('zoom', _dmBaseSync);" in src
+        and "if (!r.ok) return r.status === 404 ? [] : null;" in src and "catch(_) { _dmCache.delete(key); _dmNetOk(false); return null; }" in src
+        and "if (!f0.length) { g.fillStyle = DM_COL.water; g.fillRect(0, 0, cv.width, cv.height); return; }" in src
+        and src.count('_dmBaseSync();') >= 5)
     chk('静的', '地図を回す（v278）：閲覧モードだけ2本指でひねると回す（15度のあそび・8度以内は北に戻す）。mapPane を画面の中心で回し、印と名前の帯は逆に回す。指の位置・ドラッグ・タイルと線の範囲は回しているときだけ直す。北のボタン・編集モードと画像の前は北が上',
         'const ROT_START_DEG = 15;' in src and 'const ROT_SNAP_DEG = 8;' in src and 'function _setMapBearing(deg)' in src and 'function _rotPatchLeaflet()' in src and 'function _rotSetup()' in src
         and 'body.fp-rot #map .leaflet-marker-icon > *{rotate:var(--fp-nr,0deg)}' in src and 'body.fp-rot #map .leaflet-tooltip{rotate:var(--fp-nr,0deg)}' in src
@@ -1187,7 +1193,7 @@ def static_checks(src):
         and 'function compressImage(file) { return compressImageTo(file, PHOTO_MAX_PX, PHOTO_QUALITY); }' in src and 'const MAX = maxPx;' in src
         and 'Promise.all(toAdd.map(compressImage))' in src and 'PHOTO_MAX_PER_SPOT - _modalPhotos.length' in src)   # v253：compressImage は引数1つのまま（map の番号を大きさにしない）
     chk('静的', 'シールは wpIcon の枝で描き、名札の位置はシールの大きさに合わせ、束ねた印を押すと中身から選べる（v189）',
-        'class="wp-sticker${_stickerRound() ? \' round\' : \'\'}" data-sticker="1"' in src and '_wpIconSize(wp)[1] / 2 + 4' in src   # v277：丸のときは round が付く and 'if (wp._clusterN > 1) { openClusterPicker(wp); return; }' in src
+        'class="wp-sticker round" data-sticker="1"' in src and '_wpIconSize(wp)[1] / 2 + 4' in src   # v279：いつも丸 and 'if (wp._clusterN > 1) { openClusterPicker(wp); return; }' in src
         and '      _declutter();\n' in src)   # v159→v173: ズームの処理は _applyViewUpdate の中の _declutter にまとめた
     chk('静的', 'シールの ON/OFF はコースに保存され（stickers）、PC・スマホの「地図の見せ方」に行がある',
         'stickers: courseInfo.stickers ? true : undefined' in src and 'stickers: data.stickers === true' in src and 'id="btnStickers"' in src and 'id="mmSwStickers"' in src)
@@ -2242,18 +2248,27 @@ def functional_checks(index_path):
             isinstance(rt, dict) and rt['pane'] == '30deg' and rt['child'] == '-30deg' and rt['pos'] < 1.5 and rt['tap'] < 3 and rt['on'] and rt['btn']
             and rt['edit'] == [0, '', False, True], str(rt)[:240])
 
-        # v277: シールの形（四角／丸）。保存に入り（丸のときだけ）、新しいデザインでも「入」のスイッチは藍
-        sk = page.evaluate("""()=>{ try{
-            const keep = [courseInfo.stickers, courseInfo.stickerShape, document.body.classList.contains('fd')];
-            courseInfo.stickers = true; setStickerShape('round'); const a = buildCurrentSaveData().stickerShape;
-            setStickerShape('square'); const b = buildCurrentSaveData().stickerShape;
+        # v277→v279: シールはいつも丸（保存に形を書かない）。新しいデザインでも「入」のスイッチは藍。藍・白のときは下地を見せず地の色
+        sk = page.evaluate("""async ()=>{ try{
+            const keep = [courseInfo.stickers, document.body.classList.contains('fd'), _dmStyle, viewMode];
+            courseInfo.stickers = true; refreshIcons(); const a = 'stickerShape' in buildCurrentSaveData();
+            await new Promise(r => setTimeout(r, 800));
+            const els = [...document.querySelectorAll('#map .wp-sticker')], round = els.length > 0 && els.every(e => e.classList.contains('round') && getComputedStyle(e).borderRadius === '50%');
             _fdBuild(); document.body.classList.add('fd'); _syncMobileMenu();
             const sw = document.getElementById('mmSwStickers'), on = sw && sw.classList.contains('on'), bg = sw ? getComputedStyle(sw).backgroundColor : '';
             const p = _stickerEdgeP(46);
-            courseInfo.stickers = keep[0]; courseInfo.stickerShape = keep[1]; document.body.classList.toggle('fd', keep[2]); refreshIcons(); _syncMobileMenu();
-            return {a, b: b === undefined ? 'none' : b, on, bg, p}; } catch(e){ return 'err:' + e; } }""")
-        chk('機能', 'シールの形（v277）：丸にすると保存に round が入り、四角に戻すと書かない。新しいデザインのときも「入」のスイッチは藍（上書きを :where で作るので強い決まりに負けない）。丸の縁の45度の点は 46px で 4.24px',
-            isinstance(sk, dict) and sk['a'] == 'round' and sk['b'] == 'none' and sk['on'] and sk['bg'] == 'rgb(46, 120, 174)' and abs(sk['p'] - 4.24) < 0.01, str(sk)[:200])
+            if (!viewMode) toggleViewMode(); leafMap.setZoom(Math.max(leafMap.getZoom(), DM_MIN_Z + 2), {animate:false});
+            _dmNetOk(true); _dmStyle = 'aizome'; _applyDesignMap(true); const ai = [_baseTileLayer.options.opacity, leafMap.getContainer().style.backgroundColor];
+            _dmNetOk(false); const fail = [_baseTileLayer.options.opacity, leafMap.getContainer().style.backgroundColor]; _dmNetOk(true);
+            _dmStyle = 'kinari'; _applyDesignMap(true); const ki = [_baseTileLayer.options.opacity, leafMap.getContainer().style.backgroundColor];
+            _dmStyle = 'off'; _applyDesignMap(true); const of = [_baseTileLayer.options.opacity, leafMap.getContainer().style.backgroundColor];
+            _dmStyle = keep[2]; if (viewMode !== keep[3]) toggleViewMode(); _applyDesignMap(!document.body.classList.contains('embed'));
+            courseInfo.stickers = keep[0]; document.body.classList.toggle('fd', keep[1]); refreshIcons(); _syncMobileMenu();
+            return {a, n: els.length, round, on, bg, p, ai, fail, ki, of}; } catch(e){ return 'err:' + e; } }""")
+        chk('機能', 'シールはいつも丸（v279）：地図のシールはすべて round・border-radius 50%（写真つきの丸はシールの検査で）、保存に形を書かない。新しいデザインのときも「入」のスイッチは藍。丸の縁の45度の点は 46px で 4.24px',
+            isinstance(sk, dict) and sk['a'] is False and (sk['n'] == 0 or sk['round']) and sk['on'] and sk['bg'] == 'rgb(46, 120, 174)' and abs(sk['p'] - 4.24) < 0.01, str(sk)[:300])
+        chk('機能', '藍・白の地図（v279）：藍では下地の不透明度0・地は藍（rgb(46, 120, 174)）、白では地は生成り（rgb(247, 238, 220)）、つながらないときは下地を出す、いつもの地図に戻すと下地1・地の色なし',
+            isinstance(sk, dict) and sk['ai'] == [0, 'rgb(46, 120, 174)'] and sk['fail'] == [1, ''] and sk['ki'] == [0, 'rgb(247, 238, 220)'] and sk['of'] == [1, ''], str(sk)[:300])
 
         # v274: 距離と時間の数字をどの画面でもそろえる（引数なしの測り直しは、描いている線で。高低差のグラフの端は道順の道のり）
         dz = page.evaluate("""()=>{ try{
@@ -2284,7 +2299,7 @@ def functional_checks(index_path):
             toggleViewMode(); await sl(200);
             const ll = _lastRouteCoords[0], c = Array.isArray(ll) ? {lat: ll[0], lng: ll[1]} : ll;
             leafMap.setView(c, 16, {animate: false}); await sl(1200);
-            out.on = !!_dmLayer && leafMap.hasLayer(_dmLayer); out.dim = _baseTileLayer ? _baseTileLayer.options.opacity : null; out.frame = typeof _dmFrame === 'undefined';
+            out.on = !!_dmLayer && leafMap.hasLayer(_dmLayer); out.dim = _baseTileLayer ? _baseTileLayer.options.opacity : null; out.netFail = _dmNetFail; out.frame = typeof _dmFrame === 'undefined';
             leafMap.setView(c, 13, {animate: false}); await sl(800); out.z13 = asked.has(13);   // 縮めたときは粗いデータ（z13）を読む
             leafMap.panBy([3000, 0], {animate: false}); await sl(800); out.far = document.querySelectorAll('.fp-design canvas').length > 0;   // コースから離れた所も描く
             leafMap.setView(c, 16, {animate: false}); await sl(800);
@@ -2333,8 +2348,8 @@ def functional_checks(index_path):
             document.querySelectorAll('#toastBox .toast').forEach(x => x.remove());
             return out;
           }catch(e){ return 'ERR:'+e.message; } }""")
-        chk('機能', '新しいデザインの地図（v263）：閲覧モードは藍の地で、画面に映った所をどこでも描く（範囲のふち・外を薄くはしない）。縮めたら粗いデータ。出典を出す。編集にもどると外れる（編集の最初は今までの地図）',
-            isinstance(dm, dict) and dm.get('offBefore') and dm.get('on') and dm.get('frame') and dm.get('dim') == 1 and dm.get('tiles', 0) > 0 and dm.get('z13') and dm.get('far')
+        chk('機能', '新しいデザインの地図（v263）：閲覧モードは藍の地で（v279：下地の地図は不透明度0。つながらないときだけ1）、画面に映った所をどこでも描く（範囲のふち・外を薄くはしない）。縮めたら粗いデータ。出典を出す。編集にもどると外れる（編集の最初は今までの地図）',
+            isinstance(dm, dict) and dm.get('offBefore') and dm.get('on') and dm.get('frame') and dm.get('dim') == (1 if dm.get('netFail') else 0) and dm.get('tiles', 0) > 0 and dm.get('z13') and dm.get('far')
             and dm.get('ground') and dm.get('attr') and dm.get('offAfter') and dm.get('undim') == 1, str(dm)[:300])
         chk('機能', '閲覧モードの地図の印（v263）：歩く順は大きい札（番号つき・藍の縁）、立ち寄り先は小さい札（山吹の縁）。道順は朱の点（生成りの縁）で前の線は隠す。名前は生成りの帯に藍の字。右の列のボタンで 藍→生成り→いつもの地図 と切り替わる。編集モードでも札と帯と朱の点線（v264）。いつもの地図なら前の印',
             isinstance(dm, dict) and dm.get('big') and dm['big'][0] is False and dm['big'][1] and dm['big'][2] >= 30
@@ -5502,6 +5517,7 @@ def functional_checks(index_path):
             const t0 = Date.now(); while (Date.now() - t0 < 8000 && !(a.marker.getElement().querySelector('.wp-sticker') && b.marker.getElement().querySelector('.wp-sticker'))) await new Promise(r => setTimeout(r, 100));
             const out = {sticker: !!a.marker.getElement().querySelector('.wp-sticker .wp-stk-badge') && !!b.marker.getElement().querySelector('.wp-sticker'), saved: buildCurrentSaveData().stickers === true,
                          mem: [..._stickerMem.entries()].filter(([k]) => k === url0).map(([k, v]) => v === null ? 'null' : (v || '').length)};
+            { const e = a.marker.getElement().querySelector('.wp-sticker'); out.round = !!e && e.classList.contains('round') && getComputedStyle(e).borderRadius === '50%'; }   // v279：いつも丸
             const tt = a.marker.getTooltip(); const want = Math.round(_stickerSize()[1] / 2 + 4); out.offset = !!tt && (Math.abs(tt.options.offset[1]) === want || Math.abs(tt.options.offset[0]) === want);
             const near = px(a.lat, a.lng, 10, 10); b.lat = near.lat; b.lng = near.lng; b.marker.setLatLng([b.lat, b.lng]); _clusterStickers();
             out.clustered = b.marker.getElement().style.opacity === '0' && /\\+\\d+/.test((a.marker.getElement().querySelector('.wp-stk-more') || {}).textContent || '');
@@ -5518,8 +5534,8 @@ def functional_checks(index_path):
             out.back = wps.length === n0 && buildCurrentSaveData().stickers === undefined;
             return out;
           }catch(e){ return 'ERR:'+e.message; } }""")
-        chk('機能', 'シール：写真の印・名札の位置・近い2つを束ねて開く・保存に stickers・写真は長辺1024pxに',
-            isinstance(st, dict) and all(st.get(k) for k in ('sticker', 'saved', 'offset', 'clustered', 'opened', 'px', 'back')), str(st)[:240])
+        chk('機能', 'シール：写真の印（v279：いつも丸）・名札の位置・近い2つを束ねて開く・保存に stickers・写真は長辺1024pxに',
+            isinstance(st, dict) and all(st.get(k) for k in ('sticker', 'round', 'saved', 'offset', 'clustered', 'opened', 'px', 'back')), str(st)[:240])
 
         # v141: 案内：保存に入り、印が変わり、帯が手前で知らせ・ここで示し・過ぎたら確認、シートに載る、閲覧中はカード
         gd = page.evaluate("""()=>{ try{
